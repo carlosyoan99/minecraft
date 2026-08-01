@@ -12,6 +12,8 @@ let selectedSlot = 0;
 let craftingGrid = new Array(9).fill(null);
 let openFurnaceKey = null;
 let health = 20;
+let food = 20;
+let saturation = 20; // barra dorada sobre la comida (como en Minecraft)
 let inventoryOpen = false;
 
 export function getHeldItem() { return inventory[selectedSlot]; }
@@ -37,9 +39,23 @@ function updateHotbarUI() {
 }
 function updateHealthUI() { document.getElementById('hp').textContent = health; }
 
+// Barra de hambre con saturación dorada encima (como en Minecraft): el track
+// se llena de naranja con la comida y la capa dorada lo cubre desde la
+// izquierda según la saturación; naranja oscuro al bajar y rojo al llegar a 0.
+function updateFoodUI() {
+  document.getElementById('food').textContent = food;
+  const foodFill = document.getElementById('food-fill');
+  foodFill.style.width = Math.max(0, Math.min(100, (food / 20) * 100)) + '%';
+  foodFill.style.background = food <= 0 ? '#ff5555' : food <= 6 ? '#e8862e' : 'linear-gradient(#ffd27a, #ff9a2e)';
+  const satFill = document.getElementById('sat-fill');
+  satFill.style.width = Math.max(0, Math.min(100, (saturation / 20) * 100)) + '%';
+}
+
 // ============================================================
 // BOTÓN DE SILENCIO (persistido en localStorage)
 // ============================================================
+updateFoodUI(); // estado inicial coherente (barra llena/dorada) antes del primer init
+
 const muteBtn = document.getElementById('mute-btn');
 function updateMuteBtn() {
   muteBtn.textContent = isMuted() ? '🔇' : '🔊';
@@ -55,6 +71,11 @@ export function applyInventory(inv) {
   updateFurnaceInventoryUI();
 }
 export function applyHealth(hp) { health = hp; updateHealthUI(); }
+export function applyFood(f, s) {
+  food = f;
+  saturation = typeof s === 'number' ? s : f; // defensivo: servidores viejos sin saturación
+  updateFoodUI();
+}
 export function selectSlot(i) { selectedSlot = i; send('inventory_select', { slot: i }); updateHotbarUI(); }
 
 export function flashMessage(text) {

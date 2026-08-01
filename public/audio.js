@@ -140,6 +140,28 @@ export function playPlace(blockId) {
 }
 
 // ============================================================
+// COMER (mordisco corto)
+// ============================================================
+export function playEat() {
+  if (!ensureCtx()) return;
+  const t = ctx.currentTime + 0.001;
+  // Mordisco: dos blips de ruido muy cortos (masticar)
+  noiseBurst({ t, freq: 700, q: 2.5, vol: 0.2, dur: 0.05, type: 'bandpass' });
+  noiseBurst({ t: t + 0.09, freq: 550, q: 2.5, vol: 0.16, dur: 0.05, type: 'bandpass' });
+}
+
+// ============================================================
+// ALIMENTAR ANIMALES (mordisco alegre que sube de tono)
+// ============================================================
+export function playFeed() {
+  if (!ensureCtx()) return;
+  const t = ctx.currentTime + 0.001;
+  // Mordisco de animal contento: blip corto que sube de tono
+  noiseBurst({ t, freq: 500, q: 3, vol: 0.18, dur: 0.05, type: 'bandpass' });
+  noiseBurst({ t: t + 0.08, freq: 800, q: 3, vol: 0.14, dur: 0.06, type: 'bandpass' });
+}
+
+// ============================================================
 // PASOS (alternan sutilmente de tono)
 // ============================================================
 let stepAlt = false;

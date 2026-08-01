@@ -10,7 +10,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const {
   PORT, TICK_MS, VIEW_DISTANCE_CHUNKS, DAY_CYCLE_MS, SEED,
-  B, NOT_MINEABLE, FUEL_ITEMS, isPickaxe,
+  B, I, NOT_MINEABLE, FUEL_ITEMS, isPickaxe,
 } = require('./constants.js');
 const state = require('./state.js');
 const world = require('./world.js');
@@ -39,6 +39,8 @@ function handleConnection(ws) {
     id: playerId, ws,
     x: spawnX, y: spawnY, z: spawnZ, yaw: 0, pitch: 0,
     health: 20,
+    food: 20, saturation: 20, foodAccum: 0, regenAccum: 0, starveAccum: 0,
+    lastMoveTime: 0,
     inventory: new Array(36).fill(null),
     selectedSlot: 0,
     craftingGrid: new Array(9).fill(null),
@@ -56,7 +58,7 @@ function handleConnection(ws) {
       playerId, chunkData, spawnX, spawnY, spawnZ,
       dayTime: Date.now() % DAY_CYCLE_MS, // reloj del servidor: el cliente extrapola el ciclo visual
       mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
-      inventory: player.inventory, health: player.health,
+      inventory: player.inventory, health: player.health, food: player.food, saturation: player.saturation,
       otherPlayers: Array.from(state.players.values()).filter((p) => p.id !== playerId)
         .map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z })),
     },
@@ -87,6 +89,7 @@ function handleConnection(ws) {
           return;
         }
         p.x = x; p.y = y; p.z = z; p.yaw = yaw || 0; p.pitch = pitch || 0;
+        p.lastMoveTime = Date.now();
         // Generar chunks nuevos bajo demanda al moverse
         const newChunks = world.ensureChunksAround(x, z, 2);
         if (newChunks.length) {
@@ -119,6 +122,14 @@ function handleConnection(ws) {
           if (block === B.STONE) drop = B.COBBLESTONE;
           if (block === B.GRASS) drop = B.DIRT;
           playerHelpers.addToInventory(p, drop, 1);
+          // La hierba también suelta comida de cría para los animales
+          // (semillas → pollo, trigo → vaca/oveja, zanahoria → cerdo)
+          if (block === B.GRASS) {
+            const grassFeed = [[I.SEEDS, 0.25], [I.WHEAT, 0.10], [I.CARROT, 0.06]];
+            for (const [id, prob] of grassFeed) {
+              if (Math.random() < prob) playerHelpers.addToInventory(p, id, 1);
+            }
+          }
           playerHelpers.sendInventory(p);
         } else if (action === 'place') {
           if (world.getBlock(x, y, z) !== B.AIR) return;
@@ -221,6 +232,40 @@ function handleConnection(ws) {
         break;
       }
 
+      case 'eat': {
+        // Comer el ítem seleccionado: valida que sea comida y aplica hambre+saturación
+        const held = p.inventory[p.selectedSlot];
+        if (!held) return;
+        const verdict = playerHelpers.canEat(p, held.id);
+        if (verdict === 'full') {
+          // Estilo Minecraft: avisar cuando no hay hambre ni saturación por recuperar
+          p.ws.send(JSON.stringify({ event: 'eat_rejected', data: {} }));
+          return;
+        }
+        if (verdict !== 'ok') return; // no es comida (no debería pasar vía UI)
+        playerHelpers.eatFood(p, held.id);
+        held.count -= 1;
+        if (held.count <= 0) p.inventory[p.selectedSlot] = null;
+        playerHelpers.sendInventory(p);
+        break;
+      }
+
+      case 'feed_mob': {
+        // Alimentar a un animal con su comida de cría: modo amor → pareja → bebé
+        const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
+        if (!mob) return;
+        if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > 4) return;
+        const held = p.inventory[p.selectedSlot];
+        if (!held) return;
+        if (mobs.canFeed(mob, held.id) !== 'ok') return;
+        held.count -= 1;
+        if (held.count <= 0) p.inventory[p.selectedSlot] = null;
+        playerHelpers.sendInventory(p);
+        const baby = mobs.applyFeed(mob, state.mobs);
+        if (baby) broadcast('mob_breed', { x: baby.x, y: baby.y, z: baby.z });
+        break;
+      }
+
       case 'chat': {
         if (typeof data.message === 'string') broadcast('chat', { id: playerId, message: data.message.slice(0, 200) });
         break;
@@ -236,6 +281,9 @@ function handleConnection(ws) {
         if (mob.health <= 0) {
           mob.alive = false;
           broadcast('mob_death', { id: mob.id });
+          // Drops de comida de animales al morir (directo al atacante)
+          const drops = mobs.mobDrops(mob);
+          if (drops) for (const d of drops) playerHelpers.addToInventory(p, d.id, d.count);
           playerHelpers.sendInventory(p);
         }
         break;
@@ -260,6 +308,9 @@ function mainLoop() {
   for (const m of state.mobs) if (m.alive) m.tick(isNight);
   state.mobs = state.mobs.filter((m) => m.alive);
   broadcast('mobs_update', state.mobs.map(mobs.mobSnapshot));
+
+  // Hambre: decae con el tiempo/actividad, regenera o inanición
+  for (const p of state.players.values()) playerHelpers.tickPlayer(p, TICK_MS);
 
   if (Math.random() < 0.03) mobs.spawnMobs();
 

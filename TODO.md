@@ -104,13 +104,41 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 ## Fase 3 — Bucle de supervivencia
 *Objetivo: cerrar el loop minar → craftear → sobrevivir.*
 
-- [ ] Barra de hambre: decae con el tiempo/acciones, regenera
-      salud cuando está llena, penaliza cuando está vacía
-- [ ] Drops de comida de animales (vaca, cerdo, pollo, oveja) al
-      morir
-- [ ] Recetas de horno para cocinar esa comida
-- [ ] Alimentación y reproducción simple de animales (dar item →
-      cooldown → cría)
+- [x] Barra de hambre: decae con el tiempo/acciones, regenera
+      salud cuando está llena, penaliza cuando está vacía.
+      Implementada en el servidor (`players.js` `tickPlayer`,
+      fuente de verdad): `food` 0-20 que decae cada 30s parado
+      (15s en movimiento), regenera +1 salud cada 2s cuando
+      `food >= 18` (consumiendo comida) y drena -1 salud cada 2s
+      por inanición con `food == 0`; el respawn resetea salud y
+      comida. El `init` envía `food` y hay evento `food_update`;
+      el HUD muestra la barra 🍗 (naranja baja, roja vacía)
+- [x] Drops de comida de animales (vaca, cerdo, pollo, oveja) al
+      morir. Nuevos ítems de comida cruda en `constants.js`
+      (BEEF/PORKCHOP/CHICKEN/MUTTON, 107-110, sincronizados con
+      el cliente); `mobs.js` expone `mobDrops(type)` (rangos
+      aleatorios estilo Minecraft) y `net.js` entrega el drop al
+      inventario del atacante en `attack_mob` (muerte directa)
+- [x] Recetas de horno para cocinar esa comida: nuevos ítems
+      cocinados (COOKED_BEEF/PORKCHOP/CHICKEN/MUTTON, 111-114,
+      sincronizados con el cliente) y 4 recetas en
+      `recetas_horno.json` (cruda → cocinada, con `isCookable`
+      y el tick del horno ya existentes)
+- [x] Comer con clic derecho: `FOOD_VALUES` (hambre +
+      saturación, escala 0-20; la cocinada restaura más) en el
+      servidor, evento `eat` validado que consume el ítem
+      seleccionado, y el tick consume la saturación antes que
+      el hambre (amortigua el hambre, como en Minecraft)
+- [x] Alimentación y reproducción simple de animales (dar item →
+      cooldown → cría): nuevos ítems de cría TRIGO/ZANAHORIA/
+      SEMILLAS (115-117, la hierba los suelta al romperla) que
+      alimentan a vaca/oveja, cerdo y pollo respectivamente
+      (`BREED_FOOD`); `feed_mob` validado en el servidor consume
+      el ítem, entra en modo amor 30s y si encuentra pareja del
+      mismo tipo a <8 bloques cría un bebé (los padres entran en
+      cooldown 60s); el bebé se renderiza a media escala, no
+      dropea comida y crece hasta adulto en 60s; el estado
+      `isBaby`/`age` se persiste de forma retrocompatible
 - [ ] **Auditoría de Fase 3:** revisar balance (¿el hambre baja a
       un ritmo jugable?), confirmar que el spawn/reproducción de
       animales no degrada el rendimiento del tick de mobs

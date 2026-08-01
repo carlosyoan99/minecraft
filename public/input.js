@@ -11,8 +11,8 @@ import {
   toggleFurnaceUI, getHeldItem, isChatFocused,
 } from './ui.js';
 import { send } from './connection.js';
-import { playBreak, playPlace } from './audio.js';
-import { PLACEABLE_BLOCKS } from './constants.js';
+import { playBreak, playPlace, playEat, playFeed } from './audio.js';
+import { PLACEABLE_BLOCKS, FOOD_ITEMS, BREED_FOOD } from './constants.js';
 
 // ============================================================
 // TECLADO
@@ -50,6 +50,8 @@ document.addEventListener('keyup', (e) => {
 // ============================================================
 const raycaster = new THREE.Raycaster();
 raycaster.far = 7;
+// Solo los pasivos se pueden alimentar (trigo/zanahoria/semillas)
+const PASSIVE_MOBS = new Set(['cow', 'pig', 'chicken', 'sheep']);
 
 function raycastTerrainAndMobs() {
   raycaster.setFromCamera({ x: 0, y: 0 }, camera);
@@ -62,13 +64,32 @@ function raycastTerrainAndMobs() {
 
 renderer.domElement.addEventListener('mousedown', (e) => {
   if (!controls.isLocked) return;
-  const hit = raycastTerrainAndMobs();
-  if (!hit) return;
 
-  if (hit.object.userData.mobId) {
-    if (e.button === 0) send('attack_mob', { mobId: hit.object.userData.mobId });
+  const held = getHeldItem();
+  const hit = raycastTerrainAndMobs();
+
+  // Alimentar animales: clic derecho sobre un animal pasivo con su comida de
+  // cría (trigo → vaca/oveja, zanahoria → cerdo, semillas → pollo); izquierdo ataca.
+  if (hit && hit.object.userData.mobId) {
+    if (e.button === 0) {
+      send('attack_mob', { mobId: hit.object.userData.mobId });
+    } else if (e.button === 2 && held && BREED_FOOD.has(held.id) &&
+               PASSIVE_MOBS.has(hit.object.userData.mobType)) {
+      playFeed();
+      send('feed_mob', { mobId: hit.object.userData.mobId });
+    }
     return;
   }
+
+  // Comer con clic derecho: si llevas comida en la mano, se come sin
+  // necesidad de apuntar a un bloque (como en Minecraft).
+  if (e.button === 2 && held && FOOD_ITEMS.has(held.id)) {
+    playEat();
+    send('eat', {});
+    return;
+  }
+
+  if (!hit) return;
 
   const point = hit.point.clone().addScaledVector(hit.face.normal, -0.5);
   const x = Math.floor(point.x), y = Math.floor(point.y), z = Math.floor(point.z);

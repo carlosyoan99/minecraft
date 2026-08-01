@@ -39,6 +39,9 @@ const B = {
 const I = {
   STICK: 100, COAL: 101, IRON_INGOT: 102, GOLD_INGOT: 103, DIAMOND: 104,
   REDSTONE: 105, EMERALD: 106,
+  BEEF: 107, PORKCHOP: 108, CHICKEN: 109, MUTTON: 110, // comida cruda (se cocina en el horno)
+  COOKED_BEEF: 111, COOKED_PORKCHOP: 112, COOKED_CHICKEN: 113, COOKED_MUTTON: 114, // comida cocinada
+  WHEAT: 115, CARROT: 116, SEEDS: 117, // comida de cría de animales (se obtiene de la hierba)
   WOODEN_PICKAXE: 200, STONE_PICKAXE: 201, IRON_PICKAXE: 202, GOLDEN_PICKAXE: 203, DIAMOND_PICKAXE: 204,
   WOODEN_AXE: 205, STONE_AXE: 206, IRON_AXE: 207, GOLDEN_AXE: 208, DIAMOND_AXE: 209,
   WOODEN_SHOVEL: 210, STONE_SHOVEL: 211, IRON_SHOVEL: 212, GOLDEN_SHOVEL: 213, DIAMOND_SHOVEL: 214,
@@ -46,9 +49,35 @@ const I = {
 };
 const NOT_MINEABLE = new Set([B.AIR, B.BEDROCK]);
 const FUEL_ITEMS = new Set([B.OAK_LOG, B.PLANKS, I.STICK]);
+
+// ============================================================
+// COMIDA (valores de hambre y saturación por ítem, escala 0-20)
+// La cocinada restaura más que la cruda, como en Minecraft.
+// ============================================================
+const FOOD_VALUES = {
+  [I.BEEF]: { food: 3, saturation: 1.8 },
+  [I.PORKCHOP]: { food: 3, saturation: 1.8 },
+  [I.CHICKEN]: { food: 2, saturation: 1.2 },
+  [I.MUTTON]: { food: 2, saturation: 1.2 },
+  [I.COOKED_BEEF]: { food: 8, saturation: 12.8 },
+  [I.COOKED_PORKCHOP]: { food: 8, saturation: 12.8 },
+  [I.COOKED_CHICKEN]: { food: 6, saturation: 7.2 },
+  [I.COOKED_MUTTON]: { food: 6, saturation: 9.6 },
+};
+const isFood = (id) => !!FOOD_VALUES[id];
 const isPickaxe = (id) => id >= 200 && id <= 204;
 const isAxe = (id) => id >= 205 && id <= 209;
 const isShovel = (id) => id >= 210 && id <= 214;
+
+// ============================================================
+// CRÍA DE ANIMALES (qué ítem alimenta a cada pasivo, estilo Minecraft)
+// ============================================================
+const BREED_FOOD = {
+  cow: I.WHEAT,
+  sheep: I.WHEAT,
+  pig: I.CARROT,
+  chicken: I.SEEDS,
+};
 
 // ============================================================
 // MOBS
@@ -64,6 +93,6 @@ module.exports = {
   VIEW_DISTANCE_CHUNKS, UNLOAD_DISTANCE_CHUNKS, UNLOAD_INTERVAL_MS,
   DAY_CYCLE_MS, SEED,
   WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE,
-  B, I, NOT_MINEABLE, FUEL_ITEMS, isPickaxe, isAxe, isShovel,
-  MOB_COLORS, HOSTILE,
+  B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe, isAxe, isShovel,
+  BREED_FOOD, MOB_COLORS, HOSTILE,
 };

@@ -2,5 +2,9 @@
   "9": { "result": { "id": 101, "count": 1 }, "time": 200 },
   "10": { "result": { "id": 102, "count": 1 }, "time": 200 },
   "11": { "result": { "id": 103, "count": 1 }, "time": 200 },
-  "6": { "result": { "id": 17, "count": 1 }, "time": 150 }
+  "6": { "result": { "id": 17, "count": 1 }, "time": 150 },
+  "107": { "result": { "id": 111, "count": 1 }, "time": 200 },
+  "108": { "result": { "id": 112, "count": 1 }, "time": 200 },
+  "109": { "result": { "id": 113, "count": 1 }, "time": 200 },
+  "110": { "result": { "id": 114, "count": 1 }, "time": 200 }
 }

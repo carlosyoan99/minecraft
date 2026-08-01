@@ -22,7 +22,7 @@ function buildMeta() {
     schemaVersion: SCHEMA_VERSION,
     seed: SEED,
     lastSaved: new Date().toISOString(),
-    mobs: state.mobs.filter((m) => m.alive).map((m) => ({ id: m.id, type: m.type, x: m.x, y: m.y, z: m.z, health: m.health })),
+    mobs: state.mobs.filter((m) => m.alive).map((m) => ({ id: m.id, type: m.type, x: m.x, y: m.y, z: m.z, health: m.health, isBaby: m.isBaby, age: m.age })),
     furnaces: Array.from(furnaces.entries()),
   };
 }

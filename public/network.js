@@ -5,12 +5,12 @@ import { camera } from './scene.js';
 import { socket } from './connection.js';
 import { loadChunkData, setClientBlock, rebuildAffectedChunks, unloadChunks } from './world.js';
 import {
-  spawnRemotePlayer, removeRemotePlayer, updateRemotePlayer, updateMobs, removeMob,
+  spawnRemotePlayer, removeRemotePlayer, updateRemotePlayer, updateMobs, removeMob, spawnHearts,
 } from './mobs.js';
 import { teleport } from './player.js';
 import { initDayNight } from './daynight.js';
 import {
-  applyInventory, applyHealth, applyCraftingGrid, applyFurnaceState, addChatLine, flashMessage,
+  applyInventory, applyHealth, applyFood, applyCraftingGrid, applyFurnaceState, addChatLine, flashMessage,
 } from './ui.js';
 
 let playerId = null;
@@ -24,6 +24,7 @@ socket.addEventListener('message', (e) => {
       loadChunkData(data.chunkData);
       applyInventory(data.inventory);
       applyHealth(data.health);
+      applyFood(data.food, data.saturation);
       updateMobs(data.mobs);
       initDayNight(data.dayTime);
       for (const p of data.otherPlayers) spawnRemotePlayer(p.id, p.x, p.y, p.z);
@@ -41,10 +42,17 @@ socket.addEventListener('message', (e) => {
     case 'player_leave': removeRemotePlayer(data.id); break;
     case 'mobs_update': updateMobs(data); break;
     case 'mob_death': removeMob(data.id); break;
+    case 'mob_breed': spawnHearts(data.x, data.y, data.z); break;
     case 'teleport': teleport(data.x, data.y, data.z); break;
     case 'player_die': if (data.id === playerId) flashMessage('💀 Has muerto — reapareciendo...'); break;
     case 'inventory_update': applyInventory(data.inventory); break;
     case 'health_update': applyHealth(data.health); break;
+    case 'food_update': {
+      if (data.food === 0) flashMessage('🍗 ¡Estás hambriento! Busca comida.');
+      applyFood(data.food, data.saturation);
+      break;
+    }
+    case 'eat_rejected': flashMessage('😋 ¡No tienes hambre!'); break;
     case 'crafting_grid_update': applyCraftingGrid(data.grid, data.success); break;
     case 'furnace_state': applyFurnaceState(data); break;
     case 'chat': addChatLine(data.id === playerId ? 'Tú' : data.id.slice(0, 6), data.message); break;

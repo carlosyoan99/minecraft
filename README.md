@@ -44,6 +44,7 @@ mi-minecraft/
 ├── recetas_horno.json     Recetas de fundición
 ├── package.json
 ├── world/                 Persistencia: chunks/ (un archivo por chunk) + world.json
+├── tests/                 Tests unitarios + E2E (npm test, runner tests/run.js)
 └── public/                Cliente modular (módulos ES6, ver arriba en README)
 ```
 
@@ -74,15 +75,33 @@ en un canvas, sin assets binarios), sonidos procedurales con Web
 Audio API (romper/colocar bloques, pasos, ambiente día/noche con
 pájaros y grillos — sin archivos de audio en el repo), ciclo
 día/noche visual real (cielo, luz solar y ambiente interpolados
-con el reloj del servidor), mobs hostiles y pasivos con máquina de
-estados simple,
+con el reloj del servidor), barra de hambre con decaimiento,
+regeneración de salud y penalización por inanición (autoritativa en
+el servidor), drops de comida cruda de animales (vaca, cerdo,
+pollo, oveja) al morir, recetas de horno para cocinarla
+(cruda → cocinada) y comer con clic derecho (hambre +
+saturación, la cocinada restaura más), alimentación y cría de
+animales (la hierba suelta trigo/zanahoria/semillas que alimentan
+a vaca/oveja, cerdo y pollo: modo amor → pareja → bebé que crece
+hasta adulto), mobs hostiles y pasivos con máquina de estados
+simple,
 crafteo por patrón, horno con combustible y cocción, persistencia
 cada 30s, multijugador básico por WebSocket.
 
-Pendiente / simplificado a propósito: sin hambre, sin cuevas
-(terreno macizo), sin agua, sin durabilidad de herramientas. Ver
+Pendiente / simplificado a propósito: sin cuevas (terreno macizo),
+sin agua, sin durabilidad de herramientas. Ver
 `TODO.md` para el plan de desarrollo por fases y `CLAUDE.md` para
 las convenciones que sigue el proyecto.
+
+## Tests
+
+- `npm test` ejecuta los tests unitarios (`tests/unit-hambre.js`,
+  `tests/unit-cria.js`) y, si hay un servidor vivo en
+  `ws://localhost:3998` (o `$WS_URL`), el E2E de comer
+  (`tests/e2e-comer.js`).
+- Sin framework: cada test es un script Node.js plano que termina con
+  código de salida 0/1; `tests/run.js` los encadena. Flags: `--unit`
+  (solo unitarios) y `--e2e` (solo E2E, con `WS_URL`).
 
 ## Rendimiento y límites conocidos
 

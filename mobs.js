@@ -4,7 +4,7 @@
 // IA DE MOBS
 // ============================================================
 const { v4: uuidv4 } = require('uuid');
-const { MOB_COLORS, HOSTILE, B } = require('./constants.js');
+const { MOB_COLORS, HOSTILE, B, I, TICK_MS, BREED_FOOD } = require('./constants.js');
 const state = require('./state.js');
 const world = require('./world.js');
 const { damagePlayer } = require('./players.js');
@@ -23,6 +23,11 @@ class Mob {
     this.targetX = x; this.targetZ = z;
     this.color = MOB_COLORS[type] || 0x999999;
     this.alive = true;
+    // Cría (Fase 3): estado de reproducción y crecimiento
+    this.loveUntil = 0;        // fin del modo amor (timestamp)
+    this.cooldownUntil = 0;    // fin del cooldown de cría (timestamp)
+    this.isBaby = false;       // los bebés crecen hasta hacerse adultos
+    this.age = 0;              // ms acumulados de vida como bebé
   }
 
   distTo(p) { const dx = p.x - this.x, dz = p.z - this.z; return Math.sqrt(dx * dx + dz * dz); }
@@ -84,6 +89,11 @@ class Mob {
   }
 
   tick(isNight) {
+    // Los bebés crecen con el tiempo hasta hacerse adultos
+    if (this.isBaby) {
+      this.age += TICK_MS;
+      if (this.age >= GROWUP_MS) this.isBaby = false;
+    }
     const { nearest, dist } = this.findNearestPlayer();
     switch (this.type) {
       case 'zombie':
@@ -140,15 +150,74 @@ function spawnMobs() {
 }
 
 function mobSnapshot(m) {
-  return { id: m.id, x: m.x, y: m.y, z: m.z, type: m.type, color: m.color, state: m.state };
+  return { id: m.id, x: m.x, y: m.y, z: m.z, type: m.type, color: m.color, state: m.state, isBaby: m.isBaby };
+}
+
+// ============================================================
+// DROPS DE COMIDA DE ANIMALES (Fase 3)
+// Al morir, los pasivos sueltan su comida cruda (rango aleatorio,
+// estilo Minecraft). Los hostiles no dropean nada por ahora.
+// ============================================================
+const FOOD_DROPS = {
+  cow: { id: I.BEEF, min: 1, max: 3 },
+  pig: { id: I.PORKCHOP, min: 1, max: 3 },
+  chicken: { id: I.CHICKEN, min: 1, max: 2 },
+  sheep: { id: I.MUTTON, min: 1, max: 2 },
+};
+
+// Devuelve [{ id, count }] para el tipo o null si no dropea nada.
+// Los bebés no sueltan comida (como en Minecraft).
+function mobDrops(mob) {
+  if (mob.isBaby) return null;
+  const d = FOOD_DROPS[mob.type];
+  if (!d) return null;
+  return [{ id: d.id, count: d.min + Math.floor(Math.random() * (d.max - d.min + 1)) }];
+}
+
+// ============================================================
+// CRÍA DE ANIMALES (Fase 3): dar item → modo amor → pareja → bebé
+// ============================================================
+const LOVE_WINDOW_MS = 30000;    // el modo amor dura 30s buscando pareja
+const BREED_COOLDOWN_MS = 60000; // cooldown de cría tras criar (60s)
+const BREED_RANGE = 8;           // distancia máxima entre la pareja (bloques)
+const GROWUP_MS = 60000;         // un bebé tarda 60s en hacerse adulto
+
+// ¿Se puede alimentar a este mob con el ítem? 'ok' o el motivo del rechazo.
+function canFeed(mob, itemId) {
+  if (mob.isBaby) return 'baby';
+  if (Date.now() < mob.cooldownUntil) return 'cooldown';
+  if (BREED_FOOD[mob.type] !== itemId) return 'wrongfood';
+  return 'ok';
+}
+
+// Alimentar al mob: entra en modo amor y busca pareja del mismo tipo ya
+// alimentada cerca. Si la encuentra, cría un bebé entre ambos (los padres
+// entran en cooldown) y lo devuelve; si no, espera hasta LOVE_WINDOW_MS.
+function applyFeed(mob, mobs) {
+  mob.loveUntil = Date.now() + LOVE_WINDOW_MS;
+  const partner = mobs.find((m) =>
+    m.id !== mob.id && m.alive && !m.isBaby && m.type === mob.type &&
+    m.loveUntil > Date.now() &&
+    Math.hypot(m.x - mob.x, m.z - mob.z) < BREED_RANGE
+  );
+  if (!partner) return null;
+  mob.loveUntil = 0; partner.loveUntil = 0;
+  mob.cooldownUntil = Date.now() + BREED_COOLDOWN_MS;
+  partner.cooldownUntil = Date.now() + BREED_COOLDOWN_MS;
+  const baby = new Mob(mob.type, (mob.x + partner.x) / 2, Math.min(mob.y, partner.y), (mob.z + partner.z) / 2);
+  baby.isBaby = true;
+  baby.age = 0;
+  state.mobs.push(baby);
+  return baby;
 }
 
 function restoreMobs(list) {
   return (list || []).map((m) => {
     const mob = new Mob(m.type, m.x, m.y, m.z);
     mob.id = m.id; mob.health = m.health;
+    mob.isBaby = !!m.isBaby; mob.age = m.age || 0; // retrocompatible: faltan en guardados viejos
     return mob;
   });
 }
 
-module.exports = { Mob, spawnMobs, mobSnapshot, restoreMobs };
+module.exports = { Mob, spawnMobs, mobSnapshot, restoreMobs, mobDrops, canFeed, applyFeed };
