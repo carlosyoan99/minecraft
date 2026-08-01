@@ -1,0 +1,16 @@
+{
+  "name": "mi-minecraft",
+  "version": "1.0.0",
+  "description": "Clon de Minecraft con servidor Node.js autoritativo (chunks, biomas, IA de mobs, crafteo, horno, persistencia)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.17.0",
+    "simplex-noise": "^4.0.1",
+    "uuid": "^9.0.1"
+  }
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Minecraft — Node.js + Three.js</title>
+<link rel="stylesheet" href="estilo.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+  <div id="blocker">
+    <div id="menu">
+      <h1>⛏️ Mi Minecraft</h1>
+      <p>WASD para moverte · Ratón para mirar · Espacio para saltar</p>
+      <p>Click izq: romper · Click der: colocar · E: inventario/crafteo</p>
+      <button id="start-btn">Jugar</button>
+    </div>
+  </div>
+
+  <div id="crosshair">+</div>
+  <div id="info">❤️ <span id="hp">20</span>/20</div>
+
+  <div id="hotbar"></div>
+
+  <div id="crafting-ui" class="panel hidden">
+    <h3>Mesa de crafteo</h3>
+    <div class="craft-layout">
+      <div id="craft-grid" class="grid3"></div>
+      <div class="arrow">→</div>
+      <div id="craft-result" class="slot result"></div>
+    </div>
+    <div id="craft-inventory" class="grid9"></div>
+    <button id="craft-clear-btn">Devolver items</button>
+    <p class="hint">Click en un item del inventario para colocarlo en la mesa.</p>
+  </div>
+
+  <div id="furnace-ui" class="panel hidden">
+    <h3>Horno</h3>
+    <div class="furnace-layout">
+      <div id="furnace-fuel" class="slot">Combustible</div>
+      <div id="furnace-input" class="slot">Material</div>
+      <div class="arrow" id="furnace-progress">→</div>
+      <div id="furnace-output" class="slot result">Salida</div>
+    </div>
+    <div id="furnace-inventory" class="grid9"></div>
+    <p class="hint">Click en un item para añadirlo como combustible o material.</p>
+  </div>
+
+  <div id="chat-log"></div>
+  <input id="chat-input" type="text" placeholder="Pulsa Enter para chatear..." maxlength="200">
+
+  <script src="client.js" type="module"></script>
+</body>
+</html>

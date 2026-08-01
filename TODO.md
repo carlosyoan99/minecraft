@@ -1,0 +1,123 @@
+# TODO.md — Roadmap por fases
+
+Cada fase se marca completa solo cuando **todas** sus tareas están
+hechas, incluyendo la auditoría final. No saltar de fase sin
+cerrar la anterior.
+
+Leyenda: `[ ]` pendiente · `[x]` hecho
+
+---
+
+## Fase 0 — Base entregada
+- [x] Servidor autoritativo (Express + ws) con validación de
+      movimiento y acciones de bloque
+- [x] Generación de mundo por chunks con biomas (llanura, bosque,
+      desierto) vía simplex-noise con semilla fija
+- [x] IA de mobs con máquina de estados (zombie, creeper,
+      esqueleto, enderman, pasivos)
+- [x] Crafteo por patrón 3x3 desde `recetas.json`
+- [x] Horno con combustible y cocción desde `recetas_horno.json`
+- [x] Persistencia completa del mundo cada 30s
+- [x] Cliente Three.js vanilla con física básica (colisión,
+      gravedad, salto) y culling de caras correcto entre chunks
+
+---
+
+## Fase 1 — Cimientos técnicos
+*Objetivo: que la base escale antes de seguir sumando features.*
+
+- [ ] Guardado incremental por chunk (reemplazar `world.dat` único
+      por un archivo/entrada por chunk, o por región)
+- [ ] Versionado del formato de guardado (`schemaVersion`) con
+      ruta de migración explícita para mundos ya guardados
+- [ ] Descarga de chunks lejanos: servidor deja de mantener en
+      memoria chunks sin jugadores cerca; cliente hace `dispose()`
+      de geometría de chunks fuera de rango
+- [ ] Modularizar `client.js` en módulos ES6 por responsabilidad
+      (`network.js`, `world.js`, `player.js`, `mobs.js`, `ui.js`)
+- [ ] Modularizar `server.js` de forma equivalente si ha crecido
+      demasiado (`world.js`, `mobs.js`, `crafting.js`, `net.js`)
+- [ ] **Auditoría de Fase 1:** probar guardar/cargar el mundo
+      varias veces seguidas sin corrupción; medir uso de memoria
+      del servidor con varios chunks generados y jugador
+      moviéndose por un rato; confirmar que no hay imports rotos
+      ni código muerto tras la modularización
+
+---
+
+## Fase 2 — Identidad sensorial
+*Objetivo: que el juego se vea y suene reconociblemente Minecraft.*
+
+- [ ] Atlas de texturas simple (16x16 px por cara, estilo
+      pixel-art) reemplazando los colores planos por bloque
+- [ ] Aplicar texturas en `buildChunkGeometry` (UV mapping por
+      cara, agrupado por textura en vez de por color)
+- [ ] Sonidos básicos: romper bloque, colocar bloque, pasos,
+      ambiente de día/noche
+- [ ] Ciclo día/noche visual real: color de cielo y intensidad de
+      luz solar interpolados con el reloj interno del servidor
+      (ya existe el ciclo lógico para spawns; falta la parte visual)
+- [ ] **Auditoría de Fase 2:** medir impacto en rendimiento de
+      cargar el atlas y aplicar UVs (FPS con varios chunks
+      visibles); confirmar que las texturas no rompen el culling
+      de caras existente
+
+---
+
+## Fase 3 — Bucle de supervivencia
+*Objetivo: cerrar el loop minar → craftear → sobrevivir.*
+
+- [ ] Barra de hambre: decae con el tiempo/acciones, regenera
+      salud cuando está llena, penaliza cuando está vacía
+- [ ] Drops de comida de animales (vaca, cerdo, pollo, oveja) al
+      morir
+- [ ] Recetas de horno para cocinar esa comida
+- [ ] Alimentación y reproducción simple de animales (dar item →
+      cooldown → cría)
+- [ ] **Auditoría de Fase 3:** revisar balance (¿el hambre baja a
+      un ritmo jugable?), confirmar que el spawn/reproducción de
+      animales no degrada el rendimiento del tick de mobs
+
+---
+
+## Fase 4 — Profundidad de terreno
+*Objetivo: que el mundo deje de sentirse macizo y plano.*
+
+- [ ] Cuevas: ruido 3D restando de la generación de piedra en
+      `generateChunk`
+- [ ] Bloque de agua: no sólido, con física simple de flotación
+      para el jugador
+- [ ] (Opcional si el rendimiento lo permite tras Fase 1) más
+      variedad de bioma: nieve, montaña
+- [ ] **Auditoría de Fase 4:** confirmar que las cuevas no generan
+      huecos visuales raros en el culling de caras; probar
+      generación de chunks con cuevas en tiempo real sin caída de
+      FPS perceptible
+
+---
+
+## Fase 5 — Progresión y combate
+*Objetivo: dar sentido a subir de nivel de herramienta.*
+
+- [ ] Durabilidad real de herramientas (que se rompan tras N usos)
+- [ ] Más variedad de mobs y drops asociados
+- [ ] (Opcional) experiencia simple / niveles
+- [ ] **Auditoría de Fase 5:** revisar que la durabilidad se
+      sincroniza correctamente entre inventario del servidor y HUD
+      del cliente; confirmar que no hay forma de duplicar items al
+      romperse una herramienta a mitad de una acción
+
+---
+
+## Fuera de alcance (Won't)
+
+Explícitamente descartado por ahora — no implementar sin discutir
+primero y actualizar este archivo:
+
+- Redstone
+- Dimensiones alternas (Nether / End)
+- Aldeas generadas proceduralmente
+- Sistema de clima
+- Cuentas de usuario / autenticación
+- Persistencia en base de datos externa (se resuelve con archivos
+  por chunk en la Fase 1)
