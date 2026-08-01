@@ -4,6 +4,7 @@
 import { controls } from './scene.js';
 import { send } from './connection.js';
 import { itemLabel, itemColor } from './constants.js';
+import { isMuted, setMuted } from './audio.js';
 
 // Estado que dibuja el HUD (lo actualiza la red; lo lee el input)
 let inventory = new Array(36).fill(null);
@@ -35,6 +36,17 @@ function updateHotbarUI() {
   }
 }
 function updateHealthUI() { document.getElementById('hp').textContent = health; }
+
+// ============================================================
+// BOTÓN DE SILENCIO (persistido en localStorage)
+// ============================================================
+const muteBtn = document.getElementById('mute-btn');
+function updateMuteBtn() {
+  muteBtn.textContent = isMuted() ? '🔇' : '🔊';
+  muteBtn.title = isMuted() ? 'Activar sonido' : 'Silenciar sonido';
+}
+muteBtn.addEventListener('click', () => { setMuted(!isMuted()); updateMuteBtn(); });
+updateMuteBtn();
 
 export function applyInventory(inv) {
   inventory = inv;

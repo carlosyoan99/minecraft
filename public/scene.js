@@ -15,13 +15,15 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.AmbientLight(0x8899bb, 0.7));
-const sun = new THREE.DirectionalLight(0xfff2d0, 1.1);
+// Luces exportadas: daynight.js las ajusta cada frame según la fase del ciclo.
+export const ambient = new THREE.AmbientLight(0x8899bb, 0.7);
+export const sun = new THREE.DirectionalLight(0xfff2d0, 1.1);
 sun.position.set(60, 90, 40);
 sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
 sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
 sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
+scene.add(ambient);
 scene.add(sun);
 
 export const controls = new PointerLockControls(camera, document.body);

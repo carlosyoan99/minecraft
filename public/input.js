@@ -11,6 +11,7 @@ import {
   toggleFurnaceUI, getHeldItem, isChatFocused,
 } from './ui.js';
 import { send } from './connection.js';
+import { playBreak, playPlace } from './audio.js';
 import { PLACEABLE_BLOCKS } from './constants.js';
 
 // ============================================================
@@ -73,8 +74,10 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   const x = Math.floor(point.x), y = Math.floor(point.y), z = Math.floor(point.z);
 
   if (e.button === 0) {
-    if (getClientBlock(x, y, z) === 16) { toggleFurnaceUI(true, { x, y, z }); return; }
-    if (getClientBlock(x, y, z) === 15) { openCraftingFromBlock(); return; }
+    const target = getClientBlock(x, y, z);
+    if (target === 16) { toggleFurnaceUI(true, { x, y, z }); return; }
+    if (target === 15) { openCraftingFromBlock(); return; }
+    playBreak(target);
     send('block_action', { action: 'break', x, y, z });
   } else if (e.button === 2) {
     const nx = x + Math.round(hit.face.normal.x);
@@ -82,6 +85,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     const nz = z + Math.round(hit.face.normal.z);
     const held = getHeldItem();
     if (held && PLACEABLE_BLOCKS.has(held.id)) {
+      playPlace(held.id);
       send('block_action', { action: 'place', x: nx, y: ny, z: nz, itemId: held.id });
     }
   }

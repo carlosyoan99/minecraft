@@ -61,19 +61,43 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 ## Fase 2 — Identidad sensorial
 *Objetivo: que el juego se vea y suene reconociblemente Minecraft.*
 
-- [ ] Atlas de texturas simple (16x16 px por cara, estilo
-      pixel-art) reemplazando los colores planos por bloque
-- [ ] Aplicar texturas en `buildChunkGeometry` (UV mapping por
-      cara, agrupado por textura en vez de por color)
-- [ ] Sonidos básicos: romper bloque, colocar bloque, pasos,
-      ambiente de día/noche
-- [ ] Ciclo día/noche visual real: color de cielo y intensidad de
-      luz solar interpolados con el reloj interno del servidor
-      (ya existe el ciclo lógico para spawns; falta la parte visual)
-- [ ] **Auditoría de Fase 2:** medir impacto en rendimiento de
+- [x] Atlas de texturas simple (16x16 px por cara, estilo
+      pixel-art) reemplazando los colores planos por bloque.
+      Generado proceduralmente en un canvas (`public/textures.js`):
+      sin assets binarios ni build step, una única `CanvasTexture`
+      compartida con `NearestFilter`
+- [x] Aplicar texturas en `buildChunkGeometry` (UV mapping por
+      cara, agrupado por textura en vez de por color): cada cara
+      elige su tesela (top/bottom/lados) con UVs del atlas
+- [x] Sonidos básicos: romper bloque, colocar bloque, pasos,
+      ambiente de día/noche. Todo procedural con Web Audio API
+      (`public/audio.js`, sin assets binarios): contexto
+      desbloqueado en el primer gesto, golpes/colocación por
+      material del bloque, pasos con alternancia de tono, y
+      ambiente continuo de viento + pájaros (día) / grillos
+      (noche) guiado por la misma fase del ciclo
+- [x] Ciclo día/noche visual real: color de cielo y
+      intensidad de luz solar interpolados con el reloj interno
+      del servidor (el `init` envía `dayTime`; el cliente lo
+      extrapola con `performance.now()` en `public/daynight.js`
+      e interpola cielo, luz solar, ambiente y niebla)
+- [x] **Auditoría de Fase 2:** medir impacto en rendimiento de
       cargar el atlas y aplicar UVs (FPS con varios chunks
       visibles); confirmar que las texturas no rompen el culling
       de caras existente
+
+> **Auditoría completada (agosto 2026):** benchmark de
+> generación del servidor 2.36 ms/chunk (169 chunks, radio 6) y
+> 0.52 ms en cache. Medición de FPS en Chrome headless vía CDP
+> (SwiftShader, render por software — números conservadores):
+> escena reducida de 25 chunks → 148-176 FPS con y sin audio
+> (degradación del sonido procedural ≈ 2.8%, ruido de medición;
+> `updateAmbient` cuesta 0.02-0.64 ms/frame); escena completa de
+> 439 chunks (310K triángulos) renderiza estable. 0 teselas/UVs
+> inválidas (19 bloques × 6 caras) y 0 errores de consola: el
+> atlas no rompe el culling de caras. De paso se añadió un
+> contador de FPS persistente al HUD (`#fps`, métricas en
+> `window.__mc*`) útil para auditorías futuras.
 
 ---
 

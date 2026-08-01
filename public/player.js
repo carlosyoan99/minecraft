@@ -3,8 +3,10 @@
 // ============================================================
 import * as THREE from 'three';
 import { scene, camera, renderer, controls } from './scene.js';
-import { getClientBlock } from './world.js';
+import { getClientBlock, chunkMeshes } from './world.js';
 import { send } from './connection.js';
+import { updateDayNight } from './daynight.js';
+import { playStep, updateAmbient } from './audio.js';
 
 const PLAYER_SPEED = 4.3;   // bloques/segundo
 const GRAVITY = 18;
@@ -44,6 +46,36 @@ function tryMove(dx, dz) {
 
 const clock = new THREE.Clock();
 let netTimer = 0;
+let stepDist = 0;          // distancia recorrida acumulada para el sonido de pasos
+const STEP_SPACING = 0.72; // bloques entre pasos
+
+// ============================================================
+// MÉTRICAS DE RENDIMIENTO (HUD + ventana para la auditoría)
+// Media móvil de 1s expuesta en window.__mc*; el #fps del HUD la dibuja.
+// ============================================================
+const fpsEl = document.getElementById('fps');
+let perfFrames = 0, perfAmbient = 0, perfFrameMs = 0;
+let perfTimer = performance.now();
+
+// Métricas por frame: ambientMs se mide AISLADO (solo updateAmbient), frameMs
+// incluye todo el frame (física + render). FPS = 1000 / frameMs medio, robusto
+// incluso con frames lentos (no depende de cuántos frames caen en la ventana).
+function updatePerfMetrics(ambientMs, frameMs) {
+  perfFrames++;
+  perfAmbient += ambientMs;
+  perfFrameMs += frameMs;
+  const now = performance.now();
+  const elapsed = now - perfTimer;
+  if (elapsed >= 1000 && perfFrames > 0) {
+    window.__mcFps = 1000 / (perfFrameMs / perfFrames);
+    window.__mcFrameMs = perfFrameMs / perfFrames;
+    window.__mcAmbientMs = perfAmbient / perfFrames;
+    window.__mcChunks = chunkMeshes.size;
+    window.__mcTriangles = renderer.info.render.triangles;
+    if (fpsEl) fpsEl.textContent = `${window.__mcFps.toFixed(0)} FPS · ${window.__mcChunks} chunks`;
+    perfFrames = 0; perfAmbient = 0; perfFrameMs = 0; perfTimer = now;
+  }
+}
 
 function animate() {
   requestAnimationFrame(animate);
@@ -83,6 +115,18 @@ function animate() {
     }
     camera.position.y = newY;
 
+    // Pasos: suenan al caminar por el suelo, cada ~0.72 bloques
+    if (onGround && len > 0) {
+      stepDist += Math.hypot(dx, dz);
+      if (stepDist >= STEP_SPACING) {
+        stepDist = 0;
+        const under = getClientBlock(Math.floor(camera.position.x), Math.floor(feet - 0.1), Math.floor(camera.position.z));
+        playStep(under);
+      }
+    } else {
+      stepDist = 0;
+    }
+
     netTimer += dt;
     if (netTimer > 0.05) {
       netTimer = 0;
@@ -90,6 +134,12 @@ function animate() {
     }
   }
 
+  const frameT0 = performance.now();
+  updateDayNight();
+  const ambientT0 = performance.now();
+  updateAmbient();
+  const ambientMs = performance.now() - ambientT0;
   renderer.render(scene, camera);
+  updatePerfMetrics(ambientMs, performance.now() - frameT0);
 }
 animate();

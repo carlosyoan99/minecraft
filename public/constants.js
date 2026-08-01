@@ -4,6 +4,10 @@
 // ============================================================
 export const CHUNK_SIZE = 16;
 export const WORLD_HEIGHT = 64;
+// Ciclo día/noche del servidor (4 min: 2 de día, 2 de noche). Mantener en
+// sincronía con DAY_CYCLE_MS de server-side constants.js — el cliente lo usa
+// para extrapolar la fase visual del ciclo desde el dayTime del init.
+export const DAY_CYCLE_MS = 240000;
 
 export const BLOCK_COLORS = {
   1: 0x8B5A2B, 2: 0x5FBF3A, 3: 0x8a8a8a, 4: 0x6b4a2b, 5: 0x3a7a2e,

@@ -8,6 +8,7 @@ import {
   spawnRemotePlayer, removeRemotePlayer, updateRemotePlayer, updateMobs, removeMob,
 } from './mobs.js';
 import { teleport } from './player.js';
+import { initDayNight } from './daynight.js';
 import {
   applyInventory, applyHealth, applyCraftingGrid, applyFurnaceState, addChatLine, flashMessage,
 } from './ui.js';
@@ -24,6 +25,7 @@ socket.addEventListener('message', (e) => {
       applyInventory(data.inventory);
       applyHealth(data.health);
       updateMobs(data.mobs);
+      initDayNight(data.dayTime);
       for (const p of data.otherPlayers) spawnRemotePlayer(p.id, p.x, p.y, p.z);
       break;
     }

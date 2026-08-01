@@ -54,6 +54,7 @@ function handleConnection(ws) {
     event: 'init',
     data: {
       playerId, chunkData, spawnX, spawnY, spawnZ,
+      dayTime: Date.now() % DAY_CYCLE_MS, // reloj del servidor: el cliente extrapola el ciclo visual
       mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
       inventory: player.inventory, health: player.health,
       otherPlayers: Array.from(state.players.values()).filter((p) => p.id !== playerId)

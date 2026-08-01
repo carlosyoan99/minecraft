@@ -69,15 +69,20 @@ ratón.
 ## Estado actual
 
 Funcional: generación de mundo por biomas, chunks bajo demanda,
-mobs hostiles y pasivos con máquina de estados simple, crafteo por
-patrón, horno con combustible y cocción, persistencia cada 30s,
-multijugador básico por WebSocket.
+texturas pixel-art generadas proceduralmente (atlas 16x16 por cara
+en un canvas, sin assets binarios), sonidos procedurales con Web
+Audio API (romper/colocar bloques, pasos, ambiente día/noche con
+pájaros y grillos — sin archivos de audio en el repo), ciclo
+día/noche visual real (cielo, luz solar y ambiente interpolados
+con el reloj del servidor), mobs hostiles y pasivos con máquina de
+estados simple,
+crafteo por patrón, horno con combustible y cocción, persistencia
+cada 30s, multijugador básico por WebSocket.
 
-Pendiente / simplificado a propósito: sin texturas (bloques a
-color plano), sin hambre, sin cuevas (terreno macizo), sin agua,
-sin durabilidad de herramientas. Ver `TODO.md` para el plan de
-desarrollo por fases y `CLAUDE.md` para las convenciones que sigue
-el proyecto.
+Pendiente / simplificado a propósito: sin hambre, sin cuevas
+(terreno macizo), sin agua, sin durabilidad de herramientas. Ver
+`TODO.md` para el plan de desarrollo por fases y `CLAUDE.md` para
+las convenciones que sigue el proyecto.
 
 ## Rendimiento y límites conocidos
 

@@ -3,7 +3,8 @@
 // ============================================================
 import * as THREE from 'three';
 import { scene } from './scene.js';
-import { CHUNK_SIZE, WORLD_HEIGHT, itemColor } from './constants.js';
+import { CHUNK_SIZE, WORLD_HEIGHT } from './constants.js';
+import { buildTerrainAtlas, tileForFace, tileRect } from './textures.js';
 
 const chunkStore = new Map();     // "cx,cz" -> Uint8Array
 export const chunkMeshes = new Map();  // "cx,cz" -> THREE.Group
@@ -30,14 +31,20 @@ export function setClientBlock(wx, wy, wz, block) {
   chunk[cIdx(x, wy, z)] = block;
 }
 
-// Geometrías de una única cara (evita crear cubos completos por cara expuesta)
+// Material compartido por todos los chunks: un único atlas de texturas.
+// Se crea una sola vez; NUNCA se hace dispose de él al reconstruir/descargar
+// chunks (solo se libera la geometría).
+const terrainMaterial = new THREE.MeshLambertMaterial({ map: buildTerrainAtlas() });
+
+// Geometrías de una única cara (evita crear cubos completos por cara expuesta).
+// `uvs` mapea cada esquina a la tesela del atlas (v arriba = textura vertical correcta).
 const FACES = [
-  { dir: [1, 0, 0], corners: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]] },   // +X
-  { dir: [-1, 0, 0], corners: [[0,0,1],[0,1,1],[0,1,0],[0,0,0]] },  // -X
-  { dir: [0, 1, 0], corners: [[0,1,0],[0,1,1],[1,1,1],[1,1,0]] },   // +Y
-  { dir: [0, -1, 0], corners: [[0,0,1],[0,0,0],[1,0,0],[1,0,1]] },  // -Y
-  { dir: [0, 0, 1], corners: [[1,0,1],[1,1,1],[0,1,1],[0,0,1]] },   // +Z
-  { dir: [0, 0, -1], corners: [[0,0,0],[0,1,0],[1,1,0],[1,0,0]] },  // -Z
+  { dir: [1, 0, 0], corners: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]], uvs: [[0,0],[0,1],[1,1],[1,0]] },   // +X
+  { dir: [-1, 0, 0], corners: [[0,0,1],[0,1,1],[0,1,0],[0,0,0]], uvs: [[0,0],[0,1],[1,1],[1,0]] },  // -X
+  { dir: [0, 1, 0], corners: [[0,1,0],[0,1,1],[1,1,1],[1,1,0]], uvs: [[0,0],[0,1],[1,1],[1,0]] },   // +Y
+  { dir: [0, -1, 0], corners: [[0,0,1],[0,0,0],[1,0,0],[1,0,1]], uvs: [[0,0],[0,1],[1,1],[1,0]] },  // -Y
+  { dir: [0, 0, 1], corners: [[1,0,1],[1,1,1],[0,1,1],[0,0,1]], uvs: [[0,0],[0,1],[1,1],[1,0]] },   // +Z
+  { dir: [0, 0, -1], corners: [[0,0,0],[0,1,0],[1,1,0],[1,0,0]], uvs: [[0,0],[0,1],[1,1],[1,0]] },  // -Z
 ];
 
 function buildChunkGeometry(cx, cz) {
@@ -45,7 +52,9 @@ function buildChunkGeometry(cx, cz) {
   if (!chunk) return null;
   const baseX = cx * CHUNK_SIZE, baseZ = cz * CHUNK_SIZE;
 
-  const geomsByColor = new Map(); // color -> arrays
+  // Un único buffer por chunk con UVs del atlas (material compartido):
+  // en vez de agrupar por color, cada cara apunta a su tesela vía UV.
+  const positions = [], normals = [], uvs = [];
 
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let y = 0; y < WORLD_HEIGHT; y++) {
@@ -53,13 +62,12 @@ function buildChunkGeometry(cx, cz) {
         const block = chunk[cIdx(x, y, z)];
         if (block === 0) continue;
         const wx = baseX + x, wy = y, wz = baseZ + z;
-        const color = itemColor(block);
-        for (const face of FACES) {
+        for (let fi = 0; fi < FACES.length; fi++) {
+          const face = FACES[fi];
           const nx = wx + face.dir[0], ny = wy + face.dir[1], nz = wz + face.dir[2];
           const neighbor = getClientBlock(nx, ny, nz);
           if (neighbor !== 0) continue; // solo dibujar si el vecino es aire confirmado
-          let bucket = geomsByColor.get(color);
-          if (!bucket) { bucket = { positions: [], normals: [] }; geomsByColor.set(color, bucket); }
+          const [u0, v0, u1, v1] = tileRect(tileForFace(block, fi));
           const [a, b, c, d] = face.corners;
           const verts = [
             [wx + a[0], wy + a[1], wz + a[2]],
@@ -69,27 +77,29 @@ function buildChunkGeometry(cx, cz) {
           ];
           // dos triángulos (a,b,c) y (a,c,d)
           for (const [i, j, k] of [[0,1,2],[0,2,3]]) {
-            bucket.positions.push(...verts[i], ...verts[j], ...verts[k]);
-            bucket.normals.push(...face.dir, ...face.dir, ...face.dir);
+            for (const idx of [i, j, k]) {
+              positions.push(...verts[idx]);
+              normals.push(...face.dir);
+              const [uu, vv] = face.uvs[idx];
+              uvs.push(u0 + uu * (u1 - u0), v0 + vv * (v1 - v0));
+            }
           }
         }
       }
     }
   }
 
-  if (geomsByColor.size === 0) return null;
+  if (positions.length === 0) return null;
 
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  const mesh = new THREE.Mesh(geo, terrainMaterial);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.userData.isTerrain = true;
   const group = new THREE.Group();
-  for (const [color, bucket] of geomsByColor) {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(bucket.positions, 3));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute(bucket.normals, 3));
-    const mat = new THREE.MeshLambertMaterial({ color });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true; mesh.receiveShadow = true;
-    mesh.userData.isTerrain = true;
-    group.add(mesh);
-  }
+  group.add(mesh);
   return group;
 }
 
@@ -98,7 +108,8 @@ export function rebuildChunk(key) {
   const old = chunkMeshes.get(key);
   if (old) {
     scene.remove(old);
-    old.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    // Solo se libera la geometría: el material (atlas) es compartido por todos los chunks.
+    old.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
   }
   const group = buildChunkGeometry(cx, cz);
   if (group) { scene.add(group); chunkMeshes.set(key, group); }
@@ -126,7 +137,8 @@ export function unloadChunks(keys) {
     const old = chunkMeshes.get(key);
     if (old) {
       scene.remove(old);
-      old.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      // Solo geometría: el material del atlas es compartido y no debe liberarse.
+      old.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
       chunkMeshes.delete(key);
     }
     chunkStore.delete(key);
