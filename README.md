@@ -31,15 +31,20 @@ mundo.
 
 ```
 mi-minecraft/
-├── server.js              Servidor autoritativo (mundo, física, IA, red)
+├── server.js              Entrada: requiere módulos, conecta hooks y arranca
+├── constants.js           Configuración y constantes del servidor (B/I, mobs)
+├── state.js               Estado mutable compartido (chunks, players, mobs...)
+├── world.js               Generación, bloques y archivos de chunk
+├── crafting.js            Recetas de crafteo y hornos
+├── players.js             Inventario, salud y daño de jugadores
+├── mobs.js                IA de mobs
+├── save.js                Persistencia por chunk + descarga de chunks
+├── net.js                 HTTP/WebSocket, handlers y bucle principal
 ├── recetas.json           Recetas de crafteo (patrones 3x3)
 ├── recetas_horno.json     Recetas de fundición
 ├── package.json
-├── world/                 Persistencia del mundo (se crea sola)
-└── public/
-    ├── index.html
-    ├── client.js           Render, input, HUD, crafteo, horno
-    └── estilo.css
+├── world/                 Persistencia: chunks/ (un archivo por chunk) + world.json
+└── public/                Cliente modular (módulos ES6, ver arriba en README)
 ```
 
 ## Ejecutar en local
@@ -76,11 +81,18 @@ el proyecto.
 
 ## Rendimiento y límites conocidos
 
-- El guardado actual serializa **todo** el mundo cargado en un
-  solo archivo (`world/world.dat`). Esto no escala — es lo primero
-  que se corrige en la Fase 1 del roadmap.
-- Los chunks generados nunca se descargan de memoria ni de la
-  escena. En sesiones largas esto crece sin límite.
+- El guardado es incremental por chunk: cada chunk se persiste en
+  `world/chunks/` (un archivo por chunk) y solo se reescribe cuando
+  cambia; mobs y hornos viven en `world/world.json`. El formato
+  antiguo (`world.dat` único, v1) se migra automáticamente al
+  arrancar a v2 y se conserva como `world.dat.legacy`. El formato
+  está versionado con `schemaVersion`: si el mundo es de una
+  versión más nueva que el servidor, este se niega a abrirlo en
+  lugar de corromperlo.
+- Los chunks lejanos se descargan automáticamente: el servidor
+  suelta (persistiéndolos antes) los chunks sin jugadores cerca y
+  avisa al cliente, que hace `dispose()` de su geometría. La
+  memoria queda acotada al área activa de los jugadores.
 - El culling de caras es correcto entre chunks (se resolvió el bug
   original de huecos en los bordes), pero sigue siendo por-cara,
   no greedy meshing — suficiente para el tamaño actual de mundo,

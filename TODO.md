@@ -26,22 +26,35 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 ## Fase 1 — Cimientos técnicos
 *Objetivo: que la base escale antes de seguir sumando features.*
 
-- [ ] Guardado incremental por chunk (reemplazar `world.dat` único
+- [x] Guardado incremental por chunk (reemplazar `world.dat` único
       por un archivo/entrada por chunk, o por región)
-- [ ] Versionado del formato de guardado (`schemaVersion`) con
+- [x] Versionado del formato de guardado (`schemaVersion`) con
       ruta de migración explícita para mundos ya guardados
-- [ ] Descarga de chunks lejanos: servidor deja de mantener en
+- [x] Descarga de chunks lejanos: servidor deja de mantener en
       memoria chunks sin jugadores cerca; cliente hace `dispose()`
       de geometría de chunks fuera de rango
-- [ ] Modularizar `client.js` en módulos ES6 por responsabilidad
-      (`network.js`, `world.js`, `player.js`, `mobs.js`, `ui.js`)
-- [ ] Modularizar `server.js` de forma equivalente si ha crecido
-      demasiado (`world.js`, `mobs.js`, `crafting.js`, `net.js`)
-- [ ] **Auditoría de Fase 1:** probar guardar/cargar el mundo
+- [x] Modularizar `client.js` en módulos ES6 por responsabilidad
+      (`network.js`, `world.js`, `player.js`, `mobs.js`, `ui.js`,
+      más `constants.js`, `scene.js`, `connection.js` e `input.js`
+      para evitar ciclos de import)
+- [x] Modularizar `server.js` de forma equivalente si ha crecido
+      demasiado (`world.js`, `mobs.js`, `crafting.js`, `net.js`,
+      más `constants.js`, `state.js`, `players.js` y `save.js`,
+      con `server.js` como entrada que conecta los hooks de red)
+- [x] **Auditoría de Fase 1:** probar guardar/cargar el mundo
       varias veces seguidas sin corrupción; medir uso de memoria
       del servidor con varios chunks generados y jugador
       moviéndose por un rato; confirmar que no hay imports rotos
       ni código muerto tras la modularización
+
+> **Auditoría completada (agosto 2026):** 3 ciclos guardar/cargar
+> sin corrupción (169 chunks válidos, schemaVersion 2); memoria del
+> servidor acotada (439 → 65 chunks en memoria tras descarga, 524
+> en disco sin pérdida); test funcional WS 9/9 (todos los
+> handlers); revisión de código aprobada. De paso se limpió código
+> muerto en `net.js` (drop no-op en `attack_mob`) y un key
+> malformado en `furnace_action` close, y se añadió favicon a
+> `index.html`.
 
 ---
 
