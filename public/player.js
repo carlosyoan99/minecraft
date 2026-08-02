@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { scene, camera, renderer, controls } from './scene.js';
-import { getClientBlock, chunkMeshes } from './world.js';
+import { getClientBlock, chunkMeshes, applyFrustumCulling } from './world.js';
 import { send } from './connection.js';
 import { updateDayNight } from './daynight.js';
 import { playStep, updateAmbient } from './audio.js';
@@ -64,15 +64,16 @@ const STEP_SPACING = 0.72; // bloques entre pasos
 // Media móvil de 1s expuesta en window.__mc*; el #fps del HUD la dibuja.
 // ============================================================
 const fpsEl = document.getElementById('fps');
-let perfFrames = 0, perfAmbient = 0, perfFrameMs = 0;
+let perfFrames = 0, perfAmbient = 0, perfCull = 0, perfFrameMs = 0;
 let perfTimer = performance.now();
 
-// Métricas por frame: ambientMs se mide AISLADO (solo updateAmbient), frameMs
-// incluye todo el frame (física + render). FPS = 1000 / frameMs medio, robusto
-// incluso con frames lentos (no depende de cuántos frames caen en la ventana).
-function updatePerfMetrics(ambientMs, frameMs) {
+// Métricas por frame: ambientMs se mide AISLADO (solo updateAmbient), cullMs
+// solo el frustum culling, frameMs incluye todo el frame (física + render).
+// FPS = 1000 / frameMs medio, robusto incluso con frames lentos.
+function updatePerfMetrics(ambientMs, cullMs, frameMs) {
   perfFrames++;
   perfAmbient += ambientMs;
+  perfCull += cullMs;
   perfFrameMs += frameMs;
   const now = performance.now();
   const elapsed = now - perfTimer;
@@ -80,10 +81,14 @@ function updatePerfMetrics(ambientMs, frameMs) {
     window.__mcFps = 1000 / (perfFrameMs / perfFrames);
     window.__mcFrameMs = perfFrameMs / perfFrames;
     window.__mcAmbientMs = perfAmbient / perfFrames;
+    window.__mcCullMs = perfCull / perfFrames; // media móvil de 1s, como las demás
     window.__mcChunks = chunkMeshes.size;
     window.__mcTriangles = renderer.info.render.triangles;
-    if (fpsEl) fpsEl.textContent = `${window.__mcFps.toFixed(0)} FPS · ${window.__mcChunks} chunks`;
-    perfFrames = 0; perfAmbient = 0; perfFrameMs = 0; perfTimer = now;
+    if (fpsEl) {
+      // Fase 6: muestra cuántos chunks del total están realmente visibles (culling)
+      fpsEl.textContent = `${window.__mcFps.toFixed(0)} FPS · ${window.__mcVisibleChunks}/${window.__mcChunks} chunks`;
+    }
+    perfFrames = 0; perfAmbient = 0; perfCull = 0; perfFrameMs = 0; perfTimer = now;
   }
 }
 
@@ -164,7 +169,11 @@ function animate() {
   const ambientT0 = performance.now();
   updateAmbient();
   const ambientMs = performance.now() - ambientT0;
+  // Fase 6: frustum culling — no se renderizan los chunks fuera del campo de visión
+  const cullT0 = performance.now();
+  applyFrustumCulling(camera);
+  const cullMs = performance.now() - cullT0;
   renderer.render(scene, camera);
-  updatePerfMetrics(ambientMs, performance.now() - frameT0);
+  updatePerfMetrics(ambientMs, cullMs, performance.now() - frameT0);
 }
 animate();

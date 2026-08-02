@@ -20,6 +20,10 @@ playerHelpers.setBroadcastHandler((event, data) => net.broadcast(event, data));
 
 crafting.loadRecipes();
 
+// Layout antiguo (world.json + chunks en la raíz de world/) → directorio de la
+// semilla (world/<semilla>/): cada semilla tiene su propio mundo (bug semilla).
+save.migrateWorldLayout();
+
 const loadResult = save.loadWorld();
 if (loadResult === 'rechazo') {
   console.error('❌ Arranque abortado: no se pudo abrir el mundo guardado de forma segura (formato más nuevo o datos ilegibles).');

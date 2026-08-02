@@ -9,6 +9,24 @@ import { buildTerrainAtlas, tileForFace, tileRect } from './textures.js';
 const chunkStore = new Map();     // "cx,cz" -> Uint8Array
 export const chunkMeshes = new Map();  // "cx,cz" -> THREE.Group
 
+// Frustum culling (Fase 6): objetos reutilizados por frame (sin allocs).
+const frustum = new THREE.Frustum();
+const projScreen = new THREE.Matrix4();
+// Margen sobre la esfera envolvente de cada chunk: evita parpadeo cuando la
+// geometría asoma por el borde de la pantalla justo antes de salir del frustum.
+const FRUSTUM_MARGIN = 1.05;
+
+// Esfera envolvente de un chunk a partir de su geometría real (no de la caja
+// completa de la columna, que sería demasiado conservadora en montañas/cuevas).
+// Se calcula UNA vez por chunk al construirlo y se guarda en userData.
+function computeChunkSphere(group) {
+  const box = new THREE.Box3();
+  group.traverse((o) => { if (o.isMesh && o.geometry) box.expandByObject(o); });
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  sphere.radius *= FRUSTUM_MARGIN;
+  return sphere;
+}
+
 function cIdx(x, y, z) { return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x; }
 
 export function getClientBlock(wx, wy, wz) {
@@ -136,7 +154,30 @@ function buildChunkGeometry(cx, cz) {
     mesh.userData.isTerrain = true;
     group.add(mesh);
   }
+  group.userData.boundingSphere = computeChunkSphere(group);
   return group;
+}
+
+// ============================================================
+// FRUSTUM CULLING (Fase 6)
+// Marca visible=false los chunks cuya esfera envolvente queda fuera del campo
+// de visión: se evita el draw call (y el paso de la geometría al renderer).
+// Se ejecuta cada frame desde el bucle de animación (public/player.js).
+// Devuelve cuántos chunks quedaron visibles (para el HUD y la auditoría).
+// ============================================================
+export function applyFrustumCulling(camera) {
+  camera.updateMatrixWorld(); // asegura matrixWorldInverse actualizado
+  projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  frustum.setFromProjectionMatrix(projScreen);
+  let visible = 0;
+  for (const [, group] of chunkMeshes) {
+    const s = group.userData.boundingSphere;
+    const on = !s || frustum.intersectsSphere(s); // sin esfera (defensivo) → visible
+    group.visible = on;
+    if (on) visible++;
+  }
+  window.__mcVisibleChunks = visible;
+  return visible;
 }
 
 export function rebuildChunk(key) {

@@ -264,17 +264,24 @@ function generateChunk(cx, cz) {
         data[idx(x, y, z)] = block;
       }
 
-      // Árboles (nunca dentro de un lago)
+      // Árboles (nunca dentro de un lago). El tronco empieza en el primer
+      // bloque de aire sobre la superficie (y = height) y descansa sobre el
+      // bloque de la superficie (y = height - 1): la base NUNCA flota. Bug
+      // corregido: antes empezaba en height + 1 y los árboles quedaban
+      // flotando un bloque por encima del terreno (ver tests/unit-arboles.js).
       if (!lake && (biome === 'forest' || biome === 'plains') && Math.random() < (biome === 'forest' ? 0.04 : 0.01)) {
         const treeHeight = 4 + Math.floor(Math.random() * 3);
-        for (let i = 1; i <= treeHeight; i++) {
+        for (let i = 0; i < treeHeight; i++) {
           const y = height + i;
           if (y < WORLD_HEIGHT) data[idx(x, y, z)] = B.OAK_LOG;
         }
+        // Hojas alrededor de la copa: una capa bajo el tope, la del tope y la
+        // superior (esquinas redondeadas en la superior). Con el tronco una
+        // unidad más abajo que antes, las hojas bajan una unidad también.
         for (let dx = -2; dx <= 2; dx++) {
           for (let dz = -2; dz <= 2; dz++) {
-            for (let dy = treeHeight - 1; dy <= treeHeight + 1; dy++) {
-              if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && dy === treeHeight + 1) continue;
+            for (let dy = treeHeight - 2; dy <= treeHeight; dy++) {
+              if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && dy === treeHeight) continue;
               const lx = x + dx, lz = z + dz;
               if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE) continue;
               const y = height + dy;

@@ -124,6 +124,7 @@ let broadcastHandler = null;
 function setBroadcastHandler(fn) { broadcastHandler = fn; }
 
 function damagePlayer(player, amount) {
+  if (player.gamemode === 'creative') return; // creative (/gamemode): sin daño (mobs, inanición...)
   player.health = Math.max(0, player.health - amount);
   sendHealth(player);
   if (player.health <= 0) {

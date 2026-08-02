@@ -1,7 +1,7 @@
 // ============================================================
 // UI: HUD (hotbar, salud), chat, panel de crafteo y panel de horno
 // ============================================================
-import { controls } from './scene.js';
+import { controls, showBlocker } from './scene.js';
 import { send } from './connection.js';
 import { itemLabel, itemColor, DURABILITY, XP_PER_LEVEL } from './constants.js';
 import { isMuted, setMuted } from './audio.js';
@@ -131,7 +131,9 @@ document.addEventListener('keydown', (e) => {
       chatInput.value = ''; chatInput.classList.remove('active'); chatInput.blur();
       controls.lock();
     } else {
-      chatInput.classList.add('active'); chatInput.focus(); controls.unlock();
+      chatInput.classList.add('active'); chatInput.focus();
+      showBlocker(false); // el chat también libera el puntero sin el menú encima
+      controls.unlock();
     }
   }
 });
@@ -189,7 +191,11 @@ export function applyCraftingGrid(grid, success) {
 
 function toggleCraftingUI(show) {
   craftingUI.classList.toggle('hidden', !show);
-  if (show) { updateCraftInventoryUI(); updateCraftGridUI(false); controls.unlock(); }
+  if (show) {
+    updateCraftInventoryUI(); updateCraftGridUI(false);
+    showBlocker(false); // quitar el menú para poder clicar los slots (bug inventario)
+    controls.unlock();
+  }
 }
 
 // Enviar el grid para intentar craftear cada vez que cambie (auto-craft al llenar el patrón)
@@ -242,6 +248,7 @@ export function toggleFurnaceUI(show, coords) {
   if (show) {
     updateFurnaceInventoryUI();
     send('furnace_open', coords);
+    showBlocker(false); // quitar el menú para poder clicar los slots (bug inventario)
     controls.unlock();
   } else if (openFurnaceKey) {
     send('furnace_action', { action: 'close' });
@@ -262,7 +269,9 @@ export function toggleInventory() {
   if (!inventoryOpen) controls.lock();
 }
 export function closePanels() {
+  const hadPanel = inventoryOpen || openFurnaceKey !== null;
   toggleCraftingUI(false);
   toggleFurnaceUI(false);
   inventoryOpen = false;
+  if (hadPanel) controls.lock(); // Escape cierra el panel y reanuda el juego
 }

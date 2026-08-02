@@ -29,9 +29,25 @@ scene.add(sun);
 export const controls = new PointerLockControls(camera, document.body);
 const blocker = document.getElementById('blocker');
 const startBtn = document.getElementById('start-btn');
+const craftingUI = document.getElementById('crafting-ui');
+const furnaceUI = document.getElementById('furnace-ui');
+const chatInputEl = document.getElementById('chat-input');
 startBtn.addEventListener('click', () => controls.lock());
 controls.addEventListener('lock', () => { blocker.style.display = 'none'; });
-controls.addEventListener('unlock', () => { blocker.style.display = 'flex'; });
+controls.addEventListener('unlock', () => {
+  // El menú (bloqueador) solo reaparece si NO hay un panel abierto
+  // (inventario/crafteo, horno o chat): esos paneles liberan el puntero para
+  // poder clicar sus slots, y el menú (z-index 300) los tapa (z-index 200/90)
+  // — ese era el bug del "mouse bloqueado" en el inventario.
+  const uiOpen =
+    !craftingUI.classList.contains('hidden') ||
+    !furnaceUI.classList.contains('hidden') ||
+    chatInputEl.classList.contains('active');
+  blocker.style.display = uiOpen ? 'none' : 'flex';
+});
+// Ocultar/mostrar el menú explícitamente: los paneles lo llaman al abrirse
+// (sin depender de que el evento 'unlock' llegue, p. ej. si el lock falla).
+export function showBlocker(show) { blocker.style.display = show ? 'flex' : 'none'; }
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;

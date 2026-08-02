@@ -18,6 +18,11 @@ const world = require('./world.js');
 const playerHelpers = require('./players.js');
 const crafting = require('./crafting.js');
 const mobs = require('./mobs.js');
+const commands = require('./commands.js');
+
+// Reloj del mundo ajustable (/time set): el día/noche, el ambiente y la IA
+// de mobs siguen al mismo reloj (worldTime), así que el comando afecta a todo.
+const worldTime = () => commands.worldTime(state);
 
 function broadcast(event, data, exceptId = null) {
   const msg = JSON.stringify({ event, data });
@@ -60,7 +65,7 @@ function handleConnection(ws) {
     event: 'init',
     data: {
       playerId, chunkData, spawnX, spawnY, spawnZ,
-      dayTime: Date.now() % DAY_CYCLE_MS, // reloj del servidor: el cliente extrapola el ciclo visual
+      dayTime: worldTime(), // reloj del servidor: el cliente extrapola el ciclo visual
       mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
       inventory: player.inventory, health: player.health, maxHealth: player.maxHealth,
       xp: player.xp, level: player.level, // Fase 5
@@ -284,7 +289,14 @@ function handleConnection(ws) {
       }
 
       case 'chat': {
-        if (typeof data.message === 'string') broadcast('chat', { id: playerId, message: data.message.slice(0, 200) });
+        if (typeof data.message !== 'string') break;
+        // Fase 6: los mensajes que empiezan por '/' son comandos de la consola
+        // (fuente de verdad del servidor); el resto es chat normal.
+        if (data.message.startsWith('/')) {
+          commands.executeCommand(p, data.message, { state, world, broadcast, playerHelpers, viewDistance: VIEW_DISTANCE_CHUNKS });
+          break;
+        }
+        broadcast('chat', { id: playerId, message: data.message.slice(0, 200) });
         break;
       }
 
@@ -334,13 +346,16 @@ function handleConnection(ws) {
 // BUCLE PRINCIPAL
 // ============================================================
 function mainLoop() {
-  const isNight = (Date.now() % DAY_CYCLE_MS) > DAY_CYCLE_MS / 2;
+  const isNight = worldTime() > DAY_CYCLE_MS / 2;
   for (const m of state.mobs) if (m.alive) m.tick(isNight);
   state.mobs = state.mobs.filter((m) => m.alive);
   broadcast('mobs_update', state.mobs.map(mobs.mobSnapshot));
 
   // Hambre: decae con el tiempo/actividad, regenera o inanición
-  for (const p of state.players.values()) playerHelpers.tickPlayer(p, TICK_MS);
+  // (en modo creative no se aplica: /gamemode creative)
+  for (const p of state.players.values()) {
+    if (p.gamemode !== 'creative') playerHelpers.tickPlayer(p, TICK_MS);
+  }
 
   if (Math.random() < 0.03) mobs.spawnMobs();
 

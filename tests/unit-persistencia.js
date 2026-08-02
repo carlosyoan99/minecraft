@@ -12,12 +12,20 @@ const path = require('path');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'mc-persist-'));
 const constants = require('../constants.js');
-// Redirigir a un directorio temporal ANTES de requerir world/save
+// Valores pristinos (derivación WORLD_DIR = WORLD_ROOT + seedDir) antes de
+// redirigir a un directorio temporal ANTES de requerir world/save
 // (capturan estos valores al cargarse: mutamos el objeto exportado).
+const PRISTINE_WORLD_ROOT = constants.WORLD_ROOT;
+const PRISTINE_WORLD_DIR = constants.WORLD_DIR;
+const PRISTINE_CHUNKS_DIR = constants.CHUNKS_DIR;
+constants.WORLD_ROOT = path.join(TMP, 'worldroot');
 constants.WORLD_DIR = path.join(TMP, 'world');
 constants.CHUNKS_DIR = path.join(TMP, 'world', 'chunks');
 constants.LEGACY_FILE = path.join(TMP, 'world', 'world.dat');
 constants.META_FILE = path.join(TMP, 'world', 'world.json');
+constants.LEGACY_ROOT_FILES = ['world.json', 'chunks', 'world.dat'];
+const LEGACY_ROOT_META = path.join(TMP, 'worldroot', 'world.json');
+const LEGACY_ROOT_CHUNKS = path.join(TMP, 'worldroot', 'chunks');
 
 const world = require('../world.js');
 const save = require('../save.js');
@@ -194,6 +202,39 @@ function resetWorld() {
   world.writeChunkFile('2,2', arr);
   const gen = world.generateChunk(2, 2);
   check('generateChunk recupera chunk guardado (no lo regenera)', gen[7] === B.DIAMOND_ORE);
+}
+
+// --- 10) Semilla por directorio: cambiar la SEED genera un mundo nuevo ---
+{
+  // seedDir: nombre seguro y distinto para cada semilla
+  check('seedDir saneja caracteres peligrosos', constants.seedDir('Mi Semilla 2026!') === 'mi_semilla_2026');
+  check('seedDir diferencia semillas', constants.seedDir('otra') === 'otra' && constants.seedDir('otra') !== constants.seedDir('Mi Semilla 2026!'));
+  check('seedDir vacío → default', constants.seedDir('') === 'default' && constants.seedDir() === 'default');
+  // Anti path-traversal: una SEED maliciosa (env var) nunca puede escapar de world/
+  const hostile = constants.seedDir('../../etc/passwd');
+  check('seedDir neutraliza path-traversal (sin / ni ..)', !hostile.includes('/') && !hostile.includes('..') && hostile.length > 0, hostile);
+  // CHUNKS_DIR/META_FILE derivan del directorio de la semilla (el guardado
+  // incremental nunca vuelve a crear un world/chunks raíz y dividir el mundo)
+  check('CHUNKS_DIR vive dentro de WORLD_DIR', constants.CHUNKS_DIR.startsWith(constants.WORLD_DIR), constants.CHUNKS_DIR);
+  check('WORLD_DIR deriva de WORLD_ROOT + seedDir(SEED)',
+    PRISTINE_WORLD_DIR === path.join(PRISTINE_WORLD_ROOT, constants.seedDir(SEED)), PRISTINE_WORLD_DIR);
+  check('CHUNKS_DIR pristino deriva de WORLD_DIR', PRISTINE_CHUNKS_DIR === path.join(PRISTINE_WORLD_DIR, 'chunks'));
+
+  // migrateWorldLayout: mueve el layout antiguo (world.json + chunks en la raíz)
+  // al directorio de la semilla actual — el mundo NO se pierde ni se reutiliza mal
+  resetWorld();
+  fs.rmSync(constants.WORLD_DIR, { recursive: true, force: true }); // sin dir de semilla todavía
+  fs.rmSync(constants.WORLD_ROOT, { recursive: true, force: true });
+  fs.mkdirSync(LEGACY_ROOT_CHUNKS, { recursive: true });
+  const chunkArr = new Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE).fill(0);
+  fs.writeFileSync(path.join(LEGACY_ROOT_CHUNKS, '0_0.json'),
+    JSON.stringify({ schemaVersion: SCHEMA_VERSION, cx: 0, cz: 0, data: chunkArr }));
+  fs.writeFileSync(LEGACY_ROOT_META, JSON.stringify({ schemaVersion: SCHEMA_VERSION, seed: SEED }));
+  check('migrateWorldLayout migra (true)', save.migrateWorldLayout() === true);
+  check('world.json movido a world/<semilla>/', fs.existsSync(constants.META_FILE), constants.META_FILE);
+  check('chunks movidos a world/<semilla>/chunks', fs.existsSync(path.join(constants.CHUNKS_DIR, '0_0.json')));
+  check('la raíz queda limpia', !fs.existsSync(LEGACY_ROOT_META) && !fs.existsSync(LEGACY_ROOT_CHUNKS));
+  check('no re-migra si la semilla ya tiene mundo', save.migrateWorldLayout() === false);
 }
 
 fs.rmSync(TMP, { recursive: true, force: true });

@@ -14,18 +14,31 @@ const VIEW_DISTANCE_CHUNKS = 6;     // Chunks generados alrededor de cada jugado
 const UNLOAD_DISTANCE_CHUNKS = 10;  // Chunks sin jugadores a menos de esta distancia (en chunks) se descargan
 const UNLOAD_INTERVAL_MS = 10000;   // Cada 10s se buscan chunks lejanos que descargar
 const DAY_CYCLE_MS = 240000;        // 4 minutos: 2 de día, 2 de noche
-const SEED = 'miSemilla2026';
+// La semilla se configura con la env var SEED (defecto miSemilla2026).
+// Cambiar la SEED genera un mundo TOTALMENTE nuevo: cada semilla tiene su
+// propio directorio de mundo (world/<semilla>/), así nunca se pisan ni se
+// mezclan los chunks (bug: antes reutilizaba los guardados con un warn).
+const SEED = process.env.SEED || 'miSemilla2026';
 
 // Persistencia (paths y versión del formato de guardado)
-const WORLD_DIR = path.join(__dirname, 'world');
+const WORLD_ROOT = path.join(__dirname, 'world');
+// Nombre de directorio seguro a partir de una semilla (función pura, testeable)
+function seedDir(seed) {
+  return (seed || '').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'default';
+}
+const WORLD_DIR = path.join(WORLD_ROOT, seedDir(SEED));
 const CHUNKS_DIR = path.join(WORLD_DIR, 'chunks');
 const SCHEMA_VERSION = 2;           // versión actual del formato de guardado
 const LEGACY_FILE = path.join(WORLD_DIR, 'world.dat');
 const META_FILE = path.join(WORLD_DIR, 'world.json');
+// Layout antiguo (v2 pre-semilla, todo en la raíz de world/) que se migra al
+// directorio de la semilla al arrancar (save.migrateWorldLayout()).
+const LEGACY_ROOT_FILES = ['world.json', 'chunks', 'world.dat', 'world.dat.legacy'];
 // Historial de formatos:
 //   v1 — world/world.dat (un solo JSON: seed, chunks, mobs, furnaces)
 //   v2 — world/chunks/*.json + world/world.json (incremental por chunk)
-// Migraciones: v1 → v2 la ejecuta migrateLegacyWorld() al arrancar.
+//   v3 — world/<semilla>/chunks + world/<semilla>/world.json (un mundo por semilla)
+// Migraciones: v1 → v2 migrateLegacyWorld() · layout raíz → por semilla migrateWorldLayout()
 
 // ============================================================
 // BLOQUES E ÍTEMS (fuente de verdad de IDs; sincronizar con public/constants.js)
@@ -134,7 +147,7 @@ module.exports = {
   PORT, CHUNK_SIZE, WORLD_HEIGHT, TICK_MS, SAVE_INTERVAL_MS,
   VIEW_DISTANCE_CHUNKS, UNLOAD_DISTANCE_CHUNKS, UNLOAD_INTERVAL_MS,
   DAY_CYCLE_MS, SEED,
-  WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE,
+  WORLD_ROOT, seedDir, WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE, LEGACY_ROOT_FILES,
   B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe,
   isSolidBlock, BREED_FOOD, MOB_COLORS, HOSTILE,
   TOOL_DURABILITY, isTool, SWORD_DAMAGE,

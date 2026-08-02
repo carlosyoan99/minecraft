@@ -327,6 +327,174 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 
 ---
 
+## Fase 6 — Mundo jugable y pulido
+*Objetivo: convertir las mecánicas básicas en una experiencia más
+fiel a Minecraft. Este bloque prioriza el **feedback del usuario**
+(features nuevas); los bugs reportados están en la sección "Bugs
+conocidos" al final. Ninguna tarea empezada todavía.*
+
+### Minería y herramientas
+- [ ] Afinar la minería: dureza por bloque y velocidad de rotura
+      según la herramienta correcta (pico para piedra/minerales,
+      hacha para madera, pala para tierra/arena/nieve; con la
+      herramienta equivocada o a mano: lento o sin drop). La base
+      ya existe (romper/colocar con restricciones de herramienta y
+      durabilidad, Fases 0 y 5); falta la *velocidad* y el *drop
+      condicional* estilo Minecraft
+- [ ] Verificar que las 20 herramientas (pico/hacha/pala/espada ×
+      5 materiales) se pueden obtener todas en juego: ya son
+      crafteables desde `recetas.json` (se completaron las 6 de
+      oro/diamante en la tarea de tests); revisión de obtención
+      real y de que ninguna queda inaccesible
+
+### Mobs: texturas e IA
+- [ ] Texturas para mobs pasivos (crías y adultos) — hoy se
+      renderizan con colores planos (`MOB_COLORS` en cliente);
+      darles apariencia de animal con el atlas
+- [ ] Texturas para mobs hostiles — igual, colores planos
+- [ ] IA hostil más fiel: quemarse con el sol de día
+      (zombie/esqueleto), aparecer **solo de noche** y poder hacer
+      spawn en todo el mapa cargado (hoy `spawnMobs()` los genera
+      cerca del jugador, de día y de noche; los hostiles solo
+      persiguen de noche o a <6-8 bloques)
+
+### Ítems
+- [ ] Texturas para los ítems del inventario/HUD (hoy usan colores
+      planos por ID en el hotbar y la mesa)
+
+### Mundo y sesión
+- [ ] Semilla seleccionable al iniciar el mundo: campo en el menú
+      para elegir semilla y generar un mundo totalmente distinto.
+      Base lista: `SEED` por env var + un mundo por semilla
+      (`world/<semilla>/`, bug de la semilla corregido); falta solo
+      la UI del menú que lance el servidor con la semilla elegida
+- [ ] Pantalla de "cargando mundo" estilo Minecraft mientras se
+      generan/transmiten los chunks iniciales (hoy el menú salta
+      directo al mundo)
+- [ ] Cofre: bloque de almacenamiento con inventario propio (la
+      mesa de crafteo y el horno ya existen como bloques
+      funcionales; falta solo el cofre)
+- [ ] Antorchas con iluminación dinámica (luz por bloque además de
+      la luz global del ciclo día/noche)
+
+### Herramientas de desarrollo (transversal, desbloquea el resto)
+- [x] Consola de comandos básica: `/help`, `/tp <x> <y> <z>`,
+      `/give <item> [cantidad]`, `/time set <day|noon|night|midnight|ms>`
+      y `/gamemode <creative|survival>`, vía chat (mensaje que empieza
+      por `/`). Implementada en `commands.js` (fuente de verdad del
+      servidor) y cableada en el handler de chat de `net.js`. `/tp`
+      corrige la Y si el destino es sólido/agua y envía los chunks del
+      área nueva (`chunks_add` + `teleport` + `player_move`); `/give`
+      acepta ID numérico o nombre (índice de B/I en minúsculas) y las
+      herramientas llegan con durabilidad plena; `/time set` ajusta
+      `state.timeOffset` y hace broadcast de `time_set` (el cliente
+      re-sincroniza el ciclo día/noche y la IA de mobs usa el mismo
+      reloj); `/gamemode creative` evita el hambre (tick omitido) y el
+      daño (`damagePlayer` ignorado). `/give` rechaza bloques no
+      rompibles (bedrock/agua, anti-griefing) y `/tp` corrige la Y
+      también en lagos (sube hasta salir del agua). Acceso abierto a
+      todos los jugadores (herramienta de desarrollo; la auth está
+      fuera de alcance). Cubierto por `tests/unit-commands.js`
+- [ ] Visualizador de chunks: toggle que dibuja bordes de chunk y
+      cuenta de caras/triángulos (debug de culling)
+- [ ] Hot-reload de `recetas.json`/`recetas_horno.json` y del atlas
+      de texturas sin reiniciar el servidor
+
+### Rendimiento en cliente
+- [x] Frustum culling: no renderizar los chunks fuera del campo de
+      visión. `public/world.js` calcula UNA esfera envolvente por
+      chunk a partir de su geometría real (con margen 1.05x
+      anti-parpadeo) y `applyFrustumCulling(camera)` la marca
+      `visible=false` cada frame desde el bucle de animación
+      (evita el draw call y el paso de geometría al renderer). El
+      HUD muestra `visibles/totales` y la métrica `__mcCullMs`
+      mide el coste del pase (~0.01 ms para cientos de chunks)
+- [ ] LOD simple para chunks lejanos (geometría simplificada o sin
+      teselas finas)
+- [ ] Reutilización/pool de geometrías al cargar/descargar chunks
+      (hoy `dispose()` + reconstrucción completa)
+
+### Supervivencia (cerrar el loop)
+- [ ] Cama: dormir salta la noche y fija el punto de reaparición
+- [ ] Armadura básica (cuero, hierro, diamante) que reduce daño
+- [ ] Daño por caída (escala con la altura de la caída)
+- [ ] Morir al caer del mundo (void): si `y` cae bajo el bedrock
+      (o por debajo del mundo), el jugador muere y reaparece
+- [ ] Respawn con pérdida de items (o sin, según gamemode) — hoy
+      se conservan inventario y XP, pero se resetean salud y
+      comida y se reaparece en el spawn
+
+### Terreno
+- [ ] Minas abandonadas: pasillos generados + cofres de loot
+- [ ] Pozos de agua/lava en superficie (generación decorativa)
+- [ ] Compresión (gzip) del guardado por chunk: mundos grandes
+      ocupan mucho espacio en disco
+
+### Audio
+- [ ] Control de volumen por categoría + sistema de prioridad (no
+      saturar reproduciendo 10 pasos a la vez)
+
+### Multijugador visible
+- [ ] Nombres flotantes sobre otros jugadores
+- [ ] Animación de rotura de bloque sincronizada entre clientes
+
+### Auditorías
+- [ ] Métrica de tiempo por tick (server + client) en cada
+      auditoría de fase para detectar cuellos de botella antes de
+      que sean críticos
+
+> **Nota de planificación:** la minería, las 20 herramientas
+> crafteables, la mesa de crafteo, el horno y los minerales ya
+> están implementados (Fases 0 y 5), por eso esos puntos se
+> formulan como *afinado/verificación* y no como features nuevas.
+> Tampoco se proponen fases 0.5/1.5 (herramientas de desarrollo y
+> optimización previa a texturas): esas fases ya están cerradas,
+> así que esas ideas se han movido a este bloque.
+
+---
+
+## Bugs conocidos (pendientes de corrección)
+
+- [x] **Inventario: el mouse sigue bloqueado y no se puede
+      craftear/mover items.** Causa real: el bloqueador del menú
+      (`#blocker`, z-index 300) reaparecía en CADA `controls.unlock()`
+      (`public/scene.js`) y tapaba los paneles de crafteo/horno
+      (z-index 200) y el chat (z-index 90), dejándolos inutilizables.
+      Corregido: el handler de `unlock` solo muestra el menú si NO hay
+      un panel/chat abierto; `public/ui.js` oculta el bloqueador
+      explícitamente al abrir paneles o el chat (`showBlocker(false)`,
+      también válido si el pointer lock falla) y `closePanels()`
+      (Escape) re-bloquea el puntero para reanudar el juego
+- [x] **Cambiar la semilla no genera un mundo nuevo.** Corregido con
+      directorios por semilla: `SEED` se configura con la env var
+      `SEED` (defecto `miSemilla2026`) y cada semilla tiene su
+      propio mundo en `world/<semilla>/` (`constants.js` `seedDir`),
+      así al cambiar la SEED se genera un mundo totalmente nuevo sin
+      pisar el anterior (y volver a una semilla recupera su mundo).
+      El layout antiguo (`world.json` + `chunks` en la raíz de
+      `world/`) se migra al arrancar con `save.migrateWorldLayout()`
+      y el formato pasa a v3. Cubierto por
+      `tests/unit-persistencia.js` (seedDir + migrateWorldLayout).
+      Queda pendiente solo la UI del menú (ver Fase 6: "Semilla
+      seleccionable al iniciar el mundo")
+- [x] **Los árboles flotan un bloque por encima del terreno.** En
+      `world.js` el tronco empezaba en `y = height + 1` (bucle `i`
+      desde 1) en vez de en `height`, dejando la base sin tronco.
+      Corregido: el tronco empieza en el primer aire sobre la
+      superficie (`y = height`) y descansa sobre el césped
+      (`y = height - 1`); las hojas bajan una unidad para rodear la
+      copa igual que antes. Aplica a chunks NUEVOS (los guardados
+      conservan su mundo). Regresión cubierta por
+      `tests/unit-arboles.js` (invariante: base de tronco nunca
+      sobre aire/agua)
+- [ ] **Transiciones de bioma bruscas y cuevas sin comunicación con
+      la superficie.** `getBiome()` corta entre biomas por umbrales
+      discretos (sin blend); las cuevas no rompen la superficie a
+      propósito (`y < height - 2`). Plan: suavizar el blend entre
+      biomas y permitir bocas de cueva hacia la superficie
+
+---
+
 ## Fuera de alcance (Won't)
 
 Explícitamente descartado por ahora — no implementar sin discutir

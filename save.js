@@ -6,8 +6,8 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE,
-  SEED, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE,
+  WORLD_ROOT, WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE,
+  LEGACY_ROOT_FILES, SEED, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE,
 } = require('./constants.js');
 const state = require('./state.js');
 const world = require('./world.js');
@@ -94,6 +94,36 @@ function loadWorld() {
   }
 }
 
+// Migración del layout antiguo (v2 pre-semilla: world.json + chunks + world.dat
+// en la raíz de world/) → directorio de la semilla (world/<semilla>/). Así al
+// cambiar la SEED (env var) se genera un mundo totalmente nuevo sin pisar el
+// anterior, y cada semilla conserva su propio mundo (bug de la semilla).
+function migrateWorldLayout() {
+  try {
+    if (fs.existsSync(WORLD_DIR)) {
+      // Esta semilla ya tiene mundo propio: si además queda layout antiguo en
+      // la raíz (p. ej. por haber arrancado antes con otra semilla), avisar en
+      // vez de ignorarlo en silencio (integridad: convención del proyecto).
+      const orphan = LEGACY_ROOT_FILES.filter((n) => fs.existsSync(path.join(WORLD_ROOT, n)));
+      if (orphan.length > 0) {
+        console.warn(`⚠️  Layout antiguo huérfano en world/ (${orphan.join(', ')}): esta semilla ya tiene mundo, se ignoran esos archivos.`);
+      }
+      return false;
+    }
+    const existing = LEGACY_ROOT_FILES.filter((n) => fs.existsSync(path.join(WORLD_ROOT, n)));
+    if (existing.length === 0) return false;    // no hay layout antiguo que migrar
+    fs.mkdirSync(WORLD_DIR, { recursive: true });
+    for (const n of existing) {
+      fs.renameSync(path.join(WORLD_ROOT, n), path.join(WORLD_DIR, n));
+    }
+    console.log(`🔁 Mundo movido al directorio de su semilla (${path.basename(WORLD_DIR)}): ${existing.join(', ')}`);
+    return true;
+  } catch (e) {
+    console.error('⚠️  No se pudo migrar el layout del mundo:', e.message);
+    return false;
+  }
+}
+
 // Migración del formato antiguo (world.dat único) → archivos por chunk.
 // Primero se vuelca todo a los archivos nuevos; solo si eso funciona se
 // renombra el .dat original a world.dat.legacy (copia de seguridad).
@@ -170,4 +200,4 @@ function unloadFarChunks() {
   console.log(`🗑️ Descargados ${toUnload.length} chunks lejanos (${chunks.size} en memoria)`);
 }
 
-module.exports = { saveWorld, loadWorld, migrateLegacyWorld, unloadFarChunks, setUnloadHandler };
+module.exports = { saveWorld, loadWorld, migrateLegacyWorld, migrateWorldLayout, unloadFarChunks, setUnloadHandler };

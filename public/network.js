@@ -64,6 +64,7 @@ socket.addEventListener('message', (e) => {
     case 'eat_rejected': flashMessage('😋 ¡No tienes hambre!'); break;
     case 'crafting_grid_update': applyCraftingGrid(data.grid, data.success); break;
     case 'furnace_state': applyFurnaceState(data); break;
+    case 'time_set': initDayNight(data.dayTime); break; // Fase 6: /time set re-sincroniza el ciclo visual
     case 'chat': addChatLine(data.id === playerId ? 'Tú' : data.id.slice(0, 6), data.message); break;
   }
 });
