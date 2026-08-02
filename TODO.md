@@ -266,13 +266,64 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 ## Fase 5 — Progresión y combate
 *Objetivo: dar sentido a subir de nivel de herramienta.*
 
-- [ ] Durabilidad real de herramientas (que se rompan tras N usos)
-- [ ] Más variedad de mobs y drops asociados
-- [ ] (Opcional) experiencia simple / niveles
-- [ ] **Auditoría de Fase 5:** revisar que la durabilidad se
+- [x] Durabilidad real de herramientas (que se rompan tras N usos):
+      `TOOL_DURABILITY` en `constants.js` (madera 60, piedra 132,
+      hierro 251, oro 33, diamante 1562 — estilo Minecraft, para
+      picos 200-204, hachas 205-209, palas 210-214 y espadas 215-219).
+      Cada herramienta lleva su `durability` en el slot (no se
+      apilan; `addToInventory` las crea con durabilidad plena).
+      `players.js` `applyToolWear()` desgasta -1 por uso: al romper
+      bloques con cualquier herramienta y al atacar con espada
+      (`onlySwords=true`); al llegar a 0 se elimina del inventario de
+      forma atómica dentro del handler (sin duplicar items) y se
+      avisa al cliente con `tool_broke` (sonido + mensaje). El HUD
+      del hotbar pinta una barra de durabilidad (verde→rojo) con la
+      durabilidad que viaja en `inventory_update`; las herramientas
+      que pasan por la mesa de crafteo conservan su durabilidad
+      (`grid_set`/`grid_clear`) para que no se "reparen gratis" ni se
+      dupliquen usos. Daño de espada por material (`SWORD_DAMAGE`:
+      madera 3, piedra 4, hierro 5, oro 4, diamante 6; sin espada 2)
+- [x] Más variedad de mobs y drops asociados: nuevos hostiles
+      `spider` (araña: 12 HP, rápida, dmg 2) y `wolf` (lobo: 20 HP,
+      dmg 3) y pasivo `rabbit` (conejo: 10 HP, se cría con zanahoria).
+      Drops: la araña suelta hilo (`I.STRING=120`, 0-2) que se craftea
+      2x2 en lana (receta `hilo_a_lana`); el conejo suelta conejo
+      crudo (`I.RABBIT=118`) que se cocina en el horno a asado
+      (`I.COOKED_RABBIT=119`, receta en `recetas_horno.json`).
+      Escala por tipo en el cliente (`MOB_SCALE`)
+- [x] (Opcional) experiencia simple / niveles: `MOB_XP` (matar mobs)
+      y `ORE_XP` (minar minerales) acumulan XP; `level = floor(xp /
+      100)` con `XP_PER_LEVEL=100`. Cada nivel suma +1 de salud
+      máxima (máx +10, `MAX_LEVEL_HEALTH_BONUS`); la XP y el nivel se
+      conservan al morir. El `init` envía `xp/level/maxHealth`, el
+      cliente muestra barra de XP + nivel en el HUD y avisa al subir
+      de nivel; `maxHealth` se usa en respawn y regeneración
+- [x] **Auditoría de Fase 5:** revisar que la durabilidad se
       sincroniza correctamente entre inventario del servidor y HUD
       del cliente; confirmar que no hay forma de duplicar items al
       romperse una herramienta a mitad de una acción
+
+> **Auditoría completada (agosto 2026):** herramienta reutilizable
+> `tests/audit-fase5.js`. **Sincronización servidor ↔ cliente:**
+> `TOOL_DURABILITY` (servidor) == `DURABILITY` (cliente) para las 20
+> herramientas (parse del ESM) y `XP_PER_LEVEL` idéntico; el wire de
+> `inventory_update` lleva `durability` por herramienta; el HUD
+> (`public/ui.js`) importa `DURABILITY` y pinta la barra `.durbar`;
+> el servidor avisa `tool_broke`. **Sin duplicación al romperse a
+> mitad de una acción:** replicando la secuencia EXACTA del handler
+> break (romper → añadir drop → desgastar → enviar inventario), una
+> herramienta de durabilidad 1 añade el drop UNA vez y desaparece sin
+> copias (0 herramientas, 1 drop, total de slots coherente); 6 roturas
+> con durabilidad 5 dan 6 drops exactos y la herramienta desaparece;
+> romper a mano no desgasta. **XP/niveles:** 340 XP → nivel 3 y
+> maxHealth 23; tope +10 en nivel 15; el respawn usa maxHealth y
+> conserva nivel/XP; `applyToolWear` rinde 10k usos en ~5 ms.
+> Regresión Fase 3/4 intacta (drops de vaca, isSolidBlock(SNOW),
+> getHeight). Cobertura unitaria nueva en `tests/unit-durabilidad.js`
+> (durabilidad, espadas, XP, mobs nuevos y recetas hilo/conejo).
+> **Bug real encontrado y corregido por los tests:** la receta
+> `hilo_a_lana` apuntaba al ingrediente 118 (conejo crudo) en vez de
+> 120 (hilo) — no habría funcionado en el juego.
 
 ---
 

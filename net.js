@@ -11,6 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 const {
   PORT, TICK_MS, VIEW_DISTANCE_CHUNKS, DAY_CYCLE_MS, SEED,
   B, I, NOT_MINEABLE, FUEL_ITEMS, isPickaxe, isSolidBlock,
+  SWORD_DAMAGE, MOB_XP, ORE_XP,
 } = require('./constants.js');
 const state = require('./state.js');
 const world = require('./world.js');
@@ -40,7 +41,8 @@ function handleConnection(ws) {
   const player = {
     id: playerId, ws,
     x: spawnX, y: spawnY, z: spawnZ, yaw: 0, pitch: 0,
-    health: 20,
+    health: 20, maxHealth: 20,
+    xp: 0, level: 0, // Fase 5: experiencia simple / niveles
     food: 20, saturation: 20, foodAccum: 0, regenAccum: 0, starveAccum: 0,
     lastMoveTime: 0,
     inventory: new Array(36).fill(null),
@@ -60,7 +62,9 @@ function handleConnection(ws) {
       playerId, chunkData, spawnX, spawnY, spawnZ,
       dayTime: Date.now() % DAY_CYCLE_MS, // reloj del servidor: el cliente extrapola el ciclo visual
       mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
-      inventory: player.inventory, health: player.health, food: player.food, saturation: player.saturation,
+      inventory: player.inventory, health: player.health, maxHealth: player.maxHealth,
+      xp: player.xp, level: player.level, // Fase 5
+      food: player.food, saturation: player.saturation,
       otherPlayers: Array.from(state.players.values()).filter((p) => p.id !== playerId)
         .map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z })),
     },
@@ -134,7 +138,14 @@ function handleConnection(ws) {
               if (Math.random() < prob) playerHelpers.addToInventory(p, id, 1);
             }
           }
+          // Fase 5: XP al minar minerales
+          if (ORE_XP[block]) playerHelpers.addXp(p, ORE_XP[block]);
+          // Fase 5: desgaste de la herramienta (se rompe al llegar a 0)
+          const broke = playerHelpers.applyToolWear(p);
           playerHelpers.sendInventory(p);
+          if (broke) {
+            p.ws.send(JSON.stringify({ event: 'tool_broke', data: { slot: p.selectedSlot } }));
+          }
         } else if (action === 'place') {
           if (world.getBlock(x, y, z) !== B.AIR) return;
           const slot = p.inventory[p.selectedSlot];
@@ -170,7 +181,9 @@ function handleConnection(ws) {
         const item = p.inventory[fromInventorySlot];
         if (!item || toGridSlot < 0 || toGridSlot > 8) return;
         if (p.craftingGrid[toGridSlot]) return; // celda ocupada
-        p.craftingGrid[toGridSlot] = { id: item.id, count: 1 };
+        // Conservar la durabilidad al pasar una herramienta por la mesa
+        // (evita "repararla" gratis y, por tanto, duplicar usos)
+        p.craftingGrid[toGridSlot] = { id: item.id, count: 1, durability: item.durability };
         item.count -= 1;
         if (item.count <= 0) p.inventory[fromInventorySlot] = null;
         playerHelpers.sendInventory(p);
@@ -181,7 +194,7 @@ function handleConnection(ws) {
       case 'grid_clear': {
         for (let i = 0; i < 9; i++) {
           const cell = p.craftingGrid[i];
-          if (cell) playerHelpers.addToInventory(p, cell.id, cell.count);
+          if (cell) playerHelpers.addToInventory(p, cell.id, cell.count, cell.durability);
         }
         p.craftingGrid.fill(null);
         playerHelpers.sendInventory(p);
@@ -280,15 +293,28 @@ function handleConnection(ws) {
         if (!mob) return;
         if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > 4) return;
         const tool = p.inventory[p.selectedSlot] ? p.inventory[p.selectedSlot].id : 0;
-        const dmg = (tool >= 215 && tool <= 219) ? 6 : 2;
+        // Fase 5: daño de espada por material (sin espada, 2)
+        const dmg = SWORD_DAMAGE[tool] || 2;
         mob.health -= dmg;
+        // Fase 5: las espadas se desgastan al golpear (se rompen al llegar a 0)
+        const broke = playerHelpers.applyToolWear(p, true);
+        const isSword = !!SWORD_DAMAGE[tool];
         if (mob.health <= 0) {
           mob.alive = false;
           broadcast('mob_death', { id: mob.id });
           // Drops de comida de animales al morir (directo al atacante)
           const drops = mobs.mobDrops(mob);
           if (drops) for (const d of drops) playerHelpers.addToInventory(p, d.id, d.count);
+          // Fase 5: XP por matar mobs
+          playerHelpers.addXp(p, MOB_XP[mob.type] || 0);
           playerHelpers.sendInventory(p);
+        } else if (isSword) {
+          // Cada golpe de espada desgasta aunque el mob sobreviva:
+          // sincronizar la durabilidad del HUD
+          playerHelpers.sendInventory(p);
+        }
+        if (broke) {
+          p.ws.send(JSON.stringify({ event: 'tool_broke', data: { slot: p.selectedSlot } }));
         }
         break;
       }

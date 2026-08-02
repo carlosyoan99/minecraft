@@ -25,6 +25,15 @@ export const BLOCK_NAMES = {
 };
 export const WATER = 20;
 export const SNOW = 21;
+// Durabilidad máxima por herramienta (Fase 5). Mantener en sincronía con
+// TOOL_DURABILITY de constants.js (servidor) — lo verifica tests/audit-fase5.js.
+export const DURABILITY = {
+  200: 60, 201: 132, 202: 251, 203: 33, 204: 1562,
+  205: 60, 206: 132, 207: 251, 208: 33, 209: 1562,
+  210: 60, 211: 132, 212: 251, 213: 33, 214: 1562,
+  215: 60, 216: 132, 217: 251, 218: 33, 219: 1562,
+};
+export const XP_PER_LEVEL = 100; // nivel = floor(xp / 100), igual que el servidor
 export const ITEM_NAMES = {
   100: 'Palo', 101: 'Carbón', 102: 'Lingote de hierro', 103: 'Lingote de oro',
   104: 'Diamante', 105: 'Redstone', 106: 'Esmeralda',
@@ -33,6 +42,8 @@ export const ITEM_NAMES = {
   111: 'Carne de vaca cocinada', 112: 'Chuleta de cerdo cocinada',
   113: 'Pollo cocinado', 114: 'Cordero cocinado',
   115: 'Trigo', 116: 'Zanahoria', 117: 'Semillas', // comida de cría de animales
+  118: 'Conejo crudo', 119: 'Conejo asado', // Fase 5: nuevo pasivo y su cocinado
+  120: 'Hilo', // Fase 5: drop de la araña (4 hilos → lana)
   200: 'Pico de madera', 201: 'Pico de piedra', 202: 'Pico de hierro', 203: 'Pico de oro', 204: 'Pico de diamante',
   205: 'Hacha de madera', 206: 'Hacha de piedra', 207: 'Hacha de hierro', 208: 'Hacha de oro', 209: 'Hacha de diamante',
   210: 'Pala de madera', 211: 'Pala de piedra', 212: 'Pala de hierro', 213: 'Pala de oro', 214: 'Pala de diamante',
@@ -58,10 +69,13 @@ const BREED_COLORS = {
   115: 0xE8C56A, // trigo
   116: 0xE67E22, // zanahoria
   117: 0x8B6914, // semillas
+  118: 0xD9C8A8, // conejo crudo
+  119: 0x9C5B33, // conejo asado
+  120: 0xE8E4D0, // hilo
 };
 export const PLACEABLE_BLOCKS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18, 21]);
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)
-export const FOOD_ITEMS = new Set([107, 108, 109, 110, 111, 112, 113, 114]);
+export const FOOD_ITEMS = new Set([107, 108, 109, 110, 111, 112, 113, 114, 118, 119]);
 // Ítems de cría de animales: clic derecho sobre un animal con estos en mano
 // (trigo → vaca/oveja, zanahoria → cerdo, semillas → pollo)
 export const BREED_FOOD = new Set([115, 116, 117]);

@@ -9,8 +9,9 @@ import {
 } from './mobs.js';
 import { teleport } from './player.js';
 import { initDayNight } from './daynight.js';
+import { playCrack } from './audio.js';
 import {
-  applyInventory, applyHealth, applyFood, applyCraftingGrid, applyFurnaceState, addChatLine, flashMessage,
+  applyInventory, applyHealth, applyFood, applyXp, applyCraftingGrid, applyFurnaceState, addChatLine, flashMessage,
 } from './ui.js';
 
 let playerId = null;
@@ -23,7 +24,8 @@ socket.addEventListener('message', (e) => {
       camera.position.set(data.spawnX, data.spawnY, data.spawnZ);
       loadChunkData(data.chunkData);
       applyInventory(data.inventory);
-      applyHealth(data.health);
+      applyHealth(data.health, data.maxHealth);
+      applyXp(data.xp || 0, data.level || 0);
       applyFood(data.food, data.saturation);
       updateMobs(data.mobs);
       initDayNight(data.dayTime);
@@ -46,7 +48,14 @@ socket.addEventListener('message', (e) => {
     case 'teleport': teleport(data.x, data.y, data.z); break;
     case 'player_die': if (data.id === playerId) flashMessage('💀 Has muerto — reapareciendo...'); break;
     case 'inventory_update': applyInventory(data.inventory); break;
-    case 'health_update': applyHealth(data.health); break;
+    case 'health_update': applyHealth(data.health, data.maxHealth); break;
+    case 'xp_update': applyXp(data.xp, data.level); break;
+    case 'level_up': flashMessage(`⬆️ ¡Subiste al nivel ${data.level}!`); applyXp(data.xp, data.level); break;
+    case 'tool_broke': {
+      playCrack();
+      flashMessage('💥 ¡Tu herramienta se rompió!');
+      break;
+    }
     case 'food_update': {
       if (data.food === 0) flashMessage('🍗 ¡Estás hambriento! Busca comida.');
       applyFood(data.food, data.saturation);

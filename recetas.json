@@ -93,5 +93,10 @@
     "shape": ["#"],
     "ingredients": { "#": 6 },
     "result": { "id": 17, "count": 1 }
+  },
+  "hilo_a_lana": {
+    "shape": ["##", "##"],
+    "ingredients": { "#": 120 },
+    "result": { "id": 18, "count": 1 }
   }
 }

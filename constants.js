@@ -44,6 +44,8 @@ const I = {
   BEEF: 107, PORKCHOP: 108, CHICKEN: 109, MUTTON: 110, // comida cruda (se cocina en el horno)
   COOKED_BEEF: 111, COOKED_PORKCHOP: 112, COOKED_CHICKEN: 113, COOKED_MUTTON: 114, // comida cocinada
   WHEAT: 115, CARROT: 116, SEEDS: 117, // comida de cría de animales (se obtiene de la hierba)
+  RABBIT: 118, COOKED_RABBIT: 119, // conejo crudo (Fase 5: nuevo pasivo) y asado
+  STRING: 120, // hilo: drop de la araña (Fase 5)
   WOODEN_PICKAXE: 200, STONE_PICKAXE: 201, IRON_PICKAXE: 202, GOLDEN_PICKAXE: 203, DIAMOND_PICKAXE: 204,
   WOODEN_AXE: 205, STONE_AXE: 206, IRON_AXE: 207, GOLDEN_AXE: 208, DIAMOND_AXE: 209,
   WOODEN_SHOVEL: 210, STONE_SHOVEL: 211, IRON_SHOVEL: 212, GOLDEN_SHOVEL: 213, DIAMOND_SHOVEL: 214,
@@ -67,9 +69,44 @@ const FOOD_VALUES = {
   [I.COOKED_PORKCHOP]: { food: 8, saturation: 12.8 },
   [I.COOKED_CHICKEN]: { food: 6, saturation: 7.2 },
   [I.COOKED_MUTTON]: { food: 6, saturation: 9.6 },
+  [I.RABBIT]: { food: 3, saturation: 1.8 },
+  [I.COOKED_RABBIT]: { food: 8, saturation: 12.8 },
 };
 const isFood = (id) => !!FOOD_VALUES[id];
 const isPickaxe = (id) => id >= 200 && id <= 204;
+
+// ============================================================
+// DURABILIDAD DE HERRAMIENTAS Y DAÑO DE ESPADA (Fase 5)
+// Valores estilo Minecraft: madera 60, piedra 132, hierro 251,
+// oro 33, diamante 1562. Mantener en sincronía con DURABILITY
+// de public/constants.js (lo verifica tests/audit-fase5.js).
+// ============================================================
+const TOOL_DURABILITY = {
+  [I.WOODEN_PICKAXE]: 60, [I.STONE_PICKAXE]: 132, [I.IRON_PICKAXE]: 251, [I.GOLDEN_PICKAXE]: 33, [I.DIAMOND_PICKAXE]: 1562,
+  [I.WOODEN_AXE]: 60, [I.STONE_AXE]: 132, [I.IRON_AXE]: 251, [I.GOLDEN_AXE]: 33, [I.DIAMOND_AXE]: 1562,
+  [I.WOODEN_SHOVEL]: 60, [I.STONE_SHOVEL]: 132, [I.IRON_SHOVEL]: 251, [I.GOLDEN_SHOVEL]: 33, [I.DIAMOND_SHOVEL]: 1562,
+  [I.WOODEN_SWORD]: 60, [I.STONE_SWORD]: 132, [I.IRON_SWORD]: 251, [I.GOLDEN_SWORD]: 33, [I.DIAMOND_SWORD]: 1562,
+};
+const isTool = (id) => !!TOOL_DURABILITY[id];
+// Daño por golpe de espada (Fase 5: progresión de combate; sin espada = 2)
+const SWORD_DAMAGE = {
+  [I.WOODEN_SWORD]: 3, [I.STONE_SWORD]: 4, [I.IRON_SWORD]: 5, [I.GOLDEN_SWORD]: 4, [I.DIAMOND_SWORD]: 6,
+};
+
+// ============================================================
+// EXPERIENCIA Y NIVELES SIMPLES (Fase 5, opcional)
+// XP por matar mobs y por minar minerales. Cada nivel suma +1 de
+// salud máxima (máx +10). La XP se conserva al morir (simplificado).
+// ============================================================
+const XP_PER_LEVEL = 100;
+const MAX_LEVEL_HEALTH_BONUS = 10;
+const MOB_XP = {
+  zombie: 5, creeper: 5, skeleton: 7, enderman: 9, spider: 7, wolf: 8,
+  cow: 3, pig: 3, chicken: 2, sheep: 3, rabbit: 2,
+};
+const ORE_XP = {
+  [B.COAL_ORE]: 1, [B.IRON_ORE]: 2, [B.GOLD_ORE]: 3, [B.DIAMOND_ORE]: 5, [B.REDSTONE_ORE]: 1, [B.EMERALD_ORE]: 5,
+};
 
 // ============================================================
 // CRÍA DE ANIMALES (qué ítem alimenta a cada pasivo, estilo Minecraft)
@@ -79,6 +116,7 @@ const BREED_FOOD = {
   sheep: I.WHEAT,
   pig: I.CARROT,
   chicken: I.SEEDS,
+  rabbit: I.CARROT,
 };
 
 // ============================================================
@@ -86,9 +124,11 @@ const BREED_FOOD = {
 // ============================================================
 const MOB_COLORS = {
   zombie: 0x3a8f3a, creeper: 0x0ecc0e, skeleton: 0xcfcfcf, enderman: 0x2a0a3a,
+  spider: 0x3b3b3b, wolf: 0x8a8a8a, // Fase 5: nuevos hostiles
   cow: 0x6b4226, pig: 0xf0a8b8, chicken: 0xf2e08a, sheep: 0xf5f5f0,
+  rabbit: 0xd9c8a8, // Fase 5: nuevo pasivo
 };
-const HOSTILE = new Set(['zombie', 'creeper', 'skeleton', 'enderman']);
+const HOSTILE = new Set(['zombie', 'creeper', 'skeleton', 'enderman', 'spider', 'wolf']);
 
 module.exports = {
   PORT, CHUNK_SIZE, WORLD_HEIGHT, TICK_MS, SAVE_INTERVAL_MS,
@@ -97,4 +137,6 @@ module.exports = {
   WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE,
   B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe,
   isSolidBlock, BREED_FOOD, MOB_COLORS, HOSTILE,
+  TOOL_DURABILITY, isTool, SWORD_DAMAGE,
+  XP_PER_LEVEL, MAX_LEVEL_HEALTH_BONUS, MOB_XP, ORE_XP,
 };

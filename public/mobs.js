@@ -33,6 +33,12 @@ export function updateRemotePlayer(id, x, y, z, yaw) {
   if (mesh) { mesh.position.set(x, y, z); mesh.rotation.y = yaw; }
 }
 
+// Escala por tipo (Fase 5): la araña y el conejo son pequeños, el lobo
+// es algo más grande que un humanoide. Los bebés se renderizan a media escala.
+const MOB_SCALE = {
+  spider: 0.7, rabbit: 0.55, wolf: 1.05,
+};
+
 export function updateMobs(list) {
   const seen = new Set();
   for (const m of list) {
@@ -46,8 +52,7 @@ export function updateMobs(list) {
       mobMeshes.set(m.id, mesh);
     }
     mesh.position.set(m.x, m.y, m.z);
-    // Los bebés se renderizan a media escala hasta hacerse adultos
-    const s = m.isBaby ? 0.5 : 1;
+    const s = (m.isBaby ? 0.5 : 1) * (MOB_SCALE[m.type] || 1);
     mesh.scale.set(s, s, s);
   }
   for (const [id, mesh] of mobMeshes) {

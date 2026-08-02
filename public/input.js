@@ -50,8 +50,9 @@ document.addEventListener('keyup', (e) => {
 // ============================================================
 const raycaster = new THREE.Raycaster();
 raycaster.far = 7;
-// Solo los pasivos se pueden alimentar (trigo/zanahoria/semillas)
-const PASSIVE_MOBS = new Set(['cow', 'pig', 'chicken', 'sheep']);
+// Solo los pasivos se pueden alimentar (trigo/zanahoria/semillas); el
+// conejo también come zanahorias (Fase 5)
+const PASSIVE_MOBS = new Set(['cow', 'pig', 'chicken', 'sheep', 'rabbit']);
 
 function raycastTerrainAndMobs() {
   raycaster.setFromCamera({ x: 0, y: 0 }, camera);

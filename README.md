@@ -99,8 +99,19 @@ simple,
 crafteo por patrón, horno con combustible y cocción, persistencia
 cada 30s, multijugador básico por WebSocket.
 
-Pendiente / simplificado a propósito: sin durabilidad de
-herramientas. Ver
+Fase 5 (progresión y combate): durabilidad real de herramientas
+(madera 60, piedra 132, hierro 251, oro 33, diamante 1562 usos; se
+desgastan al romper bloques o atacar con espada y se rompen al llegar
+a 0, con barra de durabilidad en el hotbar, sonido de rotura y
+aviso), daño de espada por material (madera 3 → diamante 6), nuevos
+mobs (araña hostil rápida que suelta hilo, lobo hostil resistente y
+conejo pasivo que se cría con zanahoria; 4 hilos se craftean en lana
+y el conejo crudo se cocina en el horno) y experiencia simple/niveles
+(matar mobs y minar minerales dan XP; cada nivel suma +1 de salud
+máxima, máx +10, con barra de XP y nivel en el HUD).
+
+Pendiente / simplificado a propósito: sin durabilidad de armaduras ni
+encantamientos, sin comerciantes ni aldeas (ver `Won't` del TODO). Ver
 `TODO.md` para el plan de desarrollo por fases y `CLAUDE.md` para
 las convenciones que sigue el proyecto.
 
@@ -109,9 +120,12 @@ las convenciones que sigue el proyecto.
 - `npm test` ejecuta los tests unitarios (`tests/unit-hambre.js`,
   `tests/unit-cria.js`, `tests/unit-crafting.js`, `tests/unit-mundo.js` — cuevas
   y lagos, `tests/unit-mobs-agua.js` — hundimiento de mobs en agua,
-  `tests/unit-spawn.js` — spawn sobre tierra firme, y `tests/unit-biomas.js` —
-  nieve y montaña) y, si hay un servidor vivo en `ws://localhost:3998` (o
-  `$WS_URL`), el E2E de comer (`tests/e2e-comer.js`).
+  `tests/unit-spawn.js` — spawn sobre tierra firme, `tests/unit-biomas.js` —
+  nieve y montaña, y `tests/unit-durabilidad.js` — herramientas, XP y mobs
+  nuevos de la Fase 5) y, si hay un servidor vivo en `ws://localhost:3998` (o
+  `$WS_URL`), los E2E de comer (`tests/e2e-comer.js`) y de durabilidad
+  (`tests/e2e-durabilidad.js` — craftea un pico de madera, rompe sus 60 usos
+  de piedra y verifica que se rompe al llegar a 0 sin duplicar drops).
 - Sin framework: cada test es un script Node.js plano que termina con
   código de salida 0/1; `tests/run.js` los encadena. Flags: `--unit`
   (solo unitarios) y `--e2e` (solo E2E, con `WS_URL`).
@@ -123,6 +137,12 @@ las convenciones que sigue el proyecto.
   sólidos contra aire o agua, agua solo contra aire, lecho de lagos
   incluido) y hace benchmark de generación en tiempo real
   (1.91 ms/chunk, memoria 16 KB/chunk, regeneración bit-idéntica).
+- `node tests/audit-fase5.js` ejecuta la auditoría de la Fase 5: verifica
+  que la durabilidad se sincroniza servidor ↔ cliente (mapas
+  `TOOL_DURABILITY`/`DURABILITY` idénticos, `durability` en el wire, barra
+  en el HUD), que no hay duplicación de items al romperse una herramienta
+  a mitad de una acción (secuencia del handler replicada: 1 drop, 0
+  copias), y el comportamiento de XP/niveles (tope +10 de salud máxima).
 
 ## Rendimiento y límites conocidos
 

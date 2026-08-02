@@ -5,6 +5,12 @@
 // ============================================================
 const { v4: uuidv4 } = require('uuid');
 const { MOB_COLORS, HOSTILE, B, I, TICK_MS, BREED_FOOD, isSolidBlock } = require('./constants.js');
+
+// Salud por tipo (por defecto: hostiles 20, pasivos 10); la araña es frágil
+// pero rápida, el lobo es un hostil más resistente.
+const MOB_HEALTH = {
+  spider: 12, wolf: 20, zombie: 20, creeper: 20, skeleton: 20, enderman: 20,
+};
 const state = require('./state.js');
 const world = require('./world.js');
 const { damagePlayer } = require('./players.js');
@@ -16,7 +22,7 @@ class Mob {
     this.id = uuidv4();
     this.type = type;
     this.x = x; this.y = y; this.z = z;
-    this.health = type === 'creeper' ? 20 : (HOSTILE.has(type) ? 20 : 10);
+    this.health = MOB_HEALTH[type] ?? (HOSTILE.has(type) ? 20 : 10);
     this.state = 'idle';
     this.attackCooldown = 0;
     this.teleportCooldown = 0;
@@ -106,6 +112,18 @@ class Mob {
           if (dist < 1.6) this.attack(nearest, 2, 1000);
         } else { this.state = 'idle'; this.wander(); }
         break;
+      case 'spider': // Fase 5: hostil rápido y frágil
+        if (nearest && (isNight || dist < 8)) {
+          this.state = 'chase'; this.moveToward(nearest, 0.055);
+          if (dist < 1.7) this.attack(nearest, 2, 900);
+        } else { this.state = 'idle'; this.wander(); }
+        break;
+      case 'wolf': // Fase 5: hostil resistente de la noche
+        if (nearest && (isNight || dist < 8)) {
+          this.state = 'chase'; this.moveToward(nearest, 0.04);
+          if (dist < 1.8) this.attack(nearest, 3, 1200);
+        } else { this.state = 'idle'; this.wander(); }
+        break;
       case 'creeper':
         if (nearest && dist < 10) {
           this.state = 'chase'; this.moveToward(nearest, 0.045);
@@ -143,7 +161,7 @@ function spawnMobs() {
   if (state.mobs.length > 30 || players.size === 0) return;
   const anyPlayer = players.values().next().value;
   const cx = Math.floor(anyPlayer.x), cz = Math.floor(anyPlayer.z);
-  const types = ['zombie', 'creeper', 'skeleton', 'cow', 'pig', 'chicken', 'sheep'];
+  const types = ['zombie', 'creeper', 'skeleton', 'spider', 'wolf', 'cow', 'pig', 'chicken', 'sheep', 'rabbit'];
   for (let i = 0; i < 3; i++) {
     const wx = cx + (Math.random() - 0.5) * 50;
     const wz = cz + (Math.random() - 0.5) * 50;
@@ -167,15 +185,21 @@ const FOOD_DROPS = {
   pig: { id: I.PORKCHOP, min: 1, max: 3 },
   chicken: { id: I.CHICKEN, min: 1, max: 2 },
   sheep: { id: I.MUTTON, min: 1, max: 2 },
+  rabbit: { id: I.RABBIT, min: 1, max: 2 }, // Fase 5: nuevo pasivo
+};
+// Drops no comestibles (Fase 5): la araña suelta hilo (para lana)
+const OTHER_DROPS = {
+  spider: { id: I.STRING, min: 0, max: 2 },
 };
 
 // Devuelve [{ id, count }] para el tipo o null si no dropea nada.
 // Los bebés no sueltan comida (como en Minecraft).
 function mobDrops(mob) {
   if (mob.isBaby) return null;
-  const d = FOOD_DROPS[mob.type];
+  const d = FOOD_DROPS[mob.type] || OTHER_DROPS[mob.type];
   if (!d) return null;
-  return [{ id: d.id, count: d.min + Math.floor(Math.random() * (d.max - d.min + 1)) }];
+  const count = d.min + Math.floor(Math.random() * (d.max - d.min + 1));
+  return count > 0 ? [{ id: d.id, count }] : null;
 }
 
 // ============================================================

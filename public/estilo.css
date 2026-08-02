@@ -54,6 +54,8 @@ canvas { display: block; }
   background: linear-gradient(#ffe98a, #ffb300);
   z-index: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
 }
+/* Barra de experiencia (Fase 5) */
+.bar .fill.xp { background: linear-gradient(#8be07a, #3fae2a); }
 #mute-btn {
   position: absolute; top: 16px; right: 16px;
   width: 42px; height: 42px;
@@ -85,6 +87,12 @@ canvas { display: block; }
 .hotbar-slot.selected { border-color: #fff; background: rgba(255,255,255,0.25); }
 .hotbar-slot .count { position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: bold; }
 .hotbar-slot .swatch { width: 24px; height: 24px; border-radius: 3px; }
+/* Barra de durabilidad de herramientas (Fase 5) */
+.hotbar-slot .durbar {
+  position: absolute; bottom: 0; left: 3px; right: 3px; height: 4px;
+  background: rgba(0,0,0,0.6); border-radius: 2px; overflow: hidden;
+}
+.hotbar-slot .durbar i { display: block; height: 100%; border-radius: 2px; transition: width 0.15s; }
 
 .panel {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);

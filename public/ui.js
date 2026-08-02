@@ -3,7 +3,7 @@
 // ============================================================
 import { controls } from './scene.js';
 import { send } from './connection.js';
-import { itemLabel, itemColor } from './constants.js';
+import { itemLabel, itemColor, DURABILITY, XP_PER_LEVEL } from './constants.js';
 import { isMuted, setMuted } from './audio.js';
 
 // Estado que dibuja el HUD (lo actualiza la red; lo lee el input)
@@ -12,8 +12,11 @@ let selectedSlot = 0;
 let craftingGrid = new Array(9).fill(null);
 let openFurnaceKey = null;
 let health = 20;
+let maxHealth = 20; // Fase 5: sube con el nivel (máx +10)
 let food = 20;
 let saturation = 20; // barra dorada sobre la comida (como en Minecraft)
+let xp = 0;
+let level = 0; // Fase 5: niveles simples
 let inventoryOpen = false;
 
 export function getHeldItem() { return inventory[selectedSlot]; }
@@ -31,13 +34,31 @@ function updateHotbarUI() {
     slot.className = 'hotbar-slot' + (i === selectedSlot ? ' selected' : '');
     if (item) {
       slot.innerHTML = `<div class="swatch" style="background:#${itemColor(item.id).toString(16).padStart(6,'0')}"></div><span class="count">${item.count}</span>`;
-      slot.title = itemLabel(item.id);
+      // Fase 5: barra de durabilidad bajo la herramienta (verde→rojo)
+      const maxD = DURABILITY[item.id];
+      if (maxD) {
+        const cur = typeof item.durability === 'number' ? item.durability : maxD;
+        const pct = Math.max(0, Math.min(100, (cur / maxD) * 100));
+        const color = pct > 50 ? '#5fd34f' : pct > 20 ? '#e8b93f' : '#e8544f';
+        slot.innerHTML += `<div class="durbar"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></div>`;
+        slot.title = `${itemLabel(item.id)} (${cur}/${maxD})`;
+      } else {
+        slot.title = itemLabel(item.id);
+      }
     }
     slot.addEventListener('click', () => { selectedSlot = i; send('inventory_select', { slot: i }); updateHotbarUI(); });
     hotbarEl.appendChild(slot);
   }
 }
-function updateHealthUI() { document.getElementById('hp').textContent = health; }
+function updateHealthUI() {
+  document.getElementById('hp').textContent = health;
+  document.getElementById('maxhp').textContent = maxHealth;
+}
+function updateXpUI() {
+  const fill = document.getElementById('xp-fill');
+  fill.style.width = Math.max(0, Math.min(100, ((xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100)) + '%';
+  document.getElementById('level').textContent = level;
+}
 
 // Barra de hambre con saturación dorada encima (como en Minecraft): el track
 // se llena de naranja con la comida y la capa dorada lo cubre desde la
@@ -70,7 +91,16 @@ export function applyInventory(inv) {
   updateCraftInventoryUI();
   updateFurnaceInventoryUI();
 }
-export function applyHealth(hp) { health = hp; updateHealthUI(); }
+export function applyHealth(hp, maxHp) {
+  health = hp;
+  if (typeof maxHp === 'number') maxHealth = maxHp;
+  updateHealthUI();
+}
+export function applyXp(x, lvl) {
+  xp = x;
+  if (typeof lvl === 'number') level = lvl;
+  updateXpUI();
+}
 export function applyFood(f, s) {
   food = f;
   saturation = typeof s === 'number' ? s : f; // defensivo: servidores viejos sin saturación

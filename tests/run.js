@@ -12,8 +12,8 @@ const { spawnSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 
-const UNIT = ['unit-hambre.js', 'unit-cria.js', 'unit-crafting.js', 'unit-mundo.js', 'unit-mobs-agua.js', 'unit-spawn.js', 'unit-biomas.js'];
-const E2E = 'e2e-comer.js';
+const UNIT = ['unit-hambre.js', 'unit-cria.js', 'unit-crafting.js', 'unit-mundo.js', 'unit-mobs-agua.js', 'unit-spawn.js', 'unit-biomas.js', 'unit-durabilidad.js'];
+const E2E = ['e2e-comer.js', 'e2e-durabilidad.js'];
 const args = process.argv.slice(2);
 
 let failed = 0;
@@ -43,12 +43,12 @@ function serverUp(wsUrl) {
   }
 
   if (!args.includes('--unit')) {
-    console.log('\n=== E2E comer (requiere servidor) ===');
+    console.log('\n=== E2E (requieren servidor) ===');
     const wsUrl = process.env.WS_URL || 'ws://localhost:3998';
     if (await serverUp(wsUrl)) {
-      run(E2E);
+      for (const f of E2E) run(f);
     } else {
-      console.log(`⏭️  Omitido: no hay servidor en ${wsUrl}. Arranca uno (node server.js o PORT=3998) y relanza, o usa WS_URL.`);
+      console.log(`⏭️  Omitidos: no hay servidor en ${wsUrl}. Arranca uno (node server.js o PORT=3998) y relanza, o usa WS_URL.`);
     }
   }
 

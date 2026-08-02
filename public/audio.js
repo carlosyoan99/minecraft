@@ -140,6 +140,16 @@ export function playPlace(blockId) {
 }
 
 // ============================================================
+// HERRAMIENTA ROTA (crack seco y breve, Fase 5)
+// ============================================================
+export function playCrack() {
+  if (!ensureCtx()) return;
+  const t = ctx.currentTime + 0.001;
+  noiseBurst({ t, freq: 2600, q: 0.8, vol: 0.5, dur: 0.09, type: 'highpass' });
+  thud({ t: t + 0.02, freq: 60, vol: 0.35, dur: 0.1 });
+}
+
+// ============================================================
 // COMER (mordisco corto)
 // ============================================================
 export function playEat() {
