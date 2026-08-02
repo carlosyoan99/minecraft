@@ -111,13 +111,19 @@ for (let cx = -4; cx <= 4; cx++) {
 check('se encontró un chunk con montaña para el test de determinismo', mountainChunk !== null);
 if (mountainChunk) {
   const key = `${mountainChunk.cx},${mountainChunk.cz}`;
+  // Los árboles usan Math.random (no determinista): fijarlo durante la
+  // regeneración para que la comparación cubra solo la parte determinista
+  // (ruido de terreno/ore/bioma), que es lo que este check quiere validar.
+  const rnd = Math.random;
+  Math.random = () => 0.5; // 0.5 >= 0.04 → no genera árboles en ninguna pasada
   state.chunks.delete(key);
   const a = world.generateChunk(mountainChunk.cx, mountainChunk.cz);
   state.chunks.delete(key);
   const b = world.generateChunk(mountainChunk.cx, mountainChunk.cz);
+  Math.random = rnd;
   let diffs = 0;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diffs++;
-  check('regeneración de chunk con montaña bit-idéntica', diffs === 0, `${diffs} diffs`);
+  check('regeneración de chunk con montaña bit-idéntica (sin árboles)', diffs === 0, `${diffs} diffs`);
 }
 
 world.setDiskLoader(null);

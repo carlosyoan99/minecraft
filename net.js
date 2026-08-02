@@ -368,4 +368,6 @@ function start() {
   });
 }
 
-module.exports = { broadcast, start };
+// handleConnection se exporta para tests unitarios (tests/unit-red.js usa un
+// ws fake para ejercitar todos los handlers sin levantar el servidor real).
+module.exports = { broadcast, handleConnection, start };

@@ -59,6 +59,16 @@
     "ingredients": { "#": 102, "I": 100 },
     "result": { "id": 207, "count": 1 }
   },
+  "golden_axe": {
+    "shape": ["##", "#I", " I"],
+    "ingredients": { "#": 103, "I": 100 },
+    "result": { "id": 208, "count": 1 }
+  },
+  "diamond_axe": {
+    "shape": ["##", "#I", " I"],
+    "ingredients": { "#": 104, "I": 100 },
+    "result": { "id": 209, "count": 1 }
+  },
   "wooden_shovel": {
     "shape": ["#", "I", "I"],
     "ingredients": { "#": 7, "I": 100 },
@@ -74,6 +84,16 @@
     "ingredients": { "#": 102, "I": 100 },
     "result": { "id": 212, "count": 1 }
   },
+  "golden_shovel": {
+    "shape": ["#", "I", "I"],
+    "ingredients": { "#": 103, "I": 100 },
+    "result": { "id": 213, "count": 1 }
+  },
+  "diamond_shovel": {
+    "shape": ["#", "I", "I"],
+    "ingredients": { "#": 104, "I": 100 },
+    "result": { "id": 214, "count": 1 }
+  },
   "wooden_sword": {
     "shape": ["#", "#", "I"],
     "ingredients": { "#": 7, "I": 100 },
@@ -88,6 +108,16 @@
     "shape": ["#", "#", "I"],
     "ingredients": { "#": 102, "I": 100 },
     "result": { "id": 217, "count": 1 }
+  },
+  "golden_sword": {
+    "shape": ["#", "#", "I"],
+    "ingredients": { "#": 103, "I": 100 },
+    "result": { "id": 218, "count": 1 }
+  },
+  "diamond_sword": {
+    "shape": ["#", "#", "I"],
+    "ingredients": { "#": 104, "I": 100 },
+    "result": { "id": 219, "count": 1 }
   },
   "glass": {
     "shape": ["#"],

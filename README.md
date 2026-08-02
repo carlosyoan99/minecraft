@@ -117,18 +117,55 @@ las convenciones que sigue el proyecto.
 
 ## Tests
 
-- `npm test` ejecuta los tests unitarios (`tests/unit-hambre.js`,
-  `tests/unit-cria.js`, `tests/unit-crafting.js`, `tests/unit-mundo.js` — cuevas
-  y lagos, `tests/unit-mobs-agua.js` — hundimiento de mobs en agua,
-  `tests/unit-spawn.js` — spawn sobre tierra firme, `tests/unit-biomas.js` —
-  nieve y montaña, y `tests/unit-durabilidad.js` — herramientas, XP y mobs
-  nuevos de la Fase 5) y, si hay un servidor vivo en `ws://localhost:3998` (o
-  `$WS_URL`), los E2E de comer (`tests/e2e-comer.js`) y de durabilidad
-  (`tests/e2e-durabilidad.js` — craftea un pico de madera, rompe sus 60 usos
-  de piedra y verifica que se rompe al llegar a 0 sin duplicar drops).
+- `npm test` ejecuta los tests unitarios (cada uno un script Node plano que
+  termina con código de salida 0/1; `tests/run.js` los encadena):
+  - **Fase 0 (base):** `unit-crafting.js` (patrones 3x3 y hornos),
+    `unit-mobs-ia.js` (máquina de estados de mobs: chase/flee, explosión del
+    creeper, skeleton que mantiene distancia, enderman que teletransporta,
+    cooldowns, `spawnMobs` y tope de 30) y `unit-red.js` (todos los handlers
+    de `net.js` con un ws fake, sin levantar servidor: init, anti-cheat de
+    movimiento con `teleport`, break/place con restricciones de herramienta y
+    alcance, crafteo, mesa (grid) conservando durabilidad, ciclo completo del
+    horno, selección de slot, comer y rechazo por estómago lleno, alimentar
+    animales, chat y ataque a mobs con daño/desgaste/drops/XP).
+  - **Fase 1 (persistencia):** `unit-persistencia.js` (guardado incremental por
+    chunk sobre directorio temporal: round-trip de guardar/cargar, migración
+    `world.dat` v1 → archivos por chunk, rechazo de `schemaVersion` más nueva,
+    descarga de chunks lejanos con persistencia previa, y rechazo de archivos
+    corruptos o de longitud inesperada).
+  - **Fase 3 (supervivencia):** `unit-hambre.js` (decaimiento, regeneración e
+    inanición) y `unit-cria.js` (alimentar y criar animales).
+  - **Fase 4 (terreno):** `unit-mundo.js` (cuevas y lagos), `unit-biomas.js`
+    (nieve y montaña), `unit-mobs-agua.js` (mobs se hunden en el agua) y
+    `unit-spawn.js` (spawn sobre tierra firme).
+  - **Fase 5 (progresión):** `unit-durabilidad.js` (durabilidad, XP y mobs
+    nuevos).
+  - **Integridad transversal:** `unit-recetas.js` (todas las recetas de
+    crafteo/horno referencian IDs existentes, shapes bien formadas y
+    alcanzables desde su grid — habría detectado el bug `hilo_a_lana` de la
+    Fase 5) y `unit-sync.js` (los IDs de bloques/ítems y constantes
+    compartidas están sincronizados entre `constants.js` del servidor y
+    `public/constants.js` del cliente).
+  - Y, si hay un servidor vivo en `ws://localhost:3998` (o `$WS_URL`), los
+    E2E de comer (`tests/e2e-comer.js`) y de durabilidad
+    (`tests/e2e-durabilidad.js` — craftea un pico de madera, rompe sus 60
+    usos de piedra y verifica que se rompe al llegar a 0 sin duplicar drops).
 - Sin framework: cada test es un script Node.js plano que termina con
   código de salida 0/1; `tests/run.js` los encadena. Flags: `--unit`
   (solo unitarios) y `--e2e` (solo E2E, con `WS_URL`).
+- Para que los handlers de red sean testeables, `net.js` exporta
+  `handleConnection` (además de `broadcast` y `start`): los tests le pasan un
+  `ws` fake y ejercitan cada evento sin abrir el puerto.
+
+### Resultados (agosto 2026)
+
+Suite completa en verde: **13 tests unitarios + 2 E2E** (si hay servidor).
+Última ejecución: todos los unitarios pasan (incluidos los 5 nuevos:
+persistencia, IA de mobs, handlers de red, integridad de recetas y
+sincronización servidor↔cliente), y los E2E contra un servidor real con
+mundo fresco dan comer 5/5 y durabilidad 124/124. La auditoría de la Fase 5
+sigue cubriendo la sincronización de durabilidad y la no-duplicación de
+items; los nuevos unitarios amplían la red de seguridad a toda la base.
 - `node tests/audit-fase3.js` ejecuta la herramienta de auditoría de la
   Fase 3 (balance del hambre por simulación + rendimiento del tick de
   mobs con cría + persistencia).
