@@ -66,8 +66,6 @@ const FOOD_VALUES = {
 };
 const isFood = (id) => !!FOOD_VALUES[id];
 const isPickaxe = (id) => id >= 200 && id <= 204;
-const isAxe = (id) => id >= 205 && id <= 209;
-const isShovel = (id) => id >= 210 && id <= 214;
 
 // ============================================================
 // CRÍA DE ANIMALES (qué ítem alimenta a cada pasivo, estilo Minecraft)
@@ -93,6 +91,6 @@ module.exports = {
   VIEW_DISTANCE_CHUNKS, UNLOAD_DISTANCE_CHUNKS, UNLOAD_INTERVAL_MS,
   DAY_CYCLE_MS, SEED,
   WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE,
-  B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe, isAxe, isShovel,
+  B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe,
   BREED_FOOD, MOB_COLORS, HOSTILE,
 };

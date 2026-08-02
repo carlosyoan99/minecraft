@@ -139,9 +139,26 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
       cooldown 60s); el bebé se renderiza a media escala, no
       dropea comida y crece hasta adulto en 60s; el estado
       `isBaby`/`age` se persiste de forma retrocompatible
-- [ ] **Auditoría de Fase 3:** revisar balance (¿el hambre baja a
-      un ritmo jugable?), confirmar que el spawn/reproducción de
+- [x] **Auditoría de Fase 3:** revisar balance (¿el hambre baja a un
+      ritmo jugable?), confirmar que el spawn/reproducción de
       animales no degrada el rendimiento del tick de mobs
+
+> **Auditoría completada (agosto 2026):** balance del hambre
+> validado por simulación reutilizable (`tests/audit-fase3.js`):
+> parado, la comida aguanta ~10 min antes de bajar y se muere de
+> inanición a los ~21 min; moviéndose, ~5 y ~11 min — presión
+> suave, ritmo jugable. La regeneración agota ~3 HP de reserva
+> (food 20→17, se detiene al llegar food < 18, fiel a Minecraft),
+> una pelea sostenida agota la reserva en ~6s (no se puede
+> tanquear), y comer cocinada (+8 food / +12.8 sat) cubre ~40% de
+> la barra e incentiva el horno frente a la cruda (+3 / +1.8).
+> Tick de mobs con cría: 30 mobs → 0.043 ms/tick, 100 → 0.135,
+> 300 → 0.319 (y 0.225 de noche) — escala lineal y muy por debajo
+> del presupuesto de 50 ms; el broadcast `mobs_update` pesa 5-51
+> KB y se serializa en <3 ms. Persistencia de `isBaby`/`age`:
+> round-trip OK y retrocompatible con guardados viejos. De paso se
+> limpió código muerto preexistente (`isAxe`/`isShovel` sin uso en
+> `constants.js`).
 
 ---
 
