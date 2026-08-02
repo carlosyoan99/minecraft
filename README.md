@@ -96,12 +96,15 @@ las convenciones que sigue el proyecto.
 ## Tests
 
 - `npm test` ejecuta los tests unitarios (`tests/unit-hambre.js`,
-  `tests/unit-cria.js`) y, si hay un servidor vivo en
+  `tests/unit-cria.js`, `tests/unit-crafting.js`) y, si hay un servidor vivo en
   `ws://localhost:3998` (o `$WS_URL`), el E2E de comer
   (`tests/e2e-comer.js`).
 - Sin framework: cada test es un script Node.js plano que termina con
   código de salida 0/1; `tests/run.js` los encadena. Flags: `--unit`
   (solo unitarios) y `--e2e` (solo E2E, con `WS_URL`).
+- `node tests/audit-fase3.js` ejecuta la herramienta de auditoría de la
+  Fase 3 (balance del hambre por simulación + rendimiento del tick de
+  mobs con cría + persistencia).
 
 ## Rendimiento y límites conocidos
 
