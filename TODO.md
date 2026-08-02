@@ -165,16 +165,101 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 ## Fase 4 — Profundidad de terreno
 *Objetivo: que el mundo deje de sentirse macizo y plano.*
 
-- [ ] Cuevas: ruido 3D restando de la generación de piedra en
-      `generateChunk`
-- [ ] Bloque de agua: no sólido, con física simple de flotación
-      para el jugador
-- [ ] (Opcional si el rendimiento lo permite tras Fase 1) más
-      variedad de bioma: nieve, montaña
-- [ ] **Auditoría de Fase 4:** confirmar que las cuevas no generan
+- [x] Cuevas: ruido 3D restando de la generación de piedra en
+      `generateChunk`. Dos octavas 3D sembradas con la misma semilla
+      (`noise3D_cave` / `noise3D_cave_fine` en `world.js`) en
+      coordenadas de mundo (continuas entre chunks y deterministas
+      en la zona subterránea); `isCaveBlock()` usa ruido "ridged"
+      (1−|n|) ponderado con `CAVE_THRESHOLD = 0.84` calibrado por
+      barrido empírico (~9-14% del subsuelo excavado, túneles
+      conexos sin queso suizo); se excava solo piedra (`y > 1 &&
+      y < height - 2`) protegiendo bedrock y los 2 bloques
+      superiores (sin huecos en superficie); los minerales no se
+      generan dentro de cuevas. Hook `setDiskLoader` para forzar
+      generación fresca en tests; cubierto por `tests/unit-mundo.js`
+- [x] Bloque de agua: no sólido, con física simple de flotación
+      para el jugador. Lagos generados con ruido 2D en `world.js`
+      (`noise2D_lake`, `LAKE_THRESHOLD = 0.65` calibrado por barrido
+      a ~5% de columnas, `SEA_LEVEL = 5`, `LAKE_FLOOR = 2`): la
+      columna se hunde, con piedra bajo el fondo, arena en
+      `LAKE_FLOOR` y agua hasta `SEA_LEVEL` (sin aire bajo el agua);
+      el agua es `B.WATER = 20` no sólida (`isSolidBlock` en
+      servidor y cliente, `NOT_MINEABLE` → no se rompe a mano, sin
+      cubo no se coloca). La validación de movimiento del servidor
+      acepta nadar; el cliente (`public/player.js`) aplica
+      flotación: gravedad reducida, hundimiento lento limitado,
+      espacio nada hacia arriba y velocidad horizontal reducida; el
+      render usa un material translúcido aparte (`DoubleSide`,
+      renderOrder 1) con culling adaptado (sólidos visibles a
+      través del agua, agua solo contra aire). Cubierto por
+      `tests/unit-mundo.js` (agua presente, sin agua sobre
+      `SEA_LEVEL`, fondo de arena, `isSolidBlock(WATER) === false`,
+      lake-aware en superficie/determinismo/costuras)
+- [x] (Opcional si el rendimiento lo permite tras Fase 1) más
+      variedad de bioma: nieve, montaña. `getBiome` ahora devuelve
+      `mountain` (ruido 2D propio `noise2D_mountain`, `MOUNTAIN_THRESHOLD
+      = 0.45` calibrado por barrido a ~19% del mundo) y `snow`
+      (temperatura < `SNOW_TEMP = -0.3`), además de desert/forest/plains;
+      las montañas elevan el terreno (base 12 + octava de crestas, alturas
+      hasta 26 frente a las 14 máximas de llanuras) y su superficie es
+      roca o nieve (`MOUNTAIN_SNOW_LINE = 18` en cumbres, calibrado a ~58%
+      de cumbres nevadas frente al 91% que daba 15 — contraste con la
+      tundra); la tundra tiene superficie de nieve. Nuevo bloque `B.SNOW = 21` (sólido, rompible a
+      mano, colocable, con tesela propia en el atlas) sincronizado entre
+      servidor y cliente. Cubierto por `tests/unit-biomas.js`
+      (5 biomas presentes, montañas elevan el terreno, nieve en
+      tundra/cumbres, roca en montañas bajas, césped/arena conservados,
+      determinismo bit-idéntico en chunks de montaña)
+- [x] **Auditoría de Fase 4:** confirmar que las cuevas no generan
       huecos visuales raros en el culling de caras; probar
       generación de chunks con cuevas en tiempo real sin caída de
       FPS perceptible
+
+> **Auditoría completada (agosto 2026):** herramienta reutilizable
+> `tests/audit-fase4.js`. Culling validado 4/4 checks replicando la
+> regla EXACTA del cliente (sólidos dibujan contra aire O agua, el
+> agua solo contra aire): 0 caras dibujadas contra un sólido (sin
+> caras ocultas), 0 caras visibles sin dibujar dentro y entre
+> chunks (sin huecos), el agua solo contra aire, y el lecho del
+> lago dibuja sus 436 caras contra el agua (se ve bajo la
+> superficie) — con cuevas cruzando fronteras de chunk y lago real
+> buscado en radio 4 (y = SEA_LEVEL−1, el agua vive en y∈{3,4}).
+> Generación en tiempo real: 25 chunks frescos en 47.9 ms →
+> 1.91 ms/chunk (bajo el presupuesto de 5 ms para streaming);
+> ~234K triángulos estimados para radio 4 (la Fase 2 renderizaba
+> 310K estables — las cuevas REDUCEN geometría). Memoria 16 KB/
+> chunk (Uint8Array puro) → 1.3 MB para el área de radio 4 (presu-
+> puesto 60 MB, holgado); regeneración bit-idéntica sin costuras.
+> FPS real medido en Chrome headless vía CDP (SwiftShader, render
+> por software — números conservadores, como en Fase 2): escena
+> completa de 223 chunks / 216,800 triángulos → mediana 125 FPS
+> (min 26.9 · max 175.4), sin errores de consola.
+>
+> **Bug crítico encontrado y corregido por esta auditoría:** el
+> refactor de la Fase 4 (buffers separados para el agua) movió
+> `pushFace` fuera del bucle de `buildChunkGeometry`, pero la
+> función seguía referenciando `wx/wy/wz`, declarados con `const`
+> DENTRO del bucle (block-scoped) → `ReferenceError` en cada cara →
+> **ningún chunk se renderizaba** (`mcChunks: 0` en navegador, con
+> la página por lo demás funcional). Los tests de servidor no
+> podían verlo (no ejercitan el render); solo la auditoría en
+> navegador lo destapó. Corregido pasando las coordenadas como
+> parámetros a `pushFace(block, fi, target, wx, wy, wz)`. La
+> medición de FPS requiere servir THREE desde local
+> (`/tmp/three-local`, interceptando las peticiones del importmap a
+> unpkg.com vía CDP Fetch — el CDN externo es inalcanzable/lentísimo
+> en esta red; ver `tmp-audit4-fps.js`).
+>
+> **Notas del revisor de la tarea de agua, ambas resueltas:** (1) los
+> mobs "caminaban" sobre la superficie del agua — resuelto:
+> `settleOnGround` ahora usa `isSolidBlock` (el agua no es sólida), así
+> que los mobs se hunden a través de la superficie y descansan en el
+> fondo del lago, cubierto por `tests/unit-mobs-agua.js`; (2) el spawn
+> del jugador usaba `getHeight` (no lake-aware) y podía aparecer
+> nadando sobre un lago — resuelto: `world.findSpawn()` busca en
+> espiral la columna firme más cercana si la pedida es un lago, usado
+> en el spawn inicial (`net.js`) y en el respawn (`players.js`),
+> cubierto por `tests/unit-spawn.js`.
 
 ---
 

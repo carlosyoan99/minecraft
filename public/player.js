@@ -7,9 +7,14 @@ import { getClientBlock, chunkMeshes } from './world.js';
 import { send } from './connection.js';
 import { updateDayNight } from './daynight.js';
 import { playStep, updateAmbient } from './audio.js';
+import { WATER } from './constants.js';
 
-const PLAYER_SPEED = 4.3;   // bloques/segundo
+const PLAYER_SPEED = 4.3;   // bloques/segundo (en tierra)
+const SWIM_SPEED = 2.6;     // bloques/segundo (en agua)
 const GRAVITY = 18;
+const WATER_GRAVITY = 6;    // gravedad reducida bajo el agua (flotación)
+const SINK_SPEED = 1.4;     // velocidad máxima de hundimiento
+const SWIM_UP_SPEED = 4;    // nadar hacia arriba con espacio
 const JUMP_SPEED = 7;
 const EYE_HEIGHT = 1.6;
 
@@ -24,7 +29,12 @@ export function teleport(x, y, z) {
 
 function solidAt(x, y, z) {
   const b = getClientBlock(Math.floor(x), Math.floor(y), Math.floor(z));
-  return b !== 0 && b !== -1;
+  // El agua no es sólida: se puede nadar a través de ella.
+  return b !== 0 && b !== -1 && b !== WATER;
+}
+
+function isWaterAt(x, y, z) {
+  return getClientBlock(Math.floor(x), Math.floor(y), Math.floor(z)) === WATER;
 }
 
 function tryMove(dx, dz) {
@@ -87,19 +97,34 @@ function animate() {
     forward.y = 0; forward.normalize();
     const right = new THREE.Vector3().crossVectors(forward, camera.up).negate();
 
+    const feet = camera.position.y - EYE_HEIGHT;
+    // ¿Jugador en el agua? (cuerpo a la altura del pecho/cabeza)
+    const inWater =
+      isWaterAt(camera.position.x, feet + 0.8, camera.position.z) ||
+      isWaterAt(camera.position.x, feet + 1.4, camera.position.z);
+
     let dx = 0, dz = 0;
     if (move.forward) { dx += forward.x; dz += forward.z; }
     if (move.back) { dx -= forward.x; dz -= forward.z; }
     if (move.left) { dx -= right.x; dz -= right.z; }
     if (move.right) { dx += right.x; dz += right.z; }
     const len = Math.hypot(dx, dz);
-    if (len > 0) { dx = (dx / len) * PLAYER_SPEED * dt; dz = (dz / len) * PLAYER_SPEED * dt; }
+    // En el agua se nada más lento (resistencia del medio)
+    const speed = inWater ? SWIM_SPEED : PLAYER_SPEED;
+    if (len > 0) { dx = (dx / len) * speed * dt; dz = (dz / len) * speed * dt; }
     tryMove(dx, dz);
 
-    // Gravedad y salto
-    const feet = camera.position.y - EYE_HEIGHT;
+    // Gravedad, salto y natación
     onGround = solidAt(camera.position.x, feet - 0.05, camera.position.z);
-    if (onGround) {
+    if (inWater) {
+      // Flotación: gravedad reducida, hundimiento lento y límite de caída;
+      // espacio nada hacia arriba (permite salir a la superficie). Al tocar
+      // el fondo (onGround) se reposa sin jitter.
+      if (onGround) velocityY = 0;
+      else velocityY -= WATER_GRAVITY * dt;
+      velocityY = Math.max(velocityY, -SINK_SPEED);
+      if (move.jump) velocityY = SWIM_UP_SPEED;
+    } else if (onGround) {
       velocityY = 0;
       if (move.jump) velocityY = JUMP_SPEED;
     } else {

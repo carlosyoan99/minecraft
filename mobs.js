@@ -4,7 +4,7 @@
 // IA DE MOBS
 // ============================================================
 const { v4: uuidv4 } = require('uuid');
-const { MOB_COLORS, HOSTILE, B, I, TICK_MS, BREED_FOOD } = require('./constants.js');
+const { MOB_COLORS, HOSTILE, B, I, TICK_MS, BREED_FOOD, isSolidBlock } = require('./constants.js');
 const state = require('./state.js');
 const world = require('./world.js');
 const { damagePlayer } = require('./players.js');
@@ -62,8 +62,12 @@ class Mob {
   settleOnGround() {
     const below = world.getBlock(Math.floor(this.x), Math.floor(this.y - 0.1), Math.floor(this.z));
     const head = world.getBlock(Math.floor(this.x), Math.floor(this.y + 0.6), Math.floor(this.z));
-    if (below === B.AIR) this.y -= 0.04;
-    else if (head !== B.AIR) this.y += 0.06;
+    // El agua no es sólida (se nada en ella): el mob se hunde a través de la
+    // superficie y descansa en el fondo del lago, en vez de "caminar" sobre ella.
+    // El bloque de la cabeza solo empuja hacia arriba si es sólido: con el agua
+    // en la cabeza (mob sumergido) no debe subir a la superficie.
+    if (!isSolidBlock(below)) this.y -= 0.04;
+    else if (isSolidBlock(head)) this.y += 0.06;
   }
 
   attack(player, dmg, cooldownMs) {

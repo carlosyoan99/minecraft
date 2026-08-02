@@ -69,13 +69,24 @@ ratón.
 
 ## Estado actual
 
-Funcional: generación de mundo por biomas, chunks bajo demanda,
-texturas pixel-art generadas proceduralmente (atlas 16x16 por cara
-en un canvas, sin assets binarios), sonidos procedurales con Web
-Audio API (romper/colocar bloques, pasos, ambiente día/noche con
-pájaros y grillos — sin archivos de audio en el repo), ciclo
-día/noche visual real (cielo, luz solar y ambiente interpolados
-con el reloj del servidor), barra de hambre con decaimiento,
+Funcional: generación de mundo por biomas (llanura, bosque,
+desierto, tundra nevada y montañas con cumbres de nieve: el bioma de
+montaña eleva el terreno hasta alturas de 26 bloques y su superficie
+es roca o nieve según la altitud; la tundra y las cumbres usan el
+nuevo bloque de nieve, sólido y rompible a mano), cuevas generadas
+con ruido 3D bajo la superficie (túneles conexos, deterministas y
+continuos entre chunks, sin romper superficie ni bedrock), lagos
+generados con ruido 2D (agua translúcida, no sólida, con
+flotación/natación: gravedad reducida, hundimiento lento y nadar
+hacia arriba con espacio; el fondo es arena y no se puede romper el
+agua), chunks
+bajo demanda, texturas pixel-art generadas proceduralmente (atlas
+16x16 por cara en un canvas, sin assets binarios), sonidos
+procedurales con Web Audio API (romper/colocar bloques, pasos,
+ambiente día/noche con pájaros y grillos — sin archivos de audio en
+el repo), ciclo día/noche visual real (cielo, luz solar y ambiente
+interpolados con el reloj del servidor), barra de hambre con
+decaimiento,
 regeneración de salud y penalización por inanición (autoritativa en
 el servidor), drops de comida cruda de animales (vaca, cerdo,
 pollo, oveja) al morir, recetas de horno para cocinarla
@@ -88,23 +99,30 @@ simple,
 crafteo por patrón, horno con combustible y cocción, persistencia
 cada 30s, multijugador básico por WebSocket.
 
-Pendiente / simplificado a propósito: sin cuevas (terreno macizo),
-sin agua, sin durabilidad de herramientas. Ver
+Pendiente / simplificado a propósito: sin durabilidad de
+herramientas. Ver
 `TODO.md` para el plan de desarrollo por fases y `CLAUDE.md` para
 las convenciones que sigue el proyecto.
 
 ## Tests
 
 - `npm test` ejecuta los tests unitarios (`tests/unit-hambre.js`,
-  `tests/unit-cria.js`, `tests/unit-crafting.js`) y, si hay un servidor vivo en
-  `ws://localhost:3998` (o `$WS_URL`), el E2E de comer
-  (`tests/e2e-comer.js`).
+  `tests/unit-cria.js`, `tests/unit-crafting.js`, `tests/unit-mundo.js` — cuevas
+  y lagos, `tests/unit-mobs-agua.js` — hundimiento de mobs en agua,
+  `tests/unit-spawn.js` — spawn sobre tierra firme, y `tests/unit-biomas.js` —
+  nieve y montaña) y, si hay un servidor vivo en `ws://localhost:3998` (o
+  `$WS_URL`), el E2E de comer (`tests/e2e-comer.js`).
 - Sin framework: cada test es un script Node.js plano que termina con
   código de salida 0/1; `tests/run.js` los encadena. Flags: `--unit`
   (solo unitarios) y `--e2e` (solo E2E, con `WS_URL`).
 - `node tests/audit-fase3.js` ejecuta la herramienta de auditoría de la
   Fase 3 (balance del hambre por simulación + rendimiento del tick de
   mobs con cría + persistencia).
+- `node tests/audit-fase4.js` ejecuta la auditoría de la Fase 4: valida
+  el culling de caras con cuevas (replicando la regla del cliente:
+  sólidos contra aire o agua, agua solo contra aire, lecho de lagos
+  incluido) y hace benchmark de generación en tiempo real
+  (1.91 ms/chunk, memoria 16 KB/chunk, regeneración bit-idéntica).
 
 ## Rendimiento y límites conocidos
 
@@ -124,3 +142,17 @@ las convenciones que sigue el proyecto.
   original de huecos en los bordes), pero sigue siendo por-cara,
   no greedy meshing — suficiente para el tamaño actual de mundo,
   no para mundos grandes.
+- Rendimiento medido en la auditoría de Fase 4: generación 1.91 ms/
+  chunk con cuevas + lagos; ~234K triángulos para un radio de vista 4
+  (la Fase 2 renderizaba 310K estables — las cuevas reducen
+  geometría); 16 KB/chunk en RAM (1.3 MB para el área de radio 4).
+  FPS real en Chrome headless (SwiftShader, conservador): 223 chunks
+  / 216,800 triángulos → mediana 125 FPS.
+- Limitaciones conocidas: ninguna pendiente de la Fase 4. Los mobs ya
+  no "caminan" sobre la superficie del agua: se hunden a través de
+  ella y descansan en el fondo del lago (`settleOnGround` usa
+  `isSolidBlock`; cubierto por `tests/unit-mobs-agua.js`). El spawn y
+  el respawn del jugador usan `world.findSpawn()`, que busca en
+  espiral la columna firme más cercana si la pedida es un lago, para
+  que el jugador nunca aparezca nadando (cubierto por
+  `tests/unit-spawn.js`).

@@ -12,7 +12,7 @@ const { spawnSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 
-const UNIT = ['unit-hambre.js', 'unit-cria.js', 'unit-crafting.js'];
+const UNIT = ['unit-hambre.js', 'unit-cria.js', 'unit-crafting.js', 'unit-mundo.js', 'unit-mobs-agua.js', 'unit-spawn.js', 'unit-biomas.js'];
 const E2E = 'e2e-comer.js';
 const args = process.argv.slice(2);
 

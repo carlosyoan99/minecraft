@@ -4,7 +4,7 @@
 // JUGADORES: INVENTARIO, SALUD Y DAÑO
 // ============================================================
 const WebSocket = require('ws');
-const { getHeight } = require('./world.js');
+const { findSpawn } = require('./world.js');
 const { FOOD_VALUES, isFood } = require('./constants.js');
 
 function addToInventory(player, itemId, count = 1) {
@@ -72,8 +72,10 @@ function damagePlayer(player, amount) {
     player.food = 20;
     player.saturation = 20;
     player.foodAccum = 0; player.regenAccum = 0; player.starveAccum = 0;
-    player.x = 0.5; player.z = 0.5;
-    player.y = getHeight(0, 0) + 2;
+    // Respawn sobre tierra firme (igual que el spawn inicial): si (0,0) es un
+    // lago, findSpawn busca la columna firme más cercana (Fase 4).
+    const spawn = findSpawn(0, 0);
+    player.x = spawn.x; player.y = spawn.y; player.z = spawn.z;
     sendHealth(player);
     sendFood(player);
     if (player.ws.readyState === WebSocket.OPEN) {

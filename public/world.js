@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { scene } from './scene.js';
-import { CHUNK_SIZE, WORLD_HEIGHT } from './constants.js';
+import { CHUNK_SIZE, WORLD_HEIGHT, WATER } from './constants.js';
 import { buildTerrainAtlas, tileForFace, tileRect } from './textures.js';
 
 const chunkStore = new Map();     // "cx,cz" -> Uint8Array
@@ -34,7 +34,15 @@ export function setClientBlock(wx, wy, wz, block) {
 // Material compartido por todos los chunks: un único atlas de texturas.
 // Se crea una sola vez; NUNCA se hace dispose de él al reconstruir/descargar
 // chunks (solo se libera la geometría).
-const terrainMaterial = new THREE.MeshLambertMaterial({ map: buildTerrainAtlas() });
+const atlasTexture = buildTerrainAtlas();
+const terrainMaterial = new THREE.MeshLambertMaterial({ map: atlasTexture });
+// El agua es translúcida: material aparte (misma tesela del atlas), para que
+// se vea el lecho del lago a través de la superficie sin volver opacas las
+// caras sólidas adyacentes.
+const waterMaterial = new THREE.MeshLambertMaterial({
+  map: atlasTexture, transparent: true, opacity: 0.65,
+  side: THREE.DoubleSide, // al nadar bajo la superficie, la cara superior se ve desde abajo
+});
 
 // Geometrías de una única cara (evita crear cubos completos por cara expuesta).
 // `uvs` mapea cada esquina a la tesela del atlas (v arriba = textura vertical correcta).
@@ -52,9 +60,34 @@ function buildChunkGeometry(cx, cz) {
   if (!chunk) return null;
   const baseX = cx * CHUNK_SIZE, baseZ = cz * CHUNK_SIZE;
 
-  // Un único buffer por chunk con UVs del atlas (material compartido):
-  // en vez de agrupar por color, cada cara apunta a su tesela vía UV.
+  // Buffers separados: terreno (opaco) y agua (translúcida, material aparte).
   const positions = [], normals = [], uvs = [];
+  const waterPositions = [], waterNormals = [], waterUvs = [];
+
+  // wx/wy/wz se pasan como parámetros: se declaran con const DENTRO del bucle
+  // (block-scoped), así que una función definida fuera no puede capturarlos.
+  // Bug de la Fase 4 (ReferenceError: wx is not defined → ningún chunk se
+  // renderizaba); corregido al pasar las coordenadas explícitamente.
+  const pushFace = (block, fi, target, wx, wy, wz) => {
+    const [u0, v0, u1, v1] = tileRect(tileForFace(block, fi));
+    const [a, b, c, d] = FACES[fi].corners;
+    const verts = [
+      [wx + a[0], wy + a[1], wz + a[2]],
+      [wx + b[0], wy + b[1], wz + b[2]],
+      [wx + c[0], wy + c[1], wz + c[2]],
+      [wx + d[0], wy + d[1], wz + d[2]],
+    ];
+    const face = FACES[fi];
+    // dos triángulos (a,b,c) y (a,c,d)
+    for (const [i, j, k] of [[0,1,2],[0,2,3]]) {
+      for (const idx of [i, j, k]) {
+        target.pos.push(...verts[idx]);
+        target.norm.push(...face.dir);
+        const [uu, vv] = face.uvs[idx];
+        target.uv.push(u0 + uu * (u1 - u0), v0 + vv * (v1 - v0));
+      }
+    }
+  };
 
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let y = 0; y < WORLD_HEIGHT; y++) {
@@ -62,44 +95,47 @@ function buildChunkGeometry(cx, cz) {
         const block = chunk[cIdx(x, y, z)];
         if (block === 0) continue;
         const wx = baseX + x, wy = y, wz = baseZ + z;
+        const isWater = block === WATER;
         for (let fi = 0; fi < FACES.length; fi++) {
           const face = FACES[fi];
           const nx = wx + face.dir[0], ny = wy + face.dir[1], nz = wz + face.dir[2];
           const neighbor = getClientBlock(nx, ny, nz);
-          if (neighbor !== 0) continue; // solo dibujar si el vecino es aire confirmado
-          const [u0, v0, u1, v1] = tileRect(tileForFace(block, fi));
-          const [a, b, c, d] = face.corners;
-          const verts = [
-            [wx + a[0], wy + a[1], wz + a[2]],
-            [wx + b[0], wy + b[1], wz + b[2]],
-            [wx + c[0], wy + c[1], wz + c[2]],
-            [wx + d[0], wy + d[1], wz + d[2]],
-          ];
-          // dos triángulos (a,b,c) y (a,c,d)
-          for (const [i, j, k] of [[0,1,2],[0,2,3]]) {
-            for (const idx of [i, j, k]) {
-              positions.push(...verts[idx]);
-              normals.push(...face.dir);
-              const [uu, vv] = face.uvs[idx];
-              uvs.push(u0 + uu * (u1 - u0), v0 + vv * (v1 - v0));
-            }
-          }
+          // Agua: solo caras contra aire confirmado (superficie/orilla). Sólido:
+          // caras contra aire O agua (el lecho del lago se ve bajo la superficie).
+          if (isWater) { if (neighbor !== 0) continue; }
+          else { if (neighbor !== 0 && neighbor !== WATER) continue; }
+          const target = isWater
+            ? { pos: waterPositions, norm: waterNormals, uv: waterUvs }
+            : { pos: positions, norm: normals, uv: uvs };
+          pushFace(block, fi, target, wx, wy, wz);
         }
       }
     }
   }
 
-  if (positions.length === 0) return null;
+  if (positions.length === 0 && waterPositions.length === 0) return null;
 
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  const mesh = new THREE.Mesh(geo, terrainMaterial);
-  mesh.castShadow = true; mesh.receiveShadow = true;
-  mesh.userData.isTerrain = true;
   const group = new THREE.Group();
-  group.add(mesh);
+  if (positions.length > 0) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    const mesh = new THREE.Mesh(geo, terrainMaterial);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.userData.isTerrain = true;
+    group.add(mesh);
+  }
+  if (waterPositions.length > 0) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(waterPositions, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(waterNormals, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(waterUvs, 2));
+    const mesh = new THREE.Mesh(geo, waterMaterial);
+    mesh.renderOrder = 1; // translúcido: dibujar después del terreno opaco
+    mesh.userData.isTerrain = true;
+    group.add(mesh);
+  }
   return group;
 }
 

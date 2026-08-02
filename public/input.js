@@ -12,7 +12,7 @@ import {
 } from './ui.js';
 import { send } from './connection.js';
 import { playBreak, playPlace, playEat, playFeed } from './audio.js';
-import { PLACEABLE_BLOCKS, FOOD_ITEMS, BREED_FOOD } from './constants.js';
+import { PLACEABLE_BLOCKS, FOOD_ITEMS, BREED_FOOD, WATER } from './constants.js';
 
 // ============================================================
 // TECLADO
@@ -98,6 +98,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     const target = getClientBlock(x, y, z);
     if (target === 16) { toggleFurnaceUI(true, { x, y, z }); return; }
     if (target === 15) { openCraftingFromBlock(); return; }
+    if (target === WATER) return; // el agua no se puede romper (sin cubo): sin feedback falso
     playBreak(target);
     send('block_action', { action: 'break', x, y, z });
   } else if (e.button === 2) {

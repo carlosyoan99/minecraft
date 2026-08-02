@@ -10,7 +10,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const {
   PORT, TICK_MS, VIEW_DISTANCE_CHUNKS, DAY_CYCLE_MS, SEED,
-  B, I, NOT_MINEABLE, FUEL_ITEMS, isPickaxe,
+  B, I, NOT_MINEABLE, FUEL_ITEMS, isPickaxe, isSolidBlock,
 } = require('./constants.js');
 const state = require('./state.js');
 const world = require('./world.js');
@@ -31,9 +31,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function handleConnection(ws) {
   const playerId = uuidv4();
-  const spawnX = 0.5, spawnZ = 0.5;
+  // Spawn sobre tierra firme: si (0,0) es un lago, findSpawn busca la columna
+  // firme más cercana para que el jugador no aparezca nadando (Fase 4).
+  const spawn = world.findSpawn(0, 0);
+  const spawnX = spawn.x, spawnY = spawn.y, spawnZ = spawn.z;
   const generated = world.ensureChunksAround(spawnX, spawnZ, VIEW_DISTANCE_CHUNKS);
-  const spawnY = world.getHeight(0, 0) + 2;
 
   const player = {
     id: playerId, ws,
@@ -82,9 +84,11 @@ function handleConnection(ws) {
           ws.send(JSON.stringify({ event: 'teleport', data: { x: p.x, y: p.y, z: p.z } }));
           return;
         }
+        // El agua no es sólida: nadar (estar dentro de un bloque de agua) es
+        // legítimo. Solo se rechaza si el jugador está dentro de un sólido.
         const feet = world.getBlock(Math.floor(x), Math.floor(y), Math.floor(z));
         const head = world.getBlock(Math.floor(x), Math.floor(y + 1.5), Math.floor(z));
-        if (feet !== B.AIR || head !== B.AIR) {
+        if (isSolidBlock(feet) || isSolidBlock(head)) {
           ws.send(JSON.stringify({ event: 'teleport', data: { x: p.x, y: p.y, z: p.z } }));
           return;
         }
@@ -113,7 +117,7 @@ function handleConnection(ws) {
             canBreak = isPickaxe(tool);
           } else if (block === B.OAK_LOG) {
             canBreak = true; // el hacha solo acelera; se puede romper a mano
-          } else if (block === B.DIRT || block === B.GRASS || block === B.SAND) {
+          } else if (block === B.DIRT || block === B.GRASS || block === B.SAND || block === B.SNOW) {
             canBreak = true;
           }
           if (!canBreak) return;

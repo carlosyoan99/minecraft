@@ -14,14 +14,17 @@ export const BLOCK_COLORS = {
   6: 0xE0C88A, 7: 0xC9A46B, 8: 0x6f6f6f, 9: 0x33393d, 10: 0xB08968,
   11: 0xE8C547, 12: 0x7FFFEE, 13: 0xB22222, 14: 0x22C97A, 15: 0x8B5A2B,
   16: 0x555555, 17: 0xBEE7F0, 18: 0xF5F5F0, 19: 0x1a1a1a,
+  20: 0x3A6FD8, 21: 0xE8F4F8,
 };
 export const BLOCK_NAMES = {
   1: 'Tierra', 2: 'Césped', 3: 'Piedra', 4: 'Tronco', 5: 'Hojas', 6: 'Arena',
   7: 'Tablones', 8: 'Adoquín', 9: 'Mena de carbón', 10: 'Mena de hierro',
   11: 'Mena de oro', 12: 'Mena de diamante', 13: 'Mena de redstone',
   14: 'Mena de esmeralda', 15: 'Mesa de crafteo', 16: 'Horno', 17: 'Vidrio',
-  18: 'Lana', 19: 'Roca madre',
+  18: 'Lana', 19: 'Roca madre', 20: 'Agua', 21: 'Nieve',
 };
+export const WATER = 20;
+export const SNOW = 21;
 export const ITEM_NAMES = {
   100: 'Palo', 101: 'Carbón', 102: 'Lingote de hierro', 103: 'Lingote de oro',
   104: 'Diamante', 105: 'Redstone', 106: 'Esmeralda',
@@ -56,7 +59,7 @@ const BREED_COLORS = {
   116: 0xE67E22, // zanahoria
   117: 0x8B6914, // semillas
 };
-export const PLACEABLE_BLOCKS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18]);
+export const PLACEABLE_BLOCKS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18, 21]);
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)
 export const FOOD_ITEMS = new Set([107, 108, 109, 110, 111, 112, 113, 114]);
 // Ítems de cría de animales: clic derecho sobre un animal con estos en mano

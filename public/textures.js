@@ -48,8 +48,10 @@ const PAL = {
   glass: '#bee7f0', glassLight: '#e8f8fc',
   wool: '#f5f5f0', woolDark: '#d9d9d2',
   bedrock: '#1a1a1a', bedrockDark: '#0f0f0f',
+  water: '#3a6fd8', waterLight: '#5a8ff0', waterDark: '#2a54a8',
   furnace: '#5a5a5a', furnaceDark: '#3a3a3a', furnaceLight: '#7a7a7a',
   fire: '#ff8c1a', fireLight: '#ffd23f',
+  snow: '#e8f4f8', snowDark: '#cddee8', snowLight: '#f7fbfd',
 };
 
 // --- recetas de tesela (16x16) ---
@@ -198,6 +200,23 @@ function drawBedrock(ctx, rng) {
     rect(ctx, x, y, 2 + Math.floor(rng() * 3), 1 + Math.floor(rng() * 2), PAL.bedrockDark);
   }
 }
+function drawWater(ctx, rng) {
+  fill(ctx, PAL.water);
+  // ondas diagonales más claras (estilo pixel-art)
+  for (let i = 0; i < 6; i++) {
+    const y = Math.floor(rng() * TILE);
+    const x = Math.floor(rng() * (TILE - 4));
+    rect(ctx, x, y, 3, 1, PAL.waterLight);
+    if (rng() < 0.5) px(ctx, x + 3, y - 1, PAL.waterLight);
+  }
+  speckle(ctx, rng, PAL.waterDark, 0.08);
+}
+function drawSnow(ctx, rng) {
+  fill(ctx, PAL.snow);
+  // copos sueltos + zonas más claras para dar textura de nieve
+  speckle(ctx, rng, PAL.snowLight, 0.12);
+  speckle(ctx, rng, PAL.snowDark, 0.06);
+}
 
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
@@ -225,6 +244,8 @@ const TILES = [
   drawGlass,         // 21 vidrio
   drawWool,          // 22 lana
   drawBedrock,       // 23 roca madre
+  drawWater,         // 24 agua
+  drawSnow,          // 25 nieve
 ];
 
 // Tesela por bloque y cara. Orden de FACES (ver world.js):
@@ -249,6 +270,8 @@ const BLOCK_TEX = {
   17: { all: 21 },                      // vidrio
   18: { all: 22 },                      // lana
   19: { all: 23 },                      // roca madre
+  20: { all: 24 },                      // agua
+  21: { all: 25 },                      // nieve
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

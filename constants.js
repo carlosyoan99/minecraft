@@ -35,6 +35,8 @@ const B = {
   SAND: 6, PLANKS: 7, COBBLESTONE: 8, COAL_ORE: 9, IRON_ORE: 10,
   GOLD_ORE: 11, DIAMOND_ORE: 12, REDSTONE_ORE: 13, EMERALD_ORE: 14,
   CRAFTING_TABLE: 15, FURNACE: 16, GLASS: 17, WOOL: 18, BEDROCK: 19,
+  WATER: 20, // no sólido: se puede nadar (Fase 4)
+  SNOW: 21,  // superficie de tundra y cumbres de montaña (Fase 4)
 };
 const I = {
   STICK: 100, COAL: 101, IRON_INGOT: 102, GOLD_INGOT: 103, DIAMOND: 104,
@@ -47,7 +49,9 @@ const I = {
   WOODEN_SHOVEL: 210, STONE_SHOVEL: 211, IRON_SHOVEL: 212, GOLDEN_SHOVEL: 213, DIAMOND_SHOVEL: 214,
   WOODEN_SWORD: 215, STONE_SWORD: 216, IRON_SWORD: 217, GOLDEN_SWORD: 218, DIAMOND_SWORD: 219,
 };
-const NOT_MINEABLE = new Set([B.AIR, B.BEDROCK]);
+const NOT_MINEABLE = new Set([B.AIR, B.BEDROCK, B.WATER]); // el agua no se puede romper a mano (sin cubo)
+// Sólido para física/validación: el agua no es sólida (se nada en ella).
+const isSolidBlock = (id) => id !== B.AIR && id !== B.WATER;
 const FUEL_ITEMS = new Set([B.OAK_LOG, B.PLANKS, I.STICK]);
 
 // ============================================================
@@ -92,5 +96,5 @@ module.exports = {
   DAY_CYCLE_MS, SEED,
   WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE,
   B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe,
-  BREED_FOOD, MOB_COLORS, HOSTILE,
+  isSolidBlock, BREED_FOOD, MOB_COLORS, HOSTILE,
 };
