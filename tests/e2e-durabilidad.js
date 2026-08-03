@@ -7,6 +7,10 @@
 // 3) Al llegar a 0 la herramienta se rompe: llega `tool_broke`, el slot
 //    queda vacío y los drops son exactamente 1 por bloque roto (sin duplicar).
 //
+// Fase 6 (minería fina): cada `break` inicia una sesión de minería que el
+// servidor completa según dureza/velocidad de herramienta (pico de madera
+// sobre piedra ≈ 0.9 s) — el E2E espera el inventory_update de cada rotura.
+//
 // Robustez: si el área del spawn ya fue minada (p.ej. una ejecución previa
 // contra el mismo mundo) y no quedan >= 60 piedras a mano, el jugador camina
 // vía eventos `move` (siguiendo el terreno del chunkData) hasta encontrar zona
@@ -72,7 +76,7 @@ function finish(exitCode) {
 const timer = setTimeout(() => {
   console.log(`[t=${Math.round((Date.now() - t0) / 1000)}s] TIMEOUT en fase=${phase} (breaksSent=${breaksSent})`);
   finish(1);
-}, 90000);
+}, 120000); // 60 minas × ~0.9 s + holgura (Fase 6: minería con progreso)
 
 // ============================================================
 // HELPERS SOBRE EL CHUNKDATA (mismo idx que world.js: (y*16+z)*16+x)

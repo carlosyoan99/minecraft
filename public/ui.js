@@ -2,10 +2,11 @@
 // UI: HUD (hotbar, salud), chat, panel de crafteo y panel de horno
 // ============================================================
 import { controls, showBlocker } from './scene.js';
-import { send } from './connection.js';
+import { send, defaultName, setStoredName } from './connection.js';
 import { itemLabel, itemColor, DURABILITY, XP_PER_LEVEL } from './constants.js';
 import { isMuted, setMuted } from './audio.js';
 import { showLoading, finishLoading } from './loading.js';
+import { getSettings, setSetting } from './settings.js';
 
 // Estado que dibuja el HUD (lo actualiza la red; lo lee el input)
 let inventory = new Array(36).fill(null);
@@ -87,30 +88,115 @@ muteBtn.addEventListener('click', () => { setMuted(!isMuted()); updateMuteBtn();
 updateMuteBtn();
 
 // ============================================================
-// MENÚ PRINCIPAL: SEMILLA DEL MUNDO (Fase 6)
-// Al pulsar "Jugar" con una semilla escrita se pide al servidor cambiar el
-// mundo activo (set_seed): persiste el actual, carga/genera el de la semilla
-// y reenvía el init. La pantalla de carga cubre el cambio y el puntero se
-// bloquea ya (gesto del usuario); onWorldLoaded() la cierra cuando llega el
-// init que confirma la semilla pedida (data.seed === la enviada).
+// MENÚ (Fase 7): pantallas principal / mundos / ajustes, nombre de
+// jugador y semilla del mundo. Al pulsar Jugar (o elegir un mundo) con una
+// semilla distinta de la activa se pide al servidor cambiar el mundo activo
+// (set_seed): persiste el actual, carga/genera el de la semilla y reenvía el
+// init. La pantalla de carga cubre el cambio y el puntero se bloquea ya
+// (gesto del usuario); onWorldLoaded() la cierra cuando llega el init que
+// confirma la semilla pedida (data.seed === la enviada).
 // ============================================================
+const menuMain = document.getElementById('menu-main');
+const menuWorlds = document.getElementById('menu-worlds');
+const menuSettings = document.getElementById('menu-settings');
 const startBtn = document.getElementById('start-btn');
+const worldsBtn = document.getElementById('worlds-btn');
+const settingsBtn = document.getElementById('settings-btn');
+const worldsBackBtn = document.getElementById('worlds-back-btn');
+const settingsBackBtn = document.getElementById('settings-back-btn');
+const worldsListEl = document.getElementById('worlds-list');
 const seedInput = document.getElementById('seed-input');
+const seedCreateBtn = document.getElementById('seed-create-btn');
+const nameInput = document.getElementById('name-input');
+const rdSlider = document.getElementById('rd-slider');
+const rdValue = document.getElementById('rd-value');
+const coordsToggle = document.getElementById('coords-toggle');
 let currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 
-startBtn.addEventListener('click', () => {
-  const seed = seedInput.value.trim();
-  // Si la semilla escrita es la activa (la trae el init), no hace falta
-  // pedir nada: el mundo ya está cargado. Si difiere, el servidor cambia el
-  // mundo (set_seed) y el init de confirmación cierra la carga.
+function showMenuScreen(which) {
+  menuMain.classList.toggle('hidden', which !== menuMain);
+  menuWorlds.classList.toggle('hidden', which !== menuWorlds);
+  menuSettings.classList.toggle('hidden', which !== menuSettings);
+}
+
+// Nombre de jugador: se persiste en localStorage (mc_name) y se envía con
+// set_name (el servidor es la fuente de verdad y lo sanea).
+nameInput.value = defaultName();
+nameInput.addEventListener('change', () => {
+  const n = nameInput.value.trim();
+  if (n) { nameInput.value = n; setStoredName(n); send('set_name', { name: n }); }
+  else nameInput.value = defaultName();
+});
+nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') startBtn.click(); });
+
+worldsBtn.addEventListener('click', () => {
+  showMenuScreen(menuWorlds);
+  send('worlds_list'); // el servidor responde y renderWorldsList pinta la lista
+});
+settingsBtn.addEventListener('click', () => {
+  showMenuScreen(menuSettings);
+  const s = getSettings();
+  rdSlider.value = s.renderDistance;
+  rdValue.textContent = s.renderDistance;
+  coordsToggle.checked = s.showCoords;
+});
+worldsBackBtn.addEventListener('click', () => showMenuScreen(menuMain));
+settingsBackBtn.addEventListener('click', () => showMenuScreen(menuMain));
+
+rdSlider.addEventListener('input', () => {
+  rdValue.textContent = rdSlider.value;
+  setSetting('renderDistance', parseInt(rdSlider.value, 10));
+});
+coordsToggle.addEventListener('change', () => setSetting('showCoords', coordsToggle.checked));
+
+// Entrar al juego con una semilla: si difiere de la activa, se la pide al
+// servidor (set_seed) y se espera el init que la confirma (onWorldLoaded).
+// Con semilla vacía se juega el mundo activo tal cual.
+function startWithSeed(seed) {
+  seed = (seed || '').trim();
   if (seed && seed !== currentSeed) {
     seedPending = seed;
     showLoading(`Generando el mundo «${seed}»...`);
     send('set_seed', { seed });
   }
   controls.lock(); // el lock en el gesto es fiable; la carga cubre el cambio
+}
+
+startBtn.addEventListener('click', () => {
+  const n = nameInput.value.trim();
+  if (n) { setStoredName(n); send('set_name', { name: n }); }
+  else nameInput.value = defaultName();
+  startWithSeed('');
 });
+
+seedCreateBtn.addEventListener('click', () => startWithSeed(seedInput.value));
+seedInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') seedCreateBtn.click(); });
+
+// Lista de mundos guardados (evento worlds_list del servidor, Fase 7)
+export function renderWorldsList(worlds) {
+  worldsListEl.innerHTML = '';
+  if (!worlds.length) {
+    const empty = document.createElement('div');
+    empty.className = 'world-item empty';
+    empty.textContent = 'Todavía no hay mundos guardados.';
+    worldsListEl.appendChild(empty);
+    return;
+  }
+  for (const w of worlds) {
+    const item = document.createElement('div');
+    item.className = 'world-item';
+    const meta = `${w.chunkCount} chunks` + (w.lastSaved ? ` · ${w.lastSaved.slice(0, 19).replace('T', ' ')}` : '');
+    item.innerHTML = `<span class="wi-name">${escapeHtml(w.name)}</span><span class="wi-meta">${escapeHtml(meta)}</span>`;
+    item.title = `Abrir el mundo «${w.name}» (semilla: ${w.seed})`;
+    item.addEventListener('click', () => startWithSeed(w.seed));
+    worldsListEl.appendChild(item);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
 // Llamado desde network.js en cada init: actualiza la semilla activa y cierra
 // la pantalla de carga. Si se pidió una semilla, espera el init que la

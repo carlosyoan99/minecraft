@@ -108,6 +108,64 @@ const FOOD_VALUES = {
 };
 const isFood = (id) => !!FOOD_VALUES[id];
 const isPickaxe = (id) => id >= 200 && id <= 204;
+const isAxe = (id) => id >= 205 && id <= 209;
+const isShovel = (id) => id >= 210 && id <= 214;
+
+// ============================================================
+// MINERÍA FINA (Fase 6): dureza por bloque y velocidad según
+// herramienta. Tiempo de rotura = BLOCK_HARDNESS / miningSpeed
+// (a mano o con herramienta equivocada: x1 → lento). Drop
+// condicional estilo Minecraft: piedra/minerales solo sueltan
+// drop con pico; el resto siempre. Fuente de verdad del servidor;
+// el cliente solo pinta las grietas (block_break_progress).
+// ============================================================
+// Dureza en SEGUNDOS rompiendo a mano.
+const BLOCK_HARDNESS = {
+  [B.OAK_LEAVES]: 0.3, [B.GLASS]: 0.4, [B.SNOW]: 0.5, [B.WOOL]: 0.5,
+  [B.GRASS]: 0.6, [B.DIRT]: 0.6, [B.SAND]: 0.6,
+  [B.PLANKS]: 1.0, [B.OAK_LOG]: 1.5, [B.CRAFTING_TABLE]: 1.5,
+  [B.FURNACE]: 2.0, [B.STONE]: 1.8, [B.COBBLESTONE]: 1.8,
+  [B.COAL_ORE]: 3.0, [B.IRON_ORE]: 3.5, [B.GOLD_ORE]: 3.5,
+  [B.REDSTONE_ORE]: 3.5, [B.EMERALD_ORE]: 4.0, [B.DIAMOND_ORE]: 4.5,
+};
+// Velocidad por material (multiplicador sobre la dureza): madera 2x,
+// piedra 4x, hierro 6x, oro 12x (rápida pero frágil), diamante 8x.
+const TOOL_TIER_SPEED = {
+  [I.WOODEN_PICKAXE]: 2, [I.STONE_PICKAXE]: 4, [I.IRON_PICKAXE]: 6, [I.GOLDEN_PICKAXE]: 12, [I.DIAMOND_PICKAXE]: 8,
+  [I.WOODEN_AXE]: 2, [I.STONE_AXE]: 4, [I.IRON_AXE]: 6, [I.GOLDEN_AXE]: 12, [I.DIAMOND_AXE]: 8,
+  [I.WOODEN_SHOVEL]: 2, [I.STONE_SHOVEL]: 4, [I.IRON_SHOVEL]: 6, [I.GOLDEN_SHOVEL]: 12, [I.DIAMOND_SHOVEL]: 8,
+};
+// Herramienta correcta por categoría de bloque.
+const CATEGORY_TOOL = {
+  stone: 'pickaxe', ore: 'pickaxe', wood: 'axe', dirt: 'shovel', sand: 'shovel', snow: 'shovel',
+};
+const BLOCK_CATEGORY = {
+  [B.STONE]: 'stone', [B.COBBLESTONE]: 'stone',
+  [B.COAL_ORE]: 'ore', [B.IRON_ORE]: 'ore', [B.GOLD_ORE]: 'ore',
+  [B.DIAMOND_ORE]: 'ore', [B.REDSTONE_ORE]: 'ore', [B.EMERALD_ORE]: 'ore',
+  [B.OAK_LOG]: 'wood',
+  [B.GRASS]: 'dirt', [B.DIRT]: 'dirt',
+  [B.SAND]: 'sand', [B.SNOW]: 'snow',
+};
+const toolCategoryOf = (id) => isPickaxe(id) ? 'pickaxe' : isAxe(id) ? 'axe' : isShovel(id) ? 'shovel' : null;
+// Velocidad efectiva (x1 con la mano o la herramienta equivocada: lento).
+function miningSpeed(tool, block) {
+  const tier = TOOL_TIER_SPEED[tool];
+  if (!tier) return 1;
+  const cat = BLOCK_CATEGORY[block];
+  if (!cat || CATEGORY_TOOL[cat] !== toolCategoryOf(tool)) return 1;
+  return tier;
+}
+// Segundos que tarda en romperse el bloque con esa herramienta.
+function breakSeconds(tool, block) {
+  return (BLOCK_HARDNESS[block] ?? 0.6) / miningSpeed(tool, block);
+}
+// ¿Suelta drop con la herramienta/mano actual? (piedra/minerales: solo pico)
+function canHarvest(tool, block) {
+  if (block === B.STONE || block === B.COBBLESTONE) return isPickaxe(tool);
+  if (block >= B.COAL_ORE && block <= B.EMERALD_ORE) return isPickaxe(tool);
+  return true;
+}
 
 // ============================================================
 // DURABILIDAD DE HERRAMIENTAS Y DAÑO DE ESPADA (Fase 5)
@@ -173,8 +231,9 @@ module.exports = {
   WORLD_DIR: worldPaths.worldDir, CHUNKS_DIR: worldPaths.chunksDir,
   LEGACY_FILE: worldPaths.legacyFile, META_FILE: worldPaths.metaFile,
   SCHEMA_VERSION, LEGACY_ROOT_FILES,
-  B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe,
+  B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe, isAxe, isShovel,
   isSolidBlock, BREED_FOOD, MOB_COLORS, HOSTILE,
   TOOL_DURABILITY, isTool, SWORD_DAMAGE,
   XP_PER_LEVEL, MAX_LEVEL_HEALTH_BONUS, MOB_XP, ORE_XP,
+  BLOCK_HARDNESS, TOOL_TIER_SPEED, miningSpeed, breakSeconds, canHarvest,
 };

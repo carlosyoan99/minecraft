@@ -11,8 +11,8 @@ const { v4: uuidv4 } = require('uuid');
 const constants = require('./constants.js');
 const {
   PORT, TICK_MS, VIEW_DISTANCE_CHUNKS, DAY_CYCLE_MS, SEED,
-  B, I, NOT_MINEABLE, FUEL_ITEMS, isPickaxe, isSolidBlock,
-  SWORD_DAMAGE, MOB_XP, ORE_XP,
+  B, NOT_MINEABLE, FUEL_ITEMS, isSolidBlock,
+  SWORD_DAMAGE, MOB_XP,
 } = constants;
 const state = require('./state.js');
 const world = require('./world.js');
@@ -21,6 +21,7 @@ const playerHelpers = require('./players.js');
 const crafting = require('./crafting.js');
 const mobs = require('./mobs.js');
 const commands = require('./commands.js');
+const mining = require('./mining.js');
 
 // Reloj del mundo ajustable (/time set): el día/noche, el ambiente y la IA
 // de mobs siguen al mismo reloj (worldTime), así que el comando afecta a todo.
@@ -43,7 +44,7 @@ function sendInit(p) {
   p.ws.send(JSON.stringify({
     event: 'init',
     data: {
-      playerId: p.id, chunkData, spawnX: p.x, spawnY: p.y, spawnZ: p.z,
+      playerId: p.id, name: p.name, chunkData, spawnX: p.x, spawnY: p.y, spawnZ: p.z,
       dayTime: worldTime(), // reloj del servidor: el cliente extrapola el ciclo visual
       mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
       inventory: p.inventory, health: p.health, maxHealth: p.maxHealth,
@@ -51,7 +52,7 @@ function sendInit(p) {
       food: p.food, saturation: p.saturation,
       seed: constants.worldPaths.currentSeed, // Fase 6: semilla activa del mundo
       otherPlayers: Array.from(state.players.values()).filter((q) => q.id !== p.id)
-        .map((q) => ({ id: q.id, x: q.x, y: q.y, z: q.z })),
+        .map((q) => ({ id: q.id, name: q.name, x: q.x, y: q.y, z: q.z })),
     },
   }));
 }
@@ -59,32 +60,61 @@ function sendInit(p) {
 const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 
-function handleConnection(ws) {
+// Envía un evento a un jugador concreto (usado por la minería y los tests).
+function sendToClient(player, event, data) {
+  if (player.ws.readyState === WebSocket.OPEN) {
+    player.ws.send(JSON.stringify({ event, data }));
+  }
+}
+
+// ============================================================
+// NOMBRE DE JUGADOR (Fase 7)
+// El servidor es la fuente de verdad del nombre: se recibe con `?name=` en
+// la URL del WebSocket (el cliente lo lee de localStorage antes de conectar)
+// o con el evento `set_name`. Se sanea: sin caracteres de control, recortado
+// y con máximo de 16 caracteres. Nombre por defecto: "Jugador-XXXX".
+// ============================================================
+function sanitizeName(raw) {
+  if (typeof raw !== 'string') return null;
+  const name = raw.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 16);
+  return name || null;
+}
+
+function nameFromRequest(req) {
+  try {
+    const u = new URL(req.url, 'http://localhost');
+    return sanitizeName(u.searchParams.get('name'));
+  } catch { return null; }
+}
+
+function handleConnection(ws, req) {
   const playerId = uuidv4();
   // Spawn sobre tierra firme: si (0,0) es un lago, findSpawn busca la columna
   // firme más cercana para que el jugador no aparezca nadando (Fase 4).
   const spawn = world.findSpawn(0, 0);
   const spawnX = spawn.x, spawnY = spawn.y, spawnZ = spawn.z;
   const generated = world.ensureChunksAround(spawnX, spawnZ, VIEW_DISTANCE_CHUNKS);
-
   const player = {
     id: playerId, ws,
+    name: nameFromRequest(req) || `Jugador-${playerId.slice(0, 4)}`, // Fase 7: nombre visible
     x: spawnX, y: spawnY, z: spawnZ, yaw: 0, pitch: 0,
     health: 20, maxHealth: 20,
     xp: 0, level: 0, // Fase 5: experiencia simple / niveles
     food: 20, saturation: 20, foodAccum: 0, regenAccum: 0, starveAccum: 0,
     lastMoveTime: 0,
+    renderDistance: VIEW_DISTANCE_CHUNKS, // Fase 7: ajustable por el cliente (settings)
     inventory: new Array(36).fill(null),
     selectedSlot: 0,
     craftingGrid: new Array(9).fill(null),
     openFurnace: null,
+    mining: null, // Fase 6: sesión de minería activa (progreso en el bucle principal)
   };
   state.players.set(playerId, player);
-  console.log(`🟢 Jugador conectado: ${playerId} (${state.players.size} en línea)`);
+  console.log(`🟢 Jugador conectado: ${player.name} (${state.players.size} en línea)`);
 
   sendInit(player);
 
-  broadcast('player_join', { id: playerId, x: spawnX, y: spawnY, z: spawnZ }, playerId);
+  broadcast('player_join', { id: playerId, name: player.name, x: spawnX, y: spawnY, z: spawnZ }, playerId);
 
   ws.on('message', (raw) => {
     let msg;
@@ -119,7 +149,46 @@ function handleConnection(ws) {
           for (const key of newChunks) extra[key] = Array.from(state.chunks.get(key));
           ws.send(JSON.stringify({ event: 'chunks_add', data: { chunkData: extra } }));
         }
-        broadcast('player_move', { id: playerId, x, y, z, yaw: p.yaw, pitch: p.pitch }, playerId);
+        broadcast('player_move', { id: playerId, name: p.name, x, y, z, yaw: p.yaw, pitch: p.pitch }, playerId);
+        break;
+      }
+
+      case 'set_name': {
+        // Fase 7: cambiar el nombre visible (desde el menú/ajustes). Se sanea y
+        // se propaga a todos los clientes con player_rename (tags flotantes).
+        const name = sanitizeName(data && data.name);
+        if (!name) break;
+        p.name = name;
+        broadcast('player_rename', { id: playerId, name });
+        break;
+      }
+
+      case 'settings': {
+        // Fase 7: ajustes que afectan al servidor. Por ahora solo la distancia
+        // de render (2..10 chunks): al ampliarla se generan los chunks nuevos
+        // y se reenvían TAMBIÉN los ya generados del radio (si antes se bajó,
+        // el cliente descartó los lejanos y los necesita de nuevo). El cliente
+        // decide qué construir/ocultar.
+        const rd = data && data.renderDistance;
+        if (typeof rd === 'number' && Number.isFinite(rd)) {
+          const clamped = Math.min(10, Math.max(2, Math.round(rd)));
+          if (clamped !== p.renderDistance) {
+            p.renderDistance = clamped;
+            const fresh = world.ensureChunksAround(p.x, p.z, p.renderDistance);
+            const extra = {};
+            for (const key of fresh) extra[key] = Array.from(state.chunks.get(key));
+            const pcx = Math.floor(p.x / constants.CHUNK_SIZE), pcz = Math.floor(p.z / constants.CHUNK_SIZE);
+            for (let x = pcx - clamped; x <= pcx + clamped; x++) {
+              for (let z = pcz - clamped; z <= pcz + clamped; z++) {
+                const key = `${x},${z}`;
+                if (state.chunks.has(key) && !extra[key]) extra[key] = Array.from(state.chunks.get(key));
+              }
+            }
+            if (Object.keys(extra).length) {
+              ws.send(JSON.stringify({ event: 'chunks_add', data: { chunkData: extra } }));
+            }
+          }
+        }
         break;
       }
 
@@ -129,37 +198,25 @@ function handleConnection(ws) {
         if (action === 'break') {
           const block = world.getBlock(x, y, z);
           if (NOT_MINEABLE.has(block)) return;
-          const tool = p.inventory[p.selectedSlot] ? p.inventory[p.selectedSlot].id : 0;
-          let canBreak = true;
-          if (block === B.STONE || (block >= B.COAL_ORE && block <= B.EMERALD_ORE) || block === B.COBBLESTONE) {
-            canBreak = isPickaxe(tool);
-          } else if (block === B.OAK_LOG) {
-            canBreak = true; // el hacha solo acelera; se puede romper a mano
-          } else if (block === B.DIRT || block === B.GRASS || block === B.SAND || block === B.SNOW) {
-            canBreak = true;
+          // Creative (/gamemode creative): minería INSTANTÁNEA como en
+          // Minecraft — el bloque se rompe al momento, sin sesión de
+          // progreso ni grietas, y sin desgaste de herramienta ni drops
+          // (finishMining con opts.creative). Se cancela cualquier sesión
+          // previa para que el cliente oculte sus grietas.
+          if (p.gamemode === 'creative') {
+            mining.cancelMining(p, sendToClient);
+            playerHelpers.finishMining(p, x, y, z, block, { creative: true });
+            return;
           }
-          if (!canBreak) return;
-          world.setBlock(x, y, z, B.AIR);
-          let drop = block;
-          if (block === B.STONE) drop = B.COBBLESTONE;
-          if (block === B.GRASS) drop = B.DIRT;
-          playerHelpers.addToInventory(p, drop, 1);
-          // La hierba también suelta comida de cría para los animales
-          // (semillas → pollo, trigo → vaca/oveja, zanahoria → cerdo)
-          if (block === B.GRASS) {
-            const grassFeed = [[I.SEEDS, 0.25], [I.WHEAT, 0.10], [I.CARROT, 0.06]];
-            for (const [id, prob] of grassFeed) {
-              if (Math.random() < prob) playerHelpers.addToInventory(p, id, 1);
-            }
-          }
-          // Fase 5: XP al minar minerales
-          if (ORE_XP[block]) playerHelpers.addXp(p, ORE_XP[block]);
-          // Fase 5: desgaste de la herramienta (se rompe al llegar a 0)
-          const broke = playerHelpers.applyToolWear(p);
-          playerHelpers.sendInventory(p);
-          if (broke) {
-            p.ws.send(JSON.stringify({ event: 'tool_broke', data: { slot: p.selectedSlot } }));
-          }
+          // Fase 6 (minería fina): iniciar/continuar la sesión de rotura. El
+          // bloque NO se rompe al instante: el progreso avanza en el bucle
+          // principal (dureza del bloque / velocidad de la herramienta) y al
+          // completarse se rompe con drop condicional. Repetir break sobre el
+          // mismo bloque continúa la mina (no reinicia el progreso).
+          if (p.mining && p.mining.x === x && p.mining.y === y && p.mining.z === z) return;
+          mining.startMining(p, x, y, z, block);
+        } else if (action === 'break_cancel') {
+          mining.cancelMining(p, sendToClient);
         } else if (action === 'place') {
           if (world.getBlock(x, y, z) !== B.AIR) return;
           const slot = p.inventory[p.selectedSlot];
@@ -258,6 +315,13 @@ function handleConnection(ws) {
         break;
       }
 
+      case 'worlds_list': {
+        // Fase 7: el menú de mundos pide la lista de mundos guardados. El
+        // servidor responde al MISMO socket (no broadcast): es info de menú.
+        ws.send(JSON.stringify({ event: 'worlds_list', data: { worlds: save.listWorlds() } }));
+        break;
+      }
+
       case 'set_seed': {
         // Fase 6: campo de semilla del menú del cliente. El servidor es la
         // fuente de verdad: cambia el mundo activo (persistiendo el actual) y
@@ -285,7 +349,7 @@ function handleConnection(ws) {
           p.inventory = new Array(36).fill(null);
           p.craftingGrid = new Array(9).fill(null);
           p.openFurnace = null;
-          world.ensureChunksAround(p.x, p.z, VIEW_DISTANCE_CHUNKS);
+          world.ensureChunksAround(p.x, p.z, p.renderDistance);
         }
         sendInit(p); // confirmación: el cliente la usa para cerrar la carga
         break;
@@ -335,10 +399,10 @@ function handleConnection(ws) {
         // Fase 6: los mensajes que empiezan por '/' son comandos de la consola
         // (fuente de verdad del servidor); el resto es chat normal.
         if (data.message.startsWith('/')) {
-          commands.executeCommand(p, data.message, { state, world, broadcast, playerHelpers, viewDistance: VIEW_DISTANCE_CHUNKS });
+          commands.executeCommand(p, data.message, { state, world, broadcast, playerHelpers, crafting, viewDistance: p.renderDistance });
           break;
         }
-        broadcast('chat', { id: playerId, message: data.message.slice(0, 200) });
+        broadcast('chat', { id: p.name, message: data.message.slice(0, 200) });
         break;
       }
 
@@ -376,8 +440,9 @@ function handleConnection(ws) {
   });
 
   ws.on('close', () => {
+    const leaver = state.players.get(playerId);
     state.players.delete(playerId);
-    console.log(`🔴 Jugador desconectado: ${playerId} (${state.players.size} en línea)`);
+    console.log(`🔴 Jugador desconectado: ${leaver ? leaver.name : playerId} (${state.players.size} en línea)`);
     broadcast('player_leave', { id: playerId });
   });
 
@@ -397,6 +462,12 @@ function mainLoop() {
   // (en modo creative no se aplica: /gamemode creative)
   for (const p of state.players.values()) {
     if (p.gamemode !== 'creative') playerHelpers.tickPlayer(p, TICK_MS);
+  }
+
+  // Minería (Fase 6): avanza las sesiones de rotura (dureza/velocidad); al
+  // completarse se rompe el bloque (drop condicional, XP, desgaste).
+  for (const p of state.players.values()) {
+    if (p.mining) mining.tickMining(p, TICK_MS, world, playerHelpers, sendToClient);
   }
 
   if (Math.random() < 0.03) mobs.spawnMobs();

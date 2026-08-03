@@ -11,14 +11,87 @@ const { furnaces } = state;
 let recipes = {};
 let furnaceRecipes = {};
 
-function loadRecipes() {
+// Rutas de recetas configurables (hot-reload y tests): se leen del disco en
+// reloadRecipes(); watchRecipeFiles() las vigila para recargarlas en caliente.
+let recipeFile = path.join(__dirname, 'recetas.json');
+let furnaceRecipeFile = path.join(__dirname, 'recetas_horno.json');
+function setRecipePaths(craftingFile, furnaceFile) {
+  if (craftingFile) recipeFile = craftingFile;
+  if (furnaceFile) furnaceRecipeFile = furnaceFile;
+}
+
+// Validación estructural mínima: un archivo malformado NO debe dejar el juego
+// a medio camino. Cada receta de crafteo necesita shape + ingredients + result;
+// cada receta de horno, result y time. Devuelve null si es válido o un mensaje.
+function isValidRecipes(c) {
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return 'recetas.json no es un objeto';
+  for (const [k, r] of Object.entries(c)) {
+    if (!r || !Array.isArray(r.shape) || r.shape.length === 0) return `receta '${k}': falta shape`;
+    if (!r.ingredients || typeof r.ingredients !== 'object') return `receta '${k}': faltan ingredients`;
+    if (!r.result || typeof r.result.id !== 'number') return `receta '${k}': falta result.id`;
+  }
+  return null;
+}
+function isValidFurnaceRecipes(f) {
+  if (!f || typeof f !== 'object' || Array.isArray(f)) return 'recetas_horno.json no es un objeto';
+  for (const [k, r] of Object.entries(f)) {
+    if (!r || !r.result || typeof r.result.id !== 'number' || typeof r.time !== 'number') {
+      return `receta de horno '${k}': falta result.id o time`;
+    }
+  }
+  return null;
+}
+
+// Recarga las recetas desde disco (hot-reload, Fase 6). Devuelve
+// { ok, crafting, furnace, error }: en caso de error las tablas anteriores se
+// mantienen intactas (swap atómico — nunca un estado a medias).
+function reloadRecipes() {
   try {
-    recipes = JSON.parse(fs.readFileSync(path.join(__dirname, 'recetas.json'), 'utf8'));
-    furnaceRecipes = JSON.parse(fs.readFileSync(path.join(__dirname, 'recetas_horno.json'), 'utf8'));
-    console.log(`📜 ${Object.keys(recipes).length} recetas de crafteo, ${Object.keys(furnaceRecipes).length} recetas de horno`);
+    const c = JSON.parse(fs.readFileSync(recipeFile, 'utf8'));
+    const f = JSON.parse(fs.readFileSync(furnaceRecipeFile, 'utf8'));
+    const errC = isValidRecipes(c), errF = isValidFurnaceRecipes(f);
+    if (errC) return { ok: false, error: errC };
+    if (errF) return { ok: false, error: errF };
+    recipes = c;
+    furnaceRecipes = f;
+    return { ok: true, crafting: Object.keys(recipes).length, furnace: Object.keys(furnaceRecipes).length };
   } catch (e) {
-    console.error('⚠️  No se pudieron cargar las recetas:', e.message);
-    recipes = {}; furnaceRecipes = {};
+    return { ok: false, error: e.message };
+  }
+}
+
+function loadRecipes() {
+  const r = reloadRecipes();
+  if (r.ok) console.log(`📜 ${r.crafting} recetas de crafteo, ${r.furnace} recetas de horno`);
+  else console.error('⚠️  No se pudieron cargar las recetas:', r.error);
+}
+
+// Vigila los archivos de recetas y recarga en caliente con un debounce (los
+// editores suelen escribir varios eventos por guardado). onChange(result)
+// recibe el resultado de reloadRecipes() para que server.js avise a los
+// clientes (chat de sistema + textures_reload). El hot-reload es un extra:
+// si el watcher no puede crearse, solo se avisa y el juego sigue normal.
+function watchRecipeFiles(onChange) {
+  const files = new Set([path.basename(recipeFile), path.basename(furnaceRecipeFile)]);
+  let timer = null;
+  const reload = () => {
+    if (timer) return;
+    timer = setTimeout(() => {
+      timer = null;
+      onChange(reloadRecipes());
+    }, 150);
+  };
+  try {
+    // Vigilar los DIRECTORIOS (no los inodos): los editores reemplazan el
+    // archivo por rename y el watcher del inodo moriría en ese caso. Los
+    // directorios se deduplican (los dos JSON viven en la misma carpeta).
+    for (const dir of new Set([path.dirname(recipeFile), path.dirname(furnaceRecipeFile)])) {
+      fs.watch(dir, (ev, filename) => {
+        if (filename && files.has(filename)) reload();
+      });
+    }
+  } catch (e) {
+    console.warn(`⚠️  No se pudo vigilar las recetas (hot-reload desactivado): ${e.message}`);
   }
 }
 
@@ -111,6 +184,6 @@ function restoreFurnaces(entries) {
 }
 
 module.exports = {
-  loadRecipes, matchRecipe,
+  loadRecipes, reloadRecipes, setRecipePaths, watchRecipeFiles, matchRecipe,
   getOrCreateFurnace, furnaceSnapshot, tickFurnaces, restoreFurnaces, isCookable,
 };

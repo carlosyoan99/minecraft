@@ -323,6 +323,31 @@ function resetWorld() {
     'len=' + before.length);
 }
 
+// --- 12) listWorlds: lista de mundos guardados (Fase 7, menú del cliente) ---
+{
+  constants.worldPaths.worldRoot = path.join(TMP, 'worldroot');
+  fs.rmSync(constants.worldPaths.worldRoot, { recursive: true, force: true });
+  fs.mkdirSync(path.join(constants.worldPaths.worldRoot, 'mi_mundo', 'chunks'), { recursive: true });
+  fs.mkdirSync(path.join(constants.worldPaths.worldRoot, 'otro'), { recursive: true });
+  const arr = new Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE).fill(0);
+  fs.writeFileSync(path.join(constants.worldPaths.worldRoot, 'mi_mundo', 'chunks', '0_0.json'),
+    JSON.stringify({ schemaVersion: SCHEMA_VERSION, cx: 0, cz: 0, data: arr }));
+  fs.writeFileSync(path.join(constants.worldPaths.worldRoot, 'mi_mundo', 'chunks', '1_0.json'),
+    JSON.stringify({ schemaVersion: SCHEMA_VERSION, cx: 1, cz: 0, data: arr }));
+  fs.writeFileSync(path.join(constants.worldPaths.worldRoot, 'mi_mundo', 'world.json'),
+    JSON.stringify({ schemaVersion: SCHEMA_VERSION, seed: 'Mi Semilla', name: 'Mi Mundo', lastSaved: '2026-08-02T10:00:00.000Z' }));
+
+  const worlds = save.listWorlds();
+  check('listWorlds: un mundo por directorio', worlds.length === 2, worlds.length + ' mundos');
+  const miMundo = worlds.find((w) => w.seed === 'Mi Semilla');
+  check('listWorlds: lee seed, name y chunkCount de world.json',
+    !!miMundo && miMundo.name === 'Mi Mundo' && miMundo.chunkCount === 2, JSON.stringify(miMundo));
+  check('listWorlds: dir sin world.json usa el nombre del directorio',
+    worlds.some((w) => w.name === 'otro' && w.chunkCount === 0));
+  check('listWorlds: ordena por lastSaved (más reciente primero)',
+    worlds[0].seed === 'Mi Semilla', worlds.map((w) => w.seed).join(', '));
+}
+
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log(fails === 0 ? '\n✅ Todos los tests pasan' : `\n❌ ${fails} tests fallaron`);
 process.exit(fails ? 1 : 0);

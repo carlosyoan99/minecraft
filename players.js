@@ -4,8 +4,10 @@
 // JUGADORES: INVENTARIO, SALUD Y DAÑO
 // ============================================================
 const WebSocket = require('ws');
-const { findSpawn } = require('./world.js');
+const world = require('./world.js');
+const { findSpawn } = world;
 const {
+  B, I, ORE_XP, canHarvest,
   FOOD_VALUES, isFood, TOOL_DURABILITY, isTool, SWORD_DAMAGE,
   XP_PER_LEVEL, MAX_LEVEL_HEALTH_BONUS,
 } = require('./constants.js');
@@ -31,6 +33,51 @@ function addToInventory(player, itemId, count = 1, durability) {
   if (empty === -1) return false;
   player.inventory[empty] = { id: itemId, count };
   return true;
+}
+
+// ============================================================
+// MINERÍA FINA (Fase 6): completa la rotura de un bloque al terminar de
+// minarlo (el progreso lo avanza mining.js en el bucle principal). Mismo
+// flujo que el handler break original: setBlock(AIR) → drop → XP → desgaste
+// → inventario. Drop condicional: piedra/minerales solo con pico
+// (canHarvest) — con la herramienta equivocada o a mano el bloque se rompe
+// igual (lento) pero sin drop. Devuelve true si la herramienta se rompió
+// (para que el llamador envíe tool_broke).
+//
+// opts.creative (modo creativo, /gamemode creative): el bloque se rompe
+// igual pero SIN drop, SIN XP y SIN desgaste de herramienta (durabilidad
+// infinita, como en Minecraft creativo — el inventario se gestiona con
+// /give). Lo usa net.js para la minería instantánea en creative.
+// ============================================================
+function finishMining(player, x, y, z, block, opts = {}) {
+  world.setBlock(x, y, z, B.AIR);
+  const creative = opts.creative;
+  if (creative) {
+    // Creative: sin drop, sin XP, sin desgaste. Se sincroniza el inventario
+    // igualmente (no cambia nada, pero mantiene el flujo del wire uniforme).
+    sendInventory(player);
+    return false;
+  }
+  const tool = player.inventory[player.selectedSlot] ? player.inventory[player.selectedSlot].id : 0;
+  if (canHarvest(tool, block)) {
+    let drop = block;
+    if (block === B.STONE) drop = B.COBBLESTONE;
+    if (block === B.GRASS) drop = B.DIRT;
+    addToInventory(player, drop, 1);
+    // La hierba también suelta comida de cría (semillas → pollo, trigo →
+    // vaca/oveja, zanahoria → cerdo), como en el handler original.
+    if (block === B.GRASS) {
+      const grassFeed = [[I.SEEDS, 0.25], [I.WHEAT, 0.10], [I.CARROT, 0.06]];
+      for (const [id, prob] of grassFeed) {
+        if (Math.random() < prob) addToInventory(player, id, 1);
+      }
+    }
+    // Fase 5: XP al minar minerales (solo si se obtiene el drop).
+    if (ORE_XP[block]) addXp(player, ORE_XP[block]);
+  }
+  const broke = applyToolWear(player);
+  sendInventory(player);
+  return broke;
 }
 
 // ============================================================
@@ -231,6 +278,6 @@ function tickPlayer(player, dtMs) {
 module.exports = {
   addToInventory, removeFromInventory, countInInventory,
   sendInventory, sendHealth, sendFood, damagePlayer, tickPlayer, eatFood, canEat,
-  applyToolWear, addXp, sendXp,
+  applyToolWear, addXp, sendXp, finishMining,
   setBroadcastHandler,
 };

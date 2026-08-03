@@ -9,6 +9,7 @@ import './scene.js';
 import './connection.js';
 import './world.js';
 import './mobs.js';
+import './settings.js';
 import './ui.js';
 import './player.js';
 import './input.js';

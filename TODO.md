@@ -331,36 +331,47 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 *Objetivo: convertir las mecánicas básicas en una experiencia más
 fiel a Minecraft. Este bloque prioriza el **feedback del usuario**
 (features nuevas); los bugs reportados están en la sección "Bugs
-conocidos" al final. Ninguna tarea empezada todavía.*
+conocidos" al final. El pulido que sobrecargaba esta fase (texturas,
+rendimiento, supervivencia, multijugador visible y audio) se movió a
+la **Fase 7**.*
 
 ### Minería y herramientas
-- [ ] Afinar la minería: dureza por bloque y velocidad de rotura
-      según la herramienta correcta (pico para piedra/minerales,
-      hacha para madera, pala para tierra/arena/nieve; con la
-      herramienta equivocada o a mano: lento o sin drop). La base
-      ya existe (romper/colocar con restricciones de herramienta y
-      durabilidad, Fases 0 y 5); falta la *velocidad* y el *drop
-      condicional* estilo Minecraft
+- [x] Afinar la minería: dureza por bloque y velocidad de rotura
+      según la herramienta correcta. Nuevas constantes en
+      `constants.js`: `BLOCK_HARDNESS` (segundos a mano),
+      `TOOL_TIER_SPEED` (multiplicador por material: madera 2x,
+      piedra 4x, hierro 6x, oro 12x —rápida pero frágil—, diamante
+      8x) y categorías de bloque con su herramienta (pico →
+      piedra/minerales, hacha → tronco, pala → tierra/arena/nieve)
+      → `breakSeconds(tool, block)`. Romper ya no es instantáneo:
+      `block_action break` inicia una SESIÓN de minería (nuevo
+      `mining.js`) que el bucle principal avanza por ticks
+      (TICK_MS) y comunica las fases 0-9 al cliente con
+      `block_break_progress` (grietas); se cancela con `break_cancel`,
+      si el bloque cambia o si el jugador se aleja (>7 bloques).
+      Drop condicional (`canHarvest`): piedra/minerales solo
+      sueltan drop con pico — con la herramienta equivocada o a
+      mano se rompe igual (lento) pero sin drop ni XP (el desgaste
+      de la herramienta sí aplica). El cliente mantiene el clic
+      para minar (mouseup o mirar a otro bloque cancela, con
+      retarget automático) y pinta un overlay de grietas. Cubierto
+      por `tests/unit-mineria.js` (matemáticas de rotura, drop
+      condicional, sesión completa y cancelaciones) y el test de
+      break de `tests/unit-red.js` (conduce la sesión como el bucle
+      principal); el E2E de durabilidad mina sus 60 bloques con el
+      nuevo ritmo
 - [ ] Verificar que las 20 herramientas (pico/hacha/pala/espada ×
       5 materiales) se pueden obtener todas en juego: ya son
       crafteables desde `recetas.json` (se completaron las 6 de
       oro/diamante en la tarea de tests); revisión de obtención
       real y de que ninguna queda inaccesible
 
-### Mobs: texturas e IA
-- [ ] Texturas para mobs pasivos (crías y adultos) — hoy se
-      renderizan con colores planos (`MOB_COLORS` en cliente);
-      darles apariencia de animal con el atlas
-- [ ] Texturas para mobs hostiles — igual, colores planos
+### Mobs: IA
 - [ ] IA hostil más fiel: quemarse con el sol de día
       (zombie/esqueleto), aparecer **solo de noche** y poder hacer
       spawn en todo el mapa cargado (hoy `spawnMobs()` los genera
       cerca del jugador, de día y de noche; los hostiles solo
       persiguen de noche o a <6-8 bloques)
-
-### Ítems
-- [ ] Texturas para los ítems del inventario/HUD (hoy usan colores
-      planos por ID en el hotbar y la mesa)
 
 ### Mundo y sesión
 - [x] Semilla seleccionable al iniciar el mundo: campo "Semilla del
@@ -409,12 +420,20 @@ conocidos" al final. Ninguna tarea empezada todavía.*
       herramientas llegan con durabilidad plena; `/time set` ajusta
       `state.timeOffset` y hace broadcast de `time_set` (el cliente
       re-sincroniza el ciclo día/noche y la IA de mobs usa el mismo
-      reloj); `/gamemode creative` evita el hambre (tick omitido) y el
-      daño (`damagePlayer` ignorado). `/give` rechaza bloques no
-      rompibles (bedrock/agua, anti-griefing) y `/tp` corrige la Y
-      también en lagos (sube hasta salir del agua). Acceso abierto a
-      todos los jugadores (herramienta de desarrollo; la auth está
-      fuera de alcance). Cubierto por `tests/unit-commands.js`
+      reloj); `/gamemode creative` evita el hambre (tick omitido), el
+      daño (`damagePlayer` ignorado) y hace la **minería instantánea**:
+      romper un bloque en creative se resuelve al momento (sin sesión
+      de progreso ni grietas) y sin desgaste de herramienta ni drops
+      (durabilidad infinita y sin drops, como en Minecraft — el
+      inventario se gestiona con `/give`); una sesión de minería ya
+      activa se completa también al instante si se cambia a creative a
+      mitad de mina. Cubierto por los tests de creative en
+      `tests/unit-red.js` y `tests/unit-mineria.js`. `/give` rechaza
+      bloques no rompibles (bedrock/agua, anti-griefing) y `/tp`
+      corrige la Y también en lagos (sube hasta salir del agua).
+      Acceso abierto a todos los jugadores (herramienta de desarrollo;
+      la auth está fuera de alcance). Cubierto por
+      `tests/unit-commands.js`
 - [x] Visualizador de chunks: toggle con **F3** (como el debug de
       Minecraft) en `public/debug.js` — dibuja un grid rojo con los
       bordes de cada chunk siguiendo la superficie del terreno (se
@@ -425,8 +444,24 @@ conocidos" al final. Ninguna tarea empezada todavía.*
       las métricas `window.__mc*` que ya publica el bucle de
       animación; sin hooks en player.js. Toggle en `public/input.js`
       (tecla F3)
-- [ ] Hot-reload de `recetas.json`/`recetas_horno.json` y del atlas
-      de texturas sin reiniciar el servidor
+- [x] Hot-reload de `recetas.json`/`recetas_horno.json` y del atlas
+      de texturas sin reiniciar el servidor. `crafting.reloadRecipes()`
+      recarga ambas tablas desde disco con **swap atómico** (valida
+      estructura mínima — shape/ingredients/result en crafteo,
+      result/time en horno — y si un archivo es inválido mantiene las
+      anteriores; nunca un estado a medias); `crafting.watchRecipeFiles()`
+      vigila el directorio con debounce (los editores reemplazan el
+      archivo por rename, por eso se vigila el dir y no el inodo) y
+      avisa al servidor, que hace broadcast de chat de sistema +
+      `textures_reload`. El comando `/reload` hace lo mismo a petición.
+      El atlas vive en el cliente: `textures_reload` hace que
+      `public/world.js` re-importe `textures.js` con cache-busting (URL
+      `?t=...`), regenere el atlas, actualice los materiales compartidos
+      y reconstruya la geometría de los chunks cargados (los UVs dependen
+      del layout del atlas). Cubierto por `tests/unit-reload.js` (swap
+      atómico, JSON inválido, receta malformada), el test de `/reload`
+      en `unit-red.js` y el E2E `tests/e2e-reload.js` (watcher + comando
+      contra servidor real)
 
 ### Rendimiento en cliente
 - [x] Frustum culling: no renderizar los chunks fuera del campo de
@@ -437,39 +472,87 @@ conocidos" al final. Ninguna tarea empezada todavía.*
       (evita el draw call y el paso de geometría al renderer). El
       HUD muestra `visibles/totales` y la métrica `__mcCullMs`
       mide el coste del pase (~0.01 ms para cientos de chunks)
-- [ ] LOD simple para chunks lejanos (geometría simplificada o sin
-      teselas finas)
-- [ ] Reutilización/pool de geometrías al cargar/descargar chunks
-      (hoy `dispose()` + reconstrucción completa)
+- [x] LOD simple para chunks lejanos (geometría simplificada, sin
+      teselas finas). Decisión de tier PURA y testeable en
+      `public/lod.js` (`lodTierFor` con **histéresis**: se entra en
+      LOD al superar 56 bloques del centro del chunk y se vuelve al
+      detalle completo al bajar de 44 — en la banda intermedia se
+      conserva el tier actual, sin parpadeo en la frontera; la
+      distancia es horizontal, la Y no cuenta para que el tier no
+      alterne al subir/bajar colinas). `public/world.js` mantiene dos
+      mapas (`chunkMeshes` = detalle completo texturizado,
+      `lodMeshes` = caparazón simplificado): `buildLodGeometry`
+      genera un quad superior por columna en la altura de la
+      superficie (color plano del bloque vía `BLOCK_COLORS`, sin
+      atlas) + muros laterales oscurecidos donde el vecino es más
+      bajo (laderas sólidas, no láminas flotantes) — ~256 quads por
+      chunk en vez de miles de caras, material compartido
+      `vertexColors` que reacciona al día/noche. `rebuildChunk` elige
+      el tier por distancia, `updateLod()` (throttle 250 ms en
+      `player.js`) hace el swap al cruzar el umbral, y el frustum
+      culling, `unloadChunks`, el hot-reload del atlas y el
+      visualizador F3 (`debug.js` cuenta caras de ambos tiers)
+      cubren los dos mapas. Cubierto por `tests/unit-lod.js`
+      (fronteras exactas, histéresis y "un solo flip al acercarse /
+      alejarse")
+- [x] Pool/reutilización de geometrías al cargar/descargar chunks
+      (antes `dispose()` + `new BufferGeometry` por cada chunk).
+      Nuevo `public/geopool.js` (módulo puro, sin three):
+      `createGeometryPool` mantiene un pool POR CATEGORÍA
+      (terrain/water/lod — cada una con su set de attributes) con
+      tope (`maxPooled`, el exceso se libera con `dispose()` para
+      acotar la memoria retenida) y `setOrReuseAttribute` **reutiliza
+      el array** (y por tanto el buffer GPU) cuando el tamaño
+      coincide — solo se re-alloc/refresca lo que cambia, eliminando
+      el coste dominante de la reconstrucción (alloc de Float32Array
+      + upload al GPU) para los chunks de tamaño similar.
+      `world.js` adquiere geometrías del pool en `buildChunkGeometry`
+      y `buildLodGeometry` y las devuelve en `removeChunkMesh` (cada
+      mesh lleva su `userData.poolCat`); los materiales compartidos
+      siguen sin tocarse. Métricas en el F3 (`__mcGeoPool`:
+      reutilizadas/creadas/liberadas). Cubierto por
+      `tests/unit-geopool.js` (reutilización real de la misma
+      geometría y del mismo array, tope del pool, categorías
+      separadas, categoría desconocida → dispose, y
+      `setOrReuseAttribute` con tamaño igual vs distinto)
+- [x] **Auditoría de Fase 6:** medir FPS con LOD activo (comparar
+      caras/triángulos con y sin LOD) y revisar la memoria del
+      cliente
+
+> **Auditoría completada (agosto 2026):** herramienta reutilizable
+> `tests/audit-fase6.js` (11/11 checks) + medición real en Chrome
+> headless vía CDP (SwiftShader, render por software — números
+> conservadores, como en Fases 2 y 4). **Geometría (Node, regla
+> EXACTA del cliente):** en el área de render completa (radio 6 =
+> 169 chunks, spawn real del mundo), 136 chunks quedan en LOD y 33
+> en detalle completo — los conteos del cliente en navegador
+> coinciden EXACTAMENTE (33 full + 136 LOD). Triángulos: 234K CON
+> LOD vs 560K sin LOD → **reducción del 58%**; un chunk LOD de
+> muestra cuesta 367 quads frente a 1638 caras full (78% menos).
+> **Memoria de geometría:** 22.8 MB con LOD vs 51.2 MB sin LOD
+> (ahorro 55%); presupuesto holgado. **FPS reales (navegador):**
+> CON LOD → media 100.5 FPS (estable 136.5, min 52), ~94K
+> triángulos renderizados, 54 chunks visibles, heap 48 MB; SIN LOD
+> (copia con `lod.js` parcheado, mismo mundo/semilla) → media 24.3
+> FPS (estable 30, min 16), ~209K triángulos, heap 85 MB. El LOD
+> multiplica por ~4.5 el rendimiento en el anillo lejano dentro de
+> la niebla. **Pool:** ciclo carga/descarga real reutiliza la misma
+> geometría y el mismo array (0 allocs nuevos), el tope de 24 se
+> respeta (el exceso se libera con dispose) y los atributos de
+> tamaño distinto crean uno nuevo; en la sesión de navegador el
+> pool reutilizó 91 geometrías de 174 creadas (55%).
+> **Determinismo:** la geometría LOD de un chunk regenerado es
+> idéntica (sin costuras en el caparazón).
 
 ### Supervivencia (cerrar el loop)
 - [ ] Cama: dormir salta la noche y fija el punto de reaparición
 - [ ] Armadura básica (cuero, hierro, diamante) que reduce daño
-- [ ] Daño por caída (escala con la altura de la caída)
-- [ ] Morir al caer del mundo (void): si `y` cae bajo el bedrock
-      (o por debajo del mundo), el jugador muere y reaparece
-- [ ] Respawn con pérdida de items (o sin, según gamemode) — hoy
-      se conservan inventario y XP, pero se resetean salud y
-      comida y se reaparece en el spawn
 
 ### Terreno
 - [ ] Minas abandonadas: pasillos generados + cofres de loot
 - [ ] Pozos de agua/lava en superficie (generación decorativa)
 - [ ] Compresión (gzip) del guardado por chunk: mundos grandes
       ocupan mucho espacio en disco
-
-### Audio
-- [ ] Control de volumen por categoría + sistema de prioridad (no
-      saturar reproduciendo 10 pasos a la vez)
-
-### Multijugador visible
-- [ ] Nombres flotantes sobre otros jugadores
-- [ ] Animación de rotura de bloque sincronizada entre clientes
-
-### Auditorías
-- [ ] Métrica de tiempo por tick (server + client) en cada
-      auditoría de fase para detectar cuellos de botella antes de
-      que sean críticos
 
 > **Nota de planificación:** la minería, las 20 herramientas
 > crafteables, la mesa de crafteo, el horno y los minerales ya
@@ -478,6 +561,96 @@ conocidos" al final. Ninguna tarea empezada todavía.*
 > Tampoco se proponen fases 0.5/1.5 (herramientas de desarrollo y
 > optimización previa a texturas): esas fases ya están cerradas,
 > así que esas ideas se han movido a este bloque.
+
+---
+
+## Fase 7 — Pulido, UX y estética
+*Objetivo: darle al juego un menú principal completo (nombre de
+jugador, ajustes, selección/creación de mundos y coordenadas en
+pantalla), cerrar el pulido que sobrecargaba la Fase 6 (texturas,
+rendimiento, supervivencia, multijugador visible y audio), subir la
+estética hacia un look Minecraft y hacer una pasada de caza de
+errores.*
+
+### Menú principal: nombre, ajustes y mundos
+- [~] **Nombre de jugador**: campo en el menú persistido en
+      `localStorage` (`mc_name`, defecto "Jugador-XXXX"). El servidor
+      lo recibe con `?name=` en la URL del WebSocket (lo tiene desde el
+      `init`) y con el evento `set_name` para cambios posteriores; lo
+      sanea (≤16 caracteres, sin caracteres de control). El `init`
+      incluye `name`, `player_join`/`player_move`/`player_rename` lo
+      propagan y el chat muestra el nombre en lugar del id corto.
+      Cubierto por tests en `unit-red.js` (sanidad, default, rename,
+      init) y E2E. *(Avance parcial hecho en el commit de cierre de la
+      Fase 6: `set_name`/`player_rename`/`?name=` y chat por nombre ya
+      funcionan; queda la verificación E2E dedicada)*
+- [~] **Nombres flotantes** sobre los jugadores (tags de texto con
+      `THREE.Sprite` de canvas) en `public/mobs.js`; se actualizan con
+      `player_rename`. *(Hecho en el commit de cierre de la Fase 6;
+      pendiente de playtest visual y E2E)*
+- [~] **Ajustes del juego** en `public/settings.js` (persistidos en
+      `localStorage` `mc_settings`): distancia de render, FOV,
+      sensibilidad del ratón, volumen por categoría, calidad gráfica y
+      mostrar coordenadas. Los que afectan al servidor (distancia de
+      render) viajan con el evento `settings {renderDistance}` (clamp
+      2-10) y se aplican en `ensureChunksAround` (init, move y
+      `set_seed`). *(Avance parcial hecho en el commit de cierre de la
+      Fase 6: `renderDistance` y `showCoords` con su UI; faltan FOV,
+      sensibilidad, volumen por categoría y calidad gráfica)*
+- [~] **Selección y creación de mundos**: `save.listWorlds()` lee los
+      subdirectorios de `world/` (semilla, `lastSaved`, nº de chunks);
+      evento `worlds_list`. Menú con lista de mundos (clic → `set_seed`)
+      y "crear nuevo mundo" con semilla escrita o aleatoria (🎲). La
+      semilla es la identidad del mundo (`world.json` gana un campo
+      opcional `name`, lectura defensiva, **sin** subir SCHEMA_VERSION).
+      *(Avance parcial hecho en el commit de cierre de la Fase 6:
+      `listWorlds`/`worlds_list` y la lista en el menú; falta el botón
+      de crear mundo con 🎲 y el campo `name`)*
+- [~] **Mostrar coordenadas** en pantalla: overlay opcional en el HUD
+      (`x, y, z`, actualizado ~10 veces por segundo), activable desde
+      los ajustes. *(Hecho en el commit de cierre de la Fase 6;
+      pendiente de playtest)*
+
+### Texturas y estética Minecraft
+- [ ] Texturas procedurales pixel-art para **mobs** (pasivos y
+      hostiles) en `public/mobtextures.js` (reemplazan `MOB_COLORS`);
+      los meshes se construyen texturizados por cara en `public/mobs.js`
+- [ ] Iconos de **ítems** en el inventario/HUD (comida, lingotes,
+      minerales, herramientas) reemplazando el swatch de color y el
+      texto en hotbar/mesa/horno
+- [ ] Estética Minecraft: cielo con degradado + sol/luna, niebla por
+      hora del día, partículas al romper/colocar bloques y HUD/menús
+      con estilo Minecraft (todo procedural o CSS, sin assets externos)
+
+### Supervivencia pulida
+- [ ] **Daño por caída** (escala con la altura; el servidor infiere el
+      suelo desde el mundo y aplica el daño al aterrizar)
+- [ ] **Morir al caer del mundo** (void): si `y` cae por debajo del
+      mundo, el jugador muere y reaparece
+- [ ] **Respawn según gamemode**: en survival el inventario se pierde
+      al morir; en creative se conserva (la XP/nivel se mantienen)
+
+### Rendimiento
+- [ ] Métrica de tiempo por tick (server + client) para detectar
+      cuellos de botella: `__mcServerTickMs`/`__mcChunkGenMs` +
+      auditoría
+      (el LOD simple y el pool de geometrías ya están hechos en Fase 6)
+
+### Multijugador visible
+- [ ] Animación de rotura de bloque sincronizada: broadcast de
+      `block_break_progress` a todos los jugadores en rango; el crack
+      del cliente pasa a overlay por-bloque (varios minadores a la vez)
+
+### Caza de errores y auditoría
+- [ ] Playtest (manual + headless): recolectar bugs en "Bugs conocidos"
+      y corregirlos (rendimiento, render, guardado, multijugador)
+- [ ] **Auditoría de Fase 7:** métricas de tick del servidor y FPS en
+      Chrome headless (CDP), integridad del guardado tras varios
+      reinicios, limpieza de código muerto y regresión de fases 0-6
+- [ ] Actualizar `README.md` (protocolo WS: `set_name`, `settings`,
+      `worlds_list`, `player_rename`, `block_break_progress` en
+      broadcast, `init` con `name`) y las guías (`CLAUDE.md`/
+      `AGENTS.md`) si cambian convenciones
 
 ---
 

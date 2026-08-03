@@ -12,8 +12,8 @@ const { spawnSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 
-const UNIT = ['unit-hambre.js', 'unit-cria.js', 'unit-crafting.js', 'unit-mundo.js', 'unit-mobs-agua.js', 'unit-spawn.js', 'unit-biomas.js', 'unit-durabilidad.js', 'unit-persistencia.js', 'unit-mobs-ia.js', 'unit-red.js', 'unit-recetas.js', 'unit-sync.js', 'unit-commands.js', 'unit-arboles.js'];
-const E2E = ['e2e-comer.js', 'e2e-durabilidad.js'];
+const UNIT = ['unit-hambre.js', 'unit-cria.js', 'unit-crafting.js', 'unit-mundo.js', 'unit-mobs-agua.js', 'unit-spawn.js', 'unit-biomas.js', 'unit-durabilidad.js', 'unit-persistencia.js', 'unit-mobs-ia.js', 'unit-red.js', 'unit-recetas.js', 'unit-sync.js', 'unit-commands.js', 'unit-arboles.js', 'unit-reload.js', 'unit-mineria.js', 'unit-lod.js', 'unit-geopool.js'];
+const E2E = ['e2e-comer.js', 'e2e-durabilidad.js', 'e2e-reload.js'];
 const args = process.argv.slice(2);
 
 let failed = 0;

@@ -50,6 +50,7 @@ const HELP = [
   '/give <item> [cantidad] — añade items al inventario (ID numérico o nombre, ej. 4, diamante, wooden_pickaxe)',
   '/time set <day|noon|night|midnight|ms> — fija la hora del mundo (0-239999 ms)',
   '/gamemode <creative|survival> — cambia el modo de juego (creative: sin hambre ni daño)',
+  '/reload — recarga recetas (recetas.json, recetas_horno.json) y el atlas del cliente',
 ].join('\n');
 
 function systemMessage(player, text) {
@@ -162,6 +163,21 @@ function executeCommand(player, raw, ctx) {
       else if (mode === 'survival' || mode === '0') player.gamemode = 'survival';
       else { systemMessage(player, 'Uso: /gamemode <creative|survival>'); break; }
       systemMessage(player, `Modo de juego: ${player.gamemode} (${player.gamemode === 'creative' ? 'sin hambre ni daño' : 'supervivencia'})`);
+      break;
+    }
+
+    case 'reload': {
+      // Fase 6: hot-reload sin reiniciar el servidor. Recarga recetas desde
+      // disco (swap atómico: si el archivo es inválido se mantienen las
+      // anteriores) y pide a todos los clientes regenerar el atlas.
+      if (!ctx.crafting) { systemMessage(player, 'Reload no disponible en este contexto'); break; }
+      const r = ctx.crafting.reloadRecipes();
+      if (r.ok) {
+        broadcast('textures_reload', {});
+        systemMessage(player, `♻️ Recetas recargadas (${r.crafting} crafteo, ${r.furnace} horno) y atlas solicitado`);
+      } else {
+        systemMessage(player, `⚠️ Recetas NO recargadas: ${r.error} (se mantienen las anteriores)`);
+      }
       break;
     }
 

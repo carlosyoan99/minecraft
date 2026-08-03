@@ -3,10 +3,11 @@
 // ============================================================
 import * as THREE from 'three';
 import { scene, camera, renderer, controls } from './scene.js';
-import { getClientBlock, chunkMeshes, applyFrustumCulling } from './world.js';
+import { getClientBlock, chunkMeshes, lodMeshes, applyFrustumCulling, updateLod, geoPoolStats } from './world.js';
 import { send } from './connection.js';
 import { updateDayNight } from './daynight.js';
 import { playStep, updateAmbient } from './audio.js';
+import { updateCoords } from './settings.js';
 import { WATER } from './constants.js';
 
 const PLAYER_SPEED = 4.3;   // bloques/segundo (en tierra)
@@ -56,6 +57,7 @@ function tryMove(dx, dz) {
 
 const clock = new THREE.Clock();
 let netTimer = 0;
+let lodTimer = 0;          // throttle del cambio de tier LOD (Fase 6)
 let stepDist = 0;          // distancia recorrida acumulada para el sonido de pasos
 const STEP_SPACING = 0.72; // bloques entre pasos
 
@@ -82,8 +84,9 @@ function updatePerfMetrics(ambientMs, cullMs, frameMs) {
     window.__mcFrameMs = perfFrameMs / perfFrames;
     window.__mcAmbientMs = perfAmbient / perfFrames;
     window.__mcCullMs = perfCull / perfFrames; // media móvil de 1s, como las demás
-    window.__mcChunks = chunkMeshes.size;
+    window.__mcChunks = chunkMeshes.size + lodMeshes.size; // completo + LOD (Fase 6)
     window.__mcTriangles = renderer.info.render.triangles;
+    window.__mcGeoPool = geoPoolStats(); // reutilización de geometrías (Fase 6)
     if (fpsEl) {
       // Fase 6: muestra cuántos chunks del total están realmente visibles (culling)
       fpsEl.textContent = `${window.__mcFps.toFixed(0)} FPS · ${window.__mcVisibleChunks}/${window.__mcChunks} chunks`;
@@ -173,7 +176,15 @@ function animate() {
   const cullT0 = performance.now();
   applyFrustumCulling(camera);
   const cullMs = performance.now() - cullT0;
+  // Fase 6 (LOD): cambiar de tier según la distancia con throttle (~4 veces/s):
+  // reconstruir cada frame sería caro; cada 250 ms es imperceptible.
+  lodTimer += dt;
+  if (lodTimer >= 0.25) {
+    lodTimer = 0;
+    updateLod();
+  }
   renderer.render(scene, camera);
+  updateCoords(camera.position.x, camera.position.y, camera.position.z, camera.rotation.y); // Fase 7: capa de coordenadas
   updatePerfMetrics(ambientMs, cullMs, performance.now() - frameT0);
 }
 animate();

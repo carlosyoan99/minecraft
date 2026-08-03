@@ -88,10 +88,61 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
   background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;
 }
 #start-btn:hover { background: #45a049; }
-/* Campo de semilla del menú (Fase 6): cada semilla genera su propio mundo */
-.seed-field {
-  display: block; margin-top: 16px; font-size: 13px; color: #ccc;
+/* ============================================================
+MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
+#menu actúa de contenedor; cada pantalla es un .menu-screen.
+============================================================ */
+.menu-screen { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.menu-screen.hidden { display: none; }
+.menu-screen h2 { margin: 0; }
+/* Campo de texto (nombre de jugador / semilla) */
+.menu-field {
+  display: block; width: 100%; font-size: 13px; color: #ccc;
+  text-align: left;
 }
+.menu-field input[type="text"] {
+  display: block; width: 100%; margin-top: 6px; padding: 8px 10px;
+  background: #14141f; color: #fff; border: 1px solid #555; border-radius: 6px;
+  font-size: 14px; text-align: center; outline: none;
+}
+.menu-field input[type="text"]::placeholder { color: #777; }
+.menu-field input[type="text"]:focus { border-color: #4CAF50; }
+/* Fila del slider de render: range + valor numérico */
+.rd-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.rd-row input[type="range"] { flex: 1; accent-color: #4CAF50; }
+#rd-value {
+  min-width: 24px; text-align: center; color: #fff; font-size: 14px; font-weight: bold;
+  background: #14141f; border: 1px solid #555; border-radius: 6px; padding: 4px 6px;
+}
+/* Checkbox de ajustes */
+.menu-field.toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 6px 0; font-size: 14px; color: #fff;
+}
+.menu-field.toggle input { width: 18px; height: 18px; accent-color: #4CAF50; }
+/* Botones secundarios (Mundos / Ajustes / Volver) */
+.menu-actions { display: flex; gap: 10px; margin-top: 4px; }
+.menu-actions button, .menu-secondary {
+  padding: 8px 18px; font-size: 14px; cursor: pointer;
+  background: #2a2a3a; color: #fff; border: 1px solid #555; border-radius: 6px;
+}
+.menu-actions button:hover, .menu-secondary:hover { background: #3a3a4e; }
+/* Lista de mundos guardados */
+.worlds-list {
+  width: 100%; max-height: 190px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 6px;
+  text-align: left;
+}
+.world-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; background: #14141f; border: 1px solid #444; border-radius: 6px;
+  cursor: pointer; color: #fff; font-size: 13px;
+}
+.world-item:hover { border-color: #4CAF50; background: #1c1c2c; }
+.world-item .wi-name { font-weight: bold; }
+.world-item .wi-meta { color: #999; font-size: 11px; }
+.world-item.empty { cursor: default; color: #999; text-align: center; }
+.world-item.empty:hover { border-color: #444; background: #14141f; }
 #seed-input {
   display: block; width: 100%; margin-top: 6px; padding: 8px 10px;
   background: #14141f; color: #fff; border: 1px solid #555; border-radius: 6px;
@@ -106,6 +157,15 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
   color: white; font-size: 22px; z-index: 90;
   text-shadow: 0 0 3px black; pointer-events: none;
 }
+/* Capa de coordenadas (Fase 7): posición + dirección, oculta por defecto */
+#coords-hud {
+  position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
+  color: #fff; background: rgba(0,0,0,0.55);
+  padding: 4px 12px; border-radius: 6px; z-index: 90;
+  font: 12px 'Courier New', monospace; text-shadow: 0 0 2px black;
+  pointer-events: none; text-align: center;
+}
+#coords-hud.hidden { display: none; }
 #info {
   position: absolute; top: 16px; left: 16px;
   color: white; background: rgba(0,0,0,0.55);

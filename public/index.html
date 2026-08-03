@@ -29,17 +29,51 @@
 
   <div id="blocker">
     <div id="menu">
-      <h1>⛏️ Mi Minecraft</h1>
-      <p>WASD para moverte · Ratón para mirar · Espacio para saltar</p>
-      <p>Click izq: romper · Click der: colocar · E: inventario/crafteo</p>
-      <label class="seed-field">Semilla del mundo
-        <input id="seed-input" type="text" maxlength="40" placeholder="deja vacío para la semilla por defecto" spellcheck="false" autocomplete="off">
-      </label>
-      <button id="start-btn">Jugar</button>
+      <!-- Pantalla principal -->
+      <div class="menu-screen" id="menu-main">
+        <h1>⛏️ Mi Minecraft</h1>
+        <p>WASD para moverte · Ratón para mirar · Espacio para saltar</p>
+        <p>Click izq: romper · Click der: colocar · E: inventario/crafteo</p>
+        <label class="menu-field">Nombre de jugador
+          <input id="name-input" type="text" maxlength="16" spellcheck="false" autocomplete="off">
+        </label>
+        <button id="start-btn">Jugar</button>
+        <div class="menu-actions">
+          <button id="worlds-btn">🌍 Mundos</button>
+          <button id="settings-btn">⚙️ Ajustes</button>
+        </div>
+      </div>
+
+      <!-- Pantalla de mundos (Fase 7): lista de mundos guardados + crear nuevo -->
+      <div class="menu-screen hidden" id="menu-worlds">
+        <h2>🌍 Mundos</h2>
+        <div id="worlds-list" class="worlds-list"></div>
+        <label class="menu-field">Semilla de un mundo nuevo
+          <input id="seed-input" type="text" maxlength="40" placeholder="escribe una semilla y pulsa Crear" spellcheck="false" autocomplete="off">
+        </label>
+        <button id="seed-create-btn">Crear / Ir a esta semilla</button>
+        <button id="worlds-back-btn" class="menu-secondary">Volver</button>
+      </div>
+
+      <!-- Pantalla de ajustes (Fase 7) -->
+      <div class="menu-screen hidden" id="menu-settings">
+        <h2>⚙️ Ajustes</h2>
+        <label class="menu-field">Distancia de render
+          <span class="rd-row">
+            <input id="rd-slider" type="range" min="2" max="10" step="1">
+            <span id="rd-value">6</span>
+          </span>
+        </label>
+        <label class="menu-field toggle">Mostrar coordenadas en pantalla
+          <input id="coords-toggle" type="checkbox">
+        </label>
+        <button id="settings-back-btn" class="menu-secondary">Volver</button>
+      </div>
     </div>
   </div>
 
   <div id="crosshair">+</div>
+  <div id="coords-hud" class="hidden"></div>
   <div id="info">
     <div class="stat">❤️ <span id="hp">20</span>/<span id="maxhp">20</span></div>
     <div class="stat">🍗 <span class="bar"><span id="food-fill" class="fill"></span><span id="sat-fill" class="fill sat"></span></span> <span id="food">20</span>/20</div>

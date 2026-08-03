@@ -2,12 +2,47 @@
 // ALMACÉN DE MUNDO EN CLIENTE (chunks + geometría, culling entre chunks)
 // ============================================================
 import * as THREE from 'three';
-import { scene } from './scene.js';
-import { CHUNK_SIZE, WORLD_HEIGHT, WATER } from './constants.js';
+import { scene, camera } from './scene.js';
+import { CHUNK_SIZE, WORLD_HEIGHT, WATER, BLOCK_COLORS } from './constants.js';
 import { buildTerrainAtlas, tileForFace, tileRect } from './textures.js';
+import { lodTierFor } from './lod.js';
+import { createGeometryPool, setOrReuseAttribute } from './geopool.js';
 
 const chunkStore = new Map();     // "cx,cz" -> Uint8Array
-export const chunkMeshes = new Map();  // "cx,cz" -> THREE.Group
+export const chunkMeshes = new Map();  // "cx,cz" -> THREE.Group (detalle completo)
+export const lodMeshes = new Map();    // "cx,cz" -> THREE.Group (LOD: heightmap simplificado)
+
+// ============================================================
+// DISTANCIA DE RENDER (Fase 7, ajustable desde el menú de Ajustes)
+// Limita qué chunks se almacenan/construyen: los que quedan fuera del radio
+// (distancia Chebyshev en chunks al chunk del jugador) no se guardan ni se
+// dibujan. Al reducirla se descargan los lejanos; al ampliarla el servidor
+// reenvía los chunks del nuevo radio (settings → chunks_add).
+// ============================================================
+let renderDistance = 6; // chunks (2..10); debe coincidir con el servidor
+export function getRenderDistance() { return renderDistance; }
+
+function withinRenderDistance(cx, cz) {
+  const pcx = Math.floor(camera.position.x / CHUNK_SIZE);
+  const pcz = Math.floor(camera.position.z / CHUNK_SIZE);
+  return Math.abs(cx - pcx) <= renderDistance && Math.abs(cz - pcz) <= renderDistance;
+}
+
+export function setRenderDistance(rd) {
+  renderDistance = Math.min(10, Math.max(2, Math.round(rd)));
+  const toRemove = [];
+  for (const key of chunkStore.keys()) {
+    const [cx, cz] = key.split(',').map(Number);
+    if (!withinRenderDistance(cx, cz)) toRemove.push(key);
+  }
+  if (toRemove.length) unloadChunks(toRemove);
+}
+
+// Módulo de texturas activo: apunta al importado estáticamente, pero
+// hotReloadTextures() lo reemplaza por una instancia fresca (dynamic import
+// con cache-busting) para que la geometría reconstruida use las teselas/UVs
+// nuevos si cambió el layout del atlas (Fase 6, hot-reload).
+let tex = { tileForFace, tileRect };
 
 // Frustum culling (Fase 6): objetos reutilizados por frame (sin allocs).
 const frustum = new THREE.Frustum();
@@ -61,6 +96,23 @@ const waterMaterial = new THREE.MeshLambertMaterial({
   map: atlasTexture, transparent: true, opacity: 0.65,
   side: THREE.DoubleSide, // al nadar bajo la superficie, la cara superior se ve desde abajo
 });
+// LOD de chunks lejanos (Fase 6): material de COLOR PLANO por vértice (sin
+// textura ni teselas finas — geometría simplificada). Compartido por todos
+// los chunks LOD; igual que el atlas, se crea una vez y nunca se hace dispose.
+// vertexColors multiplica por la luz del día/noche (como el resto del mundo).
+// DoubleSide: los muros del caparazón pueden verse por detrás desde un valle
+// o desde muy arriba — es barato en un material sin textura.
+const lodMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+
+// Pool de geometrías (Fase 6): las BufferGeometry se reutilizan entre chunks
+// en vez de dispose()+new. Por categoría (terrain/water/lod: cada una con su
+// set de attributes), con tope para acotar la memoria retenida. Exponer el
+// pool para la métrica del HUD (window.__mcGeoPool, ver player.js).
+const geometryPool = createGeometryPool({
+  makeGeometry: () => new THREE.BufferGeometry(),
+  maxPooled: 24,
+});
+export function geoPoolStats() { return geometryPool.stats(); }
 
 // Geometrías de una única cara (evita crear cubos completos por cara expuesta).
 // `uvs` mapea cada esquina a la tesela del atlas (v arriba = textura vertical correcta).
@@ -87,7 +139,7 @@ function buildChunkGeometry(cx, cz) {
   // Bug de la Fase 4 (ReferenceError: wx is not defined → ningún chunk se
   // renderizaba); corregido al pasar las coordenadas explícitamente.
   const pushFace = (block, fi, target, wx, wy, wz) => {
-    const [u0, v0, u1, v1] = tileRect(tileForFace(block, fi));
+    const [u0, v0, u1, v1] = tex.tileRect(tex.tileForFace(block, fi));
     const [a, b, c, d] = FACES[fi].corners;
     const verts = [
       [wx + a[0], wy + a[1], wz + a[2]],
@@ -135,23 +187,25 @@ function buildChunkGeometry(cx, cz) {
 
   const group = new THREE.Group();
   if (positions.length > 0) {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    const geo = geometryPool.acquire('terrain');
+    setOrReuseAttribute(geo, 'position', positions, 3, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'normal', normals, 3, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'uv', uvs, 2, THREE.Float32BufferAttribute);
     const mesh = new THREE.Mesh(geo, terrainMaterial);
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.isTerrain = true;
+    mesh.userData.poolCat = 'terrain'; // categoría del pool al liberar
     group.add(mesh);
   }
   if (waterPositions.length > 0) {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(waterPositions, 3));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute(waterNormals, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(waterUvs, 2));
+    const geo = geometryPool.acquire('water');
+    setOrReuseAttribute(geo, 'position', waterPositions, 3, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'normal', waterNormals, 3, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'uv', waterUvs, 2, THREE.Float32BufferAttribute);
     const mesh = new THREE.Mesh(geo, waterMaterial);
     mesh.renderOrder = 1; // translúcido: dibujar después del terreno opaco
     mesh.userData.isTerrain = true;
+    mesh.userData.poolCat = 'water';
     group.add(mesh);
   }
   group.userData.boundingSphere = computeChunkSphere(group);
@@ -163,7 +217,8 @@ function buildChunkGeometry(cx, cz) {
 // Marca visible=false los chunks cuya esfera envolvente queda fuera del campo
 // de visión: se evita el draw call (y el paso de la geometría al renderer).
 // Se ejecuta cada frame desde el bucle de animación (public/player.js).
-// Devuelve cuántos chunks quedaron visibles (para el HUD y la auditoría).
+// Cubre los dos tiers (detalle completo + LOD). Devuelve cuántos chunks
+// quedaron visibles (para el HUD y la auditoría).
 // ============================================================
 export function applyFrustumCulling(camera) {
   camera.updateMatrixWorld(); // asegura matrixWorldInverse actualizado
@@ -176,21 +231,177 @@ export function applyFrustumCulling(camera) {
     group.visible = on;
     if (on) visible++;
   }
+  for (const [, group] of lodMeshes) {
+    const s = group.userData.boundingSphere;
+    const on = !s || frustum.intersectsSphere(s);
+    group.visible = on;
+    if (on) visible++;
+  }
   window.__mcVisibleChunks = visible;
   return visible;
 }
 
-export function rebuildChunk(key) {
-  const [cx, cz] = key.split(',').map(Number);
-  const old = chunkMeshes.get(key);
+// Libera el mesh de un chunk (del tier que tenga: completo o LOD). La
+// geometría vuelve al pool (se reutiliza en el siguiente chunk de su
+// categoría); los materiales (atlas / colores) son compartidos y no se tocan.
+function removeChunkMesh(key) {
+  const old = chunkMeshes.get(key) || lodMeshes.get(key);
   if (old) {
     scene.remove(old);
-    // Solo se libera la geometría: el material (atlas) es compartido por todos los chunks.
-    old.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    old.traverse((o) => {
+      if (!o.geometry) return;
+      const cat = o.userData && o.userData.poolCat;
+      if (cat) geometryPool.release(cat, o.geometry); // reutilizable
+      else o.geometry.dispose(); // defensivo: categoría desconocida → liberar
+    });
+    chunkMeshes.delete(key);
+    lodMeshes.delete(key);
   }
-  const group = buildChunkGeometry(cx, cz);
-  if (group) { scene.add(group); chunkMeshes.set(key, group); }
-  else chunkMeshes.delete(key);
+}
+
+// Distancia horizontal (bloques) del jugador al centro del chunk: decide el
+// tier LOD. La Y no cuenta para que el tier no parpadee al subir/bajar
+// colinas dentro del mismo chunk (el terreno puede elevarse 20 bloques).
+function distToChunkCenter(key, px, pz) {
+  const [cx, cz] = key.split(',').map(Number);
+  const cxp = cx * CHUNK_SIZE + CHUNK_SIZE / 2;
+  const czp = cz * CHUNK_SIZE + CHUNK_SIZE / 2;
+  return Math.hypot(px - cxp, pz - czp);
+}
+
+// Reconstruye el mesh de un chunk eligiendo el tier según la distancia actual
+// del jugador (con histéresis respecto al tier que ya tenía). Se usa tanto al
+// cargar como al editar bloques (rebuildAffectedChunks) y en updateLod.
+export function rebuildChunk(key) {
+  const [cx, cz] = key.split(',').map(Number);
+  const current = lodMeshes.has(key) ? 'lod' : 'full';
+  removeChunkMesh(key);
+  const tier = lodTierFor(distToChunkCenter(key, camera.position.x, camera.position.z), current);
+  const group = tier === 'lod' ? buildLodGeometry(cx, cz) : buildChunkGeometry(cx, cz);
+  if (group) {
+    scene.add(group);
+    if (tier === 'lod') lodMeshes.set(key, group);
+    else chunkMeshes.set(key, group);
+  }
+}
+
+// ============================================================
+// LOD: GEOMETRÍA SIMPLIFICADA DE CHUNKS LEJANOS (Fase 6)
+// Un "caparazón" por columna: un quad superior en la altura de la superficie
+// (color plano del bloque de superficie, sin teselas finas) + muros laterales
+// donde el vecino es más bajo (para que las laderas se vean sólidas, no
+// láminas flotantes). ~256 quads por chunk en vez de miles de caras.
+// ============================================================
+// Oscurece un color (para los muros: dan profundidad frente a las tapas).
+function darken(hex, f) {
+  const r = Math.min(255, Math.round(((hex >> 16) & 255) * f));
+  const g = Math.min(255, Math.round(((hex >> 8) & 255) * f));
+  const b = Math.min(255, Math.round((hex & 255) * f));
+  return (r << 16) | (g << 8) | b;
+}
+
+function pushQuadVertex(pos, norm, col, x, y, z, nx, ny, nz, color) {
+  pos.push(x, y, z);
+  norm.push(nx, ny, nz);
+  col.push(((color >> 16) & 255) / 255, ((color >> 8) & 255) / 255, (color & 255) / 255);
+}
+
+// Empuja un quad (4 vértices → 2 triángulos) con su normal y color plano.
+function pushQuad(pos, norm, col, ax, ay, az, bx, by, bz, cx2, cy, cz2, dx, dy, dz, nx, ny, nz, color) {
+  pushQuadVertex(pos, norm, col, ax, ay, az, nx, ny, nz, color);
+  pushQuadVertex(pos, norm, col, bx, by, bz, nx, ny, nz, color);
+  pushQuadVertex(pos, norm, col, cx2, cy, cz2, nx, ny, nz, color);
+  pushQuadVertex(pos, norm, col, ax, ay, az, nx, ny, nz, color);
+  pushQuadVertex(pos, norm, col, cx2, cy, cz2, nx, ny, nz, color);
+  pushQuadVertex(pos, norm, col, dx, dy, dz, nx, ny, nz, color);
+}
+
+// Altura de la superficie (primer bloque no vacío desde arriba; el agua
+// cuenta — la lámina de un lago se dibuja a su nivel) y su bloque. Devuelve
+// -1 si la columna está vacía (no debería pasar en el mundo).
+function columnSurface(chunk, x, z, wx, wz) {
+  for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+    const b = x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE
+      ? chunk[cIdx(x, y, z)]
+      : getClientBlock(wx, y, wz);
+    if (b !== 0 && b !== -1) return { y, block: b };
+  }
+  return { y: -1, block: 0 };
+}
+
+function buildLodGeometry(cx, cz) {
+  const chunk = chunkStore.get(`${cx},${cz}`);
+  if (!chunk) return null;
+  const baseX = cx * CHUNK_SIZE, baseZ = cz * CHUNK_SIZE;
+  const pos = [], norm = [], col = [];
+
+  // Rejilla de alturas de superficie (local -1..16 → 18x18): el interior se
+  // lee del chunk y el anillo de borde se muestrea con getClientBlock para
+  // que los muros de las columnas del borde tengan vecinos reales. Se calcula
+  // UNA vez por chunk: los 4 vecinos de cada columna se leen de la rejilla en
+  // vez de re-escanear la columna (≈4x menos trabajo que escanear por lado).
+  const H = [];
+  for (let x = -1; x <= CHUNK_SIZE; x++) {
+    const row = [];
+    for (let z = -1; z <= CHUNK_SIZE; z++) {
+      row.push(columnSurface(chunk, x, z, baseX + x, baseZ + z).y);
+    }
+    H.push(row);
+  }
+  // H[x+1][z+1] es la altura de la columna local (x, z).
+  const hAt = (x, z) => H[x + 1][z + 1];
+
+  for (let x = 0; x < CHUNK_SIZE; x++) {
+    for (let z = 0; z < CHUNK_SIZE; z++) {
+      const wx = baseX + x, wz = baseZ + z;
+      const h = hAt(x, z);
+      if (h < 0) continue;
+      const block = chunk[cIdx(x, h, z)];
+      const topColor = BLOCK_COLORS[block] ?? 0x888888;
+      const wallColor = darken(topColor, 0.75);
+      const yTop = h + 1;
+      const x0 = wx, x1 = wx + 1, z0 = wz, z1 = wz + 1;
+
+      // Tapa superior (vista desde arriba/lejos es lo que domina).
+      pushQuad(pos, norm, col,
+        x0, yTop, z0, x1, yTop, z0, x1, yTop, z1, x0, yTop, z1,
+        0, 1, 0, topColor);
+
+      // Muros: en cada lado, si el vecino es más bajo, la pared baja hasta él.
+      const nX = hAt(x + 1, z);
+      const pX = hAt(x - 1, z);
+      const nZ = hAt(x, z + 1);
+      const pZ = hAt(x, z - 1);
+      if (nX >= 0 && nX < h) pushQuad(pos, norm, col, x1, nX + 1, z0, x1, yTop, z0, x1, yTop, z1, x1, nX + 1, z1, 1, 0, 0, wallColor);
+      if (pX >= 0 && pX < h) pushQuad(pos, norm, col, x0, pX + 1, z1, x0, yTop, z1, x0, yTop, z0, x0, pX + 1, z0, -1, 0, 0, wallColor);
+      if (nZ >= 0 && nZ < h) pushQuad(pos, norm, col, x0, nZ + 1, z1, x0, yTop, z1, x1, yTop, z1, x1, nZ + 1, z1, 0, 0, 1, wallColor);
+      if (pZ >= 0 && pZ < h) pushQuad(pos, norm, col, x1, pZ + 1, z0, x1, yTop, z0, x0, yTop, z0, x0, pZ + 1, z0, 0, 0, -1, wallColor);
+    }
+  }
+
+  if (pos.length === 0) return null;
+  const geo = geometryPool.acquire('lod');
+  setOrReuseAttribute(geo, 'position', pos, 3, THREE.Float32BufferAttribute);
+  setOrReuseAttribute(geo, 'normal', norm, 3, THREE.Float32BufferAttribute);
+  setOrReuseAttribute(geo, 'color', col, 3, THREE.Float32BufferAttribute);
+  const mesh = new THREE.Mesh(geo, lodMaterial);
+  mesh.userData.poolCat = 'lod';
+  const group = new THREE.Group();
+  group.add(mesh);
+  group.userData.boundingSphere = computeChunkSphere(group);
+  return group;
+}
+
+// Recorre los chunks cargados y cambia de tier si la distancia del jugador
+// cruzó el umbral LOD (histéresis en lod.js). Solo reconstruye los que
+// cambian; se llama desde player.js con un throttle (~2-4 veces/s).
+export function updateLod() {
+  const px = camera.position.x, pz = camera.position.z;
+  for (const key of [...chunkMeshes.keys(), ...lodMeshes.keys()]) {
+    const current = lodMeshes.has(key) ? 'lod' : 'full';
+    const next = lodTierFor(distToChunkCenter(key, px, pz), current);
+    if (next !== current) rebuildChunk(key);
+  }
 }
 
 export function rebuildAffectedChunks(wx, wz) {
@@ -205,19 +416,99 @@ export function rebuildAffectedChunks(wx, wz) {
 }
 
 export function loadChunkData(chunkData) {
-  for (const [key, arr] of Object.entries(chunkData)) chunkStore.set(key, Uint8Array.from(arr));
-  for (const key of Object.keys(chunkData)) rebuildChunk(key);
+  for (const [key, arr] of Object.entries(chunkData)) {
+    // Fase 7: no construir chunks fuera de la distancia de render elegida
+    const [cx, cz] = key.split(',').map(Number);
+    if (!withinRenderDistance(cx, cz)) continue;
+    chunkStore.set(key, Uint8Array.from(arr));
+    rebuildChunk(key);
+  }
+}
+
+// Hot-reload del atlas (Fase 6): re-importa textures.js con cache-busting
+// (URL con timestamp → módulo nuevo), regenera el atlas y actualiza los
+// materiales compartidos. La geometría se reconstruye porque los UVs dependen
+// del layout del atlas (puede haber cambiado si se añadieron teselas).
+export async function hotReloadTextures() {
+  let mod;
+  try {
+    mod = await import(`./textures.js?t=${Date.now()}`);
+  } catch (e) {
+    // El archivo puede estar a medio escribir (los editores lo reemplazan por
+    // rename): conservar el atlas anterior y avisar, nunca romper el render.
+    console.warn('⚠️  No se pudo re-importar el atlas:', e.message);
+    return null;
+  }
+  const newAtlas = mod.buildTerrainAtlas();
+  // Liberar la textura anterior (el atlas se comparte entre ambos materiales;
+  // dispose es idempotente si apuntan a la misma).
+  if (terrainMaterial.map) terrainMaterial.map.dispose();
+  if (waterMaterial.map) waterMaterial.map.dispose();
+  terrainMaterial.map = newAtlas;
+  terrainMaterial.needsUpdate = true;
+  waterMaterial.map = newAtlas;
+  waterMaterial.needsUpdate = true;
+  // Cambiar también las funciones de tesela/UV: la geometría reconstruida
+  // usa el layout nuevo (los chunks ya construidos se reconstruyen debajo).
+  // Solo los chunks de detalle completo usan el atlas: los LOD (color plano)
+  // no dependen de él, pero igual se reconstruyen para refrescar el tier.
+  tex = { tileForFace: mod.tileForFace, tileRect: mod.tileRect };
+  for (const key of [...chunkMeshes.keys(), ...lodMeshes.keys()]) rebuildChunk(key);
+  return newAtlas;
 }
 
 export function unloadChunks(keys) {
   for (const key of keys || []) {
-    const old = chunkMeshes.get(key);
-    if (old) {
-      scene.remove(old);
-      // Solo geometría: el material del atlas es compartido y no debe liberarse.
-      old.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
-      chunkMeshes.delete(key);
-    }
+    removeChunkMesh(key); // libera el tier que tenga (completo o LOD)
     chunkStore.delete(key);
   }
+}
+
+// ============================================================
+// GRIETAS DE ROTURA (Fase 6, minería fina)
+// Una caja translúcida sobre el bloque en mina cuyo oscurecimiento sigue las
+// fases 0-9 que envía el servidor (block_break_progress). Es feedback local:
+// solo el jugador que mina ve sus grietas; stage -1 (o romperse el bloque)
+// las oculta.
+// ============================================================
+let crackMesh = null;
+const crackMaterial = new THREE.MeshBasicMaterial({
+  color: 0x111111, transparent: true, opacity: 0, depthWrite: false,
+});
+let crackTarget = null; // {x,y,z} del bloque en mina (para ocultarla al romperse)
+
+// Muestra el overlay sobre el bloque objetivo (sin progreso todavía).
+export function showCrack(x, y, z) {
+  if (!crackMesh) {
+    crackMesh = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), crackMaterial);
+    crackMesh.renderOrder = 3; // por encima del terreno y el agua
+    scene.add(crackMesh);
+  }
+  crackTarget = { x, y, z };
+  crackMesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+  crackMaterial.opacity = 0;
+}
+
+// stage 0-9: oscurecimiento progresivo (pseudogrietas). stage <0 (cancelada)
+// solo oculta si coincide con el bloque en mina (un -1 tardío de un retarget
+// no debe borrar las grietas del bloque nuevo). El guard de target se aplica
+// por igual a todas las fases: un mensaje tardío de un bloque anterior no
+// debe teñir las grietas del bloque actual (orden WS lo evita en la práctica;
+// defensivo y consistente).
+export function setCrackStage(stage, x, y, z) {
+  if (!crackMesh) return;
+  if (!crackTarget || crackTarget.x !== x || crackTarget.y !== y || crackTarget.z !== z) return;
+  if (stage < 0 || stage >= 10) { hideCrack(); return; }
+  crackMaterial.opacity = 0.08 + (stage / 9) * 0.45;
+}
+
+export function hideCrack() {
+  crackTarget = null;
+  if (crackMesh) crackMaterial.opacity = 0;
+}
+
+// Oculta las grietas si el bloque que cambió es el que se estaba minando
+// (el servidor acaba de romperlo y llega el block_update).
+export function hideCrackIfAt(x, y, z) {
+  if (crackTarget && crackTarget.x === x && crackTarget.y === y && crackTarget.z === z) hideCrack();
 }

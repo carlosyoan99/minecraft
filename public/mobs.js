@@ -16,11 +16,50 @@ function makeHumanoid(color) {
   return mesh;
 }
 
-export function spawnRemotePlayer(id, x, y, z) {
+// ============================================================
+// ETIQUETA DE NOMBRE FLOTANTE (Fase 7)
+// Sprite de texto encima de la cabeza del jugador remoto. Se redibuja en un
+// canvas y se sube al GPU con needsUpdate cuando el nombre cambia.
+// ============================================================
+function makeNameTag(name) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 4;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  const tag = new THREE.Sprite(mat);
+  const draw = (text) => {
+    g.clearRect(0, 0, c.width, c.height);
+    g.font = 'bold 40px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.lineWidth = 7;
+    g.strokeStyle = 'rgba(0,0,0,0.75)';
+    g.strokeText(text, c.width / 2, c.height / 2);
+    g.fillStyle = '#ffffff';
+    g.fillText(text, c.width / 2, c.height / 2);
+    tex.needsUpdate = true;
+  };
+  draw(name);
+  tag.scale.set(2.4, 0.6, 1);
+  tag.position.set(0, 2.25, 0); // flotando sobre la cabeza
+  return { tag, draw };
+}
+
+export function spawnRemotePlayer(id, x, y, z, name = '') {
   const mesh = makeHumanoid(0xdd4444);
   mesh.position.set(x, y, z);
+  const nameTag = makeNameTag(name || id.slice(0, 6));
+  mesh.add(nameTag.tag);
+  mesh.userData.nameTag = nameTag;
   scene.add(mesh);
   remotePlayers.set(id, mesh);
+}
+
+export function renameRemotePlayer(id, name) {
+  const mesh = remotePlayers.get(id);
+  if (mesh && mesh.userData.nameTag && name) mesh.userData.nameTag.draw(name);
 }
 
 export function removeRemotePlayer(id) {

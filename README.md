@@ -52,6 +52,8 @@ mi-minecraft/
 │   ├── client.js          Bootstrap que cablea los módulos (14 líneas)
 │   ├── constants.js       Constantes del cliente (IDs, colores, texturas, durabilidad)
 │   ├── loading.js         Pantalla de carga estilo Minecraft (progreso + consejos)
+│   ├── lod.js             Decisión pura de LOD para chunks lejanos (histéresis)
+│   ├── geopool.js         Pool de geometrías reutilizables (buffer pooling)
 │   ├── debug.js           Visualizador de chunks (F3): bordes + caras para depurar culling
 │   ├── connection.js      Socket WebSocket
 │   ├── network.js         Dispatcher de eventos servidor→cliente
@@ -141,15 +143,34 @@ recupera su mundo).
 ### 🚧 En desarrollo
 
 - **Fase 6** en curso (ver `TODO.md`). Ya hechas: consola de comandos
-  (`/help`, `/tp`, `/give`, `/time set`, `/gamemode`), frustum culling
+  (`/help`, `/tp`, `/give`, `/time set`, `/gamemode` — creative con
+  **minería instantánea**: romper es inmediato, sin desgaste de
+  herramienta ni drops), frustum culling
   en el cliente (el HUD muestra visibles/totales), pantalla de carga
   estilo Minecraft, **semilla seleccionable desde el menú** (campo
   "Semilla del mundo" → `set_seed`; el servidor cambia el mundo
-  activo y cada semilla tiene su propio directorio), y **terreno
+  activo y cada semilla tiene su propio directorio), **terreno
   pulido**: transiciones de bioma suaves (alturas interpoladas
   continuamente, sin acantilados en las fronteras) y cuevas que abren
-  bocas hacia la superficie. Pendientes:
-  minería fina, texturas de mobs/items, cama y armadura, cofres,
+  bocas hacia la superficie, **hot-reload de recetas y atlas**: al
+  editar `recetas.json`/`recetas_horno.json` o `public/textures.js` (o
+  con `/reload`) el servidor recarga las recetas con swap atómico y
+  avisa a los clientes para que regeneren el atlas en caliente, sin
+  reiniciar nada, y **minería fina**: dureza por bloque y velocidad
+  según la herramienta (mantén pulsado el clic para minar, con grietas
+  de progreso; piedra/minerales solo sueltan drop con pico — con la
+  herramienta equivocada o a mano se rompe igual pero sin drop), y
+  **LOD de chunks lejanos**: más allá de 56 bloques los chunks se
+  renderizan con geometría simplificada (un quad por columna con el
+  color plano del bloque de superficie, sin teselas finas, ~256 quads
+  en vez de miles de caras); al acercarte a <44 bloques vuelven al
+  detalle completo (histéresis: sin parpadeo en la frontera), y
+  **pool de geometrías**: las `BufferGeometry` de los chunks se
+  reutilizan al cargar/descargar/reconstruir (antes `dispose()` +
+  reconstrucción completa), reutilizando también los arrays cuando el
+  tamaño coincide (menos allocs y uploads al GPU).
+  Pendientes:
+  texturas de mobs/items, cama y armadura, cofres,
   antorchas, etc.
 
 ### ❌ Fuera de alcance (Won't)
@@ -168,7 +189,7 @@ en el servidor y `public/network.js` en el cliente).
 | event | data | Propósito |
 |---|---|---|
 | `move` | `{x, y, z, yaw, pitch}` | Posición (validada con anti-cheat) |
-| `block_action` | `{action: "break"\|"place", x, y, z, itemId}` | Romper/colocar bloque |
+| `block_action` | `{action: "break"\|"place"\|"break_cancel", x, y, z, itemId}` | Minar (sesión con progreso, Fase 6), colocar bloque o cancelar la mina |
 | `craft` | `{grid}` | Craftear desde el grid 3x3 |
 | `grid_set` / `grid_clear` | celda / — | Mover ítem del inventario a la mesa |
 | `furnace_open` | `{x, y, z}` | Abrir un horno |
@@ -188,9 +209,11 @@ en el servidor y `public/network.js` en el cliente).
 | `seed_rejected` | `{reason}` | El servidor no pudo cambiar de semilla (otros jugadores o mundo ilegible) |
 | `chunks_add` / `chunks_unload` | `{chunkData}` / `{keys}` | Chunks nuevos / a descargar |
 | `block_update` | `{x, y, z, blockId}` | Cambio de bloque replicado |
+| `block_break_progress` | `{x, y, z, stage}` | Grieta de rotura (0-9, -1 al cancelar) durante la minería (Fase 6) |
 | `player_join` / `player_move` / `player_leave` | posición, yaw | Otros jugadores |
 | `mobs_update` / `mob_death` / `mob_breed` | mobs, `{id}`, posición | Mobs en rango |
 | `time_set` | `{dayTime}` | Re-sincroniza el ciclo día/noche (comando `/time set`) |
+| `textures_reload` | `{}` | Hot-reload del atlas: el cliente re-importa `textures.js` y reconstruye los chunks (Fase 6) |
 | `teleport` | `{x, y, z}` | Corrección anti-cheat |
 | `player_die` | `{id}` | Muerte y reaparición |
 | `inventory_update` | `{inventory}` | Inventario completo (con `durability`) |
@@ -229,6 +252,20 @@ en el servidor y `public/network.js` en el cliente).
     (mobs se hunden en el agua) y `unit-spawn.js` (spawn sobre tierra firme).
   - **Fase 5 (progresión):** `unit-durabilidad.js` (durabilidad, XP y mobs
     nuevos).
+  - **Fase 6 (dev):** `unit-reload.js` (hot-reload de recetas: swap atómico,
+    JSON inválido y receta malformada mantienen las tablas anteriores), el
+    test del comando `/reload` dentro de `unit-red.js`, `unit-mineria.js`
+    (dureza/velocidad de rotura, drop condicional y sesiones de minería:
+    completar, cancelar por bloque cambiado/distancia, herramienta
+    equivocada que rompe sin drop), `unit-lod.js` (LOD de chunks
+    lejanos: distancias límite exactas, histéresis — conservar el tier
+    en la banda intermedia — y un único cambio de tier al acercarse o
+    alejarse; importa `public/lod.js` como ESM vía copia `.mjs`) y
+    `unit-geopool.js` (pool de geometrías: reutilización real de la
+    misma geometría y del mismo array al re-adquirir, tope del pool
+    con dispose del exceso, categorías separadas, categoría
+    desconocida → dispose, y `setOrReuseAttribute` con tamaño igual
+    vs distinto).
   - **Integridad transversal:** `unit-recetas.js` (todas las recetas de
     crafteo/horno referencian IDs existentes, shapes bien formadas y
     alcanzables desde su grid — habría detectado el bug `hilo_a_lana` de la
@@ -236,9 +273,13 @@ en el servidor y `public/network.js` en el cliente).
     compartidas están sincronizados entre `constants.js` del servidor y
     `public/constants.js` del cliente).
   - Y, si hay un servidor vivo en `ws://localhost:3998` (o `$WS_URL`), los
-    E2E de comer (`tests/e2e-comer.js`) y de durabilidad
+    E2E de comer (`tests/e2e-comer.js`), de durabilidad
     (`tests/e2e-durabilidad.js` — craftea un pico de madera, rompe sus 60
-    usos de piedra y verifica que se rompe al llegar a 0 sin duplicar drops).
+    usos de piedra y verifica que se rompe al llegar a 0 sin duplicar drops)
+    y de hot-reload (`tests/e2e-reload.js` — edita `recetas.json` del
+    servidor y verifica que el watcher recarga y avisa por chat, que
+    `/reload` responde y que un JSON inválido se rechaza sin tumbar el
+    servidor; pasa `RECETAS_PATH` si el servidor no es el del proyecto).
 - Flags del runner: `node tests/run.js --unit` (solo unitarios), `WS_URL=...`
   `node tests/run.js --e2e` (solo E2E contra ese servidor).
 - Para que los handlers de red sean testeables, `net.js` exporta
@@ -251,15 +292,20 @@ en el servidor y `public/network.js` en el cliente).
     generación (1.91 ms/chunk, 16 KB/chunk, regeneración bit-idéntica).
   - `node tests/audit-fase5.js` — sincronización de durabilidad servidor↔cliente,
     no-duplicación al romperse una herramienta, XP/niveles.
+  - `node tests/audit-fase6.js` — LOD de chunks lejanos: comparación de
+    caras/triángulos con y sin LOD (radio 6 completo, regla EXACTA del
+    cliente), memoria de geometría por chunk, pool de geometrías en ciclo
+    real de carga/descarga y determinismo del caparazón LOD.
 
 ### Resultados (agosto 2026)
 
-Suite completa en verde: **15 tests unitarios + 2 E2E** (si hay servidor).
+Suite completa en verde: **19 tests unitarios + 3 E2E** (si hay servidor).
 Última ejecución: todos los unitarios pasan (persistencia, IA de mobs,
-handlers de red, integridad de recetas y sincronización servidor↔cliente
-incluidos), y los E2E contra un servidor real con mundo fresco dan
-durabilidad 124/124 y comer 5/5 (el bonus de caza puede omitirse si no
-aparece un animal cercano, quedando 3/3 — los checks base siempre pasan).
+handlers de red, integridad de recetas, sincronización servidor↔cliente,
+hot-reload, minería fina y LOD incluidos), y los E2E contra un servidor
+real con mundo fresco dan durabilidad 124/124, reload 4/4 y comer 5/5
+(el bonus de caza puede omitirse si no aparece un animal cercano,
+quedando 3/3 — los checks base siempre pasan).
 La auditoría de la Fase 5 sigue cubriendo la sincronización de durabilidad
 y la no-duplicación de items; los unitarios transversales amplían la red
 de seguridad a toda la base.
@@ -302,8 +348,46 @@ preocupación por commit, y los commits son en español.
   el coste del pase (~0.01 ms para cientos de chunks). Pulsa **F3**
   para el visualizador de chunks: grid rojo con los bordes de cada
   chunk sobre el terreno y panel con FPS, posición, chunks
-  visibles/totales, caras de geometría y triángulos renderizados
-  (`public/debug.js`).
+  visibles/totales, caras de geometría (cuenta también las del LOD)
+  y triángulos renderizados (`public/debug.js`).
+- **LOD simple de chunks lejanos (Fase 6):** la decisión de nivel de
+  detalle es pura y testeable (`public/lod.js`, `lodTierFor` con
+  histéresis: se entra en LOD a >56 bloques del centro del chunk y
+  se vuelve al detalle completo a <44, conservando el tier en la
+  banda intermedia — sin parpadeo; la distancia es horizontal para
+  que el tier no alterne al subir/bajar colinas). Los chunks LOD
+  usan un caparazón de quads por columna (color plano del bloque de
+  superficie vía `BLOCK_COLORS`, sin atlas) con muros laterales
+  donde el vecino es más bajo, material compartido `vertexColors`
+  que reacciona al día/noche; `updateLod()` hace el swap al cruzar
+  el umbral (throttle 250 ms) y el frustum culling, la descarga y el
+  hot-reload del atlas cubren ambos tiers. Cubierto por
+  `tests/unit-lod.js` (fronteras exactas, histéresis y un único flip
+  al acercarse/alejarse).
+- **Pool de geometrías (Fase 6):** al cargar/descargar/reconstruir un
+  chunk, su geometría vuelve a un pool por categoría
+  (`public/geopool.js`, `createGeometryPool` con tope por categoría)
+  en vez de `dispose()`; `setOrReuseAttribute` reutiliza el array
+  subyacente cuando el tamaño coincide (evita alloc de Float32Array y
+  re-upload completo al GPU — el coste dominante de la
+  reconstrucción). Los materiales compartidos siguen sin tocarse.
+  Cubierto por `tests/unit-geopool.js` (reutilización real, tope,
+  categorías separadas y `setOrReuseAttribute`). El F3 muestra
+  reutilizadas/creadas/liberadas (`__mcGeoPool`).
+- Rendimiento medido en la auditoría de Fase 6: **LOD de chunks lejanos**
+  (herramienta `tests/audit-fase6.js` + medición real en Chrome headless
+  vía CDP, SwiftShader — números conservadores): en el área de render
+  completa (radio 6, 169 chunks), 136 quedan en LOD y 33 en detalle
+  completo (el navegador confirma los mismos conteos). Triángulos 234K con
+  LOD vs 560K sin LOD (reducción del 58%); un chunk LOD cuesta ~78% menos
+  que su versión full. Geometría bruta 22.8 MB con LOD vs 51.2 MB sin LOD.
+  FPS reales: **100.5 de media (136.5 estables) con LOD frente a 24.3 (30
+  estables) sin LOD** con el mismo mundo y la misma cámara (~94K vs ~209K
+  triángulos renderizados; heap 48 MB vs 85 MB) — el LOD multiplica por
+  ~4.5 el rendimiento del anillo lejano dentro de la niebla (fog 40-140).
+  El pool de geometrías reutilizó 91 geometrías de 174 creadas en la
+  sesión real de navegador (55%), y el ciclo de carga/descarga en Node
+  reutiliza la misma geometría y el mismo array sin allocs nuevos.
 - Rendimiento medido en la auditoría de Fase 4: generación 1.91 ms/
   chunk con cuevas + lagos; ~234K triángulos para un radio de vista 4
   (la Fase 2 renderizaba 310K estables — las cuevas reducen

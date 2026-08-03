@@ -4,6 +4,8 @@
 // ENTRADA DEL SERVIDOR: carga los módulos por responsabilidad,
 // conecta los hooks de broadcast (evitan ciclos de require) y arranca.
 // ============================================================
+const fs = require('fs');
+const path = require('path');
 const { SAVE_INTERVAL_MS, UNLOAD_INTERVAL_MS } = require('./constants.js');
 const state = require('./state.js');
 const world = require('./world.js');
@@ -19,6 +21,38 @@ save.setUnloadHandler((keys) => net.broadcast('chunks_unload', { keys }));
 playerHelpers.setBroadcastHandler((event, data) => net.broadcast(event, data));
 
 crafting.loadRecipes();
+
+// Hot-reload (Fase 6): recetas y atlas de texturas sin reiniciar el servidor.
+// El servidor vigila los archivos: al cambiar, recarga las recetas (swap
+// atómico en crafting.reloadRecipes) y avisa a los clientes para que
+// regeneren el atlas (el atlas vive en el cliente, se re-importa en caliente).
+crafting.watchRecipeFiles((r) => {
+  const msg = r.ok
+    ? `♻️ Recetas recargadas (${r.crafting} crafteo, ${r.furnace} horno)`
+    : `⚠️ Recetas NO recargadas: ${r.error} (se mantienen las anteriores)`;
+  console.log(msg);
+  net.broadcast('chat', { id: 'Server', message: msg });
+  if (r.ok) net.broadcast('textures_reload', {});
+});
+
+const texturesPath = path.join(__dirname, 'public', 'textures.js');
+let texturesTimer = null;
+try {
+  fs.watch(path.join(__dirname, 'public'), (ev, filename) => {
+    if (filename !== 'textures.js') return;
+    if (texturesTimer) return;
+    texturesTimer = setTimeout(() => {
+      texturesTimer = null;
+      // Si el archivo está a medio reemplazar (borrado temporal del editor),
+      // no avisar: los clientes importarían un módulo inexistente.
+      if (!fs.existsSync(texturesPath)) return;
+      console.log('🎨 Atlas de texturas cambiado: avisando a los clientes (textures_reload)');
+      net.broadcast('textures_reload', {});
+    }, 200);
+  });
+} catch (e) {
+  console.warn(`⚠️  No se pudo vigilar el atlas (hot-reload desactivado): ${e.message}`);
+}
 
 // Layout antiguo (world.json + chunks en la raíz de world/) → directorio de la
 // semilla (world/<semilla>/): cada semilla tiene su propio mundo (bug semilla).

@@ -2,26 +2,32 @@
 // RED: MANEJO DE MENSAJES DEL SERVIDOR
 // ============================================================
 import { camera } from './scene.js';
-import { socket } from './connection.js';
-import { loadChunkData, setClientBlock, rebuildAffectedChunks, unloadChunks } from './world.js';
+import { socket, setStoredName } from './connection.js';
+import { loadChunkData, setClientBlock, rebuildAffectedChunks, unloadChunks, hotReloadTextures, setCrackStage, hideCrackIfAt } from './world.js';
 import {
-  spawnRemotePlayer, removeRemotePlayer, updateRemotePlayer, updateMobs, removeMob, spawnHearts,
+  spawnRemotePlayer, removeRemotePlayer, updateRemotePlayer, renameRemotePlayer, updateMobs, removeMob, spawnHearts,
 } from './mobs.js';
 import { teleport } from './player.js';
 import { initDayNight } from './daynight.js';
 import { playCrack } from './audio.js';
+import { applyStoredSettings } from './settings.js';
 import {
   applyInventory, applyHealth, applyFood, applyXp, applyCraftingGrid, applyFurnaceState,
-  addChatLine, flashMessage, onWorldLoaded, onSeedRejected,
+  addChatLine, flashMessage, onWorldLoaded, onSeedRejected, renderWorldsList,
 } from './ui.js';
 
 let playerId = null;
+let playerName = '';
+// Fase 7: nombre visible del jugador local (fuente de verdad: el servidor).
+export function getPlayerName() { return playerName; }
 
 socket.addEventListener('message', (e) => {
   const { event, data } = JSON.parse(e.data);
   switch (event) {
     case 'init': {
       playerId = data.playerId;
+      playerName = data.name || playerName;
+      setStoredName(playerName);
       camera.position.set(data.spawnX, data.spawnY, data.spawnZ);
       loadChunkData(data.chunkData);
       applyInventory(data.inventory);
@@ -30,21 +36,28 @@ socket.addEventListener('message', (e) => {
       applyFood(data.food, data.saturation);
       updateMobs(data.mobs);
       initDayNight(data.dayTime);
-      for (const p of data.otherPlayers) spawnRemotePlayer(p.id, p.x, p.y, p.z);
+      for (const p of data.otherPlayers) spawnRemotePlayer(p.id, p.x, p.y, p.z, p.name);
       // Fase 6: cerrar la pantalla de carga (esperando el init de la semilla
       // pedida si se cambió de mundo desde el menú)
       onWorldLoaded(data.seed);
+      // Fase 7: aplicar los ajustes guardados (distancia de render) ahora que
+      // el mundo está cargado; el servidor reenvía los chunks del radio pedido
+      applyStoredSettings();
       break;
     }
     case 'chunks_add': loadChunkData(data.chunkData); break;
     case 'chunks_unload': unloadChunks(data.keys); break;
+    case 'worlds_list': renderWorldsList(data.worlds || []); break; // Fase 7: menú de mundos
     case 'block_update': {
       setClientBlock(data.x, data.y, data.z, data.block);
       rebuildAffectedChunks(data.x, data.z);
+      hideCrackIfAt(data.x, data.y, data.z); // el bloque en mina se rompió
       break;
     }
-    case 'player_join': spawnRemotePlayer(data.id, data.x, data.y, data.z); break;
+    case 'block_break_progress': setCrackStage(data.stage, data.x, data.y, data.z); break; // Fase 6: grietas de rotura
+    case 'player_join': spawnRemotePlayer(data.id, data.x, data.y, data.z, data.name); break;
     case 'player_move': updateRemotePlayer(data.id, data.x, data.y, data.z, data.yaw); break;
+    case 'player_rename': renameRemotePlayer(data.id, data.name); break; // Fase 7: cambio de nombre en vivo
     case 'player_leave': removeRemotePlayer(data.id); break;
     case 'mobs_update': updateMobs(data); break;
     case 'mob_death': removeMob(data.id); break;
@@ -70,6 +83,11 @@ socket.addEventListener('message', (e) => {
     case 'furnace_state': applyFurnaceState(data); break;
     case 'time_set': initDayNight(data.dayTime); break; // Fase 6: /time set re-sincroniza el ciclo visual
     case 'seed_rejected': onSeedRejected(data.reason); break; // Fase 6: el servidor no pudo cambiar de semilla
-    case 'chat': addChatLine(data.id === playerId ? 'Tú' : data.id.slice(0, 6), data.message); break;
+    case 'textures_reload': { // Fase 6: hot-reload del atlas (sin recargar la página)
+      hotReloadTextures();
+      flashMessage('🔄 Atlas de texturas recargado');
+      break;
+    }
+    case 'chat': addChatLine(data.id === playerName ? 'Tú' : data.id, data.message); break;
   }
 });

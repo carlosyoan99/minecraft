@@ -23,6 +23,7 @@ function buildMeta() {
   return {
     schemaVersion: SCHEMA_VERSION,
     seed: P.currentSeed,
+    name: P.currentSeed, // Fase 7: nombre mostrado en el menú de mundos (por defecto, la semilla)
     lastSaved: new Date().toISOString(),
     mobs: state.mobs.filter((m) => m.alive).map((m) => ({ id: m.id, type: m.type, x: m.x, y: m.y, z: m.z, health: m.health, isBaby: m.isBaby, age: m.age })),
     furnaces: Array.from(furnaces.entries()),
@@ -210,6 +211,40 @@ function migrateLegacyWorld() {
   }
 }
 
+// Lista los mundos guardados (Fase 7: menú de selección del cliente). Devuelve
+// [{ seed, name, chunkCount, lastSaved }] ordenados por última modificación
+// (más reciente primero). Un mundo es un directorio en world/; la identidad es
+// la semilla (nombre del directorio) y el `name` mostrado se lee de world.json.
+function listWorlds() {
+  const out = [];
+  if (!fs.existsSync(P.worldRoot)) return out;
+  for (const dir of fs.readdirSync(P.worldRoot)) {
+    const dirPath = path.join(P.worldRoot, dir);
+    let stat;
+    try { stat = fs.statSync(dirPath); } catch { continue; }
+    if (!stat.isDirectory()) continue;
+    let seed = dir, name = dir, lastSaved = null, chunkCount = 0;
+    try {
+      const metaFile = path.join(dirPath, 'world.json');
+      if (fs.existsSync(metaFile)) {
+        const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
+        if (typeof meta.seed === 'string' && meta.seed) seed = meta.seed;
+        if (typeof meta.name === 'string' && meta.name) name = meta.name;
+        if (typeof meta.lastSaved === 'string') lastSaved = meta.lastSaved;
+      }
+      const chunksDir = path.join(dirPath, 'chunks');
+      if (fs.existsSync(chunksDir)) {
+        chunkCount = fs.readdirSync(chunksDir).filter((f) => f.endsWith('.json')).length;
+      }
+    } catch (e) {
+      console.warn(`⚠️  Mundo ilegible en world/${dir}: ${e.message}`);
+    }
+    out.push({ seed, name, chunkCount, lastSaved });
+  }
+  out.sort((a, b) => (b.lastSaved || '').localeCompare(a.lastSaved || ''));
+  return out;
+}
+
 // Hook para que la entrada (net) conecte el broadcast de chunks_unload;
 // evita un ciclo de require entre save y net.
 let unloadHandler = null;
@@ -256,4 +291,4 @@ function unloadFarChunks() {
   console.log(`🗑️ Descargados ${toUnload.length} chunks lejanos (${chunks.size} en memoria)`);
 }
 
-module.exports = { saveWorld, loadWorld, migrateLegacyWorld, migrateWorldLayout, switchWorld, unloadFarChunks, setUnloadHandler };
+module.exports = { saveWorld, loadWorld, migrateLegacyWorld, migrateWorldLayout, switchWorld, unloadFarChunks, setUnloadHandler, listWorlds };

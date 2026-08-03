@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { camera, renderer, controls } from './scene.js';
-import { getClientBlock, chunkMeshes } from './world.js';
+import { getClientBlock, chunkMeshes, showCrack, hideCrack } from './world.js';
 import { mobMeshes } from './mobs.js';
 import { move } from './player.js';
 import {
@@ -56,6 +56,31 @@ document.addEventListener('keyup', (e) => {
 // ============================================================
 const raycaster = new THREE.Raycaster();
 raycaster.far = 7;
+
+// Fase 6 (minería fina): mantener pulsado el clic izquierdo mina el bloque
+// (el servidor avanza el progreso por dureza/velocidad de herramienta y
+// envía block_break_progress para las grietas). Soltar, mirar a otro bloque
+// o soltar el puntero cancela la mina.
+let miningTarget = null; // {x,y,z} del bloque que se está minando
+
+function startMiningAt(x, y, z) {
+  const target = getClientBlock(x, y, z);
+  // Mesa de crafteo/horno se abren con clic (no se minan así); el agua no se
+  // rompe sin cubo (sin feedback falso). Bloques desconocidos (-1): no minar.
+  if (target === 15 || target === 16 || target === WATER || target === -1) return false;
+  miningTarget = { x, y, z };
+  playBreak(target);
+  showCrack(x, y, z);
+  send('block_action', { action: 'break', x, y, z });
+  return true;
+}
+
+function stopMining() {
+  if (!miningTarget) return;
+  miningTarget = null;
+  hideCrack();
+  send('block_action', { action: 'break_cancel' });
+}
 // Solo los pasivos se pueden alimentar (trigo/zanahoria/semillas); el
 // conejo también come zanahorias (Fase 5)
 const PASSIVE_MOBS = new Set(['cow', 'pig', 'chicken', 'sheep', 'rabbit']);
@@ -78,6 +103,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
   // Alimentar animales: clic derecho sobre un animal pasivo con su comida de
   // cría (trigo → vaca/oveja, zanahoria → cerdo, semillas → pollo); izquierdo ataca.
   if (hit && hit.object.userData.mobId) {
+    stopMining(); // clicar un mob cancela cualquier mina en curso
     if (e.button === 0) {
       send('attack_mob', { mobId: hit.object.userData.mobId });
     } else if (e.button === 2 && held && BREED_FOOD.has(held.id) &&
@@ -105,9 +131,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     const target = getClientBlock(x, y, z);
     if (target === 16) { toggleFurnaceUI(true, { x, y, z }); return; }
     if (target === 15) { openCraftingFromBlock(); return; }
-    if (target === WATER) return; // el agua no se puede romper (sin cubo): sin feedback falso
-    playBreak(target);
-    send('block_action', { action: 'break', x, y, z });
+    startMiningAt(x, y, z); // mantener pulsado = minar (agua/mesa/horno → false)
   } else if (e.button === 2) {
     const nx = x + Math.round(hit.face.normal.x);
     const ny = y + Math.round(hit.face.normal.y);
@@ -119,4 +143,28 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     }
   }
 });
+// Soltar el clic izquierdo cancela la mina (como Minecraft).
+renderer.domElement.addEventListener('mouseup', (e) => {
+  if (e.button === 0) stopMining();
+});
+
+// Mientras se mantiene pulsado: si el jugador mira a otro bloque, la mina se
+// retargetea (cancelar la anterior + empezar la nueva); si mira al vacío o a
+// un mob, se cancela.
+renderer.domElement.addEventListener('pointermove', () => {
+  if (!miningTarget || !controls.isLocked) return;
+  const hit = raycastTerrainAndMobs();
+  if (!hit || hit.object.userData.mobId) { stopMining(); return; }
+  const point = hit.point.clone().addScaledVector(hit.face.normal, -0.5);
+  const x = Math.floor(point.x), y = Math.floor(point.y), z = Math.floor(point.z);
+  if (x === miningTarget.x && y === miningTarget.y && z === miningTarget.z) return;
+  stopMining();
+  startMiningAt(x, y, z);
+});
+
+// Si se pierde el pointer lock (Escape/menú), cancelar la mina también.
+document.addEventListener('pointerlockchange', () => {
+  if (!document.pointerLockElement) stopMining();
+});
+
 renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());

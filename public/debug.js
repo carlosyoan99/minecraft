@@ -12,7 +12,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { scene, camera } from './scene.js';
-import { chunkMeshes, getClientBlock } from './world.js';
+import { chunkMeshes, lodMeshes, getClientBlock } from './world.js';
 import { CHUNK_SIZE, WORLD_HEIGHT, WATER } from './constants.js';
 
 const hudEl = document.getElementById('debug-hud');
@@ -56,7 +56,8 @@ function rebuildBorders() {
   const colors = [];
   const [r, g, b] = [1.0, 0.12, 0.08]; // rojo brillante estilo MC debug
   const off = 0.15; // un poco por encima del terreno: evita z-fighting
-  for (const key of chunkMeshes.keys()) {
+  // Los bordes cubren ambos tiers (detalle completo y LOD, Fase 6)
+  for (const key of new Set([...chunkMeshes.keys(), ...lodMeshes.keys()])) {
     const [cx, cz] = key.split(',').map(Number);
     const x0 = cx * CHUNK_SIZE + 0.01, z0 = cz * CHUNK_SIZE + 0.01;
     const x1 = x0 + CHUNK_SIZE - 0.02, z1 = z0 + CHUNK_SIZE - 0.02;
@@ -92,9 +93,10 @@ function fmt(n) {
 // Caras en la geometría cargada: 1 cara (cuadrilátero) = 2 triángulos =
 // 6 vértices. position.count ya cuenta VÉRTICES (no floats), así que
 // caras = count / 6 (el /18 original mostraba un tercio de las reales).
+// Cuenta los dos tiers: completo (texturizado) + LOD (heightmap simplificado).
 function totalFaces() {
   let faces = 0;
-  for (const group of chunkMeshes.values()) {
+  for (const group of [...chunkMeshes.values(), ...lodMeshes.values()]) {
     for (const o of group.children) {
       const pos = o.geometry && o.geometry.attributes.position;
       if (pos) faces += pos.count / 6;
@@ -106,16 +108,18 @@ function totalFaces() {
 function updateHud() {
   if (!enabled || !hudEl) return;
   const fps = window.__mcFps, frame = window.__mcFrameMs, cull = window.__mcCullMs;
-  const chunks = window.__mcChunks ?? chunkMeshes.size;
+  const chunks = window.__mcChunks ?? chunkMeshes.size + lodMeshes.size;
   const vis = window.__mcVisibleChunks ?? 0;
   const tris = window.__mcTriangles ?? 0;
+  const pool = window.__mcGeoPool;
   const p = camera.position;
   hudEl.innerHTML = [
     '<b>⛏ Mi Minecraft — Depuración (F3)</b>',
     `FPS: ${fps ? fps.toFixed(0) : '--'} · Frame: ${frame ? frame.toFixed(1) : '--'} ms · Culling: ${cull ? cull.toFixed(2) : '--'} ms`,
     `Posición: ${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}`,
-    `Chunks: ${vis}/${chunks} visibles (${chunkMeshes.size} en memoria)`,
+    `Chunks: ${vis}/${chunks} visibles (${chunkMeshes.size + lodMeshes.size} en memoria)`,
     `Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
+    `Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : '--'}`,
   ].join('<br>');
 }
 
