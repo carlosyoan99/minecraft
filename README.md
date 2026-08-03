@@ -48,9 +48,11 @@ mi-minecraft/
 ├── recetas_horno.json     Recetas de fundición
 ├── tests/                 Unitarios + E2E + auditorías (npm test, ver Tests)
 ├── public/                Cliente vanilla + Three.js (módulos ES6, sin build step)
-│   ├── index.html         Entrada: importmap (Three.js CDN) y botón Jugar
-│   ├── client.js          Bootstrap que cablea los módulos (13 líneas)
+│   ├── index.html         Entrada: importmap (Three.js CDN), botón Jugar y pantalla de carga
+│   ├── client.js          Bootstrap que cablea los módulos (14 líneas)
 │   ├── constants.js       Constantes del cliente (IDs, colores, texturas, durabilidad)
+│   ├── loading.js         Pantalla de carga estilo Minecraft (progreso + consejos)
+│   ├── debug.js           Visualizador de chunks (F3): bordes + caras para depurar culling
 │   ├── connection.js      Socket WebSocket
 │   ├── network.js         Dispatcher de eventos servidor→cliente
 │   ├── world.js           Chunks: geometría, UVs del atlas, culling, dispose
@@ -58,7 +60,7 @@ mi-minecraft/
 │   ├── scene.js           Escena, cámara, renderer y luces
 │   ├── mobs.js            Render de mobs (escala por tipo)
 │   ├── input.js           Ratón (pointer lock), teclado, clics
-│   ├── ui.js              HUD: salud, hambre, saturación, XP, hotbar y durabilidad
+│   ├── ui.js              HUD (salud, hambre, XP, hotbar, durabilidad) + menú con semilla
 │   ├── audio.js           Sonidos procedurales (Web Audio, sin assets)
 │   ├── textures.js        Atlas de texturas procedural (canvas 16x16 px)
 │   ├── daynight.js        Ciclo día/noche visual (cielo, luz, ambiente)
@@ -76,12 +78,15 @@ npm install
 node server.js
 ```
 
-Abrir `http://localhost:3000`. Clic en "Jugar" para bloquear el
-ratón. Para un puerto distinto: `PORT=3998 node server.js`. Para
-un mundo totalmente nuevo con otra semilla:
+Abrir `http://localhost:3000`. Escribe una **semilla** en el menú
+(campo "Semilla del mundo") y clic en "Jugar": el servidor cambia
+el mundo activo a esa semilla (persistiendo el anterior) y la
+pantalla de carga cubre la generación. Vacío usa la semilla por
+defecto. Para un puerto distinto: `PORT=3998 node server.js`. La
+semilla por defecto también se configura con la env var
 `SEED=miNuevaSemilla node server.js` (cada semilla tiene su propio
-mundo en `world/<semilla>/`; volver a la semilla anterior recupera
-su mundo).
+mundo en `world/<semilla>/`; volver a una semilla anterior
+recupera su mundo).
 
 ### Controles
 
@@ -91,6 +96,8 @@ su mundo).
 - `1`-`9`: seleccionar hotbar
 - `E`: abrir mesa de crafteo
 - `Enter`: chat
+- `F3`: visualizador de chunks (bordes + métricas de render, para
+  depurar el culling)
 
 ## Estado actual
 
@@ -133,10 +140,17 @@ su mundo).
 
 ### 🚧 En desarrollo
 
-- Nada en curso: las 5 fases están cerradas y auditadas. La
-  siguiente es la **Fase 6** (tareas propuestas en `TODO.md`:
-  herramientas de desarrollo, rendimiento en cliente, cama y
-  armadura, minas abandonadas, multijugador visible, etc.).
+- **Fase 6** en curso (ver `TODO.md`). Ya hechas: consola de comandos
+  (`/help`, `/tp`, `/give`, `/time set`, `/gamemode`), frustum culling
+  en el cliente (el HUD muestra visibles/totales), pantalla de carga
+  estilo Minecraft, **semilla seleccionable desde el menú** (campo
+  "Semilla del mundo" → `set_seed`; el servidor cambia el mundo
+  activo y cada semilla tiene su propio directorio), y **terreno
+  pulido**: transiciones de bioma suaves (alturas interpoladas
+  continuamente, sin acantilados en las fronteras) y cuevas que abren
+  bocas hacia la superficie. Pendientes:
+  minería fina, texturas de mobs/items, cama y armadura, cofres,
+  antorchas, etc.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -163,13 +177,15 @@ en el servidor y `public/network.js` en el cliente).
 | `eat` | `{}` | Comer el ítem seleccionado (rechazado si está lleno) |
 | `feed_mob` | `{mobId}` | Alimentar un animal (modo amor → cría) |
 | `attack_mob` | `{mobId}` | Atacar un mob (daño, desgaste, drops, XP) |
-| `chat` | `{message}` | Mensaje de chat (máx 200 chars) |
+| `set_seed` | `{seed}` | Elegir la semilla del mundo desde el menú (Fase 6): cambia el mundo activo y reenvía el `init` |
+| `chat` | `{message}` | Mensaje de chat (máx 200 chars; con `/` es un comando) |
 
 **Servidor → Cliente:**
 
 | event | data | Propósito |
 |---|---|---|
-| `init` | posición, spawn, chunks, `food`, `saturation`, `xp/level/maxHealth`, `dayTime` | Estado inicial |
+| `init` | posición, spawn, chunks, `food`, `saturation`, `xp/level/maxHealth`, `dayTime`, `seed` | Estado inicial (se reenvía tras `set_seed`) |
+| `seed_rejected` | `{reason}` | El servidor no pudo cambiar de semilla (otros jugadores o mundo ilegible) |
 | `chunks_add` / `chunks_unload` | `{chunkData}` / `{keys}` | Chunks nuevos / a descargar |
 | `block_update` | `{x, y, z, blockId}` | Cambio de bloque replicado |
 | `player_join` / `player_move` / `player_leave` | posición, yaw | Otros jugadores |
@@ -207,9 +223,10 @@ en el servidor y `public/network.js` en el cliente).
     corruptos o de longitud inesperada).
   - **Fase 3 (supervivencia):** `unit-hambre.js` (decaimiento, regeneración e
     inanición) y `unit-cria.js` (alimentar y criar animales).
-  - **Fase 4 (terreno):** `unit-mundo.js` (cuevas y lagos), `unit-biomas.js`
-    (nieve y montaña), `unit-mobs-agua.js` (mobs se hunden en el agua) y
-    `unit-spawn.js` (spawn sobre tierra firme).
+  - **Fase 4 (terreno):** `unit-mundo.js` (cuevas, lagos y bocas de cueva
+    hacia la superficie), `unit-biomas.js` (nieve, montaña y transiciones
+    suaves: altura continua entre columnas adyacentes), `unit-mobs-agua.js`
+    (mobs se hunden en el agua) y `unit-spawn.js` (spawn sobre tierra firme).
   - **Fase 5 (progresión):** `unit-durabilidad.js` (durabilidad, XP y mobs
     nuevos).
   - **Integridad transversal:** `unit-recetas.js` (todas las recetas de
@@ -237,7 +254,7 @@ en el servidor y `public/network.js` en el cliente).
 
 ### Resultados (agosto 2026)
 
-Suite completa en verde: **13 tests unitarios + 2 E2E** (si hay servidor).
+Suite completa en verde: **15 tests unitarios + 2 E2E** (si hay servidor).
 Última ejecución: todos los unitarios pasan (persistencia, IA de mobs,
 handlers de red, integridad de recetas y sincronización servidor↔cliente
 incluidos), y los E2E contra un servidor real con mundo fresco dan
@@ -282,7 +299,11 @@ preocupación por commit, y los commits son en español.
   `visible=false` los que quedan fuera del campo de visión antes
   de renderizar — solo se envían al GPU los chunks visibles. El
   HUD muestra `visibles/totales` y la métrica `__mcCullMs` mide
-  el coste del pase (~0.01 ms para cientos de chunks).
+  el coste del pase (~0.01 ms para cientos de chunks). Pulsa **F3**
+  para el visualizador de chunks: grid rojo con los bordes de cada
+  chunk sobre el terreno y panel con FPS, posición, chunks
+  visibles/totales, caras de geometría y triángulos renderizados
+  (`public/debug.js`).
 - Rendimiento medido en la auditoría de Fase 4: generación 1.91 ms/
   chunk con cuevas + lagos; ~234K triángulos para un radio de vista 4
   (la Fase 2 renderizaba 310K estables — las cuevas reducen

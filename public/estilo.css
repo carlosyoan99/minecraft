@@ -7,6 +7,71 @@ body {
 }
 canvas { display: block; }
 
+/* ============================================================
+PANTALLA DE CARGA (estilo Minecraft): fondo de tierra procedural
+(sin assets), panel gris con borde MC, barra de progreso animada.
+Oculta por defecto: si el JS no arranca, el menú funciona igual.
+============================================================ */
+#loading-screen {
+  position: absolute; inset: 0; z-index: 320; /* por encima del menú (300) y mute (310) */
+  display: flex; align-items: center; justify-content: center;
+  background-color: #6f4e2e;
+  /* Patrón de tierra: damero oscuro 32px + motas finas, sin imágenes */
+  background-image:
+    linear-gradient(45deg, rgba(0,0,0,0.18) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.18) 75%),
+    linear-gradient(45deg, rgba(0,0,0,0.18) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.18) 75%),
+    radial-gradient(rgba(0,0,0,0.30) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px, 4px 4px;
+  background-position: 0 0, 16px 16px, 0 0;
+  animation: dirtPan 6s linear infinite;
+}
+#loading-screen.hidden { display: none; }
+#loading-screen.fade-out { animation: none; opacity: 0; transition: opacity 0.5s ease; }
+@keyframes dirtPan { to { background-position: 32px 32px, 48px 48px, 0 0; } }
+
+.loading-panel {
+  width: 430px; max-width: 92vw;
+  padding: 22px 26px;
+  background: #c6c6c6;
+  border: 3px solid;
+  border-color: #fff #555 #555 #fff; /* borde clásico MC: claro arriba/izq, oscuro abajo/der */
+  box-shadow: 0 0 0 3px #333, 0 12px 40px rgba(0,0,0,0.5);
+  text-align: center;
+}
+.loading-title { color: #2a2a2a; font-weight: bold; font-size: 13px; letter-spacing: 2px; margin-bottom: 12px; }
+#loading-message {
+  color: #1f1f1f; font-size: 21px; font-weight: bold; margin-bottom: 14px;
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.6);
+}
+.loading-bar {
+  height: 18px; background: #5a5a5a;
+  border: 2px solid; border-color: #333 #777 #777 #333;
+  overflow: hidden; position: relative;
+}
+#loading-fill {
+  height: 100%; width: 0;
+  background: linear-gradient(#8ee04b, #4f9e24);
+  transition: width 0.15s ease;
+  position: relative;
+}
+/* Rayas diagonales animadas sobre la barra (efecto de carga MC) */
+#loading-fill::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(45deg, rgba(255,255,255,0.25) 0 8px, transparent 8px 16px);
+  animation: fillSlide 0.8s linear infinite;
+}
+@keyframes fillSlide { to { background-position: 16px 0; } }
+#loading-status { margin-top: 12px; color: #1f1f1f; font-size: 13px; font-weight: 600; }
+#loading-tip { margin-top: 8px; color: #3a3a3a; font-size: 12px; font-style: italic; min-height: 16px; }
+#loading-error { margin-top: 12px; color: #8a1f1f; font-size: 13px; font-weight: 600; }
+#loading-error.hidden { display: none; }
+#loading-retry {
+  margin-left: 10px; padding: 3px 14px; cursor: pointer;
+  background: #555; color: #fff; font-weight: bold; font-size: 13px;
+  border: 2px solid; border-color: #999 #222 #222 #999;
+}
+#loading-retry:hover { background: #777; }
+
 #blocker {
   position: absolute; inset: 0;
   background: rgba(10, 10, 20, 0.85);
@@ -23,6 +88,17 @@ canvas { display: block; }
   background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;
 }
 #start-btn:hover { background: #45a049; }
+/* Campo de semilla del menú (Fase 6): cada semilla genera su propio mundo */
+.seed-field {
+  display: block; margin-top: 16px; font-size: 13px; color: #ccc;
+}
+#seed-input {
+  display: block; width: 100%; margin-top: 6px; padding: 8px 10px;
+  background: #14141f; color: #fff; border: 1px solid #555; border-radius: 6px;
+  font-size: 14px; text-align: center; outline: none;
+}
+#seed-input::placeholder { color: #777; }
+#seed-input:focus { border-color: #4CAF50; }
 
 #crosshair {
   position: absolute; top: 50%; left: 50%;
@@ -71,6 +147,16 @@ canvas { display: block; }
   padding: 4px 10px; border-radius: 6px; z-index: 90;
   font: 12px 'Courier New', monospace; pointer-events: none;
 }
+/* Panel de depuración estilo F3 de Minecraft (visualizador de chunks) */
+#debug-hud {
+  position: absolute; top: 66px; right: 16px; z-index: 90;
+  background: rgba(0,0,0,0.72); color: #7f7; padding: 10px 14px;
+  border: 1px solid #3a3; border-radius: 6px;
+  font: 12px 'Courier New', monospace; line-height: 1.55;
+  pointer-events: none; white-space: nowrap;
+}
+#debug-hud.hidden { display: none; }
+#debug-hud b { color: #aea; }
 
 #hotbar {
   position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);

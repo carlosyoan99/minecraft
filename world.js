@@ -6,7 +6,8 @@
 const fs = require('fs');
 const path = require('path');
 const { createNoise2D, createNoise3D } = require('simplex-noise');
-const { CHUNK_SIZE, WORLD_HEIGHT, SEED, CHUNKS_DIR, SCHEMA_VERSION, B } = require('./constants.js');
+const constants = require('./constants.js');
+const { CHUNK_SIZE, WORLD_HEIGHT, SCHEMA_VERSION, B } = constants;
 const state = require('./state.js');
 
 const { chunks, dirtyChunks } = state;
@@ -26,21 +27,28 @@ function seededNoise(seedStr) {
     return (h >>> 0) / 4294967296;
   };
 }
-const noise2D = createNoise2D(seededNoise(SEED));
-const noise2D_detail = createNoise2D(seededNoise(SEED + '_detail'));
-const noise2D_ore = createNoise2D(seededNoise(SEED + '_ore'));
-// Ruido 2D para montañas (Fase 4): donde es alto, el bioma es montaña (el
-// terreno se eleva y las cumbres altas se cubren de nieve). Determinista y
-// continuo entre chunks, como el resto de la generación.
-const noise2D_mountain = createNoise2D(seededNoise(SEED + '_mountain'));
-// Ruido 3D para cuevas (Fase 4): dos octavas sembradas, muestreadas en
-// coordenadas de mundo para que las cuevas sean continuas entre chunks.
-const noise3D_cave = createNoise3D(seededNoise(SEED + '_cave'));
-const noise3D_cave_fine = createNoise3D(seededNoise(SEED + '_cave_fine'));
-// Ruido 2D para lagos (Fase 4): donde es alto, el terreno se hunde y el
-// agua llena la depresión hasta SEA_LEVEL. Muestreado en coordenadas de
-// mundo → lagos continuos entre chunks y deterministas.
-const noise2D_lake = createNoise2D(seededNoise(SEED + '_lake'));
+// Generadores MUTABLES: reinitNoise(seed) los recrea todos (Fase 6, el menú
+// del cliente puede cambiar la semilla en runtime con save.switchWorld).
+let noise2D, noise2D_detail, noise2D_ore, noise2D_mountain;
+let noise3D_cave, noise3D_cave_fine, noise2D_lake;
+function reinitNoise(seed) {
+  noise2D = createNoise2D(seededNoise(seed));
+  noise2D_detail = createNoise2D(seededNoise(seed + '_detail'));
+  noise2D_ore = createNoise2D(seededNoise(seed + '_ore'));
+  // Ruido 2D para montañas (Fase 4): donde es alto, el bioma es montaña (el
+  // terreno se eleva y las cumbres altas se cubren de nieve). Determinista y
+  // continuo entre chunks, como el resto de la generación.
+  noise2D_mountain = createNoise2D(seededNoise(seed + '_mountain'));
+  // Ruido 3D para cuevas (Fase 4): dos octavas sembradas, muestreadas en
+  // coordenadas de mundo para que las cuevas sean continuas entre chunks.
+  noise3D_cave = createNoise3D(seededNoise(seed + '_cave'));
+  noise3D_cave_fine = createNoise3D(seededNoise(seed + '_cave_fine'));
+  // Ruido 2D para lagos (Fase 4): donde es alto, el terreno se hunde y el
+  // agua llena la depresión hasta SEA_LEVEL. Muestreado en coordenadas de
+  // mundo → lagos continuos entre chunks y deterministas.
+  noise2D_lake = createNoise2D(seededNoise(seed + '_lake'));
+}
+reinitNoise(constants.SEED); // al arrancar, la SEED de la env var
 const SEA_LEVEL = 5;              // bloques de agua: y ∈ (LAKE_FLOOR, SEA_LEVEL)
 const LAKE_FREQ = 0.012;          // frecuencia baja → lagos amplios
 const LAKE_THRESHOLD = 0.65;      // calibrado por barrido: ~5% de columnas con lago
@@ -63,31 +71,96 @@ const MOUNTAIN_THRESHOLD = 0.45;
 // cumbres altas (alturas 12-26) llevan nieve y hay contraste entre biomas.
 const MOUNTAIN_SNOW_LINE = 18;
 
-function getBiome(wx, wz) {
+// --- Blend continuo entre biomas (fix: transiciones bruscas) ---
+// getBiome() sigue devolviendo la etiqueta discreta dominante (fuente de
+// verdad para superficie, árboles y spawn de mobs), pero la ALTURA se
+// interpola con funciones continuas del mismo ruido: sin acantilados de
+// 4-8 bloques en las fronteras de bioma.
+function smoothstep(e0, e1, x) {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+}
+
+// Afinidad térmica gaussiana de cada bioma plano (centro = su región de
+// temperatura, r = radio de transición): la altura base resultante es una
+// media ponderada que varía de forma continua entre biomas vecinos.
+const FLAT_AFFINITY = [
+  { center: -0.40, base: 3, r: 0.24 }, // nieve/tundra
+  { center: -0.22, base: 3, r: 0.24 }, // desierto
+  { center: 0.02,  base: 4, r: 0.24 }, // llanura
+  { center: 0.32,  base: 6, r: 0.28 }, // bosque
+];
+// Rampa del ruido de montaña: 0 en llanuras, 1 dentro de la cordillera.
+// Arranca tarde (0.40) para que las columnas con etiqueta de llanura
+// (ruido ≤ 0.45) apenas se eleven: estribaciones suaves, no muros.
+const MOUNTAIN_RAMP = [0.40, 0.65];
+
+function flatBaseHeight(temp) {
+  let num = 0, den = 0;
+  for (const a of FLAT_AFFINITY) {
+    const d = (temp - a.center) / a.r;
+    const w = Math.exp(-d * d);
+    num += w * a.base;
+    den += w;
+  }
+  return num / den;
+}
+
+function biomeFrom(temp, mnt) {
   // Montañas primero: el ruido de montaña manda sobre la temperatura.
-  if (noise2D_mountain(wx * 0.008, wz * 0.008) > MOUNTAIN_THRESHOLD) return 'mountain';
-  const temp = noise2D(wx * 0.005, wz * 0.005);
+  if (mnt > MOUNTAIN_THRESHOLD) return 'mountain';
   if (temp < SNOW_TEMP) return 'snow';      // tundra: nieve en la superficie
   if (temp < -0.15) return 'desert';
   if (temp > 0.2) return 'forest';
   return 'plains';
 }
 
-function getHeight(wx, wz) {
-  const biome = getBiome(wx, wz);
-  let base = 4;
-  if (biome === 'desert') base = 3;
-  else if (biome === 'forest') base = 6;
-  else if (biome === 'snow') base = 3;
-  else if (biome === 'mountain') base = 12; // cordilleras: terreno mucho más alto
+function getBiome(wx, wz) {
+  return biomeFrom(
+    noise2D(wx * 0.005, wz * 0.005),
+    noise2D_mountain(wx * 0.008, wz * 0.008)
+  );
+}
+
+function heightFrom(temp, wMnt, wx, wz) {
   const h = noise2D(wx * 0.02, wz * 0.02) * 0.5 + 0.5;
   const detail = noise2D_detail(wx * 0.08, wz * 0.08) * 1.5;
-  if (biome === 'mountain') {
-    // Crestas: octava adicional de mayor amplitud para picos pronunciados.
-    const crest = noise2D_mountain(wx * 0.05, wz * 0.05) * 0.5 + 0.5;
-    return Math.max(3, Math.floor(base + crest * 14 + detail));
+  const flat = flatBaseHeight(temp) + h * 8 + detail;
+  // Crestas: octava adicional de mayor amplitud para picos pronunciados.
+  const crest = noise2D_mountain(wx * 0.05, wz * 0.05) * 0.5 + 0.5;
+  const mountainH = 12 + crest * 14 + detail;
+  // Interpolación lineal entre la altura plana y la de cordillera según la
+  // rampa: los pies de montaña crecen gradualmente en vez de saltar.
+  return Math.max(3, Math.floor(flat * (1 - wMnt) + mountainH * wMnt));
+}
+
+function getHeight(wx, wz) {
+  const mnt = noise2D_mountain(wx * 0.008, wz * 0.008);
+  return heightFrom(
+    noise2D(wx * 0.005, wz * 0.005),
+    smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
+    wx, wz
+  );
+}
+
+// Bloque de superficie: la etiqueta dominante manda (nieve en tundra y
+// cumbres, roca en montañas bajas, arena en desierto, césped en el resto),
+// pero el umbral de temperatura se desplaza con un jitter de ruido
+// determinista para que las fronteras entre biomas sean onduladas y
+// orgánicas en vez de una línea recta dura.
+function flatSurfaceBlock(temp, j) {
+  const t = temp + j * 0.03;
+  if (t < SNOW_TEMP) return B.SNOW;
+  if (t < -0.15) return B.SAND;
+  return B.GRASS; // bosque y llanura comparten césped
+}
+
+function surfaceBlockFor(wx, wz, height, temp, mnt) {
+  if (mnt > MOUNTAIN_THRESHOLD) {
+    if (height >= MOUNTAIN_SNOW_LINE) return B.SNOW;
+    return B.STONE;
   }
-  return Math.max(2, Math.floor(base + h * 8 + detail));
+  return flatSurfaceBlock(temp, noise2D_detail(wx * 0.11, wz * 0.11));
 }
 
 // Radio de búsqueda de tierra firme para el punto de aparición (bloques).
@@ -130,17 +203,32 @@ const CAVE_FREQ_Y = 0.09;    // algo mayor en Y para túneles más horizontales
 const CAVE_FINE_FREQ = 0.2;  // octava fina (desvíos)
 const CAVE_THRESHOLD = 0.84; // calibrado por barrido: ~14% del subsuelo excavado,
                               // túneles conexos sin queso suizo (0.62 daba ~58%)
-function isCaveBlock(wx, wy, wz) {
+function caveStrength(wx, wy, wz) {
   const base = 1 - Math.abs(noise3D_cave(wx * CAVE_FREQ, wy * CAVE_FREQ_Y, wz * CAVE_FREQ));
   const fine = 1 - Math.abs(noise3D_cave_fine(wx * CAVE_FINE_FREQ, wy * CAVE_FINE_FREQ * 1.25, wz * CAVE_FINE_FREQ));
-  return base * 0.6 + fine * 0.4 > CAVE_THRESHOLD;
+  return base * 0.6 + fine * 0.4;
 }
+
+function isCaveBlock(wx, wy, wz, nearSurface) {
+  // Cerca de la superficie el umbral sube: los túneles se estrechan y solo
+  // los más fuertes alcanzan la capa superior (boca de cueva).
+  return caveStrength(wx, wy, wz) > (nearSurface ? CAVE_THRESHOLD + 0.07 : CAVE_THRESHOLD);
+}
+
+// Umbral para abrir el bloque de superficie: solo un pico de ruido fuerte
+// excava la boca (≈1-2% de columnas) → entradas de cueva escasas y visibles
+// hacia el exterior. La conexión real exige además la capa inferior excavada
+// (nearSurface 0.91), así que nunca hay hoyos aislados.
+const CAVE_MOUTH_THRESHOLD = 0.90;
 
 function idx(x, y, z) { return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x; }
 
 // --- Archivos de chunk (escritura atómica) ---
+// La ruta se lee del holder mutable en tiempo de llamada: si el menú cambia
+// la semilla (save.switchWorld → constants.setWorldSeed), los archivos se
+// escriben/leen en el directorio del mundo activo.
 function chunkFilePath(cx, cz) {
-  return path.join(CHUNKS_DIR, `${cx}_${cz}.json`);
+  return path.join(constants.worldPaths.chunksDir, `${cx}_${cz}.json`);
 }
 
 // Escritura atómica (archivo temporal + renombrado): si el proceso muere
@@ -220,8 +308,20 @@ function generateChunk(cx, cz) {
       const lake = isLake(wx, wz);
       // En un lago el terreno se hunde hasta LAKE_FLOOR y el agua llena la
       // depresión hasta SEA_LEVEL; no hay árboles ni minerales bajo el agua.
-      const height = lake ? LAKE_FLOOR : getHeight(wx, wz);
-      const biome = getBiome(wx, wz);
+      // Ruidos compartidos por columna (getHeight/getBiome son ruido puro:
+      // recalcularlos daría valores idénticos, pero se evita el triple
+      // muestreo en el bucle de generación).
+      const temp = noise2D(wx * 0.005, wz * 0.005);
+      const mnt = noise2D_mountain(wx * 0.008, wz * 0.008);
+      const height = lake ? LAKE_FLOOR : heightFrom(temp, smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt), wx, wz);
+      const biome = biomeFrom(temp, mnt);
+      const surfaceBlock = lake ? B.AIR : surfaceBlockFor(wx, wz, height, temp, mnt);
+      // Boca de cueva: pico de ruido extremo justo en el bloque de superficie,
+      // y solo si la capa inferior ya fue excavada (entrada real conectada al
+      // túnel, no un hoyo aislado de 1 bloque). ≈1-2% de columnas.
+      const mouthPeak = !lake && caveStrength(wx, height - 1, wz) > CAVE_MOUTH_THRESHOLD;
+      let carvedTop = false;
+      let mouth = false;
 
       for (let y = 0; y < WORLD_HEIGHT; y++) {
         let block = B.AIR;
@@ -234,12 +334,14 @@ function generateChunk(cx, cz) {
           else if (y < SEA_LEVEL) block = B.WATER;
         }
         else if (y < height - 1) {
-          // Cuevas (Fase 4): el ruido 3D excava la piedra dejando al menos 2
-          // bloques sólidos bajo la superficie (sin huecos visibles arriba)
-          // y sin tocar el bedrock (y === 0). Muestreado en coordenadas de
-          // mundo → continuo entre chunks vecinos y determinista.
-          if (y > 1 && y < height - 2 && isCaveBlock(wx, y, wz)) {
+          // Cuevas (Fase 4): el ruido 3D excava la piedra sin tocar el
+          // bedrock (y === 0). Muestreado en coordenadas de mundo → continuo
+          // entre chunks vecinos y determinista. Cerca de la superficie el
+          // umbral sube (nearSurface): los túneles se estrechan y solo los
+          // más fuertes alcanzan la capa superior (boca de cueva).
+          if (y > 1 && isCaveBlock(wx, y, wz, y >= height - 3)) {
             block = B.AIR;
+            if (y === height - 2) carvedTop = true;
           } else {
             block = B.STONE;
             if (y > 4) {
@@ -253,13 +355,11 @@ function generateChunk(cx, cz) {
             }
           }
         } else if (y === height - 1) {
-          // Superficie por bioma: tundra nevada, cumbres de montaña con nieve,
-          // desierto con arena, resto césped.
-          if (biome === 'snow') block = B.SNOW;
-          else if (biome === 'mountain' && height >= MOUNTAIN_SNOW_LINE) block = B.SNOW;
-          else if (biome === 'desert') block = B.SAND;
-          else if (biome === 'mountain') block = B.STONE;
-          else block = B.GRASS;
+          // Superficie: bloque del bioma dominante (tundra nevada, cumbres
+          // con nieve, desierto con arena, resto césped) o aire si hay boca
+          // de cueva hacia la superficie (solo si la capa inferior se excavó).
+          mouth = mouthPeak && carvedTop;
+          block = mouth ? B.AIR : surfaceBlock;
         }
         data[idx(x, y, z)] = block;
       }
@@ -269,7 +369,9 @@ function generateChunk(cx, cz) {
       // bloque de la superficie (y = height - 1): la base NUNCA flota. Bug
       // corregido: antes empezaba en height + 1 y los árboles quedaban
       // flotando un bloque por encima del terreno (ver tests/unit-arboles.js).
-      if (!lake && (biome === 'forest' || biome === 'plains') && Math.random() < (biome === 'forest' ? 0.04 : 0.01)) {
+      // Solo sobre césped firme (ni boca de cueva, ni estribación rocosa, ni
+      // arena del borde del desierto) y nunca dentro de un lago.
+      if (!lake && !mouth && surfaceBlock === B.GRASS && (biome === 'forest' || biome === 'plains') && Math.random() < (biome === 'forest' ? 0.04 : 0.01)) {
         const treeHeight = 4 + Math.floor(Math.random() * 3);
         for (let i = 0; i < treeHeight; i++) {
           const y = height + i;
@@ -344,6 +446,6 @@ function ensureChunksAround(wx, wz, radius) {
 module.exports = {
   getBiome, getHeight, findSpawn, generateChunk, getBlock, setBlock, ensureChunksAround,
   atomicWrite, writeChunkFile, readChunkFile, loadChunkFromDisk,
-  setBlockChangeHandler, setDiskLoader,
+  setBlockChangeHandler, setDiskLoader, reinitNoise,
   isLake, SEA_LEVEL, LAKE_FLOOR, SNOW_TEMP, MOUNTAIN_THRESHOLD, MOUNTAIN_SNOW_LINE,
 };

@@ -16,11 +16,25 @@
 </script>
 </head>
 <body>
+  <div id="loading-screen" class="hidden">
+    <div class="loading-panel">
+      <div class="loading-title">⛏️ MI MINECRAFT</div>
+      <div id="loading-message">Cargando mundo...</div>
+      <div class="loading-bar"><div id="loading-fill"></div></div>
+      <div id="loading-status">Conectando al servidor...</div>
+      <div id="loading-tip"></div>
+      <div id="loading-error" class="hidden">Conexión perdida con el servidor.<button id="loading-retry">Reintentar</button></div>
+    </div>
+  </div>
+
   <div id="blocker">
     <div id="menu">
       <h1>⛏️ Mi Minecraft</h1>
       <p>WASD para moverte · Ratón para mirar · Espacio para saltar</p>
       <p>Click izq: romper · Click der: colocar · E: inventario/crafteo</p>
+      <label class="seed-field">Semilla del mundo
+        <input id="seed-input" type="text" maxlength="40" placeholder="deja vacío para la semilla por defecto" spellcheck="false" autocomplete="off">
+      </label>
       <button id="start-btn">Jugar</button>
     </div>
   </div>
@@ -33,6 +47,7 @@
   </div>
   <button id="mute-btn" title="Silenciar sonido">🔊</button>
   <div id="fps">-- FPS</div>
+  <div id="debug-hud" class="hidden"></div>
 
   <div id="hotbar"></div>
 

@@ -11,7 +11,8 @@ import { teleport } from './player.js';
 import { initDayNight } from './daynight.js';
 import { playCrack } from './audio.js';
 import {
-  applyInventory, applyHealth, applyFood, applyXp, applyCraftingGrid, applyFurnaceState, addChatLine, flashMessage,
+  applyInventory, applyHealth, applyFood, applyXp, applyCraftingGrid, applyFurnaceState,
+  addChatLine, flashMessage, onWorldLoaded, onSeedRejected,
 } from './ui.js';
 
 let playerId = null;
@@ -30,6 +31,9 @@ socket.addEventListener('message', (e) => {
       updateMobs(data.mobs);
       initDayNight(data.dayTime);
       for (const p of data.otherPlayers) spawnRemotePlayer(p.id, p.x, p.y, p.z);
+      // Fase 6: cerrar la pantalla de carga (esperando el init de la semilla
+      // pedida si se cambió de mundo desde el menú)
+      onWorldLoaded(data.seed);
       break;
     }
     case 'chunks_add': loadChunkData(data.chunkData); break;
@@ -65,6 +69,7 @@ socket.addEventListener('message', (e) => {
     case 'crafting_grid_update': applyCraftingGrid(data.grid, data.success); break;
     case 'furnace_state': applyFurnaceState(data); break;
     case 'time_set': initDayNight(data.dayTime); break; // Fase 6: /time set re-sincroniza el ciclo visual
+    case 'seed_rejected': onSeedRejected(data.reason); break; // Fase 6: el servidor no pudo cambiar de semilla
     case 'chat': addChatLine(data.id === playerId ? 'Tú' : data.id.slice(0, 6), data.message); break;
   }
 });

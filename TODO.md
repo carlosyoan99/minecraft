@@ -363,14 +363,34 @@ conocidos" al final. Ninguna tarea empezada todavía.*
       planos por ID en el hotbar y la mesa)
 
 ### Mundo y sesión
-- [ ] Semilla seleccionable al iniciar el mundo: campo en el menú
-      para elegir semilla y generar un mundo totalmente distinto.
-      Base lista: `SEED` por env var + un mundo por semilla
-      (`world/<semilla>/`, bug de la semilla corregido); falta solo
-      la UI del menú que lance el servidor con la semilla elegida
-- [ ] Pantalla de "cargando mundo" estilo Minecraft mientras se
-      generan/transmiten los chunks iniciales (hoy el menú salta
-      directo al mundo)
+- [x] Semilla seleccionable al iniciar el mundo: campo "Semilla del
+      mundo" en el menú principal que, al pulsar Jugar, envía
+      `set_seed` al servidor. El servidor es la fuente de verdad:
+      `save.switchWorld(seed)` persiste el mundo actual (nada se
+      pierde), limpia el estado en memoria, re-seeda el ruido
+      (`world.reinitNoise`) y carga o genera el mundo de esa semilla
+      (`world/<semilla>/`); reenvía el `init` con `seed` para que el
+      cliente confirme la semilla pedida y cierre la pantalla de
+      carga (cambio cubierto por ella). Solo se cambia si el jugador
+      es el ÚNICO en línea (servidor dedicado); con otros jugadores
+      responde `seed_rejected` y se vuelve al menú. El inventario,
+      salud y XP no viajan entre mundos. Cubierto por los tests de
+      `switchWorld` en `tests/unit-persistencia.js` (cambio, same,
+      vuelta atrás con recuperación, rechazo por mundo ilegible con
+      reversión y reinitNoise que genera mundos distintos)
+- [x] Pantalla de "cargando mundo" estilo Minecraft mientras se
+      generan/transmiten los chunks iniciales. Nuevo `public/loading.js`:
+      pantalla a pantalla completa con fondo de tierra procedural en
+      CSS (sin assets), panel gris con borde clásico de Minecraft,
+      barra de progreso con rayas animadas y consejos rotatorios en
+      español; cubre desde el arranque del cliente hasta que llega el
+      `init` con el mundo (`finishLoading()` en `public/network.js`),
+      con progreso simulado suave (el mundo llega de golpe en `init`,
+      no hay métrica incremental real) y mínimo visible de 700 ms para
+      no parpadear en cargas desde caché. Si la conexión se pierde,
+      muestra "Conexión perdida" con botón Reintentar (recarga la
+      página). Oculta por defecto en CSS: si el JS no arranca, el menú
+      funciona igual
 - [ ] Cofre: bloque de almacenamiento con inventario propio (la
       mesa de crafteo y el horno ya existen como bloques
       funcionales; falta solo el cofre)
@@ -395,8 +415,16 @@ conocidos" al final. Ninguna tarea empezada todavía.*
       también en lagos (sube hasta salir del agua). Acceso abierto a
       todos los jugadores (herramienta de desarrollo; la auth está
       fuera de alcance). Cubierto por `tests/unit-commands.js`
-- [ ] Visualizador de chunks: toggle que dibuja bordes de chunk y
-      cuenta de caras/triángulos (debug de culling)
+- [x] Visualizador de chunks: toggle con **F3** (como el debug de
+      Minecraft) en `public/debug.js` — dibuja un grid rojo con los
+      bordes de cada chunk siguiendo la superficie del terreno (se
+      reconstruye cada segundo mientras está activo, reflejando
+      chunks nuevos/descargas y ediciones) y muestra un panel con
+      FPS/frame, posición, chunks visibles/totales (culling), caras
+      de la geometría cargada y triángulos renderizados. Se apoya en
+      las métricas `window.__mc*` que ya publica el bucle de
+      animación; sin hooks en player.js. Toggle en `public/input.js`
+      (tecla F3)
 - [ ] Hot-reload de `recetas.json`/`recetas_horno.json` y del atlas
       de texturas sin reiniciar el servidor
 
@@ -487,11 +515,27 @@ conocidos" al final. Ninguna tarea empezada todavía.*
       conservan su mundo). Regresión cubierta por
       `tests/unit-arboles.js` (invariante: base de tronco nunca
       sobre aire/agua)
-- [ ] **Transiciones de bioma bruscas y cuevas sin comunicación con
-      la superficie.** `getBiome()` corta entre biomas por umbrales
-      discretos (sin blend); las cuevas no rompen la superficie a
-      propósito (`y < height - 2`). Plan: suavizar el blend entre
-      biomas y permitir bocas de cueva hacia la superficie
+- [x] **Transiciones de bioma bruscas y cuevas sin comunicación con
+      la superficie.** Antes: `getBiome()` cortaba entre biomas por
+      umbrales discretos (acantilados de 4-8 bloques al cruzar una
+      frontera) y las cuevas no rompían la superficie a propósito
+      (`y < height - 2`). Corregido en `world.js` con un **blend
+      continuo**: las alturas se interpolan con afinidades gaussianas
+      por temperatura (`FLAT_AFFINITY`) + una rampa suave de montaña
+      (`MOUNTAIN_RAMP`, `heightFrom`), de modo que cruzar un bioma
+      sube/baja el terreno gradualmente (salto máximo entre columnas
+      adyacentes: 1 bloque, medido por barrido); la superficie
+      conserva la etiqueta dominante (nieve/roca/arena/césped) con
+      fronteras onduladas (jitter de ruido determinista en los
+      umbrales, `surfaceBlockFor`). Las **cuevas ahora abren bocas
+      hacia la superficie**: cerca del techo el umbral sube (túneles
+      que se estrechan, `isCaveBlock nearSurface`) y un pico de ruido
+      extremo abre el bloque de superficie (~1% de columnas, siempre
+      con la capa inferior excavada — entradas reales, sin hoyos
+      aislados). Aplica a chunks NUEVOS (los guardados conservan su
+      mundo). Cubierto por `tests/unit-mundo.js` (bocas presentes y
+      escasas, < 10% de columnas con hueco) y `tests/unit-biomas.js`
+      (altura continua entre columnas adyacentes: salto máx ≤ 4)
 
 ---
 

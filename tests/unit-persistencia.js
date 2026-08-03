@@ -15,14 +15,14 @@ const constants = require('../constants.js');
 // Valores pristinos (derivación WORLD_DIR = WORLD_ROOT + seedDir) antes de
 // redirigir a un directorio temporal ANTES de requerir world/save
 // (capturan estos valores al cargarse: mutamos el objeto exportado).
-const PRISTINE_WORLD_ROOT = constants.WORLD_ROOT;
-const PRISTINE_WORLD_DIR = constants.WORLD_DIR;
-const PRISTINE_CHUNKS_DIR = constants.CHUNKS_DIR;
-constants.WORLD_ROOT = path.join(TMP, 'worldroot');
-constants.WORLD_DIR = path.join(TMP, 'world');
-constants.CHUNKS_DIR = path.join(TMP, 'world', 'chunks');
-constants.LEGACY_FILE = path.join(TMP, 'world', 'world.dat');
-constants.META_FILE = path.join(TMP, 'world', 'world.json');
+const PRISTINE_WORLD_ROOT = constants.worldPaths.worldRoot;
+const PRISTINE_WORLD_DIR = constants.worldPaths.worldDir;
+const PRISTINE_CHUNKS_DIR = constants.worldPaths.chunksDir;
+constants.worldPaths.worldRoot = path.join(TMP, 'worldroot');
+constants.worldPaths.worldDir = path.join(TMP, 'world');
+constants.worldPaths.chunksDir = path.join(TMP, 'world', 'chunks');
+constants.worldPaths.legacyFile = path.join(TMP, 'world', 'world.dat');
+constants.worldPaths.metaFile = path.join(TMP, 'world', 'world.json');
 constants.LEGACY_ROOT_FILES = ['world.json', 'chunks', 'world.dat'];
 const LEGACY_ROOT_META = path.join(TMP, 'worldroot', 'world.json');
 const LEGACY_ROOT_CHUNKS = path.join(TMP, 'worldroot', 'chunks');
@@ -40,7 +40,7 @@ const check = (name, ok, extra = '') => {
 
 function resetWorld() {
   fs.rmSync(path.join(TMP, 'world'), { recursive: true, force: true });
-  fs.mkdirSync(constants.CHUNKS_DIR, { recursive: true });
+  fs.mkdirSync(constants.worldPaths.chunksDir, { recursive: true });
 }
 
 // --- 1) atomicWrite: crea el archivo y no deja .tmp ---
@@ -58,7 +58,7 @@ function resetWorld() {
   arr[0] = B.STONE;
   arr[1234] = B.WATER;
   world.writeChunkFile('3,-2', arr);
-  const file = path.join(constants.CHUNKS_DIR, '3_-2.json');
+  const file = path.join(constants.worldPaths.chunksDir, '3_-2.json');
   const parsed = world.readChunkFile(file, 'test');
   check('writeChunkFile guarda schemaVersion', parsed && parsed.schemaVersion === SCHEMA_VERSION,
     'v=' + (parsed && parsed.schemaVersion));
@@ -72,22 +72,22 @@ function resetWorld() {
 // --- 3) readChunkFile rechaza datos corruptos / versiones nuevas ---
 {
   resetWorld();
-  const bad1 = path.join(constants.CHUNKS_DIR, 'bad1.json');
+  const bad1 = path.join(constants.worldPaths.chunksDir, 'bad1.json');
   fs.writeFileSync(bad1, 'no-json');
   check('JSON ilegible → null (con aviso)', world.readChunkFile(bad1, 'test') === null);
 
-  const bad2 = path.join(constants.CHUNKS_DIR, 'bad2.json');
+  const bad2 = path.join(constants.worldPaths.chunksDir, 'bad2.json');
   fs.writeFileSync(bad2, JSON.stringify({ cx: 0, cz: 0, data: [1, 2, 3] })); // longitud errónea
   check('longitud inesperada → null', world.readChunkFile(bad2, 'test') === null);
 
-  const bad3 = path.join(constants.CHUNKS_DIR, 'bad3.json');
+  const bad3 = path.join(constants.worldPaths.chunksDir, 'bad3.json');
   fs.writeFileSync(bad3, JSON.stringify({
     schemaVersion: SCHEMA_VERSION + 1, cx: 0, cz: 0,
     data: new Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE).fill(0),
   }));
   check('schemaVersion más nueva → null (se regenerará)', world.readChunkFile(bad3, 'test') === null);
 
-  const bad4 = path.join(constants.CHUNKS_DIR, 'bad4.json');
+  const bad4 = path.join(constants.worldPaths.chunksDir, 'bad4.json');
   fs.writeFileSync(bad4, JSON.stringify({ schemaVersion: SCHEMA_VERSION, data: [] })); // sin cx/cz
   check('sin cx/cz → null', world.readChunkFile(bad4, 'test') === null);
 }
@@ -102,12 +102,12 @@ function resetWorld() {
   state.chunks.set('0,0', arr);
   state.dirtyChunks.add('0,0');
   save.saveWorld();
-  check('saveWorld escribe los chunks sucios', fs.existsSync(path.join(constants.CHUNKS_DIR, '0_0.json')));
+  check('saveWorld escribe los chunks sucios', fs.existsSync(path.join(constants.worldPaths.chunksDir, '0_0.json')));
   check('saveWorld limpia dirtyChunks', state.dirtyChunks.size === 0, 'size=' + state.dirtyChunks.size);
   // Un chunk limpio no se reescribe: al guardar de nuevo el archivo no cambia de mtime
-  const antes = fs.statSync(path.join(constants.CHUNKS_DIR, '0_0.json')).mtimeMs;
+  const antes = fs.statSync(path.join(constants.worldPaths.chunksDir, '0_0.json')).mtimeMs;
   save.saveWorld();
-  const despues = fs.statSync(path.join(constants.CHUNKS_DIR, '0_0.json')).mtimeMs;
+  const despues = fs.statSync(path.join(constants.worldPaths.chunksDir, '0_0.json')).mtimeMs;
   check('saveWorld no reescribe chunks limpios (incremental)', despues === antes);
 }
 
@@ -142,7 +142,7 @@ function resetWorld() {
 {
   resetWorld();
   world.writeChunkFile('9,9', new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE));
-  fs.writeFileSync(constants.META_FILE, JSON.stringify({ schemaVersion: SCHEMA_VERSION + 5, seed: SEED }));
+  fs.writeFileSync(constants.worldPaths.metaFile, JSON.stringify({ schemaVersion: SCHEMA_VERSION + 5, seed: SEED }));
   const r = save.loadWorld();
   check('schemaVersion más nueva → rechazo (no carga ni corrompe)', r === 'rechazo', 'r=' + r);
 
@@ -154,18 +154,18 @@ function resetWorld() {
 {
   resetWorld();
   // La migración exige que CHUNKS_DIR NO exista todavía (v1 → v2).
-  fs.rmSync(constants.CHUNKS_DIR, { recursive: true, force: true });
+  fs.rmSync(constants.worldPaths.chunksDir, { recursive: true, force: true });
   const legacy = {
     seed: SEED,
     chunks: [['0,0', Array.from(new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE))]],
     mobs: [], furnaces: [],
   };
-  fs.writeFileSync(constants.LEGACY_FILE, JSON.stringify(legacy));
+  fs.writeFileSync(constants.worldPaths.legacyFile, JSON.stringify(legacy));
   const ok = save.migrateLegacyWorld();
   check('migrateLegacyWorld migra (true)', ok === true);
-  check('chunks escritos en archivos', fs.existsSync(path.join(constants.CHUNKS_DIR, '0_0.json')));
-  check('world.dat renombrado a .legacy', fs.existsSync(constants.LEGACY_FILE + '.legacy'));
-  check('meta escrito', fs.existsSync(constants.META_FILE));
+  check('chunks escritos en archivos', fs.existsSync(path.join(constants.worldPaths.chunksDir, '0_0.json')));
+  check('world.dat renombrado a .legacy', fs.existsSync(constants.worldPaths.legacyFile + '.legacy'));
+  check('meta escrito', fs.existsSync(constants.worldPaths.metaFile));
   check('chunks en memoria tras migrar', state.chunks.has('0,0'));
   check('no re-migra si ya hay chunks dir', save.migrateLegacyWorld() === false);
 }
@@ -187,7 +187,7 @@ function resetWorld() {
   save.unloadFarChunks();
   check('chunk lejano descargado', !state.chunks.has('30,0'));
   check('chunk cercano conservado', state.chunks.has('0,0'));
-  check('chunk sucio lejano persistido antes de descargar', fs.existsSync(path.join(constants.CHUNKS_DIR, '30_0.json')));
+  check('chunk sucio lejano persistido antes de descargar', fs.existsSync(path.join(constants.worldPaths.chunksDir, '30_0.json')));
   check('dirtyChunks sin la clave descargada', !state.dirtyChunks.has('30,0'));
   state.players.clear();
 }
@@ -215,7 +215,7 @@ function resetWorld() {
   check('seedDir neutraliza path-traversal (sin / ni ..)', !hostile.includes('/') && !hostile.includes('..') && hostile.length > 0, hostile);
   // CHUNKS_DIR/META_FILE derivan del directorio de la semilla (el guardado
   // incremental nunca vuelve a crear un world/chunks raíz y dividir el mundo)
-  check('CHUNKS_DIR vive dentro de WORLD_DIR', constants.CHUNKS_DIR.startsWith(constants.WORLD_DIR), constants.CHUNKS_DIR);
+  check('CHUNKS_DIR vive dentro de WORLD_DIR', constants.worldPaths.chunksDir.startsWith(constants.worldPaths.worldDir), constants.worldPaths.chunksDir);
   check('WORLD_DIR deriva de WORLD_ROOT + seedDir(SEED)',
     PRISTINE_WORLD_DIR === path.join(PRISTINE_WORLD_ROOT, constants.seedDir(SEED)), PRISTINE_WORLD_DIR);
   check('CHUNKS_DIR pristino deriva de WORLD_DIR', PRISTINE_CHUNKS_DIR === path.join(PRISTINE_WORLD_DIR, 'chunks'));
@@ -223,18 +223,104 @@ function resetWorld() {
   // migrateWorldLayout: mueve el layout antiguo (world.json + chunks en la raíz)
   // al directorio de la semilla actual — el mundo NO se pierde ni se reutiliza mal
   resetWorld();
-  fs.rmSync(constants.WORLD_DIR, { recursive: true, force: true }); // sin dir de semilla todavía
-  fs.rmSync(constants.WORLD_ROOT, { recursive: true, force: true });
+  fs.rmSync(constants.worldPaths.worldDir, { recursive: true, force: true }); // sin dir de semilla todavía
+  fs.rmSync(constants.worldPaths.worldRoot, { recursive: true, force: true });
   fs.mkdirSync(LEGACY_ROOT_CHUNKS, { recursive: true });
   const chunkArr = new Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE).fill(0);
   fs.writeFileSync(path.join(LEGACY_ROOT_CHUNKS, '0_0.json'),
     JSON.stringify({ schemaVersion: SCHEMA_VERSION, cx: 0, cz: 0, data: chunkArr }));
   fs.writeFileSync(LEGACY_ROOT_META, JSON.stringify({ schemaVersion: SCHEMA_VERSION, seed: SEED }));
   check('migrateWorldLayout migra (true)', save.migrateWorldLayout() === true);
-  check('world.json movido a world/<semilla>/', fs.existsSync(constants.META_FILE), constants.META_FILE);
-  check('chunks movidos a world/<semilla>/chunks', fs.existsSync(path.join(constants.CHUNKS_DIR, '0_0.json')));
+  check('world.json movido a world/<semilla>/', fs.existsSync(constants.worldPaths.metaFile), constants.worldPaths.metaFile);
+  check('chunks movidos a world/<semilla>/chunks', fs.existsSync(path.join(constants.worldPaths.chunksDir, '0_0.json')));
   check('la raíz queda limpia', !fs.existsSync(LEGACY_ROOT_META) && !fs.existsSync(LEGACY_ROOT_CHUNKS));
   check('no re-migra si la semilla ya tiene mundo', save.migrateWorldLayout() === false);
+}
+
+// --- 11) switchWorld: cambio de semilla en runtime (Fase 6, menú del cliente) ---
+{
+  // Aislamiento: paths derivados de TMP/worldroot + la semilla por defecto
+  constants.worldPaths.worldRoot = path.join(TMP, 'worldroot');
+  constants.setWorldSeed(SEED);
+  fs.rmSync(path.join(TMP, 'worldroot'), { recursive: true, force: true });
+  fs.mkdirSync(constants.worldPaths.chunksDir, { recursive: true });
+  state.chunks.clear();
+  state.dirtyChunks.clear();
+  state.mobs = [];
+  state.furnaces.clear();
+
+  // Mundo "viejo" con un chunk característico y un mob guardados
+  const arrA = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+  arrA[3] = B.DIAMOND_ORE;
+  state.chunks.set('0,0', arrA);
+  state.dirtyChunks.add('0,0');
+  state.mobs = [{ id: 'm1', type: 'cow', x: 1, y: 2, z: 3, health: 10, isBaby: false, age: 0, alive: true }];
+  save.saveWorld();
+  const oldDir = constants.worldPaths.worldDir; // worldroot/<seedDir(SEED)>
+  check('switchWorld: el mundo viejo queda guardado', fs.existsSync(path.join(oldDir, 'chunks', '0_0.json')));
+
+  // Cambiar a otra semilla → mundo nuevo (paths nuevos, estado limpio)
+  const r1 = save.switchWorld('Otra Semilla 2026!');
+  check('switchWorld a otra semilla → true', r1 === true, 'r=' + r1);
+  check('switchWorld cambia worldDir al seedDir de la nueva semilla',
+    constants.worldPaths.worldDir === path.join(TMP, 'worldroot', 'otra_semilla_2026'), constants.worldPaths.worldDir);
+  check('switchWorld limpia mobs del mundo anterior', state.mobs.length === 0);
+  check('switchWorld persiste el mundo anterior en disco (no se pierde)',
+    fs.existsSync(path.join(oldDir, 'chunks', '0_0.json')) && fs.existsSync(path.join(oldDir, 'world.json')));
+  check('switchWorld: mundo fresco sin chunks en memoria aún', state.chunks.size === 0, 'chunks=' + state.chunks.size);
+
+  // Misma semilla → 'same' (no toca nada)
+  check('switchWorld misma semilla → same', save.switchWorld('Otra Semilla 2026!') === 'same');
+
+  // Volver a la semilla original → recupera el mundo guardado
+  const r2 = save.switchWorld(SEED);
+  check('switchWorld de vuelta → true', r2 === true, 'r=' + r2);
+  check('switchWorld recupera el chunk de la semilla anterior',
+    state.chunks.get('0,0') && state.chunks.get('0,0')[3] === B.DIAMOND_ORE);
+  check('switchWorld restaura los mobs guardados', state.mobs.some((m) => m.type === 'cow'));
+
+  // Mundo ilegible (schemaVersion más nueva) → 'rechazo' y revierte
+  const ilegibleDir = path.join(TMP, 'worldroot', constants.seedDir('ilegible'));
+  fs.mkdirSync(path.join(ilegibleDir, 'chunks'), { recursive: true });
+  fs.writeFileSync(path.join(ilegibleDir, 'chunks', '0_0.json'), JSON.stringify({
+    schemaVersion: SCHEMA_VERSION + 5, cx: 0, cz: 0,
+    data: new Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE).fill(0),
+  }));
+  fs.writeFileSync(path.join(ilegibleDir, 'world.json'), JSON.stringify({ schemaVersion: SCHEMA_VERSION + 5, seed: 'ilegible' }));
+  const dirAntesRechazo = constants.worldPaths.worldDir;
+  const r3 = save.switchWorld('ilegible');
+  check('switchWorld mundo ilegible → rechazo', r3 === 'rechazo', 'r=' + r3);
+  check('switchWorld rechazo revierte el worldDir', constants.worldPaths.worldDir === dirAntesRechazo, constants.worldPaths.worldDir);
+  check('switchWorld rechazo mantiene cargado el mundo anterior',
+    state.chunks.get('0,0') && state.chunks.get('0,0')[3] === B.DIAMOND_ORE);
+
+  // Fallo de persistencia → 'error' y no se toca nada (integridad)
+  fs.rmSync(constants.worldPaths.worldDir, { recursive: true, force: true });
+  fs.writeFileSync(constants.worldPaths.worldDir, 'soy-un-archivo'); // reemplaza el dir por un archivo
+  const dirAntesError = constants.worldPaths.worldDir;
+  const r4 = save.switchWorld('otra');
+  check('switchWorld fallo de guardado → error', r4 === 'error', 'r=' + r4);
+  check('switchWorld error no cambia worldDir', constants.worldPaths.worldDir === dirAntesError);
+  check('switchWorld error conserva el estado en memoria',
+    state.chunks.get('0,0') && state.chunks.get('0,0')[3] === B.DIAMOND_ORE);
+  fs.rmSync(constants.worldPaths.worldDir); // era un archivo: restaurar el dir
+  fs.mkdirSync(path.join(constants.worldPaths.worldDir, 'chunks'), { recursive: true });
+
+  // reinitNoise: semillas distintas generan mundos distintos (determinista)
+  const realRandom = Math.random;
+  Math.random = () => 0.5; // sin árboles: la generación depende solo del ruido
+  world.setDiskLoader(() => null); // generación fresca (sin disco)
+  state.chunks.clear();
+  const before = Array.from(world.generateChunk(0, 0));
+  state.chunks.clear();
+  world.reinitNoise('otraSemilla');
+  const after = Array.from(world.generateChunk(0, 0));
+  Math.random = realRandom;
+  world.setDiskLoader(null);
+  world.reinitNoise(SEED); // restaurar el ruido por defecto
+  check('reinitNoise: semillas distintas generan mundos distintos',
+    JSON.stringify(before) !== JSON.stringify(after),
+    'len=' + before.length);
 }
 
 fs.rmSync(TMP, { recursive: true, force: true });

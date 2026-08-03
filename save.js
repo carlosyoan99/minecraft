@@ -5,32 +5,37 @@
 // ============================================================
 const fs = require('fs');
 const path = require('path');
-const {
-  WORLD_ROOT, WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE,
-  LEGACY_ROOT_FILES, SEED, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE,
-} = require('./constants.js');
+const constants = require('./constants.js');
+const { SCHEMA_VERSION, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE } = constants;
 const state = require('./state.js');
 const world = require('./world.js');
 const { restoreMobs } = require('./mobs.js');
 const { restoreFurnaces } = require('./crafting.js');
 
 const { chunks, players, furnaces, dirtyChunks } = state;
+// Atajos a las rutas del mundo ACTIVO (holder mutable de constants.js: la
+// semilla puede cambiar en runtime con switchWorld, y los tests redirigen el
+// I/O a un directorio temporal mutando constants.worldPaths).
+const P = constants.worldPaths;
 
 // Estado global (mobs, hornos, metadatos): pequeño, cabe en un solo archivo.
 function buildMeta() {
   return {
     schemaVersion: SCHEMA_VERSION,
-    seed: SEED,
+    seed: P.currentSeed,
     lastSaved: new Date().toISOString(),
     mobs: state.mobs.filter((m) => m.alive).map((m) => ({ id: m.id, type: m.type, x: m.x, y: m.y, z: m.z, health: m.health, isBaby: m.isBaby, age: m.age })),
     furnaces: Array.from(furnaces.entries()),
   };
 }
 
+// Devuelve true si la persistencia terminó correctamente; false si hubo un
+// error (que queda loggeado). switchWorld la usa para abortar el cambio de
+// semilla si no se pudo guardar el mundo actual (integridad: nada se pierde).
 function saveWorld() {
   try {
-    if (!fs.existsSync(WORLD_DIR)) fs.mkdirSync(WORLD_DIR, { recursive: true });
-    if (!fs.existsSync(CHUNKS_DIR)) fs.mkdirSync(CHUNKS_DIR, { recursive: true });
+    if (!fs.existsSync(P.worldDir)) fs.mkdirSync(P.worldDir, { recursive: true });
+    if (!fs.existsSync(P.chunksDir)) fs.mkdirSync(P.chunksDir, { recursive: true });
 
     // Incremental: solo se reescriben los chunks que cambiaron desde el
     // último guardado, nunca el mundo entero.
@@ -43,10 +48,12 @@ function saveWorld() {
     }
     dirtyChunks.clear();
 
-    world.atomicWrite(META_FILE, JSON.stringify(buildMeta(), null, 2));
+    world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
     console.log(`💾 Mundo guardado (${written} chunks escritos, ${chunks.size} en memoria, ${state.mobs.length} mobs)`);
+    return true;
   } catch (e) {
     console.error('Error guardando mundo:', e.message);
+    return false;
   }
 }
 
@@ -57,18 +64,18 @@ function saveWorld() {
 //                (schemaVersion más nuevo, world.json ilegible, ...): no cargar ni tocar
 function loadWorld() {
   try {
-    if (!fs.existsSync(CHUNKS_DIR)) return false;
+    if (!fs.existsSync(P.chunksDir)) return false;
 
     chunks.clear();
-    for (const file of fs.readdirSync(CHUNKS_DIR)) {
+    for (const file of fs.readdirSync(P.chunksDir)) {
       if (!file.endsWith('.json')) continue;
-      const parsed = world.readChunkFile(path.join(CHUNKS_DIR, file), file);
+      const parsed = world.readChunkFile(path.join(P.chunksDir, file), file);
       if (!parsed) continue;
       chunks.set(`${parsed.cx},${parsed.cz}`, Uint8Array.from(parsed.data));
     }
 
-    if (fs.existsSync(META_FILE)) {
-      const meta = JSON.parse(fs.readFileSync(META_FILE, 'utf8'));
+    if (fs.existsSync(P.metaFile)) {
+      const meta = JSON.parse(fs.readFileSync(P.metaFile, 'utf8'));
       if (typeof meta.schemaVersion === 'number' && meta.schemaVersion > SCHEMA_VERSION) {
         // Mundo más nuevo de lo que este servidor sabe leer: negarse a
         // cargarlo evita que un guardado posterior lo corrompa.
@@ -76,8 +83,8 @@ function loadWorld() {
         console.error('   No se cargará. Actualiza el servidor o restaura un backup compatible.');
         return 'rechazo';
       }
-      if (meta.seed && meta.seed !== SEED) {
-        console.warn(`⚠️  La semilla del mundo guardado (${meta.seed}) difiere de la configurada (${SEED}): los chunks nuevos no encajarán con los guardados.`);
+      if (meta.seed && meta.seed !== P.currentSeed) {
+        console.warn(`⚠️  La semilla del mundo guardado (${meta.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`);
       }
       state.mobs = restoreMobs(meta.mobs);
       restoreFurnaces(meta.furnaces);
@@ -90,8 +97,57 @@ function loadWorld() {
     console.error('Error cargando mundo:', e.message);
     // Si existe el directorio de chunks, hay un mundo real: negarse a
     // regenerar encima en lugar de arriesgar pérdida de datos.
-    return fs.existsSync(CHUNKS_DIR) ? 'rechazo' : false;
+    return fs.existsSync(P.chunksDir) ? 'rechazo' : false;
   }
+}
+
+// Cambio de mundo en runtime (Fase 6: campo de semilla del menú del cliente).
+// Devuelve:
+//   true     — mundo cambiado a la nueva semilla (cargado de disco o fresco)
+//   'same'   — misma semilla (mismo directorio): solo se actualiza el nombre
+//   'rechazo'— el mundo de esa semilla existe pero no se puede abrir (formato
+//              más nuevo): se revierte y no se toca nada (integridad)
+//   'error'  — no se pudo persistir el mundo actual antes de cambiar: no se
+//              toca nada (nada se pierde)
+// Secuencia segura: persiste el mundo actual → limpia el estado en memoria →
+// cambia rutas y re-seeda el ruido → carga (o deja listo para generar) el
+// mundo de la nueva semilla. El jugador que la pidió genera/recibe los chunks
+// del spawn en net.js (set_seed → ensureChunksAround + init).
+function switchWorld(newSeed) {
+  const prevSeed = P.currentSeed;
+  if (constants.seedDir(newSeed) === constants.seedDir(prevSeed)) {
+    // Misma semilla: solo normalizar el nombre activo (si difiere en formato)
+    // sin tocar el mundo; el cliente recibe un init de confirmación igualmente.
+    if (newSeed !== prevSeed) constants.setWorldSeed(newSeed);
+    return 'same';
+  }
+
+  // Persistir el mundo actual ANTES de soltarlo. Si la persistencia falla,
+  // abortar el cambio: limpiar el estado en memoria perdería el mundo (la
+  // integridad de datos está por encima de poder cambiar de semilla).
+  if (!saveWorld()) {
+    console.error('❌ No se pudo cambiar la semilla: falló el guardado del mundo actual.');
+    return 'error';
+  }
+  state.chunks.clear();
+  state.dirtyChunks.clear();
+  state.mobs = [];
+  state.furnaces.clear();
+
+  constants.setWorldSeed(newSeed);
+  world.reinitNoise(newSeed);
+
+  const r = loadWorld();
+  if (r === 'rechazo') {
+    // No tocar un mundo que no podemos leer: revertir al anterior.
+    console.error(`❌ No se puede abrir el mundo de la semilla "${newSeed}" (formato más nuevo o ilegible); se mantiene la semilla actual.`);
+    constants.setWorldSeed(prevSeed);
+    world.reinitNoise(prevSeed);
+    loadWorld();
+    return 'rechazo';
+  }
+  console.log(`🌱 Semilla activa: ${prevSeed} → ${newSeed} (${state.chunks.size} chunks, ${state.mobs.length} mobs)`);
+  return true;
 }
 
 // Migración del layout antiguo (v2 pre-semilla: world.json + chunks + world.dat
@@ -100,23 +156,23 @@ function loadWorld() {
 // anterior, y cada semilla conserva su propio mundo (bug de la semilla).
 function migrateWorldLayout() {
   try {
-    if (fs.existsSync(WORLD_DIR)) {
+    if (fs.existsSync(P.worldDir)) {
       // Esta semilla ya tiene mundo propio: si además queda layout antiguo en
       // la raíz (p. ej. por haber arrancado antes con otra semilla), avisar en
       // vez de ignorarlo en silencio (integridad: convención del proyecto).
-      const orphan = LEGACY_ROOT_FILES.filter((n) => fs.existsSync(path.join(WORLD_ROOT, n)));
+      const orphan = constants.LEGACY_ROOT_FILES.filter((n) => fs.existsSync(path.join(P.worldRoot, n)));
       if (orphan.length > 0) {
         console.warn(`⚠️  Layout antiguo huérfano en world/ (${orphan.join(', ')}): esta semilla ya tiene mundo, se ignoran esos archivos.`);
       }
       return false;
     }
-    const existing = LEGACY_ROOT_FILES.filter((n) => fs.existsSync(path.join(WORLD_ROOT, n)));
+    const existing = constants.LEGACY_ROOT_FILES.filter((n) => fs.existsSync(path.join(P.worldRoot, n)));
     if (existing.length === 0) return false;    // no hay layout antiguo que migrar
-    fs.mkdirSync(WORLD_DIR, { recursive: true });
+    fs.mkdirSync(P.worldDir, { recursive: true });
     for (const n of existing) {
-      fs.renameSync(path.join(WORLD_ROOT, n), path.join(WORLD_DIR, n));
+      fs.renameSync(path.join(P.worldRoot, n), path.join(P.worldDir, n));
     }
-    console.log(`🔁 Mundo movido al directorio de su semilla (${path.basename(WORLD_DIR)}): ${existing.join(', ')}`);
+    console.log(`🔁 Mundo movido al directorio de su semilla (${path.basename(P.worldDir)}): ${existing.join(', ')}`);
     return true;
   } catch (e) {
     console.error('⚠️  No se pudo migrar el layout del mundo:', e.message);
@@ -129,23 +185,23 @@ function migrateWorldLayout() {
 // renombra el .dat original a world.dat.legacy (copia de seguridad).
 function migrateLegacyWorld() {
   try {
-    if (!fs.existsSync(LEGACY_FILE) || fs.existsSync(CHUNKS_DIR)) return false;
-    const data = JSON.parse(fs.readFileSync(LEGACY_FILE, 'utf8'));
-    if (data.seed && data.seed !== SEED) {
-      console.warn(`⚠️  La semilla del world.dat (${data.seed}) difiere de la configurada (${SEED}): los chunks nuevos no encajarán con los guardados.`);
+    if (!fs.existsSync(P.legacyFile) || fs.existsSync(P.chunksDir)) return false;
+    const data = JSON.parse(fs.readFileSync(P.legacyFile, 'utf8'));
+    if (data.seed && data.seed !== P.currentSeed) {
+      console.warn(`⚠️  La semilla del world.dat (${data.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`);
     }
     chunks.clear();
     for (const [k, arr] of data.chunks || []) chunks.set(k, Uint8Array.from(arr));
     state.mobs = restoreMobs(data.mobs);
     restoreFurnaces(data.furnaces);
 
-    fs.mkdirSync(CHUNKS_DIR, { recursive: true });
+    fs.mkdirSync(P.chunksDir, { recursive: true });
     for (const [key, arr] of chunks) {
       world.writeChunkFile(key, arr);
     }
-    world.atomicWrite(META_FILE, JSON.stringify(buildMeta(), null, 2));
+    world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
 
-    fs.renameSync(LEGACY_FILE, LEGACY_FILE + '.legacy');
+    fs.renameSync(P.legacyFile, P.legacyFile + '.legacy');
     console.log(`🔁 Mundo migrado de world.dat → archivos por chunk (${chunks.size} chunks)`);
     return true;
   } catch (e) {
@@ -200,4 +256,4 @@ function unloadFarChunks() {
   console.log(`🗑️ Descargados ${toUnload.length} chunks lejanos (${chunks.size} en memoria)`);
 }
 
-module.exports = { saveWorld, loadWorld, migrateLegacyWorld, migrateWorldLayout, unloadFarChunks, setUnloadHandler };
+module.exports = { saveWorld, loadWorld, migrateLegacyWorld, migrateWorldLayout, switchWorld, unloadFarChunks, setUnloadHandler };

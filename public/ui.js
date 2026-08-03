@@ -5,6 +5,7 @@ import { controls, showBlocker } from './scene.js';
 import { send } from './connection.js';
 import { itemLabel, itemColor, DURABILITY, XP_PER_LEVEL } from './constants.js';
 import { isMuted, setMuted } from './audio.js';
+import { showLoading, finishLoading } from './loading.js';
 
 // Estado que dibuja el HUD (lo actualiza la red; lo lee el input)
 let inventory = new Array(36).fill(null);
@@ -84,6 +85,59 @@ function updateMuteBtn() {
 }
 muteBtn.addEventListener('click', () => { setMuted(!isMuted()); updateMuteBtn(); });
 updateMuteBtn();
+
+// ============================================================
+// MENÚ PRINCIPAL: SEMILLA DEL MUNDO (Fase 6)
+// Al pulsar "Jugar" con una semilla escrita se pide al servidor cambiar el
+// mundo activo (set_seed): persiste el actual, carga/genera el de la semilla
+// y reenvía el init. La pantalla de carga cubre el cambio y el puntero se
+// bloquea ya (gesto del usuario); onWorldLoaded() la cierra cuando llega el
+// init que confirma la semilla pedida (data.seed === la enviada).
+// ============================================================
+const startBtn = document.getElementById('start-btn');
+const seedInput = document.getElementById('seed-input');
+let currentSeed = null; // semilla activa (la trae el init del servidor)
+let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
+
+startBtn.addEventListener('click', () => {
+  const seed = seedInput.value.trim();
+  // Si la semilla escrita es la activa (la trae el init), no hace falta
+  // pedir nada: el mundo ya está cargado. Si difiere, el servidor cambia el
+  // mundo (set_seed) y el init de confirmación cierra la carga.
+  if (seed && seed !== currentSeed) {
+    seedPending = seed;
+    showLoading(`Generando el mundo «${seed}»...`);
+    send('set_seed', { seed });
+  }
+  controls.lock(); // el lock en el gesto es fiable; la carga cubre el cambio
+});
+
+// Llamado desde network.js en cada init: actualiza la semilla activa y cierra
+// la pantalla de carga. Si se pidió una semilla, espera el init que la
+// confirma antes de cerrar (evita destapar el mundo anterior durante el
+// cambio).
+export function onWorldLoaded(seed) {
+  currentSeed = seed;
+  if (seedPending) {
+    if (seed === seedPending) { seedPending = null; finishLoading(); }
+    return;
+  }
+  finishLoading();
+}
+
+// El servidor rechazó el cambio (otros jugadores en línea, mundo ilegible o
+// fallo de guardado): volver al menú y avisar.
+export function onSeedRejected(reason) {
+  seedPending = null;
+  finishLoading(); // ocultar la carga (fade) antes de mostrar el menú
+  controls.unlock(); // el handler de unlock vuelve a mostrar el menú
+  const msgs = {
+    rechazo: '🌱 No se pudo abrir el mundo de esa semilla (formato más nuevo).',
+    others: '🌱 Hay otros jugadores en línea: no se puede cambiar la semilla ahora.',
+    error: '🌱 No se pudo guardar el mundo actual: cambio de semilla cancelado.',
+  };
+  flashMessage(msgs[reason] || msgs.error);
+}
 
 export function applyInventory(inv) {
   inventory = inv;

@@ -93,7 +93,25 @@ check('los lagos siguen teniendo fondo de arena', waterSurface > 0, `${waterSurf
 check('isSolidBlock(SNOW) === true', isSolidBlock(B.SNOW) === true);
 check('SNOW no está en NOT_MINEABLE (se rompe a mano)', !NOT_MINEABLE.has(B.SNOW));
 
-// --- 5) Determinismo: regenerar un chunk de montaña es bit-idéntico ---
+// --- 5) Transiciones suaves entre biomas (fix: sin acantilados) ---
+// La altura se interpola de forma continua (blend por afinidad + rampa de
+// montaña): cruzar una frontera de bioma no debe producir saltos de 8+
+// bloques en una sola columna (el bug original saltaba de la altura de
+// llanura a la de cordillera de golpe). Barrido de transectos con el salto
+// máximo entre columnas adyacentes.
+let maxJump = 0, jumpSample = null;
+for (let z = -40; z <= 40; z += 8) {
+  for (let wx = -200; wx < 200; wx++) {
+    const h = world.getHeight(wx, z);
+    const h2 = world.getHeight(wx + 1, z);
+    const j = Math.abs(h2 - h);
+    if (j > maxJump) { maxJump = j; jumpSample = { wx, z, h, h2 }; }
+  }
+}
+check('altura continua entre columnas adyacentes (salto máximo <= 4)', maxJump <= 4,
+  `salto máx ${maxJump} en x=${jumpSample.wx} z=${jumpSample.z} (${jumpSample.h}→${jumpSample.h2})`);
+
+// --- 6) Determinismo: regenerar un chunk de montaña es bit-idéntico ---
 // Buscar un chunk con montaña para asegurarse de probar el caso difícil.
 let mountainChunk = null;
 outer:

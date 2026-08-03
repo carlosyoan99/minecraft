@@ -26,11 +26,32 @@ const WORLD_ROOT = path.join(__dirname, 'world');
 function seedDir(seed) {
   return (seed || '').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'default';
 }
-const WORLD_DIR = path.join(WORLD_ROOT, seedDir(SEED));
-const CHUNKS_DIR = path.join(WORLD_DIR, 'chunks');
+// Rutas de mundo MUTABLES (holder): la semilla se puede cambiar en runtime con
+// setWorldSeed() desde el menú del cliente (Fase 6, evento set_seed). save.js
+// y world.js leen SIEMPRE de aquí en tiempo de llamada (nunca de constantes
+// capturadas al cargar el módulo), y los tests mutan worldRoot/worldDir para
+// aislar el I/O en un directorio temporal.
+const worldPaths = {
+  worldRoot: WORLD_ROOT,
+  currentSeed: SEED,          // semilla activa (el directorio se deriva de ella)
+  worldDir: null, chunksDir: null, legacyFile: null, metaFile: null,
+};
+worldPaths.worldDir = path.join(worldPaths.worldRoot, seedDir(worldPaths.currentSeed));
+worldPaths.chunksDir = path.join(worldPaths.worldDir, 'chunks');
+worldPaths.legacyFile = path.join(worldPaths.worldDir, 'world.dat');
+worldPaths.metaFile = path.join(worldPaths.worldDir, 'world.json');
+
+// Cambia la semilla activa (y sus rutas) en runtime. No toca ruido ni estado:
+// eso lo hace save.switchWorld() (persistir → limpiar → re-seedar).
+function setWorldSeed(seed) {
+  worldPaths.currentSeed = seed;
+  worldPaths.worldDir = path.join(worldPaths.worldRoot, seedDir(seed));
+  worldPaths.chunksDir = path.join(worldPaths.worldDir, 'chunks');
+  worldPaths.legacyFile = path.join(worldPaths.worldDir, 'world.dat');
+  worldPaths.metaFile = path.join(worldPaths.worldDir, 'world.json');
+}
+
 const SCHEMA_VERSION = 2;           // versión actual del formato de guardado
-const LEGACY_FILE = path.join(WORLD_DIR, 'world.dat');
-const META_FILE = path.join(WORLD_DIR, 'world.json');
 // Layout antiguo (v2 pre-semilla, todo en la raíz de world/) que se migra al
 // directorio de la semilla al arrancar (save.migrateWorldLayout()).
 const LEGACY_ROOT_FILES = ['world.json', 'chunks', 'world.dat', 'world.dat.legacy'];
@@ -147,7 +168,11 @@ module.exports = {
   PORT, CHUNK_SIZE, WORLD_HEIGHT, TICK_MS, SAVE_INTERVAL_MS,
   VIEW_DISTANCE_CHUNKS, UNLOAD_DISTANCE_CHUNKS, UNLOAD_INTERVAL_MS,
   DAY_CYCLE_MS, SEED,
-  WORLD_ROOT, seedDir, WORLD_DIR, CHUNKS_DIR, SCHEMA_VERSION, LEGACY_FILE, META_FILE, LEGACY_ROOT_FILES,
+  WORLD_ROOT, seedDir, setWorldSeed, worldPaths,
+  // Aliases de compatibilidad (snapshot inicial; la fuente de verdad es worldPaths)
+  WORLD_DIR: worldPaths.worldDir, CHUNKS_DIR: worldPaths.chunksDir,
+  LEGACY_FILE: worldPaths.legacyFile, META_FILE: worldPaths.metaFile,
+  SCHEMA_VERSION, LEGACY_ROOT_FILES,
   B, I, NOT_MINEABLE, FUEL_ITEMS, FOOD_VALUES, isFood, isPickaxe,
   isSolidBlock, BREED_FOOD, MOB_COLORS, HOSTILE,
   TOOL_DURABILITY, isTool, SWORD_DAMAGE,

@@ -13,6 +13,7 @@ import {
 import { send } from './connection.js';
 import { playBreak, playPlace, playEat, playFeed } from './audio.js';
 import { PLACEABLE_BLOCKS, FOOD_ITEMS, BREED_FOOD, WATER } from './constants.js';
+import { toggleDebug } from './debug.js';
 
 // ============================================================
 // TECLADO
@@ -33,6 +34,11 @@ document.addEventListener('keydown', (e) => {
     }
     case 'KeyE': toggleInventory(); break;
     case 'Escape': closePanels(); break;
+    case 'F3':
+      // Fase 6: visualizador de chunks (bordes + caras) para depurar el culling
+      e.preventDefault(); // evitar el buscador del navegador
+      toggleDebug();
+      break;
   }
 });
 document.addEventListener('keyup', (e) => {

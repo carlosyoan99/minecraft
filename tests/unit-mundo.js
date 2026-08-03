@@ -2,7 +2,8 @@
 // ============================================================
 // TESTS UNITARIOS DE GENERACIÓN DE MUNDO (Fase 4: cuevas + lagos)
 // Verifica que la generación en world.js:
-//   1. no excava el bedrock (y=0) ni abre huecos en la superficie
+//   1. no excava el bedrock (y=0) y solo abre la superficie como bocas de
+//      cueva escasas (fix: cuevas comunicadas con el exterior)
 //   2. es determinista en la zona subterránea (sin Math.random ahí)
 //   3. es continua entre chunks (sin costuras en los bordes)
 //   4. excava cuevas con fracción razonable y túneles conexos
@@ -38,7 +39,7 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
   }
 }
 
-let stoneTotal = 0, carved = 0, bedrockBroken = 0, surfaceHoles = 0;
+let stoneTotal = 0, carved = 0, bedrockBroken = 0, columns = 0, surfaceHoles = 0, mouthCount = 0;
 let waterCells = 0, waterAboveSea = 0, badWaterFloor = 0, airUnderWater = 0;
 for (let cx = -RADIUS; cx <= RADIUS; cx++) {
   for (let cz = -RADIUS; cz <= RADIUS; cz++) {
@@ -48,15 +49,22 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
         const wx = cx * CHUNK_SIZE + x, wz = cz * CHUNK_SIZE + z;
         const lake = world.isLake(wx, wz);
         const surface = lake ? world.LAKE_FLOOR : world.getHeight(wx, wz);
+        columns++;
         for (let y = 1; y < surface - 1; y++) {
           stoneTotal++;
           if (data[idx(x, y, z)] === B.AIR) carved++;
         }
         if (data[idx(x, 0, z)] !== B.BEDROCK) bedrockBroken++;
-        // superficie: los 2 bloques superiores nunca deben ser aire excavado
+        // Boca de cueva: el bloque de superficie (surface-1) abierto al aire
+        // es una entrada visible hacia el exterior (fix de la tarea).
+        if (data[idx(x, surface - 1, z)] === B.AIR) mouthCount++;
+        // Los 2 bloques superiores pueden tener huecos SOLO como bocas de
+        // cueva escasas: túneles que rompen la superficie ocasionalmente.
+        let topHoles = 0;
         for (let y = Math.max(0, surface - 2); y < surface; y++) {
-          if (data[idx(x, y, z)] === B.AIR) surfaceHoles++;
+          if (data[idx(x, y, z)] === B.AIR) topHoles++;
         }
+        if (topHoles > 0) surfaceHoles++;
         // agua: invariantes de lago
         for (let y = 1; y < WORLD_HEIGHT; y++) {
           if (data[idx(x, y, z)] === B.WATER) {
@@ -73,8 +81,13 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 }
 
 const frac = stoneTotal ? (carved / stoneTotal) * 100 : 0;
+const holePct = columns ? (surfaceHoles / columns) * 100 : 0;
+// Nota: los límites de bocas/huecos están calibrados para la semilla por
+// defecto (miSemilla2026); con otra SEED podrían variar (los tests de la
+// suite ya son seed-específicos por diseño: los 5 biomas, la montaña, etc.).
 check('bedrock intacto (y=0 siempre BEDROCK)', bedrockBroken === 0, `${bedrockBroken} violaciones`);
-check('sin huecos en la superficie (2 bloques superiores sólidos)', surfaceHoles === 0, `${surfaceHoles} huecos`);
+check('las cuevas abren bocas hacia la superficie (alguna columna)', mouthCount > 0, `${mouthCount} bocas`);
+check('los huecos de superficie son escasos (< 10% de columnas)', holePct < 10, `${holePct.toFixed(1)}% de columnas con hueco`);
 check('fracción excavada en rango sano (5-25%)', frac >= 5 && frac <= 25, `${frac.toFixed(1)}%`);
 check('hay agua en el mundo (lagos generados)', waterCells > 0, `${waterCells} celdas de agua`);
 check('sin agua por encima de SEA_LEVEL', waterAboveSea === 0, `${waterAboveSea} celdas`);

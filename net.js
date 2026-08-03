@@ -8,13 +8,15 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const constants = require('./constants.js');
 const {
   PORT, TICK_MS, VIEW_DISTANCE_CHUNKS, DAY_CYCLE_MS, SEED,
   B, I, NOT_MINEABLE, FUEL_ITEMS, isPickaxe, isSolidBlock,
   SWORD_DAMAGE, MOB_XP, ORE_XP,
-} = require('./constants.js');
+} = constants;
 const state = require('./state.js');
 const world = require('./world.js');
+const save = require('./save.js');
 const playerHelpers = require('./players.js');
 const crafting = require('./crafting.js');
 const mobs = require('./mobs.js');
@@ -30,6 +32,28 @@ function broadcast(event, data, exceptId = null) {
     if (p.id === exceptId) continue;
     if (p.ws.readyState === WebSocket.OPEN) p.ws.send(msg);
   }
+}
+
+// Estado inicial completo para un jugador (init). Se reenvía tras un cambio
+// de semilla (set_seed) para que el cliente reciba el mundo del seed elegido.
+// data.seed permite al cliente confirmar que ya tiene el mundo pedido.
+function sendInit(p) {
+  const chunkData = {};
+  for (const [key, data] of state.chunks) chunkData[key] = Array.from(data);
+  p.ws.send(JSON.stringify({
+    event: 'init',
+    data: {
+      playerId: p.id, chunkData, spawnX: p.x, spawnY: p.y, spawnZ: p.z,
+      dayTime: worldTime(), // reloj del servidor: el cliente extrapola el ciclo visual
+      mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
+      inventory: p.inventory, health: p.health, maxHealth: p.maxHealth,
+      xp: p.xp, level: p.level, // Fase 5
+      food: p.food, saturation: p.saturation,
+      seed: constants.worldPaths.currentSeed, // Fase 6: semilla activa del mundo
+      otherPlayers: Array.from(state.players.values()).filter((q) => q.id !== p.id)
+        .map((q) => ({ id: q.id, x: q.x, y: q.y, z: q.z })),
+    },
+  }));
 }
 
 const app = express();
@@ -58,22 +82,7 @@ function handleConnection(ws) {
   state.players.set(playerId, player);
   console.log(`🟢 Jugador conectado: ${playerId} (${state.players.size} en línea)`);
 
-  const chunkData = {};
-  for (const [key, data] of state.chunks) chunkData[key] = Array.from(data);
-
-  ws.send(JSON.stringify({
-    event: 'init',
-    data: {
-      playerId, chunkData, spawnX, spawnY, spawnZ,
-      dayTime: worldTime(), // reloj del servidor: el cliente extrapola el ciclo visual
-      mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
-      inventory: player.inventory, health: player.health, maxHealth: player.maxHealth,
-      xp: player.xp, level: player.level, // Fase 5
-      food: player.food, saturation: player.saturation,
-      otherPlayers: Array.from(state.players.values()).filter((p) => p.id !== playerId)
-        .map((p) => ({ id: p.id, x: p.x, y: p.y, z: p.z })),
-    },
-  }));
+  sendInit(player);
 
   broadcast('player_join', { id: playerId, x: spawnX, y: spawnY, z: spawnZ }, playerId);
 
@@ -246,6 +255,39 @@ function handleConnection(ws) {
           p.openFurnace = null;
         }
         ws.send(JSON.stringify({ event: 'furnace_state', data: { key, ...crafting.furnaceSnapshot(f) } }));
+        break;
+      }
+
+      case 'set_seed': {
+        // Fase 6: campo de semilla del menú del cliente. El servidor es la
+        // fuente de verdad: cambia el mundo activo (persistiendo el actual) y
+        // reenvía el init con el mundo de la semilla pedida. Servidor dedicado:
+        // solo se cambia si este jugador es el ÚNICO en línea (los demás verían
+        // el mundo cambiar bajo sus pies).
+        if (typeof data.seed !== 'string' || !data.seed.trim()) break;
+        if (state.players.size > 1) {
+          p.ws.send(JSON.stringify({ event: 'seed_rejected', data: { reason: 'others' } }));
+          break;
+        }
+        const seed = data.seed.trim();
+        const r = save.switchWorld(seed);
+        if (r === 'rechazo' || r === 'error') {
+          p.ws.send(JSON.stringify({ event: 'seed_rejected', data: { reason: r } }));
+          break;
+        }
+        if (r === true) {
+          // Mundo (realmente) nuevo: el jugador empieza de cero — spawn, salud,
+          // comida, XP e inventario. El inventario no viaja entre mundos.
+          const spawn = world.findSpawn(0, 0);
+          p.x = spawn.x; p.y = spawn.y; p.z = spawn.z;
+          p.health = 20; p.maxHealth = 20; p.xp = 0; p.level = 0;
+          p.food = 20; p.saturation = 20;
+          p.inventory = new Array(36).fill(null);
+          p.craftingGrid = new Array(9).fill(null);
+          p.openFurnace = null;
+          world.ensureChunksAround(p.x, p.z, VIEW_DISTANCE_CHUNKS);
+        }
+        sendInit(p); // confirmación: el cliente la usa para cerrar la carga
         break;
       }
 
