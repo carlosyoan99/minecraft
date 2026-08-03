@@ -35,15 +35,20 @@ mundo. El cliente predice y dibuja; el servidor decide y corrige.
 
 ```
 mi-minecraft/
-├── server.js              Entrada (39 líneas): requiere módulos, conecta hooks y arranca
-├── constants.js           Fuente de verdad de IDs (B/I) y configuración (semilla, tiempos)
-├── state.js               Estado mutable compartido (chunks, players, mobs, furnaces)
-├── world.js               Generación (biomas, cuevas, lagos) y archivos de chunk
-├── crafting.js            Recetas de crafteo y hornos (tick de fundición)
-├── players.js             Inventario, hambre, salud, XP y daño de jugadores
-├── mobs.js                IA de mobs (máquina de estados) y drops
-├── save.js                Persistencia incremental por chunk + descarga de chunks
-├── net.js                 HTTP/WebSocket, handlers y bucle principal
+├── server.js              Entrada (1 línea): requiere server/server.js
+├── server/                Código del servidor Node.js
+│   ├── server.js          Arranque (carga módulos, hooks, hot-reload, guardado)
+│   ├── constants.js       Fuente de verdad de IDs (B/I) y configuración (semilla, tiempos)
+│   ├── state.js           Estado mutable compartido (chunks, players, mobs, furnaces, chests)
+│   ├── world.js           Generación (biomas, cuevas, lagos) y archivos de chunk
+│   ├── crafting.js        Recetas de crafteo y hornos (tick de fundición)
+│   ├── chests.js          Cofres: inventario propio por bloque (27 slots, persistidos)
+│   ├── players.js         Inventario, hambre, salud, XP y daño de jugadores
+│   ├── mobs.js            IA de mobs (máquina de estados) y drops
+│   ├── save.js            Persistencia incremental por chunk + descarga de chunks
+│   ├── net.js             HTTP/WebSocket, handlers y bucle principal
+│   ├── mining.js          Sesiones de minería con progreso (Fase 6)
+│   └── commands.js        Consola de comandos (/help, /tp, /give, /time set, /gamemode)
 ├── recetas.json           Recetas de crafteo (patrones 3x3)
 ├── recetas_horno.json     Recetas de fundición
 ├── tests/                 Unitarios + E2E + auditorías (npm test, ver Tests)
@@ -65,6 +70,7 @@ mi-minecraft/
 │   ├── ui.js              HUD (salud, hambre, XP, hotbar, durabilidad) + menú con semilla
 │   ├── audio.js           Sonidos procedurales (Web Audio, sin assets)
 │   ├── textures.js        Atlas de texturas procedural (canvas 16x16 px)
+│   ├── lighting.js        Luz de antorcha por bloque (BFS pura, testeable en Node)
 │   ├── daynight.js        Ciclo día/noche visual (cielo, luz, ambiente)
 │   └── estilo.css
 ├── CLAUDE.md              Guía para IA que trabaje en el repo (convenciones)
@@ -77,7 +83,8 @@ mi-minecraft/
 
 ```bash
 npm install
-node server.js
+npm start
+# o directamente: node server.js
 ```
 
 Abrir `http://localhost:3000`. Escribe una **semilla** en el menú
@@ -168,10 +175,23 @@ recupera su mundo).
   **pool de geometrías**: las `BufferGeometry` de los chunks se
   reutilizan al cargar/descargar/reconstruir (antes `dispose()` +
   reconstrucción completa), reutilizando también los arrays cuando el
-  tamaño coincide (menos allocs y uploads al GPU).
+  tamaño coincide (menos allocs y uploads al GPU), e **IA hostil más
+  fiel**: los hostiles solo aparecen de noche (de día generan pasivos),
+  hacen spawn en cualquier chunk cargado del área de render (nunca a
+  <24 bloques del jugador ni en lagos) y los no-muertos
+  (zombie/esqueleto) **arden con el sol** — pierden 1 HP/s mientras
+  están expuestos al cielo (techos/árboles dan sombra), se tiñen de
+  fuego en el cliente y mueren sin drop ni XP. **Cofre**: bloque de
+  almacenamiento con inventario propio de 27 slots (abre con clic izquierdo,
+  guarda/toma items apilando y conservando la durabilidad de las
+  herramientas, se persiste en `world.json` y al romperse cae como item — su
+  contenido se pierde, simplificación documentada). **Antorchas con
+  iluminación dinámica**: luz POR BLOQUE además de la luz global — BFS de
+  luz en `public/lighting.js` horneada en colores por vértice (de noche las
+  antorchas iluminan claramente, de día apenas se notan); necesitan un
+  bloque sólido adyacente para colocarse y caen si se rompe su soporte.
   Pendientes:
-  texturas de mobs/items, cama y armadura, cofres,
-  antorchas, etc.
+  texturas de mobs/items, cama y armadura, etc.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -194,6 +214,8 @@ en el servidor y `public/network.js` en el cliente).
 | `grid_set` / `grid_clear` | celda / — | Mover ítem del inventario a la mesa |
 | `furnace_open` | `{x, y, z}` | Abrir un horno |
 | `furnace_action` | `{action: "add_fuel"\|\"add_input", invSlot}` / `{action: "collect_output"}` / `{action: "close"}` | Gestionar el horno abierto |
+| `chest_open` | `{x, y, z}` | Abrir un cofre (valida distancia y bloque) |
+| `chest_action` | `{action: "put", invSlot}` / `{action: "take", chestSlot}` / `{action: "close"}` | Mover items entre el cofre y el inventario |
 | `inventory_select` | `{slot}` | Seleccionar slot del hotbar |
 | `eat` | `{}` | Comer el ítem seleccionado (rechazado si está lleno) |
 | `feed_mob` | `{mobId}` | Alimentar un animal (modo amor → cría) |
@@ -224,6 +246,7 @@ en el servidor y `public/network.js` en el cliente).
 | `eat_rejected` | `{}` | "No tienes hambre" |
 | `crafting_grid_update` | `{grid, success}` | Resultado del crafteo |
 | `furnace_state` | `{key, ...}` | Estado del horno (combustible, progreso) |
+| `chest_state` | `{key, slots}` | Slots del cofre abierto (27) |
 | `chat` | `{id, message}` | Mensaje de chat |
 
 ## Tests
@@ -252,6 +275,10 @@ en el servidor y `public/network.js` en el cliente).
     (mobs se hunden en el agua) y `unit-spawn.js` (spawn sobre tierra firme).
   - **Fase 5 (progresión):** `unit-durabilidad.js` (durabilidad, XP y mobs
     nuevos).
+  - **Fase 6 (IA hostil):** dentro de `unit-mobs-ia.js` — quema solar
+    (zombie/esqueleto arden de día al aire libre, 1 HP/s, no de noche ni
+    bajo techo, mueren sin drop), spawn por fase del día (solo pasivos de
+    día, hostiles de noche) y distancia mínima de 24 bloques al jugador.
   - **Fase 6 (dev):** `unit-reload.js` (hot-reload de recetas: swap atómico,
     JSON inválido y receta malformada mantienen las tablas anteriores), el
     test del comando `/reload` dentro de `unit-red.js`, `unit-mineria.js`
@@ -265,18 +292,33 @@ en el servidor y `public/network.js` en el cliente).
     misma geometría y del mismo array al re-adquirir, tope del pool
     con dispose del exceso, categorías separadas, categoría
     desconocida → dispose, y `setOrReuseAttribute` con tamaño igual
-    vs distinto).
+    vs distinto), `unit-cofre.js` (estado del cofre y handlers
+    `chest_open`/`chest_action`: put apilando y conservando
+    durabilidad, cofre/inventario llenos, receta y rotura que
+    elimina el estado) y `unit-antorchas.js` (soporte y caída,
+    place rechazado/aceptado, bloque no sólido, receta y el motor
+    de luz del cliente `public/lighting.js`: atenuación 0.8/paso,
+    alcance 7, oclusión con pared completa y antorcha lejana
+    ignorada).
   - **Integridad transversal:** `unit-recetas.js` (todas las recetas de
     crafteo/horno referencian IDs existentes, shapes bien formadas y
     alcanzables desde su grid — habría detectado el bug `hilo_a_lana` de la
-    Fase 5) y `unit-sync.js` (los IDs de bloques/ítems y constantes
-    compartidas están sincronizados entre `constants.js` del servidor y
-    `public/constants.js` del cliente).
+    Fase 5 —, y la **cadena de obtención de las 20 herramientas**: cada
+    una tiene receta con palos + su material, y cada material es alcanzable
+    en juego — tronco a mano → planks → palos → pico de madera → adoquín →
+    horno → lingotes por fundición → hierro/oro, diamante minado directo —
+    con la progresión de picos continua y combustible del horno obtenible
+    desde la primera madera; ninguna herramienta queda inaccesible) y
+    `unit-sync.js` (los IDs de bloques/ítems y constantes compartidas están
+    sincronizados entre `constants.js` del servidor y `public/constants.js`
+    del cliente).
   - Y, si hay un servidor vivo en `ws://localhost:3998` (o `$WS_URL`), los
     E2E de comer (`tests/e2e-comer.js`), de durabilidad
     (`tests/e2e-durabilidad.js` — craftea un pico de madera, rompe sus 60
-    usos de piedra y verifica que se rompe al llegar a 0 sin duplicar drops)
-    y de hot-reload (`tests/e2e-reload.js` — edita `recetas.json` del
+    usos de piedra y verifica que se rompe al llegar a 0 sin duplicar drops),
+    del cofre (`tests/e2e-cofre.js` — craftea un cofre con 8 tablones,
+    lo coloca, lo abre, guarda/toma items y lo rompe verificando que cae
+    como item) y de hot-reload (`tests/e2e-reload.js` — edita `recetas.json` del
     servidor y verifica que el watcher recarga y avisa por chat, que
     `/reload` responde y que un JSON inválido se rechaza sin tumbar el
     servidor; pasa `RECETAS_PATH` si el servidor no es el del proyecto).
@@ -299,13 +341,14 @@ en el servidor y `public/network.js` en el cliente).
 
 ### Resultados (agosto 2026)
 
-Suite completa en verde: **19 tests unitarios + 3 E2E** (si hay servidor).
+Suite completa en verde: **21 tests unitarios + 4 E2E** (si hay servidor).
 Última ejecución: todos los unitarios pasan (persistencia, IA de mobs,
 handlers de red, integridad de recetas, sincronización servidor↔cliente,
-hot-reload, minería fina y LOD incluidos), y los E2E contra un servidor
-real con mundo fresco dan durabilidad 124/124, reload 4/4 y comer 5/5
-(el bonus de caza puede omitirse si no aparece un animal cercano,
-quedando 3/3 — los checks base siempre pasan).
+hot-reload, minería fina, LOD, cofre y antorchas incluidos), y los E2E
+contra un servidor real con mundo fresco dan durabilidad 124/124,
+reload 4/4, comer 5/5 (el bonus de caza puede omitirse si no aparece un
+animal cercano, quedando 3/3 — los checks base siempre pasan) y cofre
+12/12.
 La auditoría de la Fase 5 sigue cubriendo la sincronización de durabilidad
 y la no-duplicación de items; los unitarios transversales amplían la red
 de seguridad a toda la base.
@@ -321,7 +364,7 @@ preocupación por commit, y los commits son en español.
 
 - El guardado es incremental por chunk: cada chunk se persiste en
   `world/<semilla>/chunks/` (un archivo por chunk) y solo se
-  reescribe cuando cambia; mobs y hornos viven en
+  reescribe cuando cambia; mobs, hornos y cofres viven en
   `world/<semilla>/world.json`. **Cada semilla tiene su propio
   directorio de mundo**: la semilla se configura con la env var
   `SEED` y al cambiarla se genera un mundo totalmente nuevo sin

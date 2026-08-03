@@ -13,7 +13,7 @@ const COLS = 8;    // teselas por fila en el atlas
 // --- PRNG determinista (mulberry32): el atlas es estable entre cargas ---
 function mulberry32(seed) {
   let a = seed >>> 0;
-  return function () {
+  return () => {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
@@ -52,6 +52,8 @@ const PAL = {
   furnace: '#5a5a5a', furnaceDark: '#3a3a3a', furnaceLight: '#7a7a7a',
   fire: '#ff8c1a', fireLight: '#ffd23f',
   snow: '#e8f4f8', snowDark: '#cddee8', snowLight: '#f7fbfd',
+  metal: '#9aa0a6', metalDark: '#6c7176', metalLight: '#c3c9cf',
+  flame: '#ff8c1a', flameDark: '#e0551a', flameLight: '#ffe14d',
 };
 
 // --- recetas de tesela (16x16) ---
@@ -217,6 +219,52 @@ function drawSnow(ctx, rng) {
   speckle(ctx, rng, PAL.snowLight, 0.12);
   speckle(ctx, rng, PAL.snowDark, 0.06);
 }
+// Cofre (Fase 6): madera de tablones con marco y bisagras metálicas.
+function drawChestTop(ctx, rng) {
+  drawPlanks(ctx, rng);
+  rect(ctx, 0, 0, TILE, 1, PAL.woodDark);
+  rect(ctx, 0, TILE - 1, TILE, 1, PAL.woodDark);
+  rect(ctx, 0, 0, 1, TILE, PAL.woodDark);
+  rect(ctx, TILE - 1, 0, 1, TILE, PAL.woodDark);
+}
+function drawChestSide(ctx, rng) {
+  drawPlanks(ctx, rng);
+  rect(ctx, 0, 0, TILE, 1, PAL.woodDark);
+  rect(ctx, 0, TILE - 1, TILE, 1, PAL.woodDark);
+  rect(ctx, 0, 7, TILE, 1, PAL.woodLight); // banda central
+  rect(ctx, 0, 10, TILE, 1, PAL.woodDark);
+}
+function drawChestFront(ctx, rng) {
+  drawPlanks(ctx, rng);
+  rect(ctx, 0, 0, TILE, 1, PAL.woodDark);
+  rect(ctx, 0, TILE - 1, TILE, 1, PAL.woodDark);
+  // banda de la tapa + cerradura/bisagras metálicas
+  rect(ctx, 0, 7, TILE, 1, PAL.woodLight);
+  rect(ctx, 0, 10, TILE, 1, PAL.woodDark);
+  rect(ctx, 2, 2, 2, 3, PAL.metalDark);
+  rect(ctx, 3, 2, 1, 2, PAL.metalLight);
+  rect(ctx, TILE - 4, 2, 2, 3, PAL.metalDark);
+  rect(ctx, TILE - 3, 2, 1, 2, PAL.metalLight);
+  rect(ctx, 7, 6, 2, 3, PAL.metal); // cerradura
+  rect(ctx, 8, 6, 1, 2, PAL.metalLight);
+}
+// Antorcha (Fase 6): palo vertical con llama; el resto de la tesela queda
+// transparente (el canvas no se rellena) para que la geometría cruzada se
+// vea como una antorcha y no como una caja.
+function drawTorch(ctx, rng) {
+  // palo
+  rect(ctx, 7, 6, 2, 10, PAL.barkDark);
+  rect(ctx, 7, 6, 1, 10, PAL.bark);
+  // brasa en la punta
+  px(ctx, 7, 5, PAL.flameDark);
+  px(ctx, 8, 5, PAL.flameDark);
+  // llama (2x3 con brillo)
+  rect(ctx, 6, 2, 4, 3, PAL.flame);
+  rect(ctx, 7, 1, 2, 2, PAL.flameLight);
+  px(ctx, 8, 0, PAL.flameLight);
+  px(ctx, 7, 3, PAL.flameDark);
+  px(ctx, 8, 3, PAL.flameDark);
+}
 
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
@@ -246,6 +294,10 @@ const TILES = [
   drawBedrock,       // 23 roca madre
   drawWater,         // 24 agua
   drawSnow,          // 25 nieve
+  drawChestTop,      // 26 cofre (arriba)
+  drawChestSide,     // 27 cofre (lado)
+  drawChestFront,    // 28 cofre (frente, con cerradura)
+  drawTorch,         // 29 antorcha
 ];
 
 // Tesela por bloque y cara. Orden de FACES (ver world.js):
@@ -272,6 +324,8 @@ const BLOCK_TEX = {
   19: { all: 23 },                      // roca madre
   20: { all: 24 },                      // agua
   21: { all: 25 },                      // nieve
+  22: { top: 26, bottom: 8, side: 27, fronts: 28 }, // cofre (cerradura en ±Z)
+  23: { all: 29 },                      // antorcha (tesela cruzada)
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

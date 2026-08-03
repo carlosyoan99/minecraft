@@ -8,7 +8,7 @@ import { mobMeshes } from './mobs.js';
 import { move } from './player.js';
 import {
   selectSlot, toggleInventory, openCraftingFromBlock, closePanels,
-  toggleFurnaceUI, getHeldItem, isChatFocused,
+  toggleFurnaceUI, toggleChestUI, getHeldItem, isChatFocused,
 } from './ui.js';
 import { send } from './connection.js';
 import { playBreak, playPlace, playEat, playFeed } from './audio.js';
@@ -65,9 +65,9 @@ let miningTarget = null; // {x,y,z} del bloque que se está minando
 
 function startMiningAt(x, y, z) {
   const target = getClientBlock(x, y, z);
-  // Mesa de crafteo/horno se abren con clic (no se minan así); el agua no se
-  // rompe sin cubo (sin feedback falso). Bloques desconocidos (-1): no minar.
-  if (target === 15 || target === 16 || target === WATER || target === -1) return false;
+  // Mesa de crafteo/horno/cofre se abren con clic (no se minan así); el agua
+  // no se rompe sin cubo (sin feedback falso). Bloques desconocidos (-1): no minar.
+  if (target === 15 || target === 16 || target === 22 || target === WATER || target === -1) return false;
   miningTarget = { x, y, z };
   playBreak(target);
   showCrack(x, y, z);
@@ -131,7 +131,8 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     const target = getClientBlock(x, y, z);
     if (target === 16) { toggleFurnaceUI(true, { x, y, z }); return; }
     if (target === 15) { openCraftingFromBlock(); return; }
-    startMiningAt(x, y, z); // mantener pulsado = minar (agua/mesa/horno → false)
+    if (target === 22) { toggleChestUI(true, { x, y, z }); return; }
+    startMiningAt(x, y, z); // mantener pulsado = minar (agua/mesa/horno/cofre → false)
   } else if (e.button === 2) {
     const nx = x + Math.round(hit.face.normal.x);
     const ny = y + Math.round(hit.face.normal.y);

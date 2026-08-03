@@ -30,6 +30,7 @@ export const controls = new PointerLockControls(camera, document.body);
 const blocker = document.getElementById('blocker');
 const craftingUI = document.getElementById('crafting-ui');
 const furnaceUI = document.getElementById('furnace-ui');
+const chestUI = document.getElementById('chest-ui');
 const chatInputEl = document.getElementById('chat-input');
 // El botón Jugar lo maneja ui.js (flujo de semilla Fase 6: set_seed + lock)
 controls.addEventListener('lock', () => { blocker.style.display = 'none'; });
@@ -41,6 +42,7 @@ controls.addEventListener('unlock', () => {
   const uiOpen =
     !craftingUI.classList.contains('hidden') ||
     !furnaceUI.classList.contains('hidden') ||
+    !chestUI.classList.contains('hidden') ||
     chatInputEl.classList.contains('active');
   blocker.style.display = uiOpen ? 'none' : 'flex';
 });

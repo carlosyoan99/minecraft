@@ -87,12 +87,21 @@ export function updateMobs(list) {
       mesh = makeHumanoid(m.color);
       mesh.userData.mobId = m.id;
       mesh.userData.mobType = m.type;
+      mesh.userData.baseColor = m.color; // color original (el material es por-mob)
       scene.add(mesh);
       mobMeshes.set(m.id, mesh);
     }
     mesh.position.set(m.x, m.y, m.z);
     const s = (m.isBaby ? 0.5 : 1) * (MOB_SCALE[m.type] || 1);
     mesh.scale.set(s, s, s);
+    // Quema solar (Fase 6): el mob en llamas se tiñe de fuego; al apagarse
+    // (noche/techo) vuelve a su color base. El servidor manda `burning` en
+    // cada mobs_update.
+    const burning = !!m.burning;
+    if (burning !== mesh.userData.burning) {
+      mesh.userData.burning = burning;
+      mesh.material.color.setHex(burning ? 0xff7710 : mesh.userData.baseColor);
+    }
   }
   for (const [id, mesh] of mobMeshes) {
     if (!seen.has(id)) { scene.remove(mesh); mobMeshes.delete(id); }

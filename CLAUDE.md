@@ -14,12 +14,12 @@ tocar código.
   desde `public/`, cargado vía `<script type="module">` e
   importmap. No introducir Webpack/Vite/bundlers salvo que se
   discuta explícitamente antes.
-- **Arquitectura modular.** El servidor y el cliente están
-  divididos en módulos por responsabilidad (red, mundo/chunks,
-  jugador/física, mobs, UI/HUD). `server.js` (39 líneas) y
-  `public/client.js` (13 líneas) son solo entradas que cablean
-  módulos. Si un módulo supera ~400-500 líneas, es señal de
-  dividirlo.
+- **Arquitectura modular.** El servidor está en `server/` (~12
+  módulos CJS) y el cliente en `public/` (~20 módulos ES6), cada
+  uno por responsabilidad (red, mundo/chunks, jugador/física,
+  mobs, UI/HUD). `server.js` (1 línea) y `public/client.js` (13
+  líneas) son solo entradas. Si un módulo supera ~400-500 líneas,
+  es señal de dividirlo.
 - **El servidor es la única fuente de verdad.** Nunca mover lógica
   de validación, física o inventario al cliente "por comodidad".
   El cliente predice y dibuja; el servidor decide y corrige.
@@ -61,12 +61,13 @@ tocar código.
 
 ```bash
 npm install                        # primera vez (incluye simplex-noise)
-node tests/run.js                  # unitarios + E2E si hay servidor vivo
+npm test                           # unitarios + E2E si hay servidor vivo
 node tests/run.js --unit           # solo unitarios
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E contra ese servidor
-node tests/audit-fase3.js          # auditorías por fase (3, 4, 5)
+node tests/audit-fase3.js          # auditorías por fase (3, 4, 5, 6)
 node tests/audit-fase4.js
 node tests/audit-fase5.js
+node tests/audit-fase6.js
 ```
 
 - Los E2E requieren un servidor vivo: `PORT=3998 node server.js`

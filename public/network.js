@@ -3,7 +3,8 @@
 // ============================================================
 import { camera } from './scene.js';
 import { socket, setStoredName } from './connection.js';
-import { loadChunkData, setClientBlock, rebuildAffectedChunks, unloadChunks, hotReloadTextures, setCrackStage, hideCrackIfAt } from './world.js';
+import { loadChunkData, setClientBlock, rebuildAffectedChunks, rebuildAround, unloadChunks, hotReloadTextures, setCrackStage, hideCrackIfAt } from './world.js';
+import { TORCH } from './constants.js';
 import {
   spawnRemotePlayer, removeRemotePlayer, updateRemotePlayer, renameRemotePlayer, updateMobs, removeMob, spawnHearts,
 } from './mobs.js';
@@ -13,7 +14,7 @@ import { playCrack } from './audio.js';
 import { applyStoredSettings } from './settings.js';
 import {
   applyInventory, applyHealth, applyFood, applyXp, applyCraftingGrid, applyFurnaceState,
-  addChatLine, flashMessage, onWorldLoaded, onSeedRejected, renderWorldsList,
+  applyChestState, addChatLine, flashMessage, onWorldLoaded, onSeedRejected, renderWorldsList,
 } from './ui.js';
 
 let playerId = null;
@@ -49,8 +50,13 @@ socket.addEventListener('message', (e) => {
     case 'chunks_unload': unloadChunks(data.keys); break;
     case 'worlds_list': renderWorldsList(data.worlds || []); break; // Fase 7: menú de mundos
     case 'block_update': {
-      setClientBlock(data.x, data.y, data.z, data.block);
-      rebuildAffectedChunks(data.x, data.z);
+      // Una antorcha colocada/rota cambia la luz de un radio 7: el radio cruza
+      // las fronteras de chunk, así que hay que re-hornear el vecindario 3x3
+      // (rebuildAround) y no solo el chunk + los vecinos pegados al borde
+      // (rebuildAffectedChunks). Sin esto la luz se cortaría en los bordes.
+      const prev = setClientBlock(data.x, data.y, data.z, data.block);
+      if (prev === TORCH || data.block === TORCH) rebuildAround(data.x, data.z);
+      else rebuildAffectedChunks(data.x, data.z);
       hideCrackIfAt(data.x, data.y, data.z); // el bloque en mina se rompió
       break;
     }
@@ -81,6 +87,7 @@ socket.addEventListener('message', (e) => {
     case 'eat_rejected': flashMessage('😋 ¡No tienes hambre!'); break;
     case 'crafting_grid_update': applyCraftingGrid(data.grid, data.success); break;
     case 'furnace_state': applyFurnaceState(data); break;
+    case 'chest_state': applyChestState(data); break; // Fase 6: slots del cofre abierto
     case 'time_set': initDayNight(data.dayTime); break; // Fase 6: /time set re-sincroniza el ciclo visual
     case 'seed_rejected': onSeedRejected(data.reason); break; // Fase 6: el servidor no pudo cambiar de semilla
     case 'textures_reload': { // Fase 6: hot-reload del atlas (sin recargar la página)

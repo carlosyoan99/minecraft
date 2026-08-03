@@ -8,7 +8,7 @@ import { send } from './connection.js';
 import { updateDayNight } from './daynight.js';
 import { playStep, updateAmbient } from './audio.js';
 import { updateCoords } from './settings.js';
-import { WATER } from './constants.js';
+import { WATER, TORCH } from './constants.js';
 
 const PLAYER_SPEED = 4.3;   // bloques/segundo (en tierra)
 const SWIM_SPEED = 2.6;     // bloques/segundo (en agua)
@@ -30,8 +30,8 @@ export function teleport(x, y, z) {
 
 function solidAt(x, y, z) {
   const b = getClientBlock(Math.floor(x), Math.floor(y), Math.floor(z));
-  // El agua no es sólida: se puede nadar a través de ella.
-  return b !== 0 && b !== -1 && b !== WATER;
+  // El agua y la antorcha no son sólidas: se puede nadar/atravesar.
+  return b !== 0 && b !== -1 && b !== WATER && b !== TORCH;
 }
 
 function isWaterAt(x, y, z) {
@@ -42,13 +42,13 @@ function tryMove(dx, dz) {
   const feet = camera.position.y - EYE_HEIGHT;
   const r = 0.3;
   // Eje X
-  let nx = camera.position.x + dx;
+  const nx = camera.position.x + dx;
   if (!solidAt(nx + Math.sign(dx) * r, feet + 0.1, camera.position.z) &&
       !solidAt(nx + Math.sign(dx) * r, feet + 1.3, camera.position.z)) {
     camera.position.x = nx;
   }
   // Eje Z
-  let nz = camera.position.z + dz;
+  const nz = camera.position.z + dz;
   if (!solidAt(camera.position.x, feet + 0.1, nz + Math.sign(dz) * r) &&
       !solidAt(camera.position.x, feet + 1.3, nz + Math.sign(dz) * r)) {
     camera.position.z = nz;

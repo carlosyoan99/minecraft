@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 // ============================================================
 // TESTS UNITARIOS DE GENERACIÓN DE MUNDO (Fase 4: cuevas + lagos)
 // Verifica que la generación en world.js:
@@ -10,74 +10,90 @@
 //   5. genera lagos: agua solo hasta SEA_LEVEL, arena bajo el agua,
 //      sin aire bajo el fondo, y el agua no es sólida (isSolidBlock)
 // ============================================================
-const world = require('../world.js');
-const state = require('../state.js');
-const { CHUNK_SIZE, WORLD_HEIGHT, B, isSolidBlock } = require('../constants.js');
+const world = require("../server/world.js");
+const state = require("../server/state.js");
+const {
+	CHUNK_SIZE,
+	WORLD_HEIGHT,
+	B,
+	isSolidBlock
+} = require("../server/constants.js");
 
-function idx(x, y, z) { return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x; }
+function idx(x, y, z) {
+	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
+}
 
 // Generación fresca: no leer los chunks viejos del disco (sin cuevas ni lagos).
 world.setDiskLoader(() => null);
 
 let failed = 0;
-const check = (name, ok, extra = '') => {
-  if (!ok) failed++;
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${extra ? ' — ' + extra : ''}`);
+const check = (name, ok, extra = "") => {
+	if (!ok) failed++;
+	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // Superficie efectiva de una columna: en un lago el terreno se hunde hasta
 // LAKE_FLOOR (getHeight no contempla lagos, por eso se ajusta aquí).
 function columnSurface(wx, wz) {
-  return world.isLake(wx, wz) ? world.LAKE_FLOOR : world.getHeight(wx, wz);
+	return world.isLake(wx, wz) ? world.LAKE_FLOOR : world.getHeight(wx, wz);
 }
 
 // --- 1) Generar una zona de 7x7 chunks y medir invariantes básicas ---
 const RADIUS = 3; // 49 chunks
 for (let cx = -RADIUS; cx <= RADIUS; cx++) {
-  for (let cz = -RADIUS; cz <= RADIUS; cz++) {
-    world.generateChunk(cx, cz);
-  }
+	for (let cz = -RADIUS; cz <= RADIUS; cz++) {
+		world.generateChunk(cx, cz);
+	}
 }
 
-let stoneTotal = 0, carved = 0, bedrockBroken = 0, columns = 0, surfaceHoles = 0, mouthCount = 0;
-let waterCells = 0, waterAboveSea = 0, badWaterFloor = 0, airUnderWater = 0;
+let stoneTotal = 0,
+	carved = 0,
+	bedrockBroken = 0,
+	columns = 0,
+	surfaceHoles = 0,
+	mouthCount = 0;
+let waterCells = 0,
+	waterAboveSea = 0,
+	badWaterFloor = 0,
+	airUnderWater = 0;
 for (let cx = -RADIUS; cx <= RADIUS; cx++) {
-  for (let cz = -RADIUS; cz <= RADIUS; cz++) {
-    const data = state.chunks.get(`${cx},${cz}`);
-    for (let x = 0; x < CHUNK_SIZE; x++) {
-      for (let z = 0; z < CHUNK_SIZE; z++) {
-        const wx = cx * CHUNK_SIZE + x, wz = cz * CHUNK_SIZE + z;
-        const lake = world.isLake(wx, wz);
-        const surface = lake ? world.LAKE_FLOOR : world.getHeight(wx, wz);
-        columns++;
-        for (let y = 1; y < surface - 1; y++) {
-          stoneTotal++;
-          if (data[idx(x, y, z)] === B.AIR) carved++;
-        }
-        if (data[idx(x, 0, z)] !== B.BEDROCK) bedrockBroken++;
-        // Boca de cueva: el bloque de superficie (surface-1) abierto al aire
-        // es una entrada visible hacia el exterior (fix de la tarea).
-        if (data[idx(x, surface - 1, z)] === B.AIR) mouthCount++;
-        // Los 2 bloques superiores pueden tener huecos SOLO como bocas de
-        // cueva escasas: túneles que rompen la superficie ocasionalmente.
-        let topHoles = 0;
-        for (let y = Math.max(0, surface - 2); y < surface; y++) {
-          if (data[idx(x, y, z)] === B.AIR) topHoles++;
-        }
-        if (topHoles > 0) surfaceHoles++;
-        // agua: invariantes de lago
-        for (let y = 1; y < WORLD_HEIGHT; y++) {
-          if (data[idx(x, y, z)] === B.WATER) {
-            waterCells++;
-            if (y >= world.SEA_LEVEL) waterAboveSea++;
-            if (y < world.LAKE_FLOOR) airUnderWater++; // agua en zona de piedra: raro
-            const below = data[idx(x, y - 1, z)];
-            if (y === world.LAKE_FLOOR + 1 && below !== B.SAND) badWaterFloor++;
-          }
-        }
-      }
-    }
-  }
+	for (let cz = -RADIUS; cz <= RADIUS; cz++) {
+		const data = state.chunks.get(`${cx},${cz}`);
+		for (let x = 0; x < CHUNK_SIZE; x++) {
+			for (let z = 0; z < CHUNK_SIZE; z++) {
+				const wx = cx * CHUNK_SIZE + x,
+					wz = cz * CHUNK_SIZE + z;
+				const lake = world.isLake(wx, wz);
+				const surface = lake ? world.LAKE_FLOOR : world.getHeight(wx, wz);
+				columns++;
+				for (let y = 1; y < surface - 1; y++) {
+					stoneTotal++;
+					if (data[idx(x, y, z)] === B.AIR) carved++;
+				}
+				if (data[idx(x, 0, z)] !== B.BEDROCK) bedrockBroken++;
+				// Boca de cueva: el bloque de superficie (surface-1) abierto al aire
+				// es una entrada visible hacia el exterior (fix de la tarea).
+				if (data[idx(x, surface - 1, z)] === B.AIR) mouthCount++;
+				// Los 2 bloques superiores pueden tener huecos SOLO como bocas de
+				// cueva escasas: túneles que rompen la superficie ocasionalmente.
+				let topHoles = 0;
+				for (let y = Math.max(0, surface - 2); y < surface; y++) {
+					if (data[idx(x, y, z)] === B.AIR) topHoles++;
+				}
+				if (topHoles > 0) surfaceHoles++;
+				// agua: invariantes de lago
+				for (let y = 1; y < WORLD_HEIGHT; y++) {
+					if (data[idx(x, y, z)] === B.WATER) {
+						waterCells++;
+						if (y >= world.SEA_LEVEL) waterAboveSea++;
+						if (y < world.LAKE_FLOOR) airUnderWater++; // agua en zona de piedra: raro
+						const below = data[idx(x, y - 1, z)];
+						if (y === world.LAKE_FLOOR + 1 && below !== B.SAND) badWaterFloor++;
+					}
+				}
+			}
+		}
+	}
 }
 
 const frac = stoneTotal ? (carved / stoneTotal) * 100 : 0;
@@ -85,93 +101,174 @@ const holePct = columns ? (surfaceHoles / columns) * 100 : 0;
 // Nota: los límites de bocas/huecos están calibrados para la semilla por
 // defecto (miSemilla2026); con otra SEED podrían variar (los tests de la
 // suite ya son seed-específicos por diseño: los 5 biomas, la montaña, etc.).
-check('bedrock intacto (y=0 siempre BEDROCK)', bedrockBroken === 0, `${bedrockBroken} violaciones`);
-check('las cuevas abren bocas hacia la superficie (alguna columna)', mouthCount > 0, `${mouthCount} bocas`);
-check('los huecos de superficie son escasos (< 10% de columnas)', holePct < 10, `${holePct.toFixed(1)}% de columnas con hueco`);
-check('fracción excavada en rango sano (5-25%)', frac >= 5 && frac <= 25, `${frac.toFixed(1)}%`);
-check('hay agua en el mundo (lagos generados)', waterCells > 0, `${waterCells} celdas de agua`);
-check('sin agua por encima de SEA_LEVEL', waterAboveSea === 0, `${waterAboveSea} celdas`);
-check('el fondo de los lagos es arena', badWaterFloor === 0, `${badWaterFloor} violaciones`);
-check('sin aire bajo el agua dentro de la columna', airUnderWater === 0, `${airUnderWater} celdas`);
-check('el agua no es sólida (isSolidBlock(WATER) === false)', isSolidBlock(B.WATER) === false);
-check('la piedra sí es sólida (isSolidBlock(STONE) === true)', isSolidBlock(B.STONE) === true);
+check(
+	"bedrock intacto (y=0 siempre BEDROCK)",
+	bedrockBroken === 0,
+	`${bedrockBroken} violaciones`
+);
+check(
+	"las cuevas abren bocas hacia la superficie (alguna columna)",
+	mouthCount > 0,
+	`${mouthCount} bocas`
+);
+check(
+	"los huecos de superficie son escasos (< 10% de columnas)",
+	holePct < 10,
+	`${holePct.toFixed(1)}% de columnas con hueco`
+);
+check(
+	"fracción excavada en rango sano (5-25%)",
+	frac >= 5 && frac <= 25,
+	`${frac.toFixed(1)}%`
+);
+check(
+	"hay agua en el mundo (lagos generados)",
+	waterCells > 0,
+	`${waterCells} celdas de agua`
+);
+check(
+	"sin agua por encima de SEA_LEVEL",
+	waterAboveSea === 0,
+	`${waterAboveSea} celdas`
+);
+check(
+	"el fondo de los lagos es arena",
+	badWaterFloor === 0,
+	`${badWaterFloor} violaciones`
+);
+check(
+	"sin aire bajo el agua dentro de la columna",
+	airUnderWater === 0,
+	`${airUnderWater} celdas`
+);
+check(
+	"el agua no es sólida (isSolidBlock(WATER) === false)",
+	isSolidBlock(B.WATER) === false
+);
+check(
+	"la piedra sí es sólida (isSolidBlock(STONE) === true)",
+	isSolidBlock(B.STONE) === true
+);
 
 // --- 2) Determinismo subterráneo: regenerar debe dar idéntico resultado ---
-state.chunks.delete('0,0');
+state.chunks.delete("0,0");
 const a = world.generateChunk(0, 0);
-state.chunks.delete('0,0');
+state.chunks.delete("0,0");
 const b = world.generateChunk(0, 0);
-let diffs = 0, underground = 0;
+let diffs = 0,
+	underground = 0;
 for (let x = 0; x < CHUNK_SIZE; x++) {
-  for (let z = 0; z < CHUNK_SIZE; z++) {
-    const surface = columnSurface(x, z);
-    for (let y = 2; y < surface - 2; y++) {
-      underground++;
-      if (a[idx(x, y, z)] !== b[idx(x, y, z)]) diffs++;
-    }
-  }
+	for (let z = 0; z < CHUNK_SIZE; z++) {
+		const surface = columnSurface(x, z);
+		for (let y = 2; y < surface - 2; y++) {
+			underground++;
+			if (a[idx(x, y, z)] !== b[idx(x, y, z)]) diffs++;
+		}
+	}
 }
-check('determinismo subterráneo (0 diffs)', diffs === 0, `${diffs}/${underground} diffs`);
-check('hay zona subterránea que comprobar', underground > 0, `${underground} bloques`);
+check(
+	"determinismo subterráneo (0 diffs)",
+	diffs === 0,
+	`${diffs}/${underground} diffs`
+);
+check(
+	"hay zona subterránea que comprobar",
+	underground > 0,
+	`${underground} bloques`
+);
 
 // --- 3) Sin costuras entre chunks (determinismo en los bordes) ---
 // La generación es función pura de coordenadas de mundo: al regenerar los
 // chunks vecinos debe dar exactamente el mismo resultado. Así ningún borde
 // puede quedar incoherente (cuevas y lagos cruzan fronteras sin paredes falsas).
-let seamDiffs = 0, seamTotal = 0;
-for (const key of ['1,0', '0,1', '1,1']) {
-  const [cx, cz] = key.split(',').map(Number);
-  const first = state.chunks.get(key);
-  state.chunks.delete(key);
-  const second = world.generateChunk(cx, cz);
-  for (let x = 0; x < CHUNK_SIZE; x++) {
-    for (let z = 0; z < CHUNK_SIZE; z++) {
-      const surface = columnSurface(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
-      for (let y = 2; y < surface - 2; y++) {
-        seamTotal++;
-        if (first[idx(x, y, z)] !== second[idx(x, y, z)]) seamDiffs++;
-      }
-    }
-  }
+let seamDiffs = 0,
+	seamTotal = 0;
+for (const key of ["1,0", "0,1", "1,1"]) {
+	const [cx, cz] = key.split(",").map(Number);
+	const first = state.chunks.get(key);
+	state.chunks.delete(key);
+	const second = world.generateChunk(cx, cz);
+	for (let x = 0; x < CHUNK_SIZE; x++) {
+		for (let z = 0; z < CHUNK_SIZE; z++) {
+			const surface = columnSurface(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+			for (let y = 2; y < surface - 2; y++) {
+				seamTotal++;
+				if (first[idx(x, y, z)] !== second[idx(x, y, z)]) seamDiffs++;
+			}
+		}
+	}
 }
-check('sin costuras entre chunks (regeneración idéntica en 1,0/0,1/1,1)', seamDiffs === 0, `${seamDiffs}/${seamTotal} diffs`);
+check(
+	"sin costuras entre chunks (regeneración idéntica en 1,0/0,1/1,1)",
+	seamDiffs === 0,
+	`${seamDiffs}/${seamTotal} diffs`
+);
 
 // --- 4) Las cuevas forman componentes conexas navegables ---
-const chunk = state.chunks.get('0,0');
+const chunk = state.chunks.get("0,0");
 const visited = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
-let largest = 0, count3 = 0;
+let largest = 0,
+	count3 = 0;
 for (let x = 0; x < CHUNK_SIZE; x++) {
-  for (let y = 1; y < WORLD_HEIGHT - 1; y++) {
-    for (let z = 0; z < CHUNK_SIZE; z++) {
-      const i = idx(x, y, z);
-      if (visited[i] || chunk[i] !== B.AIR) continue;
-      const surface = columnSurface(x, z);
-      if (y >= surface - 1) continue; // aire de superficie, no cueva
-      let size = 0;
-      const stack = [[x, y, z]];
-      visited[i] = 1;
-      while (stack.length) {
-        const [px, py, pz] = stack.pop();
-        size++;
-        for (const [dx, dy, dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
-          const nx = px + dx, ny = py + dy, nz = pz + dz;
-          if (nx < 0 || nx >= CHUNK_SIZE || ny < 1 || ny >= WORLD_HEIGHT - 1 || nz < 0 || nz >= CHUNK_SIZE) continue;
-          const ni = idx(nx, ny, nz);
-          if (visited[ni] || chunk[ni] !== B.AIR) continue;
-          const ns = columnSurface(nx, nz);
-          if (ny >= ns - 1) continue;
-          visited[ni] = 1;
-          stack.push([nx, ny, nz]);
-        }
-      }
-      if (size >= 3) { count3++; if (size > largest) largest = size; }
-    }
-  }
+	for (let y = 1; y < WORLD_HEIGHT - 1; y++) {
+		for (let z = 0; z < CHUNK_SIZE; z++) {
+			const i = idx(x, y, z);
+			if (visited[i] || chunk[i] !== B.AIR) continue;
+			const surface = columnSurface(x, z);
+			if (y >= surface - 1) continue; // aire de superficie, no cueva
+			let size = 0;
+			const stack = [[x, y, z]];
+			visited[i] = 1;
+			while (stack.length) {
+				const [px, py, pz] = stack.pop();
+				size++;
+				for (const [dx, dy, dz] of [
+					[1, 0, 0],
+					[-1, 0, 0],
+					[0, 1, 0],
+					[0, -1, 0],
+					[0, 0, 1],
+					[0, 0, -1]
+				]) {
+					const nx = px + dx,
+						ny = py + dy,
+						nz = pz + dz;
+					if (
+						nx < 0 ||
+						nx >= CHUNK_SIZE ||
+						ny < 1 ||
+						ny >= WORLD_HEIGHT - 1 ||
+						nz < 0 ||
+						nz >= CHUNK_SIZE
+					)
+						continue;
+					const ni = idx(nx, ny, nz);
+					if (visited[ni] || chunk[ni] !== B.AIR) continue;
+					const ns = columnSurface(nx, nz);
+					if (ny >= ns - 1) continue;
+					visited[ni] = 1;
+					stack.push([nx, ny, nz]);
+				}
+			}
+			if (size >= 3) {
+				count3++;
+				if (size > largest) largest = size;
+			}
+		}
+	}
 }
-check('existen cuevas (componentes >= 3 bloques)', count3 > 0, `${count3} cuevas, mayor ${largest} bloques`);
+check(
+	"existen cuevas (componentes >= 3 bloques)",
+	count3 > 0,
+	`${count3} cuevas, mayor ${largest} bloques`
+);
 
 // Limpiar el hook para no afectar a otros tests del proceso.
 world.setDiskLoader(null);
 
-console.log(failed === 0 ? '\n✅ Todos los tests pasan' : `\n❌ ${failed} check(s) fallaron`);
+console.log(
+	failed === 0
+		? "\n✅ Todos los tests pasan"
+		: `\n❌ ${failed} check(s) fallaron`
+);
 process.exit(failed ? 1 : 0);

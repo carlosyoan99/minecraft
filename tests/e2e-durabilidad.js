@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 // E2E del sistema de durabilidad de herramientas (Fase 5) — v3
 // 1) Craftear un pico de madera (200) vía el evento `craft` (el grid viaja
 //    con el patrón 3x3; el servidor consume las celdas y añade el pico).
@@ -33,19 +33,28 @@
 // cerca del jugador y el autosave (30s) los persiste en ese mundo.
 //
 // Requiere un servidor vivo: WS_URL (por defecto ws://localhost:3998).
-const WebSocket = require('ws');
-const URL = process.env.WS_URL || 'ws://localhost:3998';
+const WebSocket = require("ws");
+const URL = process.env.WS_URL || "ws://localhost:3998";
 
 const WOODEN_PICKAXE = 200;
 const DURABILITY = 60; // madera (TOOL_DURABILITY[200])
-const STONE = 3, COBBLESTONE = 8, PLANKS = 7, STICK = 100, WATER = 20;
-const REACH = 6.5;   // el servidor rechaza break a > 7 bloques
+const STONE = 3,
+	COBBLESTONE = 8,
+	PLANKS = 7,
+	STICK = 100,
+	WATER = 20;
+const REACH = 6.5; // el servidor rechaza break a > 7 bloques
 const WALK_MAX = 64; // máximo de bloques a caminar hacia terreno virgen
 // Direcciones a explorar en busca de zona virgen (E → O → N → S); se gira
 // cuando una dirección queda bloqueada (lago, acantilado, terreno empinado).
-const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const DIRS = [
+	[1, 0],
+	[-1, 0],
+	[0, 1],
+	[0, -1]
+];
 let dirIdx = 0;
-const WORLD_H = 64;  // altura del mundo (world.js)
+const WORLD_H = 64; // altura del mundo (world.js)
 
 const results = [];
 let finished = false;
@@ -57,67 +66,81 @@ let breaksSent = 0; // roturas enviadas (el wire confirma 1 a 1)
 let cur = { x: 0, y: 64, z: 0 }; // posición actual conocida del jugador
 let walkTimer = null;
 let walked = 0; // bloques caminados en total
-let phase = 'init';
+let phase = "init";
 
 function check(name, ok, info) {
-  results.push({ name, ok });
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${info ? '  (' + info + ')' : ''}`);
+	results.push({ name, ok });
+	console.log(
+		`${ok ? "PASS" : "FAIL"}: ${name}${info ? "  (" + info + ")" : ""}`
+	);
 }
 function finish(exitCode) {
-  if (finished) return;
-  finished = true;
-  clearTimeout(timer);
-  if (walkTimer) clearTimeout(walkTimer);
-  const fails = results.filter((r) => r.ok === false).length;
-  console.log(`\nRESULTADO: ${results.length - fails}/${results.length} OK`);
-  process.exit(exitCode !== undefined ? exitCode : (fails ? 1 : 0));
+	if (finished) return;
+	finished = true;
+	clearTimeout(timer);
+	if (walkTimer) clearTimeout(walkTimer);
+	const fails = results.filter((r) => r.ok === false).length;
+	console.log(`\nRESULTADO: ${results.length - fails}/${results.length} OK`);
+	process.exit(exitCode !== undefined ? exitCode : fails ? 1 : 0);
 }
 
 const timer = setTimeout(() => {
-  console.log(`[t=${Math.round((Date.now() - t0) / 1000)}s] TIMEOUT en fase=${phase} (breaksSent=${breaksSent})`);
-  finish(1);
+	console.log(
+		`[t=${Math.round((Date.now() - t0) / 1000)}s] TIMEOUT en fase=${phase} (breaksSent=${breaksSent})`
+	);
+	finish(1);
 }, 120000); // 60 minas × ~0.9 s + holgura (Fase 6: minería con progreso)
 
 // ============================================================
 // HELPERS SOBRE EL CHUNKDATA (mismo idx que world.js: (y*16+z)*16+x)
 // ============================================================
 function groundY(wx, wz) {
-  const arr = worldMap.get(`${Math.floor(wx / 16)},${Math.floor(wz / 16)}`);
-  if (!arr) return 4; // chunk desconocido: asumir superficie baja
-  const x = ((wx % 16) + 16) % 16, z = ((wz % 16) + 16) % 16;
-  for (let y = WORLD_H - 1; y >= 0; y--) {
-    const id = arr[(y * 16 + z) * 16 + x];
-    if (id !== 0 && id !== WATER) return y;
-  }
-  return 0;
+	const arr = worldMap.get(`${Math.floor(wx / 16)},${Math.floor(wz / 16)}`);
+	if (!arr) return 4; // chunk desconocido: asumir superficie baja
+	const x = ((wx % 16) + 16) % 16,
+		z = ((wz % 16) + 16) % 16;
+	for (let y = WORLD_H - 1; y >= 0; y--) {
+		const id = arr[(y * 16 + z) * 16 + x];
+		if (id !== 0 && id !== WATER) return y;
+	}
+	return 0;
 }
 
 // Altura de la superficie del agua en la columna (nivel al que nadar), o null.
 function waterTopY(wx, wz) {
-  const arr = worldMap.get(`${Math.floor(wx / 16)},${Math.floor(wz / 16)}`);
-  if (!arr) return null;
-  const x = ((wx % 16) + 16) % 16, z = ((wz % 16) + 16) % 16;
-  for (let y = WORLD_H - 1; y >= 0; y--) {
-    if (arr[(y * 16 + z) * 16 + x] === WATER) return y + 1;
-  }
-  return null;
+	const arr = worldMap.get(`${Math.floor(wx / 16)},${Math.floor(wz / 16)}`);
+	if (!arr) return null;
+	const x = ((wx % 16) + 16) % 16,
+		z = ((wz % 16) + 16) % 16;
+	for (let y = WORLD_H - 1; y >= 0; y--) {
+		if (arr[(y * 16 + z) * 16 + x] === WATER) return y + 1;
+	}
+	return null;
 }
 
 // Bloques de piedra (3) a <= REACH del punto dado, ordenados por distancia.
 function stoneNear(x, y, z) {
-  const found = [];
-  for (const [key, arr] of worldMap) {
-    const [cx, cz] = key.split(',').map(Number);
-    for (let i = 0; i < arr.length; i++) {
-      if (arr[i] !== STONE) continue;
-      const lx = i % 16, lz = Math.floor(i / 16) % 16, ly = Math.floor(i / 256);
-      const wx = cx * 16 + lx, wy = ly, wz = cz * 16 + lz;
-      if (Math.hypot(wx - x, wy - y, wz - z) <= REACH) found.push({ x: wx, y: wy, z: wz });
-    }
-  }
-  found.sort((a, b) =>
-    Math.hypot(a.x - x, a.y - y, a.z - z) - Math.hypot(b.x - x, b.y - y, b.z - z));
-  return found;
+	const found = [];
+	for (const [key, arr] of worldMap) {
+		const [cx, cz] = key.split(",").map(Number);
+		for (let i = 0; i < arr.length; i++) {
+			if (arr[i] !== STONE) continue;
+			const lx = i % 16,
+				lz = Math.floor(i / 16) % 16,
+				ly = Math.floor(i / 256);
+			const wx = cx * 16 + lx,
+				wy = ly,
+				wz = cz * 16 + lz;
+			if (Math.hypot(wx - x, wy - y, wz - z) <= REACH)
+				found.push({ x: wx, y: wy, z: wz });
+		}
+	}
+	found.sort(
+		(a, b) =>
+			Math.hypot(a.x - x, a.y - y, a.z - z) -
+			Math.hypot(b.x - x, b.y - y, b.z - z)
+	);
+	return found;
 }
 
 // Envía una ráfaga de pasos `move` en la dirección actual siguiendo el terreno.
@@ -126,17 +149,23 @@ function stoneNear(x, y, z) {
 // es rechazado, el servidor manda `teleport` y `cur` se corrige en el handler
 // ANTES de que se computen candidatos.
 function walkBurst(steps) {
-  const [dx, dz] = DIRS[dirIdx];
-  for (let i = 0; i < steps; i++) {
-    const nx = cur.x + dx, nz = cur.z + dz;
-    const ground = groundY(nx, nz) + 2;   // a 2 bloques sobre el suelo firme
-    const waterTop = waterTopY(nx, nz);
-    const target = waterTop !== null && waterTop > ground ? waterTop : ground;
-    // Paso gradual: nunca saltar más de 0.5 en Y por paso
-    const ny = Math.max(Math.min(target, cur.y + 0.5), cur.y - 0.5);
-    ws.send(JSON.stringify({ event: 'move', data: { x: nx, y: ny, z: nz, yaw: 0, pitch: 0 } }));
-    cur = { x: nx, y: ny, z: nz };
-  }
+	const [dx, dz] = DIRS[dirIdx];
+	for (let i = 0; i < steps; i++) {
+		const nx = cur.x + dx,
+			nz = cur.z + dz;
+		const ground = groundY(nx, nz) + 2; // a 2 bloques sobre el suelo firme
+		const waterTop = waterTopY(nx, nz);
+		const target = waterTop !== null && waterTop > ground ? waterTop : ground;
+		// Paso gradual: nunca saltar más de 0.5 en Y por paso
+		const ny = Math.max(Math.min(target, cur.y + 0.5), cur.y - 0.5);
+		ws.send(
+			JSON.stringify({
+				event: "move",
+				data: { x: nx, y: ny, z: nz, yaw: 0, pitch: 0 }
+			})
+		);
+		cur = { x: nx, y: ny, z: nz };
+	}
 }
 
 // Busca zona con >= DURABILITY piedras a mano: en el spawn si las hay; si no,
@@ -145,119 +174,184 @@ function walkBurst(steps) {
 // correcto) y solo entonces computa los bloques a romper desde esa posición.
 // Si una dirección no produce progreso neto, se gira a la siguiente.
 function tryFreshArea() {
-  const near = stoneNear(cur.x, cur.y, cur.z);
-  if (near.length >= DURABILITY) {
-    check(`hay >= ${DURABILITY} bloques de piedra a mano`, true,
-      `${near.length} encontrados (caminados ${walked} bloques)`);
-    breakCandidates = near;
-    const b = breakCandidates[0];
-    ws.send(JSON.stringify({ event: 'block_action', data: { action: 'break', x: b.x, y: b.y, z: b.z } }));
-    breaksSent = 1;
-    phase = 'breaking';
-    console.log(`[t=${Math.round((Date.now() - t0) / 1000)}s] rompiendo ${DURABILITY} bloques de piedra (durabilidad 60 → 0)...`);
-    return;
-  }
-  if (walked >= WALK_MAX) {
-    check(`hay >= ${DURABILITY} bloques de piedra a mano`, false,
-      `solo ${near.length} tras caminar ${walked} bloques`);
-    finish(1);
-    return;
-  }
-  const startKey = `${cur.x},${cur.z}`; // cur ya corregido por teleports
-  walkBurst(8);
-  walked += 8;
-  walkTimer = setTimeout(() => {
-    // Tras el asentamiento, comparar la posición REAL: girar de dirección si
-    // (a) la ráfaga no movió al jugador (acantilado/terreno empinado) o
-    // (b) el nuevo radio no tiene piedra a mano — señal de que el jugador se
-    // adentró en un lago profundo/amplio, donde la piedra queda fuera del
-    // alcance de rotura (esto pasaba en la práctica: el lago al este del
-    // spawn dejaba el jugador sobre agua con 0 piedras a <=6.5).
-    if (`${cur.x},${cur.z}` === startKey || stoneNear(cur.x, cur.y, cur.z).length === 0) {
-      dirIdx = (dirIdx + 1) % DIRS.length;
-    }
-    tryFreshArea();
-  }, 300);
+	const near = stoneNear(cur.x, cur.y, cur.z);
+	if (near.length >= DURABILITY) {
+		check(
+			`hay >= ${DURABILITY} bloques de piedra a mano`,
+			true,
+			`${near.length} encontrados (caminados ${walked} bloques)`
+		);
+		breakCandidates = near;
+		const b = breakCandidates[0];
+		ws.send(
+			JSON.stringify({
+				event: "block_action",
+				data: { action: "break", x: b.x, y: b.y, z: b.z }
+			})
+		);
+		breaksSent = 1;
+		phase = "breaking";
+		console.log(
+			`[t=${Math.round((Date.now() - t0) / 1000)}s] rompiendo ${DURABILITY} bloques de piedra (durabilidad 60 → 0)...`
+		);
+		return;
+	}
+	if (walked >= WALK_MAX) {
+		check(
+			`hay >= ${DURABILITY} bloques de piedra a mano`,
+			false,
+			`solo ${near.length} tras caminar ${walked} bloques`
+		);
+		finish(1);
+		return;
+	}
+	const startKey = `${cur.x},${cur.z}`; // cur ya corregido por teleports
+	walkBurst(8);
+	walked += 8;
+	walkTimer = setTimeout(() => {
+		// Tras el asentamiento, comparar la posición REAL: girar de dirección si
+		// (a) la ráfaga no movió al jugador (acantilado/terreno empinado) o
+		// (b) el nuevo radio no tiene piedra a mano — señal de que el jugador se
+		// adentró en un lago profundo/amplio, donde la piedra queda fuera del
+		// alcance de rotura (esto pasaba en la práctica: el lago al este del
+		// spawn dejaba el jugador sobre agua con 0 piedras a <=6.5).
+		if (
+			`${cur.x},${cur.z}` === startKey ||
+			stoneNear(cur.x, cur.y, cur.z).length === 0
+		) {
+			dirIdx = (dirIdx + 1) % DIRS.length;
+		}
+		tryFreshArea();
+	}, 300);
 }
 
 const ws = new WebSocket(URL);
-ws.on('message', (d) => {
-  let m; try { m = JSON.parse(d); } catch { return; }
-  const t = Math.round((Date.now() - t0) / 1000);
+ws.on("message", (d) => {
+	let m;
+	try {
+		m = JSON.parse(d);
+	} catch {
+		return;
+	}
+	const t = Math.round((Date.now() - t0) / 1000);
 
-  // ============ INIT: almacenar mundo y craftear el pico ============
-  if (phase === 'init' && m.event === 'init') {
-    const d = m.data;
-    cur = { x: d.spawnX, y: d.spawnY, z: d.spawnZ };
-    for (const [key, arr] of Object.entries(d.chunkData)) worldMap.set(key, arr);
-    // Craftear pico de madera: patrón ["###"," I "," I "] (planks 7 + sticks 100).
-    // El servidor no valida la procedencia de las celdas (lo hace el cliente
-    // vía grid_set); aquí se envía el grid directamente como bootstrap del test.
-    const grid = new Array(9).fill(null);
-    for (const i of [0, 1, 2]) grid[i] = { id: PLANKS, count: 1 };
-    grid[4] = { id: STICK, count: 1 };
-    grid[7] = { id: STICK, count: 1 };
-    ws.send(JSON.stringify({ event: 'craft', data: { grid } }));
-    phase = 'craft';
-    console.log(`[t=${t}s] crafteando pico de madera (durabilidad ${DURABILITY})...`);
-    return;
-  }
+	// ============ INIT: almacenar mundo y craftear el pico ============
+	if (phase === "init" && m.event === "init") {
+		const d = m.data;
+		cur = { x: d.spawnX, y: d.spawnY, z: d.spawnZ };
+		for (const [key, arr] of Object.entries(d.chunkData))
+			worldMap.set(key, arr);
+		// Craftear pico de madera: patrón ["###"," I "," I "] (planks 7 + sticks 100).
+		// El servidor no valida la procedencia de las celdas (lo hace el cliente
+		// vía grid_set); aquí se envía el grid directamente como bootstrap del test.
+		const grid = new Array(9).fill(null);
+		for (const i of [0, 1, 2]) grid[i] = { id: PLANKS, count: 1 };
+		grid[4] = { id: STICK, count: 1 };
+		grid[7] = { id: STICK, count: 1 };
+		ws.send(JSON.stringify({ event: "craft", data: { grid } }));
+		phase = "craft";
+		console.log(
+			`[t=${t}s] crafteando pico de madera (durabilidad ${DURABILITY})...`
+		);
+		return;
+	}
 
-  // ============ CHUNKS_ADD: ampliar el mapa del mundo mientras se camina ============
-  if (m.event === 'chunks_add') {
-    for (const [key, arr] of Object.entries(m.data.chunkData)) worldMap.set(key, arr);
-    return;
-  }
+	// ============ CHUNKS_ADD: ampliar el mapa del mundo mientras se camina ============
+	if (m.event === "chunks_add") {
+		for (const [key, arr] of Object.entries(m.data.chunkData))
+			worldMap.set(key, arr);
+		return;
+	}
 
-  // ============ TELEPORT: paso rechazado → corregir posición (en cualquier fase) ============
-  if (m.event === 'teleport') {
-    cur = { x: m.data.x, y: m.data.y, z: m.data.z };
-    return;
-  }
+	// ============ TELEPORT: paso rechazado → corregir posición (en cualquier fase) ============
+	if (m.event === "teleport") {
+		cur = { x: m.data.x, y: m.data.y, z: m.data.z };
+		return;
+	}
 
-  // ============ CRAFT: confirmar durabilidad plena y seleccionarlo ============
-  if (phase === 'craft' && m.event === 'inventory_update') {
-    const pickIdx = m.data.inventory.findIndex((s) => s && s.id === WOODEN_PICKAXE);
-    check('el pico se craftea con durabilidad plena (60)', pickIdx !== -1 && m.data.inventory[pickIdx].durability === DURABILITY,
-      `slot=${pickIdx} dur=${pickIdx !== -1 ? m.data.inventory[pickIdx].durability : '?'}`);
-    if (pickIdx === -1) { finish(1); return; }
-    pickSlot = pickIdx;
-    ws.send(JSON.stringify({ event: 'inventory_select', data: { slot: pickSlot } }));
-    // Elegir zona con suficiente piedra (camina si el spawn ya fue minado)
-    tryFreshArea();
-    return;
-  }
+	// ============ CRAFT: confirmar durabilidad plena y seleccionarlo ============
+	if (phase === "craft" && m.event === "inventory_update") {
+		const pickIdx = m.data.inventory.findIndex(
+			(s) => s && s.id === WOODEN_PICKAXE
+		);
+		check(
+			"el pico se craftea con durabilidad plena (60)",
+			pickIdx !== -1 && m.data.inventory[pickIdx].durability === DURABILITY,
+			`slot=${pickIdx} dur=${pickIdx !== -1 ? m.data.inventory[pickIdx].durability : "?"}`
+		);
+		if (pickIdx === -1) {
+			finish(1);
+			return;
+		}
+		pickSlot = pickIdx;
+		ws.send(
+			JSON.stringify({ event: "inventory_select", data: { slot: pickSlot } })
+		);
+		// Elegir zona con suficiente piedra (camina si el spawn ya fue minado)
+		tryFreshArea();
+		return;
+	}
 
-  // ============ BREAKING: -1 por rotura y 1 drop exacto por bloque ============
-  if (phase === 'breaking' && m.event === 'inventory_update') {
-    const pick = m.data.inventory[pickSlot];
-    const cobble = m.data.inventory.reduce((acc, s) => acc + (s && s.id === COBBLESTONE ? s.count : 0), 0);
-    if (breaksSent < DURABILITY) {
-      // Tras `breaksSent` roturas confirmadas: durabilidad = 60 - breaksSent
-      const expected = DURABILITY - breaksSent;
-      check(`rotura ${breaksSent}/${DURABILITY}: durabilidad ${expected}`, pick && pick.id === WOODEN_PICKAXE && pick.durability === expected,
-        `dur=${pick && pick.durability}`);
-      check(`rotura ${breaksSent}/${DURABILITY}: 1 adoquín exacto (sin duplicar)`, cobble === breaksSent, `adoquín=${cobble}`);
-      const b = breakCandidates[breaksSent];
-      ws.send(JSON.stringify({ event: 'block_action', data: { action: 'break', x: b.x, y: b.y, z: b.z } }));
-      breaksSent++;
-      return;
-    }
-    // Última rotura (breaksSent === 60): la herramienta ya no está
-    check('la herramienta se rompió al 60º uso (slot vacío)', !pick, `slot=${JSON.stringify(pick)}`);
-    check('drops exactos: 60 adoquines, sin copias fantasma del pico',
-      cobble === DURABILITY && m.data.inventory.filter((s) => s && s.id === WOODEN_PICKAXE).length === 0,
-      `adoquín=${cobble}`);
-    return;
-  }
+	// ============ BREAKING: -1 por rotura y 1 drop exacto por bloque ============
+	if (phase === "breaking" && m.event === "inventory_update") {
+		const pick = m.data.inventory[pickSlot];
+		const cobble = m.data.inventory.reduce(
+			(acc, s) => acc + (s && s.id === COBBLESTONE ? s.count : 0),
+			0
+		);
+		if (breaksSent < DURABILITY) {
+			// Tras `breaksSent` roturas confirmadas: durabilidad = 60 - breaksSent
+			const expected = DURABILITY - breaksSent;
+			check(
+				`rotura ${breaksSent}/${DURABILITY}: durabilidad ${expected}`,
+				pick && pick.id === WOODEN_PICKAXE && pick.durability === expected,
+				`dur=${pick && pick.durability}`
+			);
+			check(
+				`rotura ${breaksSent}/${DURABILITY}: 1 adoquín exacto (sin duplicar)`,
+				cobble === breaksSent,
+				`adoquín=${cobble}`
+			);
+			const b = breakCandidates[breaksSent];
+			ws.send(
+				JSON.stringify({
+					event: "block_action",
+					data: { action: "break", x: b.x, y: b.y, z: b.z }
+				})
+			);
+			breaksSent++;
+			return;
+		}
+		// Última rotura (breaksSent === 60): la herramienta ya no está
+		check(
+			"la herramienta se rompió al 60º uso (slot vacío)",
+			!pick,
+			`slot=${JSON.stringify(pick)}`
+		);
+		check(
+			"drops exactos: 60 adoquines, sin copias fantasma del pico",
+			cobble === DURABILITY &&
+				m.data.inventory.filter((s) => s && s.id === WOODEN_PICKAXE).length ===
+					0,
+			`adoquín=${cobble}`
+		);
+		return;
+	}
 
-  // ============ TOOL_BROKE: evento de rotura ============
-  if (phase === 'breaking' && m.event === 'tool_broke') {
-    check('evento tool_broke recibido', true, `slot=${m.data.slot}`);
-    check('tool_broke avisa del slot correcto', m.data.slot === pickSlot, `slot=${m.data.slot} pick=${pickSlot}`);
-    phase = 'done';
-    finish(); // sin argumento: el exit code depende de los FAILs acumulados
-    return;
-  }
+	// ============ TOOL_BROKE: evento de rotura ============
+	if (phase === "breaking" && m.event === "tool_broke") {
+		check("evento tool_broke recibido", true, `slot=${m.data.slot}`);
+		check(
+			"tool_broke avisa del slot correcto",
+			m.data.slot === pickSlot,
+			`slot=${m.data.slot} pick=${pickSlot}`
+		);
+		phase = "done";
+		finish(); // sin argumento: el exit code depende de los FAILs acumulados
+		return;
+	}
 });
-ws.on('error', (e) => { console.log('WS ERROR: ' + e.message); finish(1); });
+ws.on("error", (e) => {
+	console.log("WS ERROR: " + e.message);
+	finish(1);
+});

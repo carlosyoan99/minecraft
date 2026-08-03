@@ -1,17 +1,23 @@
 {
-  "name": "mi-minecraft",
-  "version": "1.0.0",
-  "description": "Clon de Minecraft con servidor Node.js autoritativo (chunks, biomas, IA de mobs, crafteo, horno, persistencia)",
-  "main": "server.js",
-  "type": "commonjs",
-  "scripts": {
-    "start": "node server.js",
-    "test": "node tests/run.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2",
-    "ws": "^8.17.0",
-    "simplex-noise": "^4.0.1",
-    "uuid": "^9.0.1"
-  }
+	"name": "mi-minecraft",
+	"version": "1.0.0",
+	"description": "Clon de Minecraft con servidor Node.js autoritativo (chunks, biomas, IA de mobs, crafteo, horno, persistencia)",
+	"main": "server/server.js",
+	"type": "commonjs",
+	"scripts": {
+		"start": "node server.js",
+		"test": "node tests/run.js",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write ."
+	},
+	"dependencies": {
+		"express": "^4.19.2",
+		"simplex-noise": "^4.0.1",
+		"uuid": "^9.0.1",
+		"ws": "^8.17.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.6"
+	}
 }

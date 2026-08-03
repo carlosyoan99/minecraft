@@ -20,6 +20,8 @@ let saturation = 20; // barra dorada sobre la comida (como en Minecraft)
 let xp = 0;
 let level = 0; // Fase 5: niveles simples
 let inventoryOpen = false;
+let openChestKey = null; // Fase 6: cofre abierto ("x,y,z")
+let chestSlots = new Array(27).fill(null);
 
 export function getHeldItem() { return inventory[selectedSlot]; }
 export function isChatFocused() { return document.activeElement === chatInput; }
@@ -230,6 +232,9 @@ export function applyInventory(inv) {
   updateHotbarUI();
   updateCraftInventoryUI();
   updateFurnaceInventoryUI();
+  // Solo repintar el inventario del cofre si el panel está abierto (es el
+  // patrón del horno, pero sin reconstruir 36 divs en cada update si no).
+  if (!chestUI.classList.contains('hidden')) updateChestInventoryUI();
 }
 export function applyHealth(hp, maxHp) {
   health = hp;
@@ -397,6 +402,63 @@ export function toggleFurnaceUI(show, coords) {
 }
 
 // ============================================================
+// PANEL DE COFRE (Fase 6): 27 slots propios + el inventario del jugador.
+// El servidor es la fuente de verdad (chest_state con los slots); el cliente
+// solo pide mover items (chest_action put/take) y repinta lo que recibe.
+// ============================================================
+const chestUI = document.getElementById('chest-ui');
+const chestSlotsEl = document.getElementById('chest-slots');
+const chestInventoryEl = document.getElementById('chest-inventory');
+
+function updateChestSlotsUI() {
+  chestSlotsEl.innerHTML = '';
+  chestSlots.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'slot';
+    if (item) {
+      el.innerHTML = `<span>${itemLabel(item.id)}</span><span class="count">${item.count}</span>`;
+      el.title = itemLabel(item.id);
+      el.addEventListener('click', () => send('chest_action', { action: 'take', chestSlot: i }));
+    }
+    chestSlotsEl.appendChild(el);
+  });
+}
+
+function updateChestInventoryUI() {
+  chestInventoryEl.innerHTML = '';
+  inventory.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'slot';
+    if (item) {
+      el.innerHTML = `<span>${itemLabel(item.id)}</span><span class="count">${item.count}</span>`;
+      el.title = itemLabel(item.id);
+      el.addEventListener('click', () => send('chest_action', { action: 'put', invSlot: i }));
+    }
+    chestInventoryEl.appendChild(el);
+  });
+}
+
+export function applyChestState(data) {
+  openChestKey = data.key;
+  chestSlots = data.slots || new Array(27).fill(null);
+  updateChestSlotsUI();
+}
+
+export function toggleChestUI(show, coords) {
+  chestUI.classList.toggle('hidden', !show);
+  if (show) {
+    updateChestSlotsUI();
+    updateChestInventoryUI();
+    send('chest_open', coords);
+    showBlocker(false); // quitar el menú para poder clicar los slots (bug inventario)
+    controls.unlock();
+  } else if (openChestKey) {
+    send('chest_action', { action: 'close' });
+    openChestKey = null;
+  }
+}
+
+// ============================================================
 // PANELES: abrir/cerrar desde el input
 // ============================================================
 export function openCraftingFromBlock() {
@@ -409,9 +471,10 @@ export function toggleInventory() {
   if (!inventoryOpen) controls.lock();
 }
 export function closePanels() {
-  const hadPanel = inventoryOpen || openFurnaceKey !== null;
+  const hadPanel = inventoryOpen || openFurnaceKey !== null || openChestKey !== null;
   toggleCraftingUI(false);
   toggleFurnaceUI(false);
+  toggleChestUI(false);
   inventoryOpen = false;
   if (hadPanel) controls.lock(); // Escape cierra el panel y reanuda el juego
 }

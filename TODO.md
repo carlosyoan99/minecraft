@@ -360,18 +360,42 @@ la **Fase 7**.*
       break de `tests/unit-red.js` (conduce la sesión como el bucle
       principal); el E2E de durabilidad mina sus 60 bloques con el
       nuevo ritmo
-- [ ] Verificar que las 20 herramientas (pico/hacha/pala/espada ×
+- [x] Verificar que las 20 herramientas (pico/hacha/pala/espada ×
       5 materiales) se pueden obtener todas en juego: ya son
       crafteables desde `recetas.json` (se completaron las 6 de
-      oro/diamante en la tarea de tests); revisión de obtención
-      real y de que ninguna queda inaccesible
+      oro/diamante en la tarea de tests). La revisión de obtención
+      REAL confirmó la cadena completa y que ninguna queda
+      inaccesible: tronco (se mina a mano) → planks → palos → pico
+      de madera → adoquín (rompiendo piedra) → horno y pico de
+      piedra → minerales con pico → fundición → lingotes de
+      hierro/oro → herramientas de hierro/oro, y diamante que se
+      mina directo (sin horno); el combustible del horno
+      (tronco/planks/palos) sale de la primera madera, así que la
+      fundición nunca queda bloqueada. Cubierto por la nueva
+      sección "cadena de obtención" de `tests/unit-recetas.js`
+      (las 20 recetas existen, cada una con palos + su material,
+      cada material es alcanzable y la progresión de picos es
+      continua)
 
 ### Mobs: IA
-- [ ] IA hostil más fiel: quemarse con el sol de día
+- [x] IA hostil más fiel: quemarse con el sol de día
       (zombie/esqueleto), aparecer **solo de noche** y poder hacer
-      spawn en todo el mapa cargado (hoy `spawnMobs()` los genera
-      cerca del jugador, de día y de noche; los hostiles solo
-      persiguen de noche o a <6-8 bloques)
+      spawn en todo el mapa cargado. `spawnMobs(isNight)` elige los
+      tipos por fase del día (de día solo pasivos, de noche también
+      hostiles) y la posición en CUALQUIER chunk cargado del área de
+      render del jugador (antes: siempre a <25 bloques), con reglas
+      estilo Minecraft: los hostiles nunca a <24 bloques del jugador
+      (no spawn en la cara) y nunca sobre lagos. Los no-muertos
+      (zombie/esqueleto, `BURNS_IN_SUN` en `constants.js`) arden con
+      el sol: `Mob.tickSunBurn()` daña 1 HP/s a los expuestos al
+      cielo (sin bloque sólido entre la cabeza y `WORLD_HEIGHT` —
+      techos/árboles dan sombra), el flag `burning` viaja en
+      `mobs_update` y el cliente tiñe al mob en llamas (naranja
+      fuego, `public/mobs.js`); al morir por el sol no sueltan drop
+      ni dan XP (como en Minecraft, la muerte no pasa por
+      `attack_mob`). Cubierto por `tests/unit-mobs-ia.js` (quema:
+      día/noche/techo/tipos/20 HP→muerte/snapshot; spawn: solo
+      pasivos de día, hostiles de noche, distancia mínima)
 
 ### Mundo y sesión
 - [x] Semilla seleccionable al iniciar el mundo: campo "Semilla del
@@ -402,11 +426,59 @@ la **Fase 7**.*
       muestra "Conexión perdida" con botón Reintentar (recarga la
       página). Oculta por defecto en CSS: si el JS no arranca, el menú
       funciona igual
-- [ ] Cofre: bloque de almacenamiento con inventario propio (la
-      mesa de crafteo y el horno ya existen como bloques
-      funcionales; falta solo el cofre)
-- [ ] Antorchas con iluminación dinámica (luz por bloque además de
-      la luz global del ciclo día/noche)
+- [x] Cofre: bloque de almacenamiento con inventario propio. Nuevo
+      bloque `B.CHEST = 22` (dureza 1.5 como la mesa de crafteo,
+      crafteable con 8 tablones alrededor del centro — receta
+      `chest` en `recetas.json`). El servidor mantiene un Map de
+      cofres (`state.chests`, módulo `chests.js`: `getOrCreateChest`/
+      `chestSnapshot`/`restoreChests` con 27 slots — 3 filas de 9,
+      como el cofre pequeño de Minecraft) que se persiste en
+      `world.json` (meta, junto a hornos) y se limpia con el estado
+      al cambiar de semilla. Eventos `chest_open` (valida distancia
+      ≤7 y que el bloque sea un cofre) y `chest_action` con
+      `put`/`take`/`close`: mover items entre el cofre y el
+      inventario apilando iguales y conservando la durabilidad de
+      las herramientas; cofre lleno/inventario lleno → la acción se
+      rechaza sin perder el item; `close` limpia `p.openChest`.
+      Al ROMper un cofre se elimina su estado (`finishMining`,
+      simplificación documentada: el contenido se pierde) y cae
+      como item al inventario (canHarvest). El cliente abre el
+      panel con clic izquierdo (`public/input.js` — los cofres no
+      se minan con clic, como mesa/horno), muestra 27 slots + el
+      inventario del jugador (`public/ui.js` `applyChestState`/
+      `toggleChestUI`, eventos `chest_state` en `public/network.js`)
+      y libera el puntero para clicar slots (mismo fix del mouse
+      del inventario). Cubierto por `tests/unit-cofre.js` (estado,
+      open/put/take/close, cofre lleno, receta, rotura) y el E2E
+      `tests/e2e-cofre.js` (craftear → colocar → abrir → guardar →
+      tomar → romper, 12/12)
+- [x] Antorchas con iluminación dinámica: luz POR BLOQUE además de
+      la luz global del ciclo día/noche. Nuevo bloque `B.TORCH = 23`
+      (no sólido — se atraviesa, como en Minecraft; dureza 0.1:
+      se rompe al instante; crafteable 1 carbón + 1 palo → 4, receta
+      `torch`). Reglas de soporte del servidor (`world.js`
+      `torchSupported`/`cleanUnsupportedTorches`): necesita al menos
+      un vecino sólido (suelo/pared/techo; el agua y otra antorcha
+      NO dan soporte) y al romper el bloque de apoyo la antorcha
+      cae (`setBlock AIR` + broadcast); el handler de place la
+      rechaza flotando. Iluminación en el cliente: nuevo módulo puro
+      `public/lighting.js` — BFS 6-direccional por antorcha con
+      atenuación 0.8/paso y radio 7 (el agua y otra antorcha dejan
+      pasar la luz; los sólidos la bloquean), `computeChunkLight`
+      hornea un Float32Array por chunk que `public/world.js`
+      convierte en color por vértice (`1 + luz × 1.4` multiplica el
+      atlas y la luz global: de noche las antorchas iluminan
+      claramente, de día apenas se notan — como Minecraft). Las
+      antorchas se dibujan como dos planos cruzados translúcidos con
+      la tesela 29 del atlas (palo + llama, fondo transparente) y su
+      propio color les hace brillar de noche. `setClientBlock`
+      mantiene el registro de antorchas (`torchSet`/`lightStore`),
+      se re-hornea el vecindario 3x3 al colocar/romper una
+      (`rebuildAround`) y `unloadChunks`/`loadChunkData` las
+      limpian/registran. Cubierto por `tests/unit-antorchas.js`
+      (soporte y caída, place rechazado/aceptado, no-sólida,
+      receta y el motor de luz: atenuación, alcance, oclusión con
+      pared completa, antorcha lejana ignorada)
 
 ### Herramientas de desarrollo (transversal, desbloquea el resto)
 - [x] Consola de comandos básica: `/help`, `/tp <x> <y> <z>`,

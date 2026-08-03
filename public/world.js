@@ -3,14 +3,31 @@
 // ============================================================
 import * as THREE from 'three';
 import { scene, camera } from './scene.js';
-import { CHUNK_SIZE, WORLD_HEIGHT, WATER, BLOCK_COLORS } from './constants.js';
+import { CHUNK_SIZE, WORLD_HEIGHT, WATER, TORCH, BLOCK_COLORS } from './constants.js';
 import { buildTerrainAtlas, tileForFace, tileRect } from './textures.js';
 import { lodTierFor } from './lod.js';
 import { createGeometryPool, setOrReuseAttribute } from './geopool.js';
+import { computeChunkLight, LIGHT_RADIUS } from './lighting.js';
 
 const chunkStore = new Map();     // "cx,cz" -> Uint8Array
 export const chunkMeshes = new Map();  // "cx,cz" -> THREE.Group (detalle completo)
 export const lodMeshes = new Map();    // "cx,cz" -> THREE.Group (LOD: heightmap simplificado)
+
+// ============================================================
+// ILUMINACIÓN POR BLOQUE (Fase 6: antorchas)
+// torchSet: posiciones de antorchas conocidas ("wx,wy,wz" -> [wx,wy,wz]).
+// lightStore: luz horneada por chunk ("cx,cz" -> Float32Array o null si no
+// hay antorchas relevantes cerca). Se hornea al construir la geometría y se
+// re-hornea al colocar/romper una antorcha (rebuildAround de 3x3 chunks).
+// ============================================================
+const torchSet = new Map();
+const lightStore = new Map();
+
+// Ganancia de la luz de antorcha en el color por vértice: v = 1 + luz*G.
+// De noche la luz global total es ~0.33, así una celda a luz 1 queda en
+// 2.4 * 0.33 ≈ 0.79 (claramente iluminada); de día la luz global satura y
+// las antorchas apenas se notan (como en Minecraft).
+const TORCH_LIGHT_GAIN = 1.4;
 
 // ============================================================
 // DISTANCIA DE RENDER (Fase 7, ajustable desde el menú de Ajustes)
@@ -81,20 +98,37 @@ export function setClientBlock(wx, wy, wz, block) {
   if (!chunk) { chunk = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE); chunkStore.set(key, chunk); }
   const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
   const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  const prev = chunk[cIdx(x, wy, z)];
   chunk[cIdx(x, wy, z)] = block;
+  // Mantener el registro de antorchas (lo usa la iluminación). Devuelve el
+  // bloque anterior para que la red decida si reconstruir el vecindario.
+  const torchKey = `${wx},${wy},${wz}`;
+  if (prev === TORCH) torchSet.delete(torchKey);
+  if (block === TORCH) torchSet.set(torchKey, [wx, wy, wz]);
+  return prev;
 }
 
 // Material compartido por todos los chunks: un único atlas de texturas.
 // Se crea una sola vez; NUNCA se hace dispose de él al reconstruir/descargar
 // chunks (solo se libera la geometría).
 const atlasTexture = buildTerrainAtlas();
-const terrainMaterial = new THREE.MeshLambertMaterial({ map: atlasTexture });
+// vertexColors: true en todos los materiales texturizados: el color por
+// vértice (luz de antorcha horneada) MULTIPLICA el atlas y la luz global.
+const terrainMaterial = new THREE.MeshLambertMaterial({ map: atlasTexture, vertexColors: true });
 // El agua es translúcida: material aparte (misma tesela del atlas), para que
 // se vea el lecho del lago a través de la superficie sin volver opacas las
 // caras sólidas adyacentes.
 const waterMaterial = new THREE.MeshLambertMaterial({
   map: atlasTexture, transparent: true, opacity: 0.65,
   side: THREE.DoubleSide, // al nadar bajo la superficie, la cara superior se ve desde abajo
+  vertexColors: true,
+});
+// Antorchas (Fase 6): dos planos cruzados translúcidos (la tesela tiene
+// fondo transparente), DoubleSide y sin depthWrite (que un plano no tape al
+// otro); vertexColors para que brillen de noche.
+const torchMaterial = new THREE.MeshLambertMaterial({
+  map: atlasTexture, transparent: true, side: THREE.DoubleSide,
+  depthWrite: false, vertexColors: true,
 });
 // LOD de chunks lejanos (Fase 6): material de COLOR PLANO por vértice (sin
 // textura ni teselas finas — geometría simplificada). Compartido por todos
@@ -111,6 +145,7 @@ const lodMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, side: TH
 const geometryPool = createGeometryPool({
   makeGeometry: () => new THREE.BufferGeometry(),
   maxPooled: 24,
+  categories: ['terrain', 'water', 'lod', 'torch'],
 });
 export function geoPoolStats() { return geometryPool.stats(); }
 
@@ -130,9 +165,14 @@ function buildChunkGeometry(cx, cz) {
   if (!chunk) return null;
   const baseX = cx * CHUNK_SIZE, baseZ = cz * CHUNK_SIZE;
 
-  // Buffers separados: terreno (opaco) y agua (translúcida, material aparte).
-  const positions = [], normals = [], uvs = [];
-  const waterPositions = [], waterNormals = [], waterUvs = [];
+  // Luz de antorcha del chunk (Fase 6): se hornea ANTES de empujar caras
+  // (los colores por vértice dependen de ella).
+  bakeChunkLight(cx, cz);
+
+  // Buffers separados: terreno (opaco), agua (translúcida) y antorchas.
+  const positions = [], normals = [], uvs = [], colors = [];
+  const waterPositions = [], waterNormals = [], waterUvs = [], waterColors = [];
+  const torchPositions = [], torchNormals = [], torchUvs = [], torchColors = [];
 
   // wx/wy/wz se pasan como parámetros: se declaran con const DENTRO del bucle
   // (block-scoped), así que una función definida fuera no puede capturarlos.
@@ -148,6 +188,10 @@ function buildChunkGeometry(cx, cz) {
       [wx + d[0], wy + d[1], wz + d[2]],
     ];
     const face = FACES[fi];
+    // Luz de antorcha en la celda de AIRE fuera de la cara (la celda que
+    // "mira" la cara). Color por vértice: 1 = sin antorcha, más = más luz.
+    const light = chunkLightAt(wx + face.dir[0], wy + face.dir[1], wz + face.dir[2]);
+    const v = 1 + light * TORCH_LIGHT_GAIN;
     // dos triángulos (a,b,c) y (a,c,d)
     for (const [i, j, k] of [[0,1,2],[0,2,3]]) {
       for (const idx of [i, j, k]) {
@@ -155,8 +199,40 @@ function buildChunkGeometry(cx, cz) {
         target.norm.push(...face.dir);
         const [uu, vv] = face.uvs[idx];
         target.uv.push(u0 + uu * (u1 - u0), v0 + vv * (v1 - v0));
+        target.col.push(v, v, v);
       }
     }
+  };
+
+  // Antorcha (Fase 6): dos planos cruzados (estilo Minecraft) de 0.5x0.6
+  // bloques con la tesela 29 (palo + llama, fondo transparente). Se dibujan
+  // SIEMPRE (DoubleSide): son diminutas y no ocluyen; la luz horneada en su
+  // propio color las hace brillar de noche (su celda está a luz 1).
+  const TORCH_W = 0.25, TORCH_H = 0.6;
+  const torchLight = 1 + TORCH_LIGHT_GAIN;
+  const [tu0, tv0, tu1, tv1] = tex.tileRect(tex.tileForFace(TORCH, 0));
+  const QUAD_UVS = [[0, 0], [1, 0], [1, 1], [0, 1]];
+  const pushTorchQuad = (ax, ay, az, bx, by, bz, c2x, c2y, c2z, dx, dy, dz, nx, ny, nz) => {
+    const verts = [[ax, ay, az], [bx, by, bz], [c2x, c2y, c2z], [dx, dy, dz]];
+    for (const [i, j, k] of [[0,1,2],[0,2,3]]) {
+      for (const idx of [i, j, k]) {
+        torchPositions.push(...verts[idx]);
+        torchNormals.push(nx, ny, nz);
+        const [uu, vv] = QUAD_UVS[idx];
+        torchUvs.push(tu0 + uu * (tu1 - tu0), tv0 + vv * (tv1 - tv0));
+        torchColors.push(torchLight, torchLight, torchLight);
+      }
+    }
+  };
+  const pushTorch = (wx, wy, wz) => {
+    // Plano 1: diagonal x=z (normal (-.707, 0, .707))
+    pushTorchQuad(wx - TORCH_W, wy, wz - TORCH_W, wx + TORCH_W, wy, wz + TORCH_W,
+      wx + TORCH_W, wy + TORCH_H, wz + TORCH_W, wx - TORCH_W, wy + TORCH_H, wz - TORCH_W,
+      -0.7071, 0, 0.7071);
+    // Plano 2: diagonal x=-z (normal (-.707, 0, -.707))
+    pushTorchQuad(wx + TORCH_W, wy, wz - TORCH_W, wx - TORCH_W, wy, wz + TORCH_W,
+      wx - TORCH_W, wy + TORCH_H, wz + TORCH_W, wx + TORCH_W, wy + TORCH_H, wz - TORCH_W,
+      -0.7071, 0, -0.7071);
   };
 
   for (let x = 0; x < CHUNK_SIZE; x++) {
@@ -166,6 +242,8 @@ function buildChunkGeometry(cx, cz) {
         if (block === 0) continue;
         const wx = baseX + x, wy = y, wz = baseZ + z;
         const isWater = block === WATER;
+        // Antorcha: geometría cruzada, sin caras de cubo.
+        if (block === TORCH) { pushTorch(wx, wy, wz); continue; }
         for (let fi = 0; fi < FACES.length; fi++) {
           const face = FACES[fi];
           const nx = wx + face.dir[0], ny = wy + face.dir[1], nz = wz + face.dir[2];
@@ -175,15 +253,15 @@ function buildChunkGeometry(cx, cz) {
           if (isWater) { if (neighbor !== 0) continue; }
           else { if (neighbor !== 0 && neighbor !== WATER) continue; }
           const target = isWater
-            ? { pos: waterPositions, norm: waterNormals, uv: waterUvs }
-            : { pos: positions, norm: normals, uv: uvs };
+            ? { pos: waterPositions, norm: waterNormals, uv: waterUvs, col: waterColors }
+            : { pos: positions, norm: normals, uv: uvs, col: colors };
           pushFace(block, fi, target, wx, wy, wz);
         }
       }
     }
   }
 
-  if (positions.length === 0 && waterPositions.length === 0) return null;
+  if (positions.length === 0 && waterPositions.length === 0 && torchPositions.length === 0) return null;
 
   const group = new THREE.Group();
   if (positions.length > 0) {
@@ -191,6 +269,7 @@ function buildChunkGeometry(cx, cz) {
     setOrReuseAttribute(geo, 'position', positions, 3, THREE.Float32BufferAttribute);
     setOrReuseAttribute(geo, 'normal', normals, 3, THREE.Float32BufferAttribute);
     setOrReuseAttribute(geo, 'uv', uvs, 2, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'color', colors, 3, THREE.Float32BufferAttribute);
     const mesh = new THREE.Mesh(geo, terrainMaterial);
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.isTerrain = true;
@@ -202,10 +281,23 @@ function buildChunkGeometry(cx, cz) {
     setOrReuseAttribute(geo, 'position', waterPositions, 3, THREE.Float32BufferAttribute);
     setOrReuseAttribute(geo, 'normal', waterNormals, 3, THREE.Float32BufferAttribute);
     setOrReuseAttribute(geo, 'uv', waterUvs, 2, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'color', waterColors, 3, THREE.Float32BufferAttribute);
     const mesh = new THREE.Mesh(geo, waterMaterial);
     mesh.renderOrder = 1; // translúcido: dibujar después del terreno opaco
     mesh.userData.isTerrain = true;
     mesh.userData.poolCat = 'water';
+    group.add(mesh);
+  }
+  if (torchPositions.length > 0) {
+    const geo = geometryPool.acquire('torch');
+    setOrReuseAttribute(geo, 'position', torchPositions, 3, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'normal', torchNormals, 3, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'uv', torchUvs, 2, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'color', torchColors, 3, THREE.Float32BufferAttribute);
+    const mesh = new THREE.Mesh(geo, torchMaterial);
+    mesh.renderOrder = 2; // translúcida: tras el agua, para verse en las orillas
+    mesh.userData.isTorch = true;
+    mesh.userData.poolCat = 'torch';
     group.add(mesh);
   }
   group.userData.boundingSphere = computeChunkSphere(group);
@@ -415,12 +507,73 @@ export function rebuildAffectedChunks(wx, wz) {
   if (localZ === CHUNK_SIZE - 1) rebuildChunk(`${cx},${cz + 1}`);
 }
 
+// ============================================================
+// LUZ DE ANTORCHA (Fase 6)
+// ============================================================
+// Hornea la luz de antorcha de un chunk (lo llama buildChunkGeometry). Solo
+// aloja el array si hay antorchas relevantes en la caja de radio alrededor:
+// sin antorchas el chunk queda con null y chunkLightAt devuelve 0 (sin coste
+// de memoria para el mundo normal).
+function bakeChunkLight(cx, cz) {
+  const key = `${cx},${cz}`;
+  const chunk = chunkStore.get(key);
+  if (!chunk) return;
+  const x0 = cx * CHUNK_SIZE, z0 = cz * CHUNK_SIZE;
+  const relevant = [];
+  for (const t of torchSet.values()) {
+    if (t[0] >= x0 - LIGHT_RADIUS && t[0] <= x0 + CHUNK_SIZE - 1 + LIGHT_RADIUS &&
+        t[2] >= z0 - LIGHT_RADIUS && t[2] <= z0 + CHUNK_SIZE - 1 + LIGHT_RADIUS) {
+      relevant.push(t);
+    }
+  }
+  if (relevant.length === 0) { lightStore.set(key, null); return; }
+  lightStore.set(key, computeChunkLight(cx, cz, CHUNK_SIZE, WORLD_HEIGHT, getClientBlock, relevant));
+}
+
+// Luz de antorcha (0..1) de una celda de mundo; 0 si el chunk no está
+// horneado aún (los vecinos se hornean al construirse; si llega un update de
+// luz cruzando un borde, rebuildAround re-hornea el 3x3).
+function chunkLightAt(wx, wy, wz) {
+  if (wy < 0 || wy >= WORLD_HEIGHT) return 0;
+  const cx = Math.floor(wx / CHUNK_SIZE), cz = Math.floor(wz / CHUNK_SIZE);
+  const arr = lightStore.get(`${cx},${cz}`);
+  if (!arr) return 0;
+  const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  return arr[(wy * CHUNK_SIZE + z) * CHUNK_SIZE + x];
+}
+
+// Reconstruye el vecindario 3x3 de chunks alrededor de un bloque: lo usa la
+// red cuando cambia una antorcha (el radio de luz cruza los bordes de chunk,
+// así que los vecinos también re-hornean). A diferencia de
+// rebuildAffectedChunks, incluye el centro (el llamador no lo reconstruye).
+export function rebuildAround(wx, wz) {
+  const cx = Math.floor(wx / CHUNK_SIZE), cz = Math.floor(wz / CHUNK_SIZE);
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      const key = `${cx + dx},${cz + dz}`;
+      if (chunkStore.has(key)) rebuildChunk(key);
+    }
+  }
+}
+
 export function loadChunkData(chunkData) {
   for (const [key, arr] of Object.entries(chunkData)) {
     // Fase 7: no construir chunks fuera de la distancia de render elegida
     const [cx, cz] = key.split(',').map(Number);
     if (!withinRenderDistance(cx, cz)) continue;
-    chunkStore.set(key, Uint8Array.from(arr));
+    const data = Uint8Array.from(arr);
+    chunkStore.set(key, data);
+    // Registrar las antorchas del chunk (puede venir con un mundo guardado).
+    for (let i = 0; i < data.length; i++) {
+      if (data[i] === TORCH) {
+        const lx = i % CHUNK_SIZE;
+        const lz = Math.floor(i / CHUNK_SIZE) % CHUNK_SIZE;
+        const ly = Math.floor(i / (CHUNK_SIZE * CHUNK_SIZE));
+        const wx = cx * CHUNK_SIZE + lx, wz = cz * CHUNK_SIZE + lz;
+        torchSet.set(`${wx},${ly},${wz}`, [wx, ly, wz]);
+      }
+    }
     rebuildChunk(key);
   }
 }
@@ -460,6 +613,13 @@ export async function hotReloadTextures() {
 export function unloadChunks(keys) {
   for (const key of keys || []) {
     removeChunkMesh(key); // libera el tier que tenga (completo o LOD)
+    const [cx, cz] = key.split(',').map(Number);
+    const x0 = cx * CHUNK_SIZE, z0 = cz * CHUNK_SIZE;
+    // Quitar las antorchas del chunk descargado y su luz horneada.
+    for (const [tKey, t] of torchSet) {
+      if (t[0] >= x0 && t[0] < x0 + CHUNK_SIZE && t[2] >= z0 && t[2] < z0 + CHUNK_SIZE) torchSet.delete(tKey);
+    }
+    lightStore.delete(key);
     chunkStore.delete(key);
   }
 }
