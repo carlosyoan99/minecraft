@@ -5,10 +5,12 @@
 // ============================================================
 const fs = require("fs");
 const path = require("path");
+const zlib = require("zlib"); // gzip del guardado por chunk (Fase 7)
 const { createNoise2D, createNoise3D } = require("simplex-noise");
 const constants = require("./constants.js");
 const { CHUNK_SIZE, WORLD_HEIGHT, SCHEMA_VERSION, B, isSolidBlock } = constants;
 const state = require("./state.js");
+const chests = require("./chests.js"); // cofres de loot de las minas abandonadas (Fase 7)
 
 const { chunks, dirtyChunks } = state;
 
@@ -31,6 +33,12 @@ function seededNoise(seedStr) {
 // del cliente puede cambiar la semilla en runtime con save.switchWorld).
 let noise2D, noise2D_detail, noise2D_ore, noise2D_mountain;
 let noise3D_cave, noise3D_cave_fine, noise2D_lake;
+// Ruidos de las minas abandonadas (Fase 7): dos campos de "corredores"
+// (bandas finas alrededor de las curvas de nivel del ruido), una puerta de
+// región (solo ~1/3 del mapa tiene minas) y la profundidad del túnel.
+let noise2D_ms_a, noise2D_ms_b, noise2D_ms_region, noise2D_ms_depth;
+// Ruidos de pozos decorativos (Fase 7): agua y lava en superficie.
+let noise2D_pond, noise2D_pond_region, noise2D_lava;
 function reinitNoise(seed) {
 	noise2D = createNoise2D(seededNoise(seed));
 	noise2D_detail = createNoise2D(seededNoise(seed + "_detail"));
@@ -47,6 +55,15 @@ function reinitNoise(seed) {
 	// agua llena la depresión hasta SEA_LEVEL. Muestreado en coordenadas de
 	// mundo → lagos continuos entre chunks y deterministas.
 	noise2D_lake = createNoise2D(seededNoise(seed + "_lake"));
+	// Minas abandonadas (Fase 7).
+	noise2D_ms_a = createNoise2D(seededNoise(seed + "_ms_a"));
+	noise2D_ms_b = createNoise2D(seededNoise(seed + "_ms_b"));
+	noise2D_ms_region = createNoise2D(seededNoise(seed + "_ms_region"));
+	noise2D_ms_depth = createNoise2D(seededNoise(seed + "_ms_depth"));
+	// Pozos decorativos (Fase 7).
+	noise2D_pond = createNoise2D(seededNoise(seed + "_pond"));
+	noise2D_pond_region = createNoise2D(seededNoise(seed + "_pond_region"));
+	noise2D_lava = createNoise2D(seededNoise(seed + "_lava"));
 }
 reinitNoise(constants.SEED); // al arrancar, la SEED de la env var
 const SEA_LEVEL = 5; // bloques de agua: y ∈ (LAKE_FLOOR, SEA_LEVEL)
@@ -238,6 +255,73 @@ function isCaveBlock(wx, wy, wz, nearSurface) {
 // (nearSurface 0.91), así que nunca hay hoyos aislados.
 const CAVE_MOUTH_THRESHOLD = 0.9;
 
+// ============================================================
+// MINAS ABANDONADAS (Fase 7): pasillos subterráneos + cofres de loot.
+// Se modelan como bandas finas alrededor de las curvas de nivel de dos
+// ruidos independientes (dos familias de túneles que se cruzan), limitadas
+// a regiones donde una puerta de ruido lo permite. Los túneles son
+// horizontales (MS_TUNNEL_H de alto) a profundidad variable, se excavan
+// SOLO en piedra (preservan minerales) y nunca rompen la superficie
+// (y < height - 1). Deterministas por coordenada de mundo → continuos
+// entre chunks, como las cuevas.
+// ============================================================
+const MS_REGION_GATE = 0.25; // ruido en [-1,1]: < 0.25 ≈ 60% del mapa puede tener minas
+const MS_BAND = 0.055; // banda de cada familia de túneles (~2.7% por familia)
+const MS_TUNNEL_H = 3; // alto del túnel (bloques excavados sobre su suelo)
+// Profundidad del túnel RELATIVA a la superficie (fix): 4-16 bloques por
+// debajo de ella, con variación de ruido suave y continua entre chunks
+// (el túnel serpentea en profundidad, nunca queda en el aire sobre el
+// terreno ni rompe la superficie: el guard y < height - 1 lo garantiza).
+const MS_BELOW_MIN = 3;
+const MS_BELOW_RANGE = 6;
+
+function mineshaftAt(wx, wz) {
+	if (noise2D_ms_region(wx * 0.005, wz * 0.005) < MS_REGION_GATE) return false;
+	const a = noise2D_ms_a(wx * 0.035, wz * 0.035);
+	const b = noise2D_ms_b(wz * 0.035, -wx * 0.035);
+	return Math.abs(a) < MS_BAND || Math.abs(b) < MS_BAND;
+}
+// Suelo del túnel: `height` es la altura de la superficie. El túnel queda
+// siempre bajo tierra, a MS_BELOW_MIN..+RANGE bloques de profundidad.
+function mineshaftDepth(wx, wz, height) {
+	const below =
+		MS_BELOW_MIN +
+		Math.floor(
+			((noise2D_ms_depth(wx * 0.06, wz * 0.06) + 1) / 2) * MS_BELOW_RANGE
+		);
+	return Math.max(2, height - 1 - below);
+}
+// Cofre de loot: ~0.6% de las celdas de pasillo llevan cofre (hash 2D
+// determinista, sin Math.random: estable entre reinicios y por columna).
+function msLootSpot(wx, wz) {
+	let h = (Math.imul(wx, 374761393) + Math.imul(wz, 668265263)) | 0;
+	h = Math.imul(h ^ (h >>> 13), 1274126177);
+	return ((h ^ (h >>> 16)) >>> 0) / 4294967296 < 0.006;
+}
+
+// ============================================================
+// POZOS DE AGUA/LAVA EN SUPERFICIE (Fase 7, decorativos): charcos de 1
+// bloque que sustituyen al bloque de superficie y entierran el siguiente
+// con arena (lecho del charco). Escasos y solo en regiones permitidas;
+// nunca sobre lagos ni en bocas de cueva.
+// ============================================================
+const POND_REGION_GATE = 0.35; // ~32% del mapa puede tener charcos
+const POND_THRESHOLD = 0.7; // calibrado: ~1-1.5% global de columnas con charco
+const LAVA_REGION_GATE = 0.45; // la lava, más rara
+const LAVA_THRESHOLD = 0.78; // calibrado: ~0.5% global
+function isPondAt(wx, wz) {
+	return (
+		noise2D_pond_region(wx * 0.01, wz * 0.01) > POND_REGION_GATE &&
+		noise2D_pond(wx * 0.06, wz * 0.06) > POND_THRESHOLD
+	);
+}
+function isLavaPondAt(wx, wz) {
+	return (
+		noise2D_pond_region(wx * 0.01, wz * 0.01) > LAVA_REGION_GATE &&
+		noise2D_lava(wx * 0.07, wz * 0.07) > LAVA_THRESHOLD
+	);
+}
+
 function idx(x, y, z) {
 	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
 }
@@ -258,26 +342,36 @@ function atomicWrite(file, data) {
 	fs.renameSync(tmp, file);
 }
 
-// Serializa y escribe un chunk (clave "cx,cz") en su archivo.
+// Serializa y escribe un chunk (clave "cx,cz") en su archivo, COMPRIMIDO con
+// gzip (Fase 7): el JSON de un chunk (16×64×16 bytes como array) se comprime
+// ~10-15x y los mundos grandes ocupan mucho menos disco. El nombre de archivo
+// no cambia (misma extensión .json); la lectura detecta la cabecera gzip
+// (0x1f 0x8b) y descomprime si procede, así que los mundos viejos en JSON
+// plano se siguen leyendo sin migración (retrocompatible, sin bump de schema).
 function writeChunkFile(key, arr) {
 	const [cx, cz] = key.split(",").map(Number);
-	atomicWrite(
-		chunkFilePath(cx, cz),
-		JSON.stringify({
-			schemaVersion: SCHEMA_VERSION,
-			cx,
-			cz,
-			data: Array.from(arr)
-		})
-	);
+	const json = JSON.stringify({
+		schemaVersion: SCHEMA_VERSION,
+		cx,
+		cz,
+		data: Array.from(arr)
+	});
+	atomicWrite(chunkFilePath(cx, cz), zlib.gzipSync(json));
 }
 
 // Lee y valida un archivo de chunk; devuelve el objeto {cx, cz, data} o null
 // si el archivo no existe como JSON válido (con aviso, nunca silencioso).
+// Acepta tanto JSON plano (formatos v1-v3) como gzip (Fase 7).
 function readChunkFile(file, origen) {
 	let parsed;
 	try {
-		parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+		const buf = fs.readFileSync(file);
+		// Cabecera gzip (0x1f 0x8b): descomprimir; si no, JSON plano (retrocompat).
+		const text =
+			buf.length > 2 && buf[0] === 0x1f && buf[1] === 0x8b
+				? zlib.gunzipSync(buf).toString("utf8")
+				: buf.toString("utf8");
+		parsed = JSON.parse(text);
 	} catch (e) {
 		console.warn(
 			`⚠️  Archivo de chunk ilegible, se ignora: ${origen}: ${e.message}`
@@ -419,16 +513,53 @@ function generateChunk(cx, cz) {
 				data[idx(x, y, z)] = block;
 			}
 
+			// Pozos decorativos (Fase 7): charco de agua o lava que reemplaza al
+			// bloque de superficie y deja lecho de arena debajo. Nunca sobre lagos,
+			// ni en bocas de cueva, ni donde no quepa el lecho (height justo sobre
+			// el nivel del mar). El charco gana a la boca de cueva (rarísimo).
+			const pond =
+				!lake && !mouth && height > SEA_LEVEL + 1 && isPondAt(wx, wz);
+			const lavaPond =
+				!pond && !lake && !mouth && height > SEA_LEVEL + 1 && isLavaPondAt(wx, wz);
+			if (pond) {
+				data[idx(x, height - 1, z)] = B.WATER;
+				data[idx(x, height - 2, z)] = B.SAND;
+			} else if (lavaPond) {
+				data[idx(x, height - 1, z)] = B.LAVA;
+				data[idx(x, height - 2, z)] = B.SAND;
+			}
+
+			// Minas abandonadas (Fase 7): excavar el pasillo horizontal en piedra
+			// (preserva minerales y el techo) a la profundidad del túnel; nunca
+			// rompen la superficie (y < height - 1). Los cofres de loot van en el
+			// suelo del pasillo (raro y determinista).
+			if (mineshaftAt(wx, wz)) {
+				const depth = mineshaftDepth(wx, wz, height);
+				for (let y = depth + 1; y < depth + MS_TUNNEL_H && y < height - 1; y++) {
+					if (data[idx(x, y, z)] === B.STONE) data[idx(x, y, z)] = B.AIR;
+				}
+				if (
+					msLootSpot(wx, wz) &&
+					depth + 1 < height - 1 &&
+					data[idx(x, depth + 1, z)] === B.AIR
+				) {
+					data[idx(x, depth + 1, z)] = B.CHEST;
+					state.chests.set(`${wx},${depth + 1},${wz}`, chests.lootSlots());
+				}
+			}
+
 			// Árboles (nunca dentro de un lago). El tronco empieza en el primer
 			// bloque de aire sobre la superficie (y = height) y descansa sobre el
 			// bloque de la superficie (y = height - 1): la base NUNCA flota. Bug
 			// corregido: antes empezaba en height + 1 y los árboles quedaban
 			// flotando un bloque por encima del terreno (ver tests/unit-arboles.js).
-			// Solo sobre césped firme (ni boca de cueva, ni estribación rocosa, ni
-			// arena del borde del desierto) y nunca dentro de un lago.
+			// Solo sobre césped firme (ni boca de cueva, ni charco, ni estribación
+			// rocosa, ni arena del borde del desierto) y nunca dentro de un lago.
 			if (
 				!lake &&
 				!mouth &&
+				!pond &&
+				!lavaPond &&
 				surfaceBlock === B.GRASS &&
 				(biome === "forest" || biome === "plains") &&
 				Math.random() < (biome === "forest" ? 0.04 : 0.01)
@@ -558,6 +689,12 @@ module.exports = {
 	getHeight,
 	findSpawn,
 	generateChunk,
+	mineshaftAt,
+	mineshaftDepth,
+	msLootSpot,
+	MS_TUNNEL_H,
+	isPondAt,
+	isLavaPondAt,
 	getBlock,
 	setBlock,
 	ensureChunksAround,

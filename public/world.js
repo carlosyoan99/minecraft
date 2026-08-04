@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { scene, camera } from './scene.js';
-import { CHUNK_SIZE, WORLD_HEIGHT, WATER, TORCH, BLOCK_COLORS } from './constants.js';
+import { CHUNK_SIZE, WORLD_HEIGHT, WATER, LAVA, TORCH, BLOCK_COLORS } from './constants.js';
 import { buildTerrainAtlas, tileForFace, tileRect } from './textures.js';
 import { lodTierFor } from './lod.js';
 import { createGeometryPool, setOrReuseAttribute } from './geopool.js';
@@ -123,6 +123,15 @@ const waterMaterial = new THREE.MeshLambertMaterial({
   side: THREE.DoubleSide, // al nadar bajo la superficie, la cara superior se ve desde abajo
   vertexColors: true,
 });
+// Lava (Fase 7): como el agua, pero opaca (no se ve el lecho a través) y
+// DoubleSide por si el jugador cae dentro del charco. Emissive suave para
+// que brille de noche (es un líquido incandescente).
+const lavaMaterial = new THREE.MeshLambertMaterial({
+  map: atlasTexture, transparent: false, opacity: 1,
+  side: THREE.DoubleSide,
+  vertexColors: true,
+  emissive: 0x3a1200, emissiveIntensity: 0.45,
+});
 // Antorchas (Fase 6): dos planos cruzados translúcidos (la tesela tiene
 // fondo transparente), DoubleSide y sin depthWrite (que un plano no tape al
 // otro); vertexColors para que brillen de noche.
@@ -169,9 +178,10 @@ function buildChunkGeometry(cx, cz) {
   // (los colores por vértice dependen de ella).
   bakeChunkLight(cx, cz);
 
-  // Buffers separados: terreno (opaco), agua (translúcida) y antorchas.
+  // Buffers separados: terreno (opaco), agua (translúcida), lava y antorchas.
   const positions = [], normals = [], uvs = [], colors = [];
   const waterPositions = [], waterNormals = [], waterUvs = [], waterColors = [];
+  const lavaPositions = [], lavaNormals = [], lavaUvs = [], lavaColors = [];
   const torchPositions = [], torchNormals = [], torchUvs = [], torchColors = [];
 
   // wx/wy/wz se pasan como parámetros: se declaran con const DENTRO del bucle
@@ -242,26 +252,31 @@ function buildChunkGeometry(cx, cz) {
         if (block === 0) continue;
         const wx = baseX + x, wy = y, wz = baseZ + z;
         const isWater = block === WATER;
+        const isLava = block === LAVA;
         // Antorcha: geometría cruzada, sin caras de cubo.
         if (block === TORCH) { pushTorch(wx, wy, wz); continue; }
         for (let fi = 0; fi < FACES.length; fi++) {
           const face = FACES[fi];
           const nx = wx + face.dir[0], ny = wy + face.dir[1], nz = wz + face.dir[2];
           const neighbor = getClientBlock(nx, ny, nz);
-          // Agua: solo caras contra aire confirmado (superficie/orilla). Sólido:
-          // caras contra aire O agua (el lecho del lago se ve bajo la superficie).
-          if (isWater) { if (neighbor !== 0) continue; }
+          // Agua/lava: solo caras contra aire confirmado (superficie/orilla).
+          // Sólido: caras contra aire O agua (el lecho del lago se ve bajo la
+          // superficie; la lava es opaca, pero el culling compartido evita que
+          // las caras enterradas del charco generen geometría invisible).
+          if (isWater || isLava) { if (neighbor !== 0) continue; }
           else { if (neighbor !== 0 && neighbor !== WATER) continue; }
           const target = isWater
             ? { pos: waterPositions, norm: waterNormals, uv: waterUvs, col: waterColors }
-            : { pos: positions, norm: normals, uv: uvs, col: colors };
+            : isLava
+              ? { pos: lavaPositions, norm: lavaNormals, uv: lavaUvs, col: lavaColors }
+              : { pos: positions, norm: normals, uv: uvs, col: colors };
           pushFace(block, fi, target, wx, wy, wz);
         }
       }
     }
   }
 
-  if (positions.length === 0 && waterPositions.length === 0 && torchPositions.length === 0) return null;
+  if (positions.length === 0 && waterPositions.length === 0 && lavaPositions.length === 0 && torchPositions.length === 0) return null;
 
   const group = new THREE.Group();
   if (positions.length > 0) {
@@ -284,6 +299,18 @@ function buildChunkGeometry(cx, cz) {
     setOrReuseAttribute(geo, 'color', waterColors, 3, THREE.Float32BufferAttribute);
     const mesh = new THREE.Mesh(geo, waterMaterial);
     mesh.renderOrder = 1; // translúcido: dibujar después del terreno opaco
+    mesh.userData.isTerrain = true;
+    mesh.userData.poolCat = 'water';
+    group.add(mesh);
+  }
+  if (lavaPositions.length > 0) {
+    const geo = geometryPool.acquire('water'); // misma categoría: geometría translúcida
+    setOrReuseAttribute(geo, 'position', lavaPositions, 3, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'normal', lavaNormals, 3, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'uv', lavaUvs, 2, THREE.Float32BufferAttribute);
+    setOrReuseAttribute(geo, 'color', lavaColors, 3, THREE.Float32BufferAttribute);
+    const mesh = new THREE.Mesh(geo, lavaMaterial);
+    mesh.renderOrder = 1; // tras el terreno opaco
     mesh.userData.isTerrain = true;
     mesh.userData.poolCat = 'water';
     group.add(mesh);
@@ -593,14 +620,17 @@ export async function hotReloadTextures() {
     return null;
   }
   const newAtlas = mod.buildTerrainAtlas();
-  // Liberar la textura anterior (el atlas se comparte entre ambos materiales;
+  // Liberar la textura anterior (el atlas se comparte entre los materiales;
   // dispose es idempotente si apuntan a la misma).
   if (terrainMaterial.map) terrainMaterial.map.dispose();
   if (waterMaterial.map) waterMaterial.map.dispose();
+  if (lavaMaterial.map) lavaMaterial.map.dispose();
   terrainMaterial.map = newAtlas;
   terrainMaterial.needsUpdate = true;
   waterMaterial.map = newAtlas;
   waterMaterial.needsUpdate = true;
+  lavaMaterial.map = newAtlas;
+  lavaMaterial.needsUpdate = true;
   // Cambiar también las funciones de tesela/UV: la geometría reconstruida
   // usa el layout nuevo (los chunks ya construidos se reconstruyen debajo).
   // Solo los chunks de detalle completo usan el atlas: los LOD (color plano)

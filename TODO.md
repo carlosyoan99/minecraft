@@ -617,14 +617,91 @@ la **Fase 7**.*
 > idéntica (sin costuras en el caparazón).
 
 ### Supervivencia (cerrar el loop)
-- [ ] Cama: dormir salta la noche y fija el punto de reaparición
-- [ ] Armadura básica (cuero, hierro, diamante) que reduce daño
+- [x] Cama: dormir salta la noche y fija el punto de reaparición.
+      Nuevo bloque `B.BED = 24` (no sólido — se atraviesa; dureza 0.2:
+      se rompe casi al instante; crafteable con 3 lana + 3 tablones,
+      receta `bed`). El evento `sleep` valida que sea de noche, que el
+      bloque sea una cama y la distancia ≤7: salta al amanecer
+      (`state.timeOffset` + broadcast `time_set`, mismo mecanismo que
+      `/time set day`), fija `p.respawnPoint` en las coordenadas del
+      BLOQUE (los offsets se aplican al reaparecer) y responde
+      `sleep_ok`; de día responde `sleep_rejected` (como Minecraft).
+      Al morir, `damagePlayer` reaparece en la cama (y+1, ya que no
+      es sólida); al romperla se limpia el respawn de los jugadores
+      que lo tenían. El cliente coloca la cama (tesela 30-32 del
+      atlas: manta roja + almohada), la mina con clic derecho solo
+      de noche y muestra el aviso "solo de noche" de día. Cubierto
+      por `tests/unit-cama.js` (dormir de noche→amanecer, rechazo de
+      día, respawn en la cama, limpieza al romperla, receta)
+- [x] Armadura básica (cuero, hierro, diamante) que reduce daño.
+      12 ítems (220-231: casco, pechera, pantalones y botas × 3
+      materiales) con `ARMOR_DAMAGE_REDUCTION` por pieza (cuero
+      0.03-0.08, hierro 0.06-0.12, diamante 0.08-0.16; tope total
+      0.8) y `ARMOR_DURABILITY` (cuero 55-80, hierro 165-240,
+      diamante 363-528). El jugador tiene 4 slots (`p.armor`, viajan
+      en `init` e `inventory_update`); `equip_armor`/`unequip_armor`
+      intercambian piezas conservando la durabilidad; el daño
+      entrante (`damagePlayer`) se reduce y desgasta las piezas (-1
+      por cada 4 de daño bruto; al llegar a 0 se retiran). Las
+      piezas no se apilan. Recetas: 12 en `recetas.json` con
+      patrones estilo Minecraft (casco 5 piezas, pechera 8, pantalones
+      7, botas 4). El cuero (`I.LEATHER = 132`) es drop de la vaca
+      y el conejo (`mobDrops` ahora devuelve también los drops no
+      comestibles). El cliente pinta los 4 slots en el panel de
+      inventario con barra de durabilidad, y equipa con clic derecho
+      en la mano. Cubierto por `tests/unit-armadura.js` (reducción
+      y desgaste por pieza, tope 0.8, armadura ignorada en inanición,
+      equipar/des-equipar con swap, recetas, cuero como drop)
 
 ### Terreno
-- [ ] Minas abandonadas: pasillos generados + cofres de loot
-- [ ] Pozos de agua/lava en superficie (generación decorativa)
-- [ ] Compresión (gzip) del guardado por chunk: mundos grandes
-      ocupan mucho espacio en disco
+- [x] Minas abandonadas: pasillos generados + cofres de loot.
+      En `world.js`: dos familias de túneles horizontales modeladas
+      como bandas finas alrededor de las curvas de nivel de dos
+      ruidos independientes (`noise2D_ms_a/b`, `MS_BAND = 0.055`),
+      limitadas a regiones por una puerta (`noise2D_ms_region`,
+      `MS_REGION_GATE = 0.25`). La profundidad es RELATIVA a la
+      superficie (`mineshaftDepth(wx, wz, height)` = `height - 1 -
+      below` con `below` 3-9 bloques por el ruido `noise2D_ms_depth`;
+      fix del bug de diseño original: la profundidad absoluta 6-32
+      dejaba los túneles en el aire sobre terrenos bajos y el guard
+      `y < height - 1` impedía excavar nada). Se excavan SOLO celdas
+      de piedra (preservan minerales y el techo), nunca rompen la
+      superficie ni el bedrock, y son continuos entre chunks
+      (coordenadas de mundo). Los cofres de loot (`msLootSpot`, hash
+      2D determinista ~0.6% de celdas) se colocan en el suelo del
+      pasillo y su loot se genera en `chests.js` `lootSlots()`
+      (ítems aleatorios: carbón, lingotes, comida, herramientas;
+      persistido en `world.json` como los demás cofres). Cubierto
+      por `tests/unit-terreno.js` (túneles presentes bajo tierra,
+      sin romper superficie/bedrock, determinismo, cofres con loot)
+- [x] Pozos de agua/lava en superficie (generación decorativa).
+      Charcos de 1 bloque que sustituyen al bloque de superficie con
+      lecho de arena debajo; escasos y en regiones permitidas
+      (`noise2D_pond_region`/`noise2D_lava` con umbrales CALIBRADOS
+      por barrido: agua ~1.05% y lava ~0.42% de columnas — el
+      calibrado original (0.94/0.965 sobre un ruido en [-1,1]) nunca
+      se superaba y no generaba ni un charco); nunca sobre lagos, ni
+      en bocas de cueva, ni donde no quepa el lecho. Nuevo bloque
+      `B.LAVA = 25` (no sólido, no minable, sincronizado en el
+      cliente con tesela 33 del atlas y material propio con emissive
+      que brilla de noche; la física del jugador lo atraviesa y el
+      servidor aplica **daño por contacto**: 2 HP cada 500ms en
+      `tickPlayer`, la armadura sí protege). Cubierto por
+      `tests/unit-terreno.js` (charco con lecho de arena, lava no
+      sólida/no minable) y la nueva invariante en `tests/unit-mundo.js`
+      (toda el agua por encima de `SEA_LEVEL` es un charco válido:
+      superficie + arena + fuera de lago)
+- [x] Compresión (gzip) del guardado por chunk: mundos grandes
+      ocupan mucho espacio en disco. `writeChunkFile` serializa con
+      `zlib.gzipSync` (el JSON de un chunk de 16×64×16 se comprime
+      ~20x: en la práctica 281 bytes vs 42 KB en los tests); el
+      nombre de archivo no cambia (`.json`) y `readChunkFile`
+      detecta la cabecera gzip (0x1f 0x8b) y descomprime — los
+      mundos viejos en JSON plano se siguen leyendo SIN migración
+      (retrocompatible, sin bump de schema). Cubierto por
+      `tests/unit-terreno.js` (cabecera gzip, round-trip idéntico,
+      compresión efectiva, JSON plano legible) y el E2E real
+      (169 chunks guardados en gzip y recargados sin corrupción)
 
 > **Nota de planificación:** la minería, las 20 herramientas
 > crafteables, la mesa de crafteo, el horno y los minerales ya

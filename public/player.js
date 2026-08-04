@@ -8,7 +8,7 @@ import { send } from './connection.js';
 import { updateDayNight } from './daynight.js';
 import { playStep, updateAmbient } from './audio.js';
 import { updateCoords } from './settings.js';
-import { WATER, TORCH } from './constants.js';
+import { WATER, LAVA, TORCH } from './constants.js';
 
 const PLAYER_SPEED = 4.3;   // bloques/segundo (en tierra)
 const SWIM_SPEED = 2.6;     // bloques/segundo (en agua)
@@ -30,8 +30,9 @@ export function teleport(x, y, z) {
 
 function solidAt(x, y, z) {
   const b = getClientBlock(Math.floor(x), Math.floor(y), Math.floor(z));
-  // El agua y la antorcha no son sólidas: se puede nadar/atravesar.
-  return b !== 0 && b !== -1 && b !== WATER && b !== TORCH;
+  // El agua, la lava y la antorcha no son sólidas: se puede nadar/atravesar
+  // (la lava daña al jugador — lo gestiona el servidor).
+  return b !== 0 && b !== -1 && b !== WATER && b !== LAVA && b !== TORCH;
 }
 
 function isWaterAt(x, y, z) {

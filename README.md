@@ -190,8 +190,19 @@ recupera su mundo).
   luz en `public/lighting.js` horneada en colores por vértice (de noche las
   antorchas iluminan claramente, de día apenas se notan); necesitan un
   bloque sólido adyacente para colocarse y caen si se rompe su soporte.
-  Pendientes:
-  texturas de mobs/items, cama y armadura, etc.
+  **Cama**: dormir de noche salta al amanecer y fija el punto de
+  reaparición (crafteable con 3 lana + 3 tablones; de día rechaza con
+  aviso "solo de noche"; al romperla se limpia el respawn).
+  **Armadura**: casco, pechera, pantalones y botas en cuero, hierro y
+  diamante (12 piezas crafteables, equipables con clic derecho, con su
+  propia barra de durabilidad en el inventario) que reducen el daño
+  entrante y se desgastan con los golpes. **Terreno**: minas
+  abandonadas con pasillos subterráneos y cofres de loot, pozos
+  decorativos de agua/lava en superficie (la lava es un bloque nuevo
+  que quema al contacto: 2 HP cada 500 ms) y **guardado comprimido con
+  gzip** (los chunks se escriben en disco ~20x más pequeños,
+  retrocompatible con los mundos JSON viejos).
+  Pendientes: texturas de mobs/items, etc.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -279,6 +290,17 @@ en el servidor y `public/network.js` en el cliente).
     (zombie/esqueleto arden de día al aire libre, 1 HP/s, no de noche ni
     bajo techo, mueren sin drop), spawn por fase del día (solo pasivos de
     día, hostiles de noche) y distancia mínima de 24 bloques al jugador.
+  - **Fase 6 (supervivencia):** `unit-cama.js` (dormir de noche salta al
+    amanecer, rechazo de día, respawn en la cama y limpieza al romperla)
+    y `unit-armadura.js` (reducción de daño por pieza y material, tope
+    0.8, desgaste al recibir golpes, armadura ignorada en inanición,
+    equipar/des-equipar con swap conservando durabilidad, recetas y
+    cuero como drop de vaca/conejo).
+  - **Fase 6 (terreno):** `unit-terreno.js` (minas abandonadas: túneles
+    bajo tierra sin romper la superficie ni el bedrock y cofres de loot
+    con su estado; pozos de agua/lava con lecho de arena; gzip del
+    guardado: cabecera, round-trip idéntico, compresión efectiva y
+    JSON plano retrocompatible; lava no sólida y no minable).
   - **Fase 6 (dev):** `unit-reload.js` (hot-reload de recetas: swap atómico,
     JSON inválido y receta malformada mantienen las tablas anteriores), el
     test del comando `/reload` dentro de `unit-red.js`, `unit-mineria.js`
@@ -341,14 +363,14 @@ en el servidor y `public/network.js` en el cliente).
 
 ### Resultados (agosto 2026)
 
-Suite completa en verde: **21 tests unitarios + 4 E2E** (si hay servidor).
+Suite completa en verde: **24 tests unitarios + 4 E2E** (si hay servidor).
 Última ejecución: todos los unitarios pasan (persistencia, IA de mobs,
 handlers de red, integridad de recetas, sincronización servidor↔cliente,
-hot-reload, minería fina, LOD, cofre y antorchas incluidos), y los E2E
-contra un servidor real con mundo fresco dan durabilidad 124/124,
-reload 4/4, comer 5/5 (el bonus de caza puede omitirse si no aparece un
-animal cercano, quedando 3/3 — los checks base siempre pasan) y cofre
-12/12.
+hot-reload, minería fina, LOD, cofre, antorchas, cama, armadura y
+terreno incluidos), y los E2E contra un servidor real con mundo fresco
+dan durabilidad 124/124, reload 4/4, comer 5/5 (el bonus de caza puede
+omitirse si no aparece un animal cercano, quedando 3/3 — los checks
+base siempre pasan) y cofre 12/12.
 La auditoría de la Fase 5 sigue cubriendo la sincronización de durabilidad
 y la no-duplicación de items; los unitarios transversales amplían la red
 de seguridad a toda la base.
@@ -365,7 +387,10 @@ preocupación por commit, y los commits son en español.
 - El guardado es incremental por chunk: cada chunk se persiste en
   `world/<semilla>/chunks/` (un archivo por chunk) y solo se
   reescribe cuando cambia; mobs, hornos y cofres viven en
-  `world/<semilla>/world.json`. **Cada semilla tiene su propio
+  `world/<semilla>/world.json`. **Los archivos de chunk se comprimen
+  con gzip** (mismo nombre `.json`; la lectura detecta la cabecera y
+  descomprime, así los mundos viejos en JSON plano se siguen
+  leyendo sin migración). **Cada semilla tiene su propio
   directorio de mundo**: la semilla se configura con la env var
   `SEED` y al cambiarla se genera un mundo totalmente nuevo sin
   pisar el anterior (el layout antiguo en la raíz de `world/` se

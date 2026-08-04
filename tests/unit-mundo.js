@@ -9,6 +9,9 @@
 //   4. excava cuevas con fracción razonable y túneles conexos
 //   5. genera lagos: agua solo hasta SEA_LEVEL, arena bajo el agua,
 //      sin aire bajo el fondo, y el agua no es sólida (isSolidBlock)
+//   6. (Fase 7) los charcos decorativos de superficie son válidos: agua
+//      por encima de SEA_LEVEL solo como bloque de superficie con lecho
+//      de arena, fuera de lagos y abierta al aire
 // ============================================================
 const world = require("../server/world.js");
 const state = require("../server/state.js");
@@ -55,7 +58,8 @@ let stoneTotal = 0,
 let waterCells = 0,
 	waterAboveSea = 0,
 	badWaterFloor = 0,
-	airUnderWater = 0;
+	airUnderWater = 0,
+	badPond = 0;
 for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 	for (let cz = -RADIUS; cz <= RADIUS; cz++) {
 		const data = state.chunks.get(`${cx},${cz}`);
@@ -81,11 +85,25 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 					if (data[idx(x, y, z)] === B.AIR) topHoles++;
 				}
 				if (topHoles > 0) surfaceHoles++;
-				// agua: invariantes de lago
+				// agua: invariantes de lago + charcos decorativos (Fase 7)
 				for (let y = 1; y < WORLD_HEIGHT; y++) {
 					if (data[idx(x, y, z)] === B.WATER) {
 						waterCells++;
-						if (y >= world.SEA_LEVEL) waterAboveSea++;
+						if (y >= world.SEA_LEVEL) {
+							// Agua sobre el nivel del mar = charco decorativo de superficie
+							// (Fase 7): debe ser el bloque de superficie de una columna
+							// NO lago, con lecho de arena justo debajo.
+							waterAboveSea++;
+							const below = data[idx(x, y - 1, z)];
+							const above = y + 1 < WORLD_HEIGHT ? data[idx(x, y + 1, z)] : 0;
+							if (
+								lake ||
+								y !== surface - 1 || // no es la superficie
+								below !== B.SAND || // sin lecho de arena
+								above !== B.AIR // no está abierto al aire
+							)
+								badPond++;
+						}
 						if (y < world.LAKE_FLOOR) airUnderWater++; // agua en zona de piedra: raro
 						const below = data[idx(x, y - 1, z)];
 						if (y === world.LAKE_FLOOR + 1 && below !== B.SAND) badWaterFloor++;
@@ -127,9 +145,9 @@ check(
 	`${waterCells} celdas de agua`
 );
 check(
-	"sin agua por encima de SEA_LEVEL",
-	waterAboveSea === 0,
-	`${waterAboveSea} celdas`
+	"el agua por encima de SEA_LEVEL es charco válido (superficie + arena)",
+	badPond === 0,
+	`${badPond} charcos inválidos (${waterAboveSea} celdas de agua alta)`
 );
 check(
 	"el fondo de los lagos es arena",

@@ -151,6 +151,11 @@ check(
 	"cliente=" + parseNum("SNOW")
 );
 check(
+	"LAVA cliente (25) == servidor",
+	parseNum("LAVA") === server.B.LAVA,
+	"cliente=" + parseNum("LAVA")
+);
+check(
 	"XP_PER_LEVEL cliente == servidor",
 	parseNum("XP_PER_LEVEL") === server.XP_PER_LEVEL,
 	"cliente=" + parseNum("XP_PER_LEVEL")

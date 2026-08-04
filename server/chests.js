@@ -12,9 +12,37 @@
 // (net.js), igual que con el horno.
 // ============================================================
 const state = require("./state.js");
+const { I } = require("./constants.js");
 
 const { chests } = state;
 const CHEST_SLOTS = 27; // 3 filas de 9, como el cofre pequeño de Minecraft
+
+// ============================================================
+// LOOT DE MINAS ABANDONADAS (Fase 7): los cofres que genera el mundo en
+// los pasillos traen 1-3 stacks de una tabla estilo Minecraft (carbón,
+// lingotes, redstone, diamante raro...). Se crea el estado del cofre en
+// generation (world.js) para que la persistencia del meta lo conserve.
+// ============================================================
+// [id, min, max] — el diamante es raro (solo en el 8% de los cofres).
+const LOOT_TABLE = [
+	[I.COAL, 1, 4],
+	[I.IRON_INGOT, 1, 3],
+	[I.GOLD_INGOT, 1, 2],
+	[I.REDSTONE, 1, 4],
+	[I.STICK, 1, 3],
+	[I.DIAMOND, 1, 1]
+];
+
+// Devuelve un array de CHEST_SLOTS slots con loot aleatorio (1-3 stacks).
+function lootSlots() {
+	const slots = new Array(CHEST_SLOTS).fill(null);
+	const n = 1 + Math.floor(Math.random() * 3); // 1..3 stacks
+	for (let i = 0; i < n; i++) {
+		const [id, min, max] = LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)];
+		slots[i] = { id, count: min + Math.floor(Math.random() * (max - min + 1)) };
+	}
+	return slots;
+}
 
 function getOrCreateChest(key) {
 	let c = chests.get(key);
@@ -45,5 +73,6 @@ module.exports = {
 	CHEST_SLOTS,
 	getOrCreateChest,
 	chestSnapshot,
-	restoreChests
+	restoreChests,
+	lootSlots
 };
