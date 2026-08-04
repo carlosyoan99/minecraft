@@ -138,5 +138,70 @@
 		"shape": ["#", "I"],
 		"ingredients": { "#": 101, "I": 100 },
 		"result": { "id": 23, "count": 4 }
+	},
+	"bed": {
+		"shape": ["###", "XXX"],
+		"ingredients": { "#": 18, "X": 7 },
+		"result": { "id": 24, "count": 1 }
+	},
+	"leather_helmet": {
+		"shape": ["###", "# #"],
+		"ingredients": { "#": 132 },
+		"result": { "id": 220, "count": 1 }
+	},
+	"leather_chestplate": {
+		"shape": ["# #", "###", "###"],
+		"ingredients": { "#": 132 },
+		"result": { "id": 221, "count": 1 }
+	},
+	"leather_leggings": {
+		"shape": ["###", "# #", "# #"],
+		"ingredients": { "#": 132 },
+		"result": { "id": 222, "count": 1 }
+	},
+	"leather_boots": {
+		"shape": ["# #", "# #"],
+		"ingredients": { "#": 132 },
+		"result": { "id": 223, "count": 1 }
+	},
+	"iron_helmet": {
+		"shape": ["###", "# #"],
+		"ingredients": { "#": 102 },
+		"result": { "id": 224, "count": 1 }
+	},
+	"iron_chestplate": {
+		"shape": ["# #", "###", "###"],
+		"ingredients": { "#": 102 },
+		"result": { "id": 225, "count": 1 }
+	},
+	"iron_leggings": {
+		"shape": ["###", "# #", "# #"],
+		"ingredients": { "#": 102 },
+		"result": { "id": 226, "count": 1 }
+	},
+	"iron_boots": {
+		"shape": ["# #", "# #"],
+		"ingredients": { "#": 102 },
+		"result": { "id": 227, "count": 1 }
+	},
+	"diamond_helmet": {
+		"shape": ["###", "# #"],
+		"ingredients": { "#": 104 },
+		"result": { "id": 228, "count": 1 }
+	},
+	"diamond_chestplate": {
+		"shape": ["# #", "###", "###"],
+		"ingredients": { "#": 104 },
+		"result": { "id": 229, "count": 1 }
+	},
+	"diamond_leggings": {
+		"shape": ["###", "# #", "# #"],
+		"ingredients": { "#": 104 },
+		"result": { "id": 230, "count": 1 }
+	},
+	"diamond_boots": {
+		"shape": ["# #", "# #"],
+		"ingredients": { "#": 104 },
+		"result": { "id": 231, "count": 1 }
 	}
 }

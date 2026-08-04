@@ -13,7 +13,7 @@ import { initDayNight } from './daynight.js';
 import { playCrack } from './audio.js';
 import { applyStoredSettings } from './settings.js';
 import {
-  applyInventory, applyHealth, applyFood, applyXp, applyCraftingGrid, applyFurnaceState,
+  applyInventory, applyArmor, applyHealth, applyFood, applyXp, applyCraftingGrid, applyFurnaceState,
   applyChestState, addChatLine, flashMessage, onWorldLoaded, onSeedRejected, renderWorldsList,
 } from './ui.js';
 
@@ -32,6 +32,7 @@ socket.addEventListener('message', (e) => {
       camera.position.set(data.spawnX, data.spawnY, data.spawnZ);
       loadChunkData(data.chunkData);
       applyInventory(data.inventory);
+      applyArmor(data.armor); // Fase 7: armadura equipada
       applyHealth(data.health, data.maxHealth);
       applyXp(data.xp || 0, data.level || 0);
       applyFood(data.food, data.saturation);
@@ -70,7 +71,9 @@ socket.addEventListener('message', (e) => {
     case 'mob_breed': spawnHearts(data.x, data.y, data.z); break;
     case 'teleport': teleport(data.x, data.y, data.z); break;
     case 'player_die': if (data.id === playerId) flashMessage('💀 Has muerto — reapareciendo...'); break;
-    case 'inventory_update': applyInventory(data.inventory); break;
+    case 'inventory_update': applyInventory(data.inventory); applyArmor(data.armor); break;
+    case 'sleep_ok': flashMessage('🌙 Dormiste: amaneció y fijaste tu punto de reaparición.'); break; // Fase 7
+    case 'sleep_rejected': flashMessage('🌙 Solo puedes dormir de noche.'); break; // Fase 7
     case 'health_update': applyHealth(data.health, data.maxHealth); break;
     case 'xp_update': applyXp(data.xp, data.level); break;
     case 'level_up': flashMessage(`⬆️ ¡Subiste al nivel ${data.level}!`); applyXp(data.xp, data.level); break;

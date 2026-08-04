@@ -8,11 +8,11 @@ import { mobMeshes } from './mobs.js';
 import { move } from './player.js';
 import {
   selectSlot, toggleInventory, openCraftingFromBlock, closePanels,
-  toggleFurnaceUI, toggleChestUI, getHeldItem, isChatFocused,
+  toggleFurnaceUI, toggleChestUI, getHeldItem, getSelectedSlot, isChatFocused,
 } from './ui.js';
 import { send } from './connection.js';
 import { playBreak, playPlace, playEat, playFeed } from './audio.js';
-import { PLACEABLE_BLOCKS, FOOD_ITEMS, BREED_FOOD, WATER } from './constants.js';
+import { PLACEABLE_BLOCKS, FOOD_ITEMS, BREED_FOOD, ARMOR_ITEMS, WATER, BED } from './constants.js';
 import { toggleDebug } from './debug.js';
 
 // ============================================================
@@ -122,6 +122,13 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     return;
   }
 
+  // Fase 7: equipar armadura con clic derecho (la pieza en mano va a su
+  // slot; la que hubiera vuelve al inventario). Sin necesidad de apuntar.
+  if (e.button === 2 && held && ARMOR_ITEMS.has(held.id)) {
+    send('equip_armor', { inventorySlot: getSelectedSlot() });
+    return;
+  }
+
   if (!hit) return;
 
   const point = hit.point.clone().addScaledVector(hit.face.normal, -0.5);
@@ -134,6 +141,12 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     if (target === 22) { toggleChestUI(true, { x, y, z }); return; }
     startMiningAt(x, y, z); // mantener pulsado = minar (agua/mesa/horno/cofre → false)
   } else if (e.button === 2) {
+    // Fase 7: clic derecho en una cama = dormir (de noche salta al amanecer
+    // y fija el punto de reaparición; de día el servidor lo rechaza).
+    if (getClientBlock(x, y, z) === BED) {
+      send('sleep', { x, y, z });
+      return;
+    }
     const nx = x + Math.round(hit.face.normal.x);
     const ny = y + Math.round(hit.face.normal.y);
     const nz = z + Math.round(hit.face.normal.z);

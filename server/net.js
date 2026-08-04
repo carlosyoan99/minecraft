@@ -20,6 +20,9 @@ const {
 	FUEL_ITEMS,
 	isSolidBlock,
 	isTool,
+	isArmor,
+	ARMOR_SLOTS,
+	ARMOR_DURABILITY,
 	SWORD_DAMAGE,
 	MOB_XP
 } = constants;
@@ -64,6 +67,7 @@ function sendInit(p) {
 				dayTime: worldTime(), // reloj del servidor: el cliente extrapola el ciclo visual
 				mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
 				inventory: p.inventory,
+				armor: p.armor, // Fase 7: 4 slots (casco, pechera, pantalones, botas)
 				health: p.health,
 				maxHealth: p.maxHealth,
 				xp: p.xp,
@@ -152,7 +156,12 @@ function handleConnection(ws, req) {
 		craftingGrid: new Array(9).fill(null),
 		openFurnace: null,
 		openChest: null, // Fase 6: cofre abierto ("x,y,z"), para mover items entre él y el inventario
-		mining: null // Fase 6: sesión de minería activa (progreso en el bucle principal)
+		mining: null, // Fase 6: sesión de minería activa (progreso en el bucle principal)
+		// Fase 7: armadura equipada (4 slots; cada pieza con su durabilidad) y
+		// punto de reaparición fijado al dormir en una cama (no se persisten: el
+		// estado del jugador se reinicia al reconectar, como el inventario).
+		armor: { helmet: null, chestplate: null, leggings: null, boots: null },
+		respawnPoint: null
 	};
 	state.players.set(playerId, player);
 	console.log(
@@ -612,6 +621,79 @@ function handleConnection(ws, req) {
 			case "inventory_select": {
 				if (typeof data.slot === "number" && data.slot >= 0 && data.slot < 9)
 					p.selectedSlot = data.slot;
+				break;
+			}
+
+			case "equip_armor": {
+				// Fase 7: equipar una pieza de armadura desde el inventario (clic
+				// derecho con la pieza en mano). Se intercambia con la pieza ya
+				// equipada (vuelve al inventario, conservando su durabilidad).
+				const slotIdx = data.inventorySlot;
+				const item = p.inventory[slotIdx];
+				if (!item || !isArmor(item.id)) return;
+				const slotName = ARMOR_SLOTS[(item.id - 220) % 4];
+				const prev = p.armor[slotName];
+				// Devolver la pieza actual al MISMO slot si el hueco se queda libre;
+				// si no había pieza, el slot del inventario queda vacío.
+				p.inventory[slotIdx] = prev
+					? { id: prev.id, count: 1, durability: prev.durability }
+					: null;
+				p.armor[slotName] = {
+					id: item.id,
+					count: 1,
+					durability: item.durability ?? ARMOR_DURABILITY[item.id]
+				};
+				playerHelpers.sendInventory(p);
+				break;
+			}
+
+			case "unequip_armor": {
+				// Fase 7: quitar una pieza del slot de armadura (clic en el panel
+				// de inventario): vuelve al inventario conservando su durabilidad.
+				const slotName = data.slot;
+				if (!ARMOR_SLOTS.includes(slotName)) return;
+				const piece = p.armor[slotName];
+				if (!piece) return;
+				if (!playerHelpers.addToInventory(p, piece.id, 1, piece.durability))
+					return; // inventario lleno: no se pierde la pieza
+				p.armor[slotName] = null;
+				playerHelpers.sendInventory(p);
+				break;
+			}
+
+			case "sleep": {
+				// Fase 7: dormir en una cama de noche — salta al amanecer y fija el
+				// punto de reaparición en la cama (respawnPoint, usado por
+				// players.damagePlayer al morir). De día se rechaza (como Minecraft).
+				const bx = data.x,
+					by = data.y,
+					bz = data.z;
+				if (Math.hypot(bx - p.x, by - p.y, bz - p.z) > 7) return;
+				if (world.getBlock(bx, by, bz) !== B.BED) return;
+				if (worldTime() < DAY_CYCLE_MS / 2) {
+					p.ws.send(
+						JSON.stringify({
+							event: "sleep_rejected",
+							data: { reason: "day" }
+						})
+					);
+					break;
+				}
+				// Saltar al amanecer: mismo mecanismo que /time set day (el reloj
+				// del mundo sigue a state.timeOffset; todos los clientes re-sincronizan).
+				state.timeOffset =
+					(0 - (Date.now() % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS;
+				broadcast("time_set", { dayTime: worldTime() });
+				// Punto de reaparición: las coordenadas del BLOQUE de la cama (los
+				// offsets se aplican al reaparecer en players.damagePlayer; guardarlos
+				// ya desplazados rompería la limpieza al romper la cama).
+				p.respawnPoint = { x: bx, y: by, z: bz };
+				p.ws.send(
+					JSON.stringify({
+						event: "sleep_ok",
+						data: { x: bx, y: by, z: bz }
+					})
+				);
 				break;
 			}
 

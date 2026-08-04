@@ -387,19 +387,27 @@ const FOOD_DROPS = {
 	sheep: { id: I.MUTTON, min: 1, max: 2 },
 	rabbit: { id: I.RABBIT, min: 1, max: 2 } // Fase 5: nuevo pasivo
 };
-// Drops no comestibles (Fase 5): la araña suelta hilo (para lana)
+// Drops no comestibles (Fase 5): la araña suelta hilo (para lana); la vaca y
+// el conejo sueltan cuero (material de la armadura de cuero, Fase 7).
 const OTHER_DROPS = {
-	spider: { id: I.STRING, min: 0, max: 2 }
+	spider: { id: I.STRING, min: 0, max: 2 },
+	cow: { id: I.LEATHER, min: 0, max: 2 },
+	rabbit: { id: I.LEATHER, min: 0, max: 1 }
 };
 
-// Devuelve [{ id, count }] para el tipo o null si no dropea nada.
-// Los bebés no sueltan comida (como en Minecraft).
+// Devuelve [{ id, count }] para el tipo o null si no dropea nada. Un mob
+// puede soltar comida Y su drop secundario (vaca: carne + cuero, como en
+// Minecraft). Los bebés no sueltan nada.
 function mobDrops(mob) {
 	if (mob.isBaby) return null;
-	const d = FOOD_DROPS[mob.type] || OTHER_DROPS[mob.type];
-	if (!d) return null;
-	const count = d.min + Math.floor(Math.random() * (d.max - d.min + 1));
-	return count > 0 ? [{ id: d.id, count }] : null;
+	const drops = [];
+	for (const table of [FOOD_DROPS[mob.type], OTHER_DROPS[mob.type]]) {
+		if (!table) continue;
+		const count =
+			table.min + Math.floor(Math.random() * (table.max - table.min + 1));
+		if (count > 0) drops.push({ id: table.id, count });
+	}
+	return drops.length ? drops : null;
 }
 
 // ============================================================

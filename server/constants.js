@@ -105,7 +105,9 @@ const B = {
 	WATER: 20, // no sólido: se puede nadar (Fase 4)
 	SNOW: 21, // superficie de tundra y cumbres de montaña (Fase 4)
 	CHEST: 22, // bloque de almacenamiento con inventario propio (27 slots, Fase 6)
-	TORCH: 23 // no sólido: se atraviesa; iluminación dinámica por bloque (Fase 6)
+	TORCH: 23, // no sólido: se atraviesa; iluminación dinámica por bloque (Fase 6)
+	BED: 24, // no sólido: se atraviesa; clic derecho de noche para dormir (Fase 7)
+	LAVA: 25 // no sólido como el agua: pozos de lava decorativos en superficie (Fase 7)
 };
 const I = {
   STICK: 100,
@@ -129,6 +131,11 @@ const I = {
   RABBIT: 118,
   COOKED_RABBIT: 119, // conejo crudo (Fase 5: nuevo pasivo) y asado
   STRING: 120, // hilo: drop de la araña (Fase 5)
+  LEATHER: 132, // cuero: drop de la vaca y el conejo, material de la armadura de cuero (Fase 7)
+  // Armadura (Fase 7): casco, pechera, pantalones y botas × 3 materiales
+  LEATHER_HELMET: 220, LEATHER_CHESTPLATE: 221, LEATHER_LEGGINGS: 222, LEATHER_BOOTS: 223,
+  IRON_HELMET: 224, IRON_CHESTPLATE: 225, IRON_LEGGINGS: 226, IRON_BOOTS: 227,
+  DIAMOND_HELMET: 228, DIAMOND_CHESTPLATE: 229, DIAMOND_LEGGINGS: 230, DIAMOND_BOOTS: 231,
   WOODEN_PICKAXE: 200,
   STONE_PICKAXE: 201,
   IRON_PICKAXE: 202,
@@ -150,10 +157,15 @@ const I = {
 	GOLDEN_SWORD: 218,
 	DIAMOND_SWORD: 219
 };
-const NOT_MINEABLE = new Set([B.AIR, B.BEDROCK, B.WATER]); // el agua no se puede romper a mano (sin cubo)
+const NOT_MINEABLE = new Set([B.AIR, B.BEDROCK, B.WATER, B.LAVA]); // agua/lava no se pueden romper a mano (sin cubo)
 // Sólido para física/validación: el agua no es sólida (se nada en ella) y la
 // antorcha tampoco (es un bloque pequeño que se atraviesa).
-const isSolidBlock = (id) => id !== B.AIR && id !== B.WATER && id !== B.TORCH;
+const isSolidBlock = (id) =>
+	id !== B.AIR &&
+	id !== B.WATER &&
+	id !== B.LAVA &&
+	id !== B.TORCH &&
+	id !== B.BED;
 const FUEL_ITEMS = new Set([B.OAK_LOG, B.PLANKS, I.STICK]);
 
 // ============================================================
@@ -198,6 +210,7 @@ const BLOCK_HARDNESS = {
 	[B.OAK_LOG]: 1.5,
 	[B.CRAFTING_TABLE]: 1.5,
 	[B.CHEST]: 1.5,
+	[B.BED]: 0.2, // la cama se rompe casi al instante (como en Minecraft)
 	[B.FURNACE]: 2.0,
 	[B.TORCH]: 0.1, // cofre como la mesa; la antorcha se rompe al instante
 	[B.STONE]: 1.8,
@@ -308,6 +321,47 @@ const TOOL_DURABILITY = {
 	[I.DIAMOND_SWORD]: 1562
 };
 const isTool = (id) => !!TOOL_DURABILITY[id];
+
+// ============================================================
+// ARMADURA (Fase 7): reducción de daño por pieza y material.
+// Cada pieza reduce un porcentaje del daño bruto y tiene una durabilidad
+// que se desgasta al recibir daño. El daño real = bruto × (1 − reducción
+// total, tope 0.8). La fuente de verdad del servidor; el cliente solo pinta
+// los 4 slots del inventario con su barra de durabilidad.
+// ============================================================
+const ARMOR_SLOTS = ["helmet", "chestplate", "leggings", "boots"];
+const ARMOR_DAMAGE_REDUCTION = {
+	[I.LEATHER_HELMET]: 0.04, [I.LEATHER_CHESTPLATE]: 0.08, [I.LEATHER_LEGGINGS]: 0.06, [I.LEATHER_BOOTS]: 0.03,
+	[I.IRON_HELMET]: 0.08, [I.IRON_CHESTPLATE]: 0.12, [I.IRON_LEGGINGS]: 0.1, [I.IRON_BOOTS]: 0.06,
+	[I.DIAMOND_HELMET]: 0.12, [I.DIAMOND_CHESTPLATE]: 0.16, [I.DIAMOND_LEGGINGS]: 0.14, [I.DIAMOND_BOOTS]: 0.08
+};
+const ARMOR_DURABILITY = {
+	[I.LEATHER_HELMET]: 55, [I.LEATHER_CHESTPLATE]: 80, [I.LEATHER_LEGGINGS]: 75, [I.LEATHER_BOOTS]: 65,
+	[I.IRON_HELMET]: 165, [I.IRON_CHESTPLATE]: 240, [I.IRON_LEGGINGS]: 225, [I.IRON_BOOTS]: 195,
+	[I.DIAMOND_HELMET]: 363, [I.DIAMOND_CHESTPLATE]: 528, [I.DIAMOND_LEGGINGS]: 495, [I.DIAMOND_BOOTS]: 429
+};
+const isArmor = (id) => !!ARMOR_DAMAGE_REDUCTION[id];
+
+// Reduce el daño según la armadura del jugador: desgasta las piezas (-1 por
+// cada 4 de daño bruto, mínimo 1) y devuelve el daño real. Las piezas que
+// llegan a 0 se retiran. Si el jugador no tiene armadura, devuelve el daño.
+function applyArmorDamageReduction(player, rawDamage) {
+	if (!player.armor) return rawDamage;
+	let reduction = 0;
+	for (const slot of ARMOR_SLOTS) {
+		const piece = player.armor[slot];
+		if (piece && isArmor(piece.id)) {
+			reduction += ARMOR_DAMAGE_REDUCTION[piece.id] || 0;
+			const wear = Math.max(1, Math.floor(rawDamage / 4));
+			piece.durability = Math.max(
+				0,
+				(piece.durability ?? ARMOR_DURABILITY[piece.id]) - wear
+			);
+			if (piece.durability <= 0) player.armor[slot] = null;
+		}
+	}
+	return Math.max(0, Math.round(rawDamage * (1 - Math.min(reduction, 0.8))));
+}
 // Daño por golpe de espada (Fase 5: progresión de combate; sin espada = 2)
 const SWORD_DAMAGE = {
 	[I.WOODEN_SWORD]: 3,
@@ -422,9 +476,14 @@ module.exports = {
   BREED_FOOD,
   MOB_COLORS,
   HOSTILE,
-  BURNS_IN_SUN,
-  TOOL_DURABILITY,
-  isTool,	SWORD_DAMAGE,
+  BURNS_IN_SUN,	TOOL_DURABILITY,
+	isTool,
+	SWORD_DAMAGE,
+	ARMOR_SLOTS,
+	ARMOR_DAMAGE_REDUCTION,
+	ARMOR_DURABILITY,
+	isArmor,
+	applyArmorDamageReduction,
   XP_PER_LEVEL,
   MAX_LEVEL_HEALTH_BONUS,
   MOB_XP,

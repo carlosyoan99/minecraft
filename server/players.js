@@ -16,22 +16,25 @@ const {
 	isFood,
 	TOOL_DURABILITY,
 	isTool,
+	isArmor,
+	ARMOR_DURABILITY,
+	applyArmorDamageReduction,
 	SWORD_DAMAGE,
 	XP_PER_LEVEL,
 	MAX_LEVEL_HEALTH_BONUS
 } = require("./constants.js");
 
 function addToInventory(player, itemId, count = 1, durability) {
-	// Las herramientas no se apilan (cada una con su durabilidad propia) y
-	// su count es siempre 1: ignoramos count a propósito (ningún call site
-	// añade más de 1 herramienta a la vez — el crafteo da 1 y el grid 1).
-	if (isTool(itemId)) {
+	// Las herramientas Y la armadura no se apilan (cada una con su durabilidad
+	// propia) y su count es siempre 1: ignoramos count a propósito (ningún
+	// call site añade más de 1 a la vez — el crafteo da 1 y el grid 1).
+	if (isTool(itemId) || isArmor(itemId)) {
 		const empty = player.inventory.findIndex((s) => !s);
 		if (empty === -1) return false;
 		player.inventory[empty] = {
 			id: itemId,
 			count: 1,
-			durability: durability ?? TOOL_DURABILITY[itemId]
+			durability: durability ?? TOOL_DURABILITY[itemId] ?? ARMOR_DURABILITY[itemId]
 		};
 		return true;
 	}
@@ -68,6 +71,19 @@ function finishMining(player, x, y, z, block, opts = {}) {
 	// juego no hay entidades de item en el suelo — simplificación documentada
 	// en TODO.md). Se hace ANTES del camino creative (que no dropea).
 	if (block === B.CHEST) state.chests.delete(`${x},${y},${z}`);
+	// Cama rota: los jugadores que tenían ahí su punto de reaparición vuelven
+	// a reaparecer en el spawn inicial (como en Minecraft).
+	if (block === B.BED) {
+		for (const p of state.players.values()) {
+			if (
+				p.respawnPoint &&
+				Math.floor(p.respawnPoint.x) === x &&
+				Math.floor(p.respawnPoint.y) === y &&
+				Math.floor(p.respawnPoint.z) === z
+			)
+				p.respawnPoint = null;
+		}
+	}
 	// Antorchas que se quedaron sin soporte al romper el bloque: caen también.
 	world.cleanUnsupportedTorches(x, y, z);
 	const creative = opts.creative;
@@ -196,7 +212,7 @@ function sendInventory(player) {
 		player.ws.send(
 			JSON.stringify({
 				event: "inventory_update",
-				data: { inventory: player.inventory }
+				data: { inventory: player.inventory, armor: player.armor }
 			})
 		);
 	}
@@ -231,22 +247,40 @@ function setBroadcastHandler(fn) {
 	broadcastHandler = fn;
 }
 
-function damagePlayer(player, amount) {
+// opts.armor=false → el daño ignora la armadura (inanición, como en Minecraft:
+// la armadura solo protege de ataques y explosiones). Con armadura activa se
+// desgasta la durabilidad de las piezas (sendInventory para el HUD del cliente).
+function damagePlayer(player, amount, opts = {}) {
 	if (player.gamemode === "creative") return; // creative (/gamemode): sin daño (mobs, inanición...)
-	player.health = Math.max(0, player.health - amount);
+	let real = amount;
+	const armorApplies = opts.armor !== false;
+	if (armorApplies) {
+		real = applyArmorDamageReduction(player, amount);
+		sendInventory(player); // la durabilidad de la armadura pudo cambiar
+	}
+	player.health = Math.max(0, player.health - real);
 	sendHealth(player);
 	if (player.health <= 0) {
 		if (broadcastHandler) broadcastHandler("player_die", { id: player.id });
-		// Respawn simple (la XP y el nivel se conservan; la salud máxima sí aplica)
+		// Respawn (la XP y el nivel se conservan; la salud máxima sí aplica).
 		player.health = player.maxHealth || 20;
 		player.food = 20;
 		player.saturation = 20;
 		player.foodAccum = 0;
 		player.regenAccum = 0;
 		player.starveAccum = 0;
-		// Respawn sobre tierra firme (igual que el spawn inicial): si (0,0) es un
-		// lago, findSpawn busca la columna firme más cercana (Fase 4).
-		const spawn = findSpawn(0, 0);
+		// Si dormiste en una cama (respawnPoint), reapareces en ella; si no, sobre
+		// tierra firme cerca del origen (findSpawn busca la columna firme si hay un
+		// lago, Fase 4). La cama fija el punto al dormir (Fase 7).
+		let spawn;
+		if (player.respawnPoint)
+			// La cama no es sólida: reaparecer ligeramente por encima de ella.
+			spawn = {
+				x: player.respawnPoint.x + 0.5,
+				y: player.respawnPoint.y + 1.0,
+				z: player.respawnPoint.z + 0.5
+			};
+		else spawn = findSpawn(0, 0);
 		player.x = spawn.x;
 		player.y = spawn.y;
 		player.z = spawn.z;
@@ -277,6 +311,11 @@ const FOOD_REGEN_THRESHOLD = 18; // regenera salud solo con la comida casi llena
 const FOOD_REGEN_INTERVAL_MS = 2000; // +1 salud cada 2s (y -1 comida)
 const FOOD_STARVE_INTERVAL_MS = 2000; // -1 salud cada 2s con comida a 0
 const MOVING_WINDOW_MS = 2000; // se considera en movimiento si hubo move reciente
+// Lava (Fase 7): contacto con un charco de lava quema al jugador como en
+// Minecraft — 2 de daño cada 500ms (la armadura sí protege, por eso se
+// llama damagePlayer sin opts.armor=false, a diferencia de la inanición).
+const LAVA_DAMAGE_INTERVAL_MS = 500;
+const LAVA_DAMAGE = 2;
 
 // ============================================================
 // COMER (Fase 3): aplica hambre + saturación si el ítem es comida
@@ -301,7 +340,31 @@ function eatFood(player, itemId) {
 }
 
 // Se llama una vez por tick (TICK_MS) para cada jugador conectado.
+// ¿El jugador está dentro de un charco de lava? Se comprueba el bloque de sus
+// pies (floor(y) y floor(y)-1, por si p.y es el centro del cuerpo o los ojos)
+// con world.getBlock (fuente de verdad del servidor).
+function inLava(player) {
+	const bx = Math.floor(player.x),
+		bz = Math.floor(player.z);
+	const by = Math.floor(player.y);
+	return (
+		world.getBlock(bx, by, bz) === B.LAVA ||
+		world.getBlock(bx, by - 1, bz) === B.LAVA
+	);
+}
+
 function tickPlayer(player, dtMs) {
+	// Lava: contacto periódico quema (acumulador para no depender del tick).
+	if (inLava(player)) {
+		player.lavaAccum = (player.lavaAccum || 0) + dtMs;
+		if (player.lavaAccum >= LAVA_DAMAGE_INTERVAL_MS) {
+			player.lavaAccum = 0;
+			damagePlayer(player, LAVA_DAMAGE);
+		}
+	} else {
+		player.lavaAccum = 0;
+	}
+
 	// Decaimiento: más rápido en movimiento. La saturación se consume primero
 	// (amortigua el hambre), como en Minecraft; luego baja la comida.
 	const moving =
@@ -334,12 +397,12 @@ function tickPlayer(player, dtMs) {
 		player.regenAccum = 0;
 	}
 
-	// Inanición: comida a 0 drena la salud
+	// Inanición: comida a 0 drena la salud (ignora la armadura, como Minecraft)
 	if (player.food <= 0 && player.health > 0) {
 		player.starveAccum += dtMs;
 		if (player.starveAccum >= FOOD_STARVE_INTERVAL_MS) {
 			player.starveAccum = 0;
-			damagePlayer(player, 1);
+			damagePlayer(player, 1, { armor: false });
 		}
 	} else {
 		player.starveAccum = 0;

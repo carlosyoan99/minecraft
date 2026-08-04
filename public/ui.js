@@ -3,7 +3,7 @@
 // ============================================================
 import { controls, showBlocker } from './scene.js';
 import { send, defaultName, setStoredName } from './connection.js';
-import { itemLabel, itemColor, DURABILITY, XP_PER_LEVEL } from './constants.js';
+import { itemLabel, itemColor, DURABILITY, ARMOR_DURABILITY, ARMOR_SLOT_NAMES, XP_PER_LEVEL } from './constants.js';
 import { isMuted, setMuted } from './audio.js';
 import { showLoading, finishLoading } from './loading.js';
 import { getSettings, setSetting } from './settings.js';
@@ -22,6 +22,13 @@ let level = 0; // Fase 5: niveles simples
 let inventoryOpen = false;
 let openChestKey = null; // Fase 6: cofre abierto ("x,y,z")
 let chestSlots = new Array(27).fill(null);
+// Fase 7: armadura equipada (fuente de verdad: el servidor; llega en init e
+// inventory_update). Cada pieza con su durabilidad.
+let armor = { helmet: null, chestplate: null, leggings: null, boots: null };
+const ARMOR_LABELS = { helmet: 'Casco', chestplate: 'Pechera', leggings: 'Pantalones', boots: 'Botas' };
+const ARMOR_ORDER = ['helmet', 'chestplate', 'leggings', 'boots'];
+// Índice de slot de armadura de un id de pieza (mismo orden que el servidor).
+export function armorSlotName(id) { return ARMOR_SLOT_NAMES[(id - 220) % 4] || null; }
 
 export function getHeldItem() { return inventory[selectedSlot]; }
 export function isChatFocused() { return document.activeElement === chatInput; }
@@ -38,8 +45,8 @@ function updateHotbarUI() {
     slot.className = 'hotbar-slot' + (i === selectedSlot ? ' selected' : '');
     if (item) {
       slot.innerHTML = `<div class="swatch" style="background:#${itemColor(item.id).toString(16).padStart(6,'0')}"></div><span class="count">${item.count}</span>`;
-      // Fase 5: barra de durabilidad bajo la herramienta (verde→rojo)
-      const maxD = DURABILITY[item.id];
+      // Fase 5/7: barra de durabilidad bajo la herramienta/armadura (verde→rojo)
+      const maxD = DURABILITY[item.id] || ARMOR_DURABILITY[item.id];
       if (maxD) {
         const cur = typeof item.durability === 'number' ? item.durability : maxD;
         const pct = Math.max(0, Math.min(100, (cur / maxD) * 100));
@@ -236,6 +243,10 @@ export function applyInventory(inv) {
   // patrón del horno, pero sin reconstruir 36 divs en cada update si no).
   if (!chestUI.classList.contains('hidden')) updateChestInventoryUI();
 }
+export function applyArmor(a) {
+  armor = a && typeof a === 'object' ? a : { helmet: null, chestplate: null, leggings: null, boots: null };
+  updateArmorUI();
+}
 export function applyHealth(hp, maxHp) {
   health = hp;
   if (typeof maxHp === 'number') maxHealth = maxHp;
@@ -252,6 +263,7 @@ export function applyFood(f, s) {
   updateFoodUI();
 }
 export function selectSlot(i) { selectedSlot = i; send('inventory_select', { slot: i }); updateHotbarUI(); }
+export function getSelectedSlot() { return selectedSlot; }
 
 export function flashMessage(text) {
   addChatLine('Sistema', text);
@@ -301,6 +313,34 @@ function buildCraftGridSlots() {
   }
 }
 buildCraftGridSlots();
+
+// Fase 7: los 4 slots de armadura equipada (columna izquierda del panel).
+// Clic en una pieza la desequipa (vuelve al inventario).
+const armorColEl = document.getElementById('craft-armor');
+function updateArmorUI() {
+  armorColEl.innerHTML = '';
+  for (const slotName of ARMOR_ORDER) {
+    const piece = armor[slotName];
+    const el = document.createElement('div');
+    el.className = 'slot armor-slot';
+    if (piece) {
+      const maxD = ARMOR_DURABILITY[piece.id];
+      const cur = typeof piece.durability === 'number' ? piece.durability : maxD;
+      const pct = maxD ? Math.max(0, Math.min(100, (cur / maxD) * 100)) : 100;
+      const color = pct > 50 ? '#5fd34f' : pct > 20 ? '#e8b93f' : '#e8544f';
+      el.innerHTML =
+        `<span>${itemLabel(piece.id)}</span>` +
+        `<div class="durbar"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></div>`;
+      el.title = `${itemLabel(piece.id)} (${cur}/${maxD}) — clic para quitarla`;
+      el.addEventListener('click', () => send('unequip_armor', { slot: slotName }));
+    } else {
+      el.innerHTML = `<span class="armor-empty">${ARMOR_LABELS[slotName]}</span>`;
+      el.title = ARMOR_LABELS[slotName] + ' (vacío)';
+    }
+    armorColEl.appendChild(el);
+  }
+}
+updateArmorUI(); // estado inicial coherente antes del primer init
 
 function updateCraftGridUI(success) {
   const cells = craftGridEl.children;

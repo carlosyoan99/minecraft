@@ -33,7 +33,10 @@ const UNIT = [
 	"unit-lod.js",
 	"unit-geopool.js",
 	"unit-cofre.js",
-	"unit-antorchas.js"
+	"unit-antorchas.js",
+	"unit-cama.js",
+	"unit-armadura.js",
+	"unit-terreno.js"
 ];
 const E2E = [
 	"e2e-comer.js",

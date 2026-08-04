@@ -47,11 +47,13 @@ const PAL = {
   diamond: '#7fffea', redstone: '#c03a3a', emerald: '#22c97a',
   glass: '#bee7f0', glassLight: '#e8f8fc',
   wool: '#f5f5f0', woolDark: '#d9d9d2',
+  bed: '#c0392b', bedDark: '#8e2b1f', bedLight: '#d94a3d', pillow: '#f2ece4',
   bedrock: '#1a1a1a', bedrockDark: '#0f0f0f',
   water: '#3a6fd8', waterLight: '#5a8ff0', waterDark: '#2a54a8',
   furnace: '#5a5a5a', furnaceDark: '#3a3a3a', furnaceLight: '#7a7a7a',
   fire: '#ff8c1a', fireLight: '#ffd23f',
   snow: '#e8f4f8', snowDark: '#cddee8', snowLight: '#f7fbfd',
+  lava: '#e25822', lavaDark: '#a83218', lavaLight: '#ff8c1a', lavaHot: '#ffd23f',
   metal: '#9aa0a6', metalDark: '#6c7176', metalLight: '#c3c9cf',
   flame: '#ff8c1a', flameDark: '#e0551a', flameLight: '#ffe14d',
 };
@@ -219,6 +221,19 @@ function drawSnow(ctx, rng) {
   speckle(ctx, rng, PAL.snowLight, 0.12);
   speckle(ctx, rng, PAL.snowDark, 0.06);
 }
+// Lava (Fase 7): roca fundida con manchas más claras (el magma brillante) y
+// costras oscuras. La tesela se ve sobre el charco de superficie decorativo.
+function drawLava(ctx, rng) {
+  fill(ctx, PAL.lavaDark);
+  speckle(ctx, rng, PAL.lava, 0.35);
+  // burbujas/zonas incandescentes
+  for (let i = 0; i < 5; i++) {
+    const x = Math.floor(rng() * (TILE - 3));
+    const y = Math.floor(rng() * (TILE - 3));
+    rect(ctx, x, y, 2 + Math.floor(rng() * 2), 1 + Math.floor(rng() * 2), PAL.lavaHot);
+  }
+  speckle(ctx, rng, PAL.lavaLight, 0.12);
+}
 // Cofre (Fase 6): madera de tablones con marco y bisagras metálicas.
 function drawChestTop(ctx, rng) {
   drawPlanks(ctx, rng);
@@ -266,6 +281,35 @@ function drawTorch(ctx, rng) {
   px(ctx, 8, 3, PAL.flameDark);
 }
 
+// Cama (Fase 7): marco de madera + manta con almohada (manta roja clásica).
+function drawBedTop(ctx, rng) {
+  fill(ctx, PAL.bedLight);
+  rect(ctx, 0, 0, TILE, 2, PAL.bedDark); // borde de la manta
+  rect(ctx, 0, TILE - 2, TILE, 2, PAL.bedDark);
+  speckle(ctx, rng, PAL.bed, 0.12); // textura de la tela
+  rect(ctx, 10, 3, 6, 5, PAL.pillow); // almohada
+  rect(ctx, 10, 3, 6, 1, PAL.woolDark);
+  rect(ctx, 0, 3, 2, 5, PAL.bedDark); // pliegue
+}
+function drawBedSide(ctx, rng) {
+  fill(ctx, PAL.wood);
+  rect(ctx, 0, 0, TILE, 3, PAL.woodDark); // marco superior
+  rect(ctx, 0, 3, TILE, 9, PAL.bedLight); // manta (lateral)
+  rect(ctx, 0, 12, TILE, 2, PAL.woodDark); // marco inferior
+  speckle(ctx, rng, PAL.bed, 0.1);
+  rect(ctx, 2, 13, 2, 3, PAL.woodDark); // patas
+  rect(ctx, TILE - 4, 13, 2, 3, PAL.woodDark);
+}
+function drawBedFront(ctx, rng) {
+  fill(ctx, PAL.wood);
+  rect(ctx, 0, 0, TILE, 3, PAL.woodDark); // cabecero
+  rect(ctx, 0, 3, TILE, 9, PAL.bedLight);
+  rect(ctx, 0, 12, TILE, 2, PAL.woodDark);
+  rect(ctx, 7, 5, 2, 3, PAL.pillow); // almohada (frente)
+  rect(ctx, 3, 13, 2, 3, PAL.woodDark); // patas
+  rect(ctx, 11, 13, 2, 3, PAL.woodDark);
+}
+
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
   drawDirt,          // 0  tierra
@@ -298,6 +342,10 @@ const TILES = [
   drawChestSide,     // 27 cofre (lado)
   drawChestFront,    // 28 cofre (frente, con cerradura)
   drawTorch,         // 29 antorcha
+  drawBedTop,        // 30 cama (arriba)
+  drawBedSide,       // 31 cama (lado)
+  drawBedFront,      // 32 cama (frente)
+  drawLava,          // 33 lava
 ];
 
 // Tesela por bloque y cara. Orden de FACES (ver world.js):
@@ -326,6 +374,8 @@ const BLOCK_TEX = {
   21: { all: 25 },                      // nieve
   22: { top: 26, bottom: 8, side: 27, fronts: 28 }, // cofre (cerradura en ±Z)
   23: { all: 29 },                      // antorcha (tesela cruzada)
+  24: { top: 30, bottom: 8, side: 31, fronts: 32 }, // cama (Fase 7)
+  25: { all: 33 },                      // lava
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.
