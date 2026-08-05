@@ -180,6 +180,80 @@ function boxVerts(cx, cy, cz) {
 		`hitsBug=${hitsBug.length}`
 	);
 
+	// ── 4) B6: el mismo fix corrige el CULLING (expandByObject) ─────────
+	// computeChunkSphere (world.js) hace box.expandByObject(mesh) y en
+	// three r160 expandByObject SOLO recalcula geometry.boundingBox si es
+	// null; si la geometría reutilizada del pool conservaba la caja del
+	// chunk ANTERIOR, la esfera de culling quedaba en el sitio equivocado
+	// → frustum.intersectsSphere fallaba → el chunk se ocultaba (se veía
+	// transparente / sin texturas, síntoma B6). Con el fix (release nullea
+	// la caja), expandByObject la recalcula con los datos nuevos.
+	const boxA = boxVerts(0, 0, 0);
+	const boxB = boxVerts(100, 50, 0); // mismo nº de vértices → mutación in-place
+
+	// Mecanismo del bug documentado: caja cacheada del primer chunk que se
+	// conserva al mutar los arrays en su lugar (sin el fix).
+	const geoBugCull = new THREE.BufferGeometry();
+	geoBugCull.setAttribute(
+		"position",
+		new THREE.Float32BufferAttribute(boxA.v, 3)
+	);
+	geoBugCull.setIndex(boxA.idx);
+	geoBugCull.computeBoundingBox();
+	geoBugCull.attributes.position.array.set(boxB.v); // mutación in-place
+	geoBugCull.attributes.position.needsUpdate = true;
+	const meshBugCull = new THREE.Mesh(geoBugCull);
+	const boxBugCull = new THREE.Box3().expandByObject(meshBugCull);
+	check(
+		"4. B6 mecanismo: expandByObject usa la caja OBSOLETA sin el fix",
+		Math.abs(boxBugCull.min.x - 0) < 0.01 &&
+			Math.abs(boxBugCull.max.x - 1) < 0.01,
+		`caja=${boxBugCull.min.x.toFixed(1)}..${boxBugCull.max.x.toFixed(1)} (debería ser 100..101)`
+	);
+
+	// Con el fix: release nullea la caja → expandByObject la recalcula con
+	// los vértices nuevos (el chunk se ve en su posición real).
+	const poolCull = createGeometryPool({
+		makeGeometry: () => new THREE.BufferGeometry(),
+		maxPooled: 4,
+		categories: ["lod"]
+	});
+	const geoCull = poolCull.acquire("lod");
+	setOrReuseAttribute(
+		geoCull,
+		"position",
+		boxA.v,
+		3,
+		THREE.Float32BufferAttribute
+	);
+	geoCull.setIndex(boxA.idx);
+	geoCull.computeBoundingBox(); // three cachea la caja tras el primer uso
+	poolCull.release("lod", geoCull); // fix B3: nullea la caja
+	const geoCull2 = poolCull.acquire("lod"); // reutiliza la misma geometría
+	setOrReuseAttribute(
+		geoCull2,
+		"position",
+		boxB.v,
+		3,
+		THREE.Float32BufferAttribute
+	);
+	geoCull2.setIndex(boxB.idx);
+	const meshCull2 = new THREE.Mesh(geoCull2);
+	const boxCull2 = new THREE.Box3().expandByObject(meshCull2);
+	check(
+		"4. B6 fix: expandByObject recalcula la caja con los datos nuevos",
+		Math.abs(boxCull2.min.x - 100) < 0.01 &&
+			Math.abs(boxCull2.max.x - 101) < 0.01,
+		`caja=${boxCull2.min.x.toFixed(1)}..${boxCull2.max.x.toFixed(1)}`
+	);
+	// La esfera resultante (la que usa updateCulling) también queda correcta.
+	const sphereCull2 = boxCull2.getBoundingSphere(new THREE.Sphere());
+	check(
+		"4. B6 fix: esfera de culling centrada en el chunk nuevo",
+		Math.abs(sphereCull2.center.x - 100.5) < 0.01,
+		`centro.x=${sphereCull2.center.x.toFixed(1)}`
+	);
+
 	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(failed ? `\n${failed} check(s) FALLARON` : "\nTODO OK");
 	process.exit(failed ? 1 : 0);

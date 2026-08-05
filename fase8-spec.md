@@ -333,6 +333,20 @@ vuelva a textura completa). **No** se baja el renderDistance por defecto.
 bloques, reconstruye con texturas completas; no queda transparente ni con
 texturas disminuidas.
 
+**Resultado (verificado, commit de B3+B6):** la transición LOD→full era
+correcta (`updateLod` 250ms + histéresis + `rebuildChunk`). El síntoma
+"transparente/sin texturas" lo causaba el mismo bug de B3: el pool
+reutilizaba `BufferGeometry` con bounds cacheados obsoletos, y
+`computeChunkSphere` → `Box3.expandByObject` (three r160) solo recalcula
+`geometry.boundingBox` si es `null` → la esfera de culling quedaba en el
+chunk anterior → `frustum.intersectsSphere` fallaba → el chunk se ocultaba.
+El fix de B3 (`release()` nullea los bounds) resuelve B6. Verificado en
+`tests/unit-raycast.js` sección 4 (mecanismo sin fix: caja 0..1 obsoleta;
+con fix: caja 100..101 y esfera centrada en el chunk nuevo) y con la métrica
+`window.__mcLodChunks` (split LOD/full en F3). El raycast solo intersecta
+chunks full (`chunkMeshes`), nunca LOD — correcto por diseño: el LOD vive a
+>44 bloques, fuera del alcance de mina (7).
+
 ---
 
 ### B7. Estrellas visibles de día

@@ -1075,7 +1075,7 @@ fix propio (el diagnóstico debe confirmarlo).
       que intersectar los hijos y subir al raíz por `userData.mobId`),
       etiquetas de nombre, snapshots. Aplicar el mismo esquema (o
       mejorar) a los jugadores remotos.
-- [ ] **B6: chunks lejanos con texturas "disminuidas" que no se
+- [x] **B6: chunks lejanos con texturas "disminuidas" que no se
       restauran al acercarse (o transparentes).** El LOD
       (`lod.js`: `LOD_ON_DIST 56` / `LOD_OFF_DIST 44`, histéresis)
       debería reconstruir a detalle completo al acercarse; no lo hace.
@@ -1086,6 +1086,22 @@ fix propio (el diagnóstico debe confirmarlo).
       sin atlas) y que el chunk reconstruya con texturas completas al
       cruzar el umbral. Reproducción visual (F3/`window.__mc*`,
       playtest headless); regresión: `unit-lod.js`.
+      **Resultado:** la lógica de transición LOD→full era CORRECTA
+      (`updateLod` con throttle 250ms, `lodTierFor` con histéresis,
+      `rebuildChunk` elimina el LOD y reconstruye full). El síntoma
+      "transparente / sin texturas" lo causaba el MISMO bug de B3: el
+      geometry pool reutilizaba `BufferGeometry` con
+      `boundingBox`/`boundingSphere` obsoletos del chunk anterior, y
+      `computeChunkSphere` (world.js) usa `Box3.expandByObject`, que en
+      three r160 SOLO recalcula `geometry.boundingBox` si es `null` → la
+      esfera de culling quedaba en la posición del chunk anterior → el
+      frustum ocultaba el chunk (visible=false) → se veía transparente o
+      con la textura LOD "congelada". El fix de B3 (`release()` nullea
+      los bounds) resuelve también B6. Verificado con three real en
+      `tests/unit-raycast.js` sección 4 (expandByObject recalcula la caja
+      con datos nuevos tras reutilizar; sin el fix usa la obsoleta) y
+      métrica nueva `window.__mcLodChunks` (player.js) para el split
+      LOD/full en F3.
 
 ### Bloque D — Verificación final
 

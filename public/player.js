@@ -105,6 +105,7 @@ function updatePerfMetrics(ambientMs, cullMs, frameMs) {
 		window.__mcAmbientMs = perfAmbient / perfFrames;
 		window.__mcCullMs = perfCull / perfFrames; // media móvil de 1s, como las demás
 		window.__mcChunks = chunkMeshes.size + lodMeshes.size; // completo + LOD (Fase 6)
+		window.__mcLodChunks = lodMeshes.size; // Fase 8 (B6): cuántos son LOD (diagnóstico)
 		window.__mcTriangles = renderer.info.render.triangles;
 		window.__mcGeoPool = geoPoolStats(); // reutilización de geometrías (Fase 6)
 		if (fpsEl) {
