@@ -992,10 +992,18 @@ fix propio (el diagnóstico debe confirmarlo).
       cálido `vec3(1.0,0.96,0.85)`, luna fría `vec3(0.92,0.95,1.0)`);
       la luna es siempre disco lleno. **Corregir**: sol más amarillo
       (subir R/G, bajar B; también `DAY_SUN` en `daynight.js`), luna
-      más blanca/azulada y con **fases** (máscara de fase en el shader;
-      ciclo estilo Minecraft: un ciclo completo de fases cada **8 días
-      de juego** = 8 ciclos día/noche); la fase lunar se deriva del
-      mismo reloj del día/noche para que todos la vean igual.
+      más blanca/azulada y con **fases**: diseño completo en
+      [`fase8-spec.md`](fase8-spec.md) §B8 — derivación determinista
+      desde la semilla (`seedMoonOffsetMs` + `moonPhase(state)` sobre el
+      reloj `worldTime()` de commands.js, offset de semilla persistente),
+      ciclo de **8 días de juego** (`MOON_CYCLE_MS = DAY_CYCLE_MS * 8`),
+      sincronización por `init`/`time_set` (campo `moonTime`, el cliente
+      extrapola con `currentMoonPhase()` con el mismo `elapsed` que el
+      día) y **máscara de fase en el shader** de `sky.js` (uniform
+      `uMoonPhase`, terminación que barre el disco con `litEdge`/
+      `moonSide`, parte oscura azulada + halo). Test: `tests/unit-luna.js`
+      (determinismo por semilla, ciclo exacto de 8×, `/time set`
+      coherente).
 - [ ] **B9: los mobs son cajas rectangulares → formas multibloque estilo
       Minecraft.** Hoy cada mob es UN `BoxGeometry(0.6, 1.8, 0.6)` con
       texturas por cara (`public/mobs.js` + `mobtextures.js`).

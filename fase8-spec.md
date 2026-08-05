@@ -368,15 +368,129 @@ luna más blanca/azulada) y añadir fases lunares visibles.**
 **Alcance:**
 1. Sol más amarillo: subir el componente R/G y bajar B en el disco y halo
    del shader (`vec3(1.0, 0.9, 0.6)`-ish) y en `DAY_SUN`.
-2. Luna más blanca/azulada y con **fases**: máscara de fase en el shader
-   (disco iluminado según una fase lunar 0..1), con las fases en ciclo
-   **estilo Minecraft (8 días de juego)** = 8 ciclos día/noche completos.
-3. El servidor (o el cliente, determinista desde la semilla) debe derivar la
-   fase lunar actual del mismo reloj para que todos la vean igual.
+2. Luna más blanca/azulada y con **fases** (diseño completo abajo):
+   máscara de fase en el shader, ciclo estilo Minecraft (8 días de juego)
+   y derivación determinista desde la semilla.
 
 **Criterio de aceptación:** el sol se distingue claramente de la luna (tono);
 la luna muestra fases (nueva, creciente, llena, menguante) que avanzan un
-ciclo completo cada 8 días de juego y son consistentes entre jugadores.
+ciclo completo cada 8 días de juego y son consistentes entre jugadores y
+entre reinicios del servidor.
+
+#### Diseño de las fases lunares
+
+**Reloj base (ya existente):** el servidor tiene `worldTime()`
+(`server/commands.js:129`): `(Date.now() + state.timeOffset) % DAY_CYCLE_MS`
+— el reloj del mundo en ms, ajustable con `/time set` (`timeOffset`), que
+hoy modula al ciclo día/noche. Es la **única fuente de verdad** del tiempo y
+viaja al cliente en el `init` (`dayTime`) y en `time_set`. La fase lunar se
+deriva de ESTE mismo reloj (no de un reloj nuevo) para que día/noche,
+spawns, `/time set` y luna vayan siempre en fase.
+
+**Derivación determinista desde la semilla (servidor):**
+
+```js
+// server/constants.js (o commands.js, junto a worldTime)
+const MOON_DAYS = 8;            // ciclo completo de fases cada 8 días de juego
+const MOON_CYCLE_MS = DAY_CYCLE_MS * MOON_DAYS;
+
+// Offset por semilla (determinista): mismo mundo → misma fase en el mismo
+// instante. Hash simple y estable (no criptográfico) sobre la semilla activa
+// (constants.worldPaths.currentSeed, la misma que deriva el directorio).
+function seedMoonOffsetMs(seed) {
+	let h = 0;
+	for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+	return h % MOON_CYCLE_MS; // 0..MOON_CYCLE_MS-1, fijo por mundo
+}
+
+// Fase lunar 0..1 derivada del reloj del mundo + offset de semilla.
+// 0 = luna nueva, 0.25 = cuarto creciente, 0.5 = luna llena, 0.75 = menguante.
+function moonPhase(state) {
+	return ((Date.now() + state.timeOffset + seedMoonOffsetMs(state.currentSeed))
+		% MOON_CYCLE_MS) / MOON_CYCLE_MS;
+}
+```
+
+- **Determinismo entre jugadores:** todos usan el mismo `Date.now()` +
+  `timeOffset` + offset de semilla → misma fase en el mismo instante.
+- **Determinismo entre reinicios:** el reloj es el reloj real (no un
+  contador de ticks), así que reiniciar el servidor conserva la fase
+  correcta para el momento actual. `state.timeOffset` se persiste (igual
+  que hoy) para que `/time set` sobreviva al reinicio.
+- **`/time set` coherente:** `timeOffset` desplaza el reloj entero, así que
+  la fase lunar avanza con el nuevo "día" (fiel a Minecraft: cambiar la
+  hora del día también mueve la fase lunar correspondiente).
+
+**Sincronización con el cliente (protocolo):**
+
+- El `init` (server/net.js:116) ya envía `dayTime: worldTime()`. Se añade
+  `moonTime`: el valor **absoluto no modulado** de la luna, para que el
+  cliente extrapole igual que el día:
+  `moonTime: (worldTime() + seedMoonOffsetMs(currentSeed)) % MOON_CYCLE_MS`.
+  (El `seed` ya viaja en el init; el offset se puede calcular en el cliente
+  desde `seed` o enviarse ya aplicado — se elige lo segundo: `moonTime` ya
+  incluye el offset, así el cliente no necesita la función de hash.)
+- `daynight.js`: `initDayNight(serverDayTime, serverMoonTime)` guarda ambos
+  + `initWall`; la fase lunar se extrapola con el MISMO `elapsed` que el
+  día:
+  ```js
+  export function currentMoonPhase() {
+      const elapsed = performance.now() - initWall;
+      return ((moonTimeAtInit + elapsed) % MOON_CYCLE_MS) / MOON_CYCLE_MS;
+  }
+  ```
+- `updateSky(phase, dayFactor, dusk)` recibe además `moonPhase` (o la
+  lee de `currentMoonPhase()`) y actualiza el uniform `uMoonPhase`.
+- `time_set` (broadcast, net.js:763) ya re-sincroniza el `dayTime`;
+  extendido para incluir `moonTime` y mantener el mismo instante.
+
+**Máscara de fase en el shader de `sky.js`:**
+
+Se añade el uniform `uMoonPhase` (0..1) y se sustituye el disco lunar lleno
+por un disco con **terminación** (el límite iluminado barre el disco según la
+fase):
+
+```glsl
+uniform float uMoonPhase; // 0 nueva … 0.5 llena … 1 nueva
+
+// Dirección lateral de la luna (perpendicular al eje vertical) para saber
+// en qué mitad del disco está cada píxel del dome.
+vec3 moonSide = normalize(cross(uMoonDir, vec3(0.0, 1.0, 0.0)));
+float xRel = dot(dir, moonSide);          // -1 borde izq … +1 borde der
+float term = 0.5 + 0.5 * cos(uMoonPhase * 6.2831853); // fracción iluminada
+float litEdge = 2.0 * term - 1.0;         // -1 (nueva) … +1 (llena)
+float lit = step(litEdge, xRel);          // 1 en la zona iluminada del disco
+
+// El disco lunar ahora solo brilla donde lit = 1 (la parte "de noche" de la
+// luna queda apagada/azul oscura, no transparente):
+float moonDisc = step(0.9992, moonD) * (lit * 0.85 + 0.15); // mínimo sutil
+col += uMoonGlow * moonDisc * vec3(0.92, 0.95, 1.0) * 1.3;
+col += uMoonGlow * (1.0 - lit) * moonDisc * vec3(0.15, 0.18, 0.3) * 0.5; // parte oscura
+```
+
+- **Luna nueva (phase 0):** `litEdge = -1` → nada iluminado (disco oscuro,
+  casi invisible salvo el halo tenue). **Llena (0.5):** `litEdge = +1` →
+  todo iluminado. **Creciente/menguante:** terminación vertical que barre
+  el disco (la dirección de barrido fija `moonSide` — crece de derecha a
+  izquierda en el hemisferio norte, igual que en el cielo real).
+- El halo tenue se conserva en ambas mitades para que la luna nueva siga
+  siendo localizable en el cielo.
+- Detalles opcionales si se quiere más pulido (fuera del alcance mínimo):
+  cráteres (hash por dirección dentro del disco, como las estrellas) y
+  brillo de tierra en la parte oscura (`earthshine`).
+
+**Test (regresión):** nuevo `tests/unit-luna.js` (o checks en
+`unit-sync.js`): la derivación es determinista (misma semilla + mismo
+instante → misma fase; semillas distintas → fases distintas con alta
+probabilidad), el ciclo completo dura exactamente `8 × DAY_CYCLE_MS`, la
+fase en `t0` y `t0 + MOON_CYCLE_MS` coincide, y `/time set` desplaza la fase
+lunar de forma coherente. La máscara del shader es GLSL pura (se valida por
+inspección visual/playtest, como el resto de `sky.js`).
+
+**Compatibilidad con B4 (ciclo de 20 min):** `MOON_CYCLE_MS` se define a
+partir de `DAY_CYCLE_MS` (no es una constante independiente), así que con el
+ciclo a 20 min un ciclo completo de fases dura 8 × 20 min = 2 h 40 m de
+juego, igual que la proporción de Minecraft (un día de juego de 20 min).
 
 ---
 
