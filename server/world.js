@@ -429,6 +429,17 @@ function setDiskLoader(fn) {
 	diskLoader = fn;
 }
 
+// Métrica de rendimiento (Fase 7): ms acumulados generando chunks NUEVOS
+// (no los que llegan del disco o ya estaban en memoria). El bucle principal
+// la lee con takeChunkGenMs() cada tick y la publica en la media de 1s
+// (server_metrics → __mcChunkGenMs del cliente).
+let chunkGenMsAccum = 0;
+function takeChunkGenMs() {
+	const v = chunkGenMsAccum;
+	chunkGenMsAccum = 0;
+	return v;
+}
+
 function generateChunk(cx, cz) {
 	const key = `${cx},${cz}`;
 	if (chunks.has(key)) return chunks.get(key);
@@ -440,6 +451,7 @@ function generateChunk(cx, cz) {
 		return fromDisk;
 	}
 
+	const genT0 = performance.now();
 	const data = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
 	const baseX = cx * CHUNK_SIZE,
 		baseZ = cz * CHUNK_SIZE;
@@ -604,6 +616,7 @@ function generateChunk(cx, cz) {
 	}
 	chunks.set(key, data);
 	markChunkDirty(cx, cz); // la generación usa Math.random (árboles), así que se persiste
+	chunkGenMsAccum += performance.now() - genT0;
 	return data;
 }
 
@@ -716,6 +729,7 @@ module.exports = {
 	loadChunkFromDisk,
 	setBlockChangeHandler,
 	setDiskLoader,
+	takeChunkGenMs,
 	reinitNoise,
 	isLake,
 	SEA_LEVEL,

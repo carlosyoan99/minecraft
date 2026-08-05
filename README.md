@@ -274,6 +274,7 @@ en el servidor y `public/network.js` en el cliente).
 | `block_break_progress` | `{x, y, z, stage}` | Grieta de rotura (0-9, -1 al cancelar) durante la minería (Fase 6) |
 | `player_join` / `player_move` / `player_leave` | posición, yaw | Otros jugadores |
 | `mobs_update` / `mob_death` / `mob_breed` | mobs, `{id}`, posición | Mobs en rango |
+| `server_metrics` | `{tickMs, chunkGenMs}` | Media móvil de 1s del tiempo por tick y de generación de chunks (Fase 7): el cliente lo expone como `window.__mcServerTickMs` / `__mcChunkGenMs` |
 | `time_set` | `{dayTime}` | Re-sincroniza el ciclo día/noche (comando `/time set`) |
 | `textures_reload` | `{}` | Hot-reload del atlas: el cliente re-importa `textures.js` y reconstruye los chunks (Fase 6) |
 | `teleport` | `{x, y, z}` | Corrección anti-cheat |

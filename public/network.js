@@ -115,6 +115,12 @@ socket.addEventListener("message", (e) => {
 		case "mobs_update":
 			updateMobs(data);
 			break;
+		case "server_metrics":
+			// Fase 7: métricas del tick del servidor (media de 1s) para la
+			// auditoría y el HUD F3: window.__mcServerTickMs / __mcChunkGenMs.
+			window.__mcServerTickMs = data.tickMs;
+			window.__mcChunkGenMs = data.chunkGenMs;
+			break;
 		case "mob_death":
 			removeMob(data.id);
 			break;

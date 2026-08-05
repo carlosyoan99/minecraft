@@ -831,7 +831,22 @@ function handleConnection(ws, req) {
 // ============================================================
 // BUCLE PRINCIPAL
 // ============================================================
+// Métricas de rendimiento (Fase 7): media móvil de 1s del tiempo por tick
+// (tickMs) y del tiempo generando chunks (chunkGenMs, acumulado por
+// world.takeChunkGenMs). Cada segundo se hace broadcast de server_metrics a
+// los clientes, que lo exponen como window.__mcServerTickMs/__mcChunkGenMs
+// para la auditoría y el HUD F3. getServerMetrics() lo expone a los tests.
+const perf = {
+	frames: 0,
+	tickAccum: 0,
+	genAccum: 0,
+	lastSentAt: Date.now(), // la primera ventana empieza completa (1s), no truncada
+	lastTickMs: 0,
+	lastGenMs: 0
+};
+
 function mainLoop() {
+	const t0 = performance.now();
 	const isNight = worldTime() > DAY_CYCLE_MS / 2;
 	for (const m of state.mobs) if (m.alive) m.tick(isNight);
 	state.mobs = state.mobs.filter((m) => m.alive);
@@ -868,6 +883,30 @@ function mainLoop() {
 			}
 		}
 	}
+
+	// Métricas: acumular el tick; cada ~1s, media móvil + broadcast a los
+	// clientes conectados (server_metrics → __mcServerTickMs/__mcChunkGenMs).
+	perf.frames++;
+	perf.tickAccum += performance.now() - t0;
+	perf.genAccum += world.takeChunkGenMs();
+	const now = Date.now();
+	if (now - perf.lastSentAt >= 1000 && perf.frames > 0) {
+		perf.lastTickMs = perf.tickAccum / perf.frames;
+		perf.lastGenMs = perf.genAccum / perf.frames;
+		broadcast("server_metrics", {
+			tickMs: perf.lastTickMs,
+			chunkGenMs: perf.lastGenMs
+		});
+		perf.frames = 0;
+		perf.tickAccum = 0;
+		perf.genAccum = 0;
+		perf.lastSentAt = now;
+	}
+}
+
+// Última ventana calculada de métricas (para tests/auditoría).
+function getServerMetrics() {
+	return { tickMs: perf.lastTickMs, chunkGenMs: perf.lastGenMs };
 }
 
 function start() {
@@ -887,6 +926,12 @@ function start() {
 	});
 }
 
-// handleConnection se exporta para tests unitarios (tests/unit-red.js usa un
-// ws fake para ejercitar todos los handlers sin levantar el servidor real).
-module.exports = { broadcast, handleConnection, start };
+// handleConnection y mainLoop se exportan para tests unitarios (unit-red.js usa
+// un ws fake para ejercitar los handlers; unit-metricas.js mide el tick).
+module.exports = {
+	broadcast,
+	handleConnection,
+	mainLoop,
+	getServerMetrics,
+	start
+};

@@ -117,6 +117,9 @@ function updateHud() {
 	const vis = window.__mcVisibleChunks ?? 0;
 	const tris = window.__mcTriangles ?? 0;
 	const pool = window.__mcGeoPool;
+	// Fase 7: métricas del servidor (broadcast server_metrics, media de 1s)
+	const srvTick = window.__mcServerTickMs;
+	const srvGen = window.__mcChunkGenMs;
 	const p = camera.position;
 	hudEl.innerHTML = [
 		"<b>⛏ Mi Minecraft — Depuración (F3)</b>",
@@ -124,7 +127,8 @@ function updateHud() {
 		`Posición: ${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}`,
 		`Chunks: ${vis}/${chunks} visibles (${chunkMeshes.size + lodMeshes.size} en memoria)`,
 		`Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
-		`Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : "--"}`
+		`Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : "--"}`,
+		`Tick servidor: ${Number.isFinite(srvTick) ? srvTick.toFixed(2) : "--"} ms · Gen chunk: ${Number.isFinite(srvGen) ? srvGen.toFixed(2) : "--"} ms`
 	].join("<br>");
 }
 

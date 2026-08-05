@@ -824,10 +824,19 @@ errores.*
       nada. Cubierto por `tests/unit-respawn.js`
 
 ### Rendimiento
-- [ ] Métrica de tiempo por tick (server + client) para detectar
+- [x] Métrica de tiempo por tick (server + client) para detectar
       cuellos de botella: `__mcServerTickMs`/`__mcChunkGenMs` +
       auditoría
-      (el LOD simple y el pool de geometrías ya están hechos en Fase 6)
+      (el LOD simple y el pool de geometrías ya están hechos en Fase 6).
+      Implementado: `mainLoop` (server/net.js) mide el tiempo del tick con
+      una media móvil de 1s y hace broadcast de `server_metrics
+      {tickMs, chunkGenMs}`; `world.generateChunk` acumula el tiempo de
+      generar chunks nuevos (`takeChunkGenMs`, sin contar disco ni
+      repetidos). El cliente expone `window.__mcServerTickMs` /
+      `__mcChunkGenMs` (network.js) y el HUD F3 los muestra (debug.js).
+      `net.getServerMetrics()`/`mainLoop` exportados para tests.
+      Cubierto por `tests/unit-metricas.js` (acumulador y reset,
+      tick > 0, broadcast server_metrics)
 
 ### Multijugador visible
 - [ ] Animación de rotura de bloque sincronizada: broadcast de
