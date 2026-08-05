@@ -96,7 +96,12 @@ instante. Al crear, el servidor cambia el mundo activo a esa
 semilla (persistiendo el anterior), guarda el nombre en
 `world.json` y la pantalla de carga cubre la generación. También
 puedes escribir una **semilla** en el campo del menú principal y
-clic en "Jugar". Vacío usa la semilla por defecto. Para un puerto
+clic en "Jugar". Vacío usa la semilla por defecto. El botón **⚙️
+Ajustes** (Fase 7) persiste en `localStorage` la distancia de
+render, el **FOV** (50-110), la **sensibilidad del ratón**
+(20-300%), el **volumen por categoría** (maestro/efectos/ambiente),
+la **calidad gráfica** (baja/media/alta: pixelRatio y sombras) y
+mostrar las coordenadas en pantalla. Para un puerto
 distinto: `PORT=3998 node server.js`. La semilla por defecto también se
 configura con la env var `SEED=miNuevaSemilla node server.js` (cada semilla tiene su propio mundo en `world/<semilla>/`;
 volver a una semilla anterior recupera su mundo).
@@ -355,7 +360,10 @@ en el servidor y `public/network.js` en el cliente).
   - **Fase 7 (estética):** `unit-itemicons.js` (iconos procedurales de
     ítems: todo id conocido tiene icono 16x16 no vacío, el atlas cubre
     el mismo universo, determinismo y distinguibilidad — lingote
-    hierro vs oro, pico por material, cruda vs cocinada, etc.).
+    hierro vs oro, pico por material, cruda vs cocinada, etc.) y
+    `unit-ajustes.js` (lógica pura de `public/quality.js`: perfiles de
+    calidad baja/media/alta, clamps de FOV 50-110, sensibilidad
+    0.2-3 y volumen 0-1).
   - **Integridad transversal:** `unit-recetas.js` (todas las recetas de
     crafteo/horno referencian IDs existentes, shapes bien formadas y
     alcanzables desde su grid — habría detectado el bug `hilo_a_lana` de la

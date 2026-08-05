@@ -3,6 +3,7 @@
 // ============================================================
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+import { QUALITY_DEFAULT, qualityProfile } from "./quality.js";
 
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
@@ -16,9 +17,28 @@ export const camera = new THREE.PerspectiveCamera(
 );
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
+
+// ============================================================
+// CALIDAD GRÁFICA (Fase 7): el perfil controla el pixelRatio máximo
+// (se multiplica por devicePixelRatio al aplicar), las sombras y la
+// resolución del shadow map. Lo ajusta settings.js desde el menú.
+// ============================================================
+export function applyQuality(name) {
+	const q = qualityProfile(name);
+	// setPixelRatio ya redimensiona el canvas; no hace falta setSize aquí.
+	renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixelRatio));
+	renderer.shadowMap.enabled = q.shadows;
+	sun.shadow.mapSize.set(q.shadowSize, q.shadowSize);
+	// Recalcular el frustum del shadow map al cambiar su tamaño
+	sun.shadow.camera.updateProjectionMatrix();
+}
+
+// Campo de visión (Fase 7): lo aplica settings.js desde el menú.
+export function setFov(fov) {
+	camera.fov = fov;
+	camera.updateProjectionMatrix();
+}
 
 // Luces exportadas: daynight.js las ajusta cada frame según la fase del ciclo.
 export const ambient = new THREE.AmbientLight(0x8899bb, 0.7);
@@ -32,6 +52,10 @@ sun.shadow.camera.top = 60;
 sun.shadow.camera.bottom = -60;
 scene.add(ambient);
 scene.add(sun);
+
+// Perfil por defecto al arrancar (después de declarar las luces: applyQuality
+// accede a sun.shadow; antes de esta línea estaría en la zona muerta temporal).
+applyQuality(QUALITY_DEFAULT);
 
 export const controls = new PointerLockControls(camera, document.body);
 const blocker = document.getElementById("blocker");

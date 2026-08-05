@@ -7,9 +7,15 @@
 // ============================================================
 import { currentPhase } from "./daynight.js";
 
-const MASTER_VOLUME = 0.8; // volumen general (el silencio lo pone a 0)
+const MASTER_VOLUME = 0.8; // volumen general por defecto (el silencio lo pone a 0)
+// Volumen por categoría (Fase 7): master (todo), effects (bloques, pasos,
+// comer...) y ambient (viento, pájaros, grillos). El menú los ajusta con
+// setVolume(); cada categoría es un gain en serie hacia el master.
+const VOLUMES = { master: MASTER_VOLUME, effects: 1, ambient: 1 };
 let ctx = null;
 let master = null;
+let sfxGain = null;
+let ambGain = null;
 let noiseBuffer = null;
 
 // Preferencia de silencio persistente (localStorage)
@@ -37,8 +43,15 @@ function ensureCtx() {
 	const AC = window.AudioContext || window.webkitAudioContext;
 	if (!AC) return null;
 	ctx = new AC();
+	// Cadena de ganancia por categoría: sfx/ambient → master → destination.
 	master = ctx.createGain();
-	master.gain.value = muted ? 0 : MASTER_VOLUME; // respeta la preferencia persistida
+	master.gain.value = muted ? 0 : VOLUMES.master; // respeta la preferencia persistida
+	sfxGain = ctx.createGain();
+	sfxGain.gain.value = VOLUMES.effects;
+	ambGain = ctx.createGain();
+	ambGain.gain.value = VOLUMES.ambient;
+	sfxGain.connect(master);
+	ambGain.connect(master);
 	master.connect(ctx.destination);
 	startWind();
 	return ctx;
@@ -103,7 +116,7 @@ function noiseBurst({ t, freq, q, vol, dur, type = "bandpass" }) {
 	g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
 	src.connect(f);
 	f.connect(g);
-	g.connect(master);
+	g.connect(sfxGain);
 	src.start(t);
 	src.stop(t + dur + 0.05);
 }
@@ -119,13 +132,13 @@ function thud({ t, freq, vol, dur }) {
 	g.gain.exponentialRampToValueAtTime(vol, t + 0.005);
 	g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
 	osc.connect(g);
-	g.connect(master);
+	g.connect(sfxGain);
 	osc.start(t);
 	osc.stop(t + dur + 0.05);
 }
 
 // ============================================================
-// SILENCIO (persistido en localStorage)
+// SILENCIO (persistido en localStorage) Y VOLUMEN POR CATEGORÍA
 // ============================================================
 export function isMuted() {
 	return muted;
@@ -136,8 +149,24 @@ export function setMuted(m) {
 	try {
 		localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
 	} catch {}
-	if (master) master.gain.value = muted ? 0 : MASTER_VOLUME;
+	if (master) master.gain.value = muted ? 0 : VOLUMES.master;
 	return muted;
+}
+
+// Volumen de una categoría ('master' | 'effects' | 'ambient'), 0..1.
+// Se aplica al gain correspondiente (o se guarda para cuando el contexto
+// exista, p. ej. antes del primer gesto del usuario).
+export function setVolume(category, v) {
+	if (!(category in VOLUMES)) return;
+	const vol = Math.min(1, Math.max(0, Number(v) || 0));
+	VOLUMES[category] = vol;
+	if (category === "master" && master) {
+		master.gain.value = muted ? 0 : vol;
+	} else if (category === "effects" && sfxGain) {
+		sfxGain.gain.value = vol;
+	} else if (category === "ambient" && ambGain) {
+		ambGain.gain.value = vol;
+	}
 }
 
 // ============================================================
@@ -244,7 +273,7 @@ function startWind() {
 	wind.gain.gain.value = 0.0;
 	wind.src.connect(wind.filter);
 	wind.filter.connect(wind.gain);
-	wind.gain.connect(master);
+	wind.gain.connect(ambGain);
 	wind.src.start();
 }
 
@@ -263,7 +292,7 @@ function birdChirp() {
 		g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.012);
 		g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
 		osc.connect(g);
-		g.connect(master);
+		g.connect(ambGain);
 		osc.start(t0);
 		osc.stop(t0 + 0.08);
 	}
@@ -283,7 +312,7 @@ function cricketChirp() {
 		g.gain.exponentialRampToValueAtTime(0.028, t0 + 0.006);
 		g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
 		osc.connect(g);
-		g.connect(master);
+		g.connect(ambGain);
 		osc.start(t0);
 		osc.stop(t0 + 0.06);
 	}

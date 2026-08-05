@@ -39,7 +39,8 @@ const UNIT = [
 	"unit-respawn.js",
 	"unit-caida.js",
 	"unit-terreno.js",
-	"unit-itemicons.js"
+	"unit-itemicons.js",
+	"unit-ajustes.js"
 ];
 const E2E = [
 	"e2e-comer.js",

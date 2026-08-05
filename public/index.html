@@ -70,6 +70,45 @@
             <span id="rd-value">6</span>
           </span>
         </label>
+        <label class="menu-field">Campo de visión (FOV)
+          <span class="rd-row">
+            <input id="fov-slider" type="range" min="50" max="110" step="1">
+            <span id="fov-value">75</span>
+          </span>
+        </label>
+        <label class="menu-field">Sensibilidad del ratón
+          <span class="rd-row">
+            <input id="sens-slider" type="range" min="20" max="300" step="5">
+            <span id="sens-value">100%</span>
+          </span>
+        </label>
+        <label class="menu-field">Volumen maestro
+          <span class="rd-row">
+            <input id="vol-master" type="range" min="0" max="100" step="5">
+            <span id="vol-master-value">100%</span>
+          </span>
+        </label>
+        <label class="menu-field">Volumen de efectos
+          <span class="rd-row">
+            <input id="vol-effects" type="range" min="0" max="100" step="5">
+            <span id="vol-effects-value">100%</span>
+          </span>
+        </label>
+        <label class="menu-field">Volumen de ambiente
+          <span class="rd-row">
+            <input id="vol-ambient" type="range" min="0" max="100" step="5">
+            <span id="vol-ambient-value">100%</span>
+          </span>
+        </label>
+        <label class="menu-field">Calidad gráfica
+          <span class="rd-row">
+            <select id="quality-select" class="quality-select">
+              <option value="baja">Baja</option>
+              <option value="media" selected>Media</option>
+              <option value="alta">Alta</option>
+            </select>
+          </span>
+        </label>
         <label class="menu-field toggle">Mostrar coordenadas en pantalla
           <input id="coords-toggle" type="checkbox">
         </label>

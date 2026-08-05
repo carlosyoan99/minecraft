@@ -250,7 +250,12 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	flex: 1;
 	accent-color: #4caf50;
 }
-#rd-value {
+#rd-value,
+#fov-value,
+#sens-value,
+#vol-master-value,
+#vol-effects-value,
+#vol-ambient-value {
 	min-width: 24px;
 	text-align: center;
 	color: #fff;
@@ -260,6 +265,21 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	border: 1px solid #555;
 	border-radius: 6px;
 	padding: 4px 6px;
+}
+/* Select de calidad gráfica (Fase 7): mismo aspecto que el resto del menú */
+.quality-select {
+	flex: 1;
+	padding: 8px 10px;
+	background: #14141f;
+	color: #fff;
+	border: 1px solid #555;
+	border-radius: 6px;
+	font-size: 14px;
+	outline: none;
+	cursor: pointer;
+}
+.quality-select:focus {
+	border-color: #4caf50;
 }
 /* Checkbox de ajustes */
 .menu-field.toggle {

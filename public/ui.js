@@ -14,7 +14,7 @@ import {
 import { itemIconCss } from "./itemicons.js";
 import { finishLoading, showLoading } from "./loading.js";
 import { controls, showBlocker } from "./scene.js";
-import { getSettings, setSetting } from "./settings.js";
+import { getSettings, setSetting, settingUiValue } from "./settings.js";
 
 // Estado que dibuja el HUD (lo actualiza la red; lo lee el input)
 let inventory = new Array(36).fill(null);
@@ -166,6 +166,18 @@ const nameInput = document.getElementById("name-input");
 const rdSlider = document.getElementById("rd-slider");
 const rdValue = document.getElementById("rd-value");
 const coordsToggle = document.getElementById("coords-toggle");
+// Fase 7: FOV, sensibilidad, volumen por categoría y calidad gráfica
+const fovSlider = document.getElementById("fov-slider");
+const fovValue = document.getElementById("fov-value");
+const sensSlider = document.getElementById("sens-slider");
+const sensValue = document.getElementById("sens-value");
+const volMaster = document.getElementById("vol-master");
+const volMasterValue = document.getElementById("vol-master-value");
+const volEffects = document.getElementById("vol-effects");
+const volEffectsValue = document.getElementById("vol-effects-value");
+const volAmbient = document.getElementById("vol-ambient");
+const volAmbientValue = document.getElementById("vol-ambient-value");
+const qualitySelect = document.getElementById("quality-select");
 let currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 
@@ -200,6 +212,18 @@ settingsBtn.addEventListener("click", () => {
 	rdSlider.value = s.renderDistance;
 	rdValue.textContent = s.renderDistance;
 	coordsToggle.checked = s.showCoords;
+	// Fase 7: rellenar los nuevos controles con los valores guardados
+	fovSlider.value = s.fov;
+	fovValue.textContent = `${s.fov}°`;
+	sensSlider.value = settingUiValue("sensitivity");
+	sensValue.textContent = `${settingUiValue("sensitivity")}%`;
+	volMaster.value = settingUiValue("volumeMaster");
+	volMasterValue.textContent = `${settingUiValue("volumeMaster")}%`;
+	volEffects.value = settingUiValue("volumeEffects");
+	volEffectsValue.textContent = `${settingUiValue("volumeEffects")}%`;
+	volAmbient.value = settingUiValue("volumeAmbient");
+	volAmbientValue.textContent = `${settingUiValue("volumeAmbient")}%`;
+	qualitySelect.value = s.quality;
 });
 worldsBackBtn.addEventListener("click", () => showMenuScreen(menuMain));
 settingsBackBtn.addEventListener("click", () => showMenuScreen(menuMain));
@@ -208,6 +232,30 @@ rdSlider.addEventListener("input", () => {
 	rdValue.textContent = rdSlider.value;
 	setSetting("renderDistance", parseInt(rdSlider.value, 10));
 });
+// Fase 7: FOV, sensibilidad, volúmenes y calidad (persisten en mc_settings)
+fovSlider.addEventListener("input", () => {
+	fovValue.textContent = `${fovSlider.value}°`;
+	setSetting("fov", parseInt(fovSlider.value, 10));
+});
+sensSlider.addEventListener("input", () => {
+	sensValue.textContent = `${sensSlider.value}%`;
+	setSetting("sensitivity", parseInt(sensSlider.value, 10) / 100);
+});
+volMaster.addEventListener("input", () => {
+	volMasterValue.textContent = `${volMaster.value}%`;
+	setSetting("volumeMaster", parseInt(volMaster.value, 10) / 100);
+});
+volEffects.addEventListener("input", () => {
+	volEffectsValue.textContent = `${volEffects.value}%`;
+	setSetting("volumeEffects", parseInt(volEffects.value, 10) / 100);
+});
+volAmbient.addEventListener("input", () => {
+	volAmbientValue.textContent = `${volAmbient.value}%`;
+	setSetting("volumeAmbient", parseInt(volAmbient.value, 10) / 100);
+});
+qualitySelect.addEventListener("change", () =>
+	setSetting("quality", qualitySelect.value)
+);
 coordsToggle.addEventListener("change", () =>
 	setSetting("showCoords", coordsToggle.checked)
 );

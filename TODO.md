@@ -737,15 +737,19 @@ errores.*
       `THREE.Sprite` de canvas) en `public/mobs.js`; se actualizan con
       `player_rename`. *(Hecho en el commit de cierre de la Fase 6;
       pendiente de playtest visual y E2E)*
-- [~] **Ajustes del juego** en `public/settings.js` (persistidos en
+- [x] **Ajustes del juego** en `public/settings.js` (persistidos en
       `localStorage` `mc_settings`): distancia de render, FOV,
       sensibilidad del ratón, volumen por categoría, calidad gráfica y
       mostrar coordenadas. Los que afectan al servidor (distancia de
       render) viajan con el evento `settings {renderDistance}` (clamp
       2-10) y se aplican en `ensureChunksAround` (init, move y
-      `set_seed`). *(Avance parcial hecho en el commit de cierre de la
-      Fase 6: `renderDistance` y `showCoords` con su UI; faltan FOV,
-      sensibilidad, volumen por categoría y calidad gráfica)*
+      `set_seed`). Completado: el menú de ajustes tiene sliders de FOV
+      (50-110), sensibilidad (20-300%), volúmenes por categoría
+      (maestro/efectos/ambiente, 0-100%) y un selector de calidad
+      (baja/media/alta) que controla pixelRatio y sombras. La lógica
+      pura (perfiles de calidad y clamps) vive en `public/quality.js`,
+      testeada en `tests/unit-ajustes.js`; audio.js gana gains por
+      categoría (`setVolume`) y scene.js `applyQuality`/`setFov`
 - [x] **Selección y creación de mundos**: `save.listWorlds()` lee los
       subdirectorios de `world/` (semilla, `lastSaved`, nº de chunks);
       evento `worlds_list`. Menú con lista de mundos (clic → `set_seed`)
