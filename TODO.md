@@ -883,18 +883,24 @@ errores.*
 - [x] **audit-fase5.js no se podía ejecutar: ruta rota de `net.js`.**
       La auditoría de la Fase 5 leía `path.join(ROOT, "net.js")` pero el
       servidor vive en `server/` desde el refactor de la Fase 6 →
-      `ENOENT` al ejecutarla (exit 1, silencioso). Corregido en la
-      auditoría de Fase 7: apunta a `server/net.js` y vuelve a pasar.
-- [x] **E2E frágiles contra un mundo ya usado.** Los E2E (`e2e-comer`,
-      `e2e-durabilidad`, `e2e-reload`, `e2e-cofre`) modifican el mundo
-      (rompen bloques, el autosave los persiste) y dependen del estado
-      del área de spawn: contra un mundo fresco pasan (verificado:
-      `e2e-cofre` 12/12), pero al re-ejecutarlos contra el mismo mundo
-      pueden agotar su timeout interno (60s, que muere SIN imprimir
-      resultados — difícil de diagnosticar) y fallar. Recomendación
-      documentada en el propio código: ejecutarlos contra un servidor
-      desechable (`SEED` nueva). Mejora pendiente de la auditoría de
-      Fase 7: que el timer imprima el estado al expirar.
+      `ENOENT` al ejecutarla (exit 1, silencioso). **Corregido**: apunta
+      a `server/net.js` y vuelve a pasar.
+- [x] **E2E frágiles contra un mundo ya usado (diagnóstico añadido).**
+      Los E2E (`e2e-comer`, `e2e-durabilidad`, `e2e-reload`, `e2e-cofre`)
+      modifican el mundo (rompen bloques, el autosave los persiste) y
+      dependen del estado del área de spawn: contra un mundo fresco
+      pasan (verificado: `e2e-cofre` 12/12), pero al re-ejecutarlos
+      contra el mismo mundo pueden agotar su timeout interno y fallar.
+      **Corregido**: el timer de los 4 E2E ahora imprime la fase y el
+      estado de los checks al expirar (antes moría sin decir nada, difícil
+      de diagnosticar). Recomendación documentada en el propio código:
+      ejecutarlos contra un servidor desechable (`SEED` nueva).
+- [~] **Falso positivo de la auditoría: los comandos NO se retransmiten
+      al chat global.** Se creyó que el broadcast de `chat` se ejecutaba
+      también para los comandos, pero el handler ya tiene `break` dentro
+      del `if (message.startsWith("/"))` — solo el chat normal se
+      transmite. Sin corrección necesaria; queda documentado para no
+      reintroducirlo al tocar `net.js`.
 
 ---
 

@@ -112,7 +112,9 @@ function mkPlayer(over = {}) {
 	);
 	check(
 		"el servidor avisa tool_broke al romperse (net.js)",
-		/tool_broke/.test(fs.readFileSync(path.join(ROOT, "net.js"), "utf8"))
+		/tool_broke/.test(
+			fs.readFileSync(path.join(ROOT, "server", "net.js"), "utf8")
+		)
 	);
 }
 

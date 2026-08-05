@@ -26,6 +26,11 @@ let finished = false;
 let phase = "init";
 const _t0 = Date.now();
 const timer = setTimeout(() => {
+	// Diagnóstico al expirar: sin esto un timeout moría sin decir qué faltó.
+	console.error(
+		`⏰ TIMEOUT E2E (${Math.round((Date.now() - _t0) / 1000)}s): fase "${phase}", ${results.length} checks (${results.filter((r) => r.ok === false).length} FAIL)`
+	);
+	for (const r of results) console.error(`  ${r.ok ? "OK" : "FAIL"} ${r.name}`);
 	finish(1);
 }, 30000);
 

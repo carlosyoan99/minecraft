@@ -34,6 +34,11 @@ function finish(exitCode) {
 
 const timer = setTimeout(() => {
 	const _t = Math.round((Date.now() - t0) / 1000);
+	// Diagnóstico al expirar: sin esto un timeout moría sin decir qué faltó.
+	console.error(
+		`⏰ TIMEOUT E2E (${_t}s): fase "${phase}", ${results.length} checks (${results.filter((r) => r.ok === false).length} FAIL)`
+	);
+	for (const r of results) console.error(`  ${r.ok ? "OK" : "FAIL"} ${r.name}`);
 	if (phase === "hunt" && results.every((r) => r.ok !== false)) {
 		finish(0);
 	} else {

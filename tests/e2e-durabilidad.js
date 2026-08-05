@@ -81,6 +81,11 @@ function finish(exitCode) {
 }
 
 const timer = setTimeout(() => {
+	// Diagnóstico al expirar: sin esto un timeout moría sin decir qué faltó.
+	console.error(
+		`⏰ TIMEOUT E2E (${Math.round((Date.now() - t0) / 1000)}s): fase "${phase}", ${results.length} checks (${results.filter((r) => r.ok === false).length} FAIL)`
+	);
+	for (const r of results) console.error(`  ${r.ok ? "OK" : "FAIL"} ${r.name}`);
 	finish(1);
 }, 120000); // 60 minas × ~0.9 s + holgura (Fase 6: minería con progreso)
 
