@@ -999,15 +999,17 @@ fix propio (el diagnóstico debe confirmarlo).
 - [ ] **B9: los mobs son cajas rectangulares → formas multibloque estilo
       Minecraft.** Hoy cada mob es UN `BoxGeometry(0.6, 1.8, 0.6)` con
       texturas por cara (`public/mobs.js` + `mobtextures.js`).
-      **Corregir**: rediseñar como **grupo de partes** (cabeza, torso,
-      2 brazos, 2 piernas; variantes por especie: araña con patas,
-      creeper con patas cortas, conejo con orejas, esqueleto/zombi
-      humanoide, enderman alto); adaptar `mobtextures.js` (teselas por
-      parte o reutilizar el atlas) y el remapeo de UV. Mantener:
-      quema solar, escala por tipo, `isBaby` a media escala, raycast de
-      ataque (`userData.mobId/mobType` en el mesh raíz), etiquetas de
-      nombre, snapshots. Aplicar el mismo esquema (o mejorar) a los
-      jugadores remotos.
+      **Corregir**: rediseñar como **grupo de partes** con el esquema
+      `MOB_PARTS` — tabla de dimensiones por parte y especie (zombi/
+      esqueleto humanoide, enderman alto, creeper con patas, araña con
+      8 patas, conejo con orejas, cuadrúpedos, pollo) y atlas por parte
+      (una tesela 16×16 por parte en vez del atlas 2x2 de una tesela) —
+      diseño completo en [`fase8-spec.md`](fase8-spec.md) §B9. Mantener:
+      quema solar (un material compartido), escala por tipo, `isBaby` a
+      media escala, raycast de ataque (CRÍTICO: con grupo de partes hay
+      que intersectar los hijos y subir al raíz por `userData.mobId`),
+      etiquetas de nombre, snapshots. Aplicar el mismo esquema (o
+      mejorar) a los jugadores remotos.
 - [ ] **B6: chunks lejanos con texturas "disminuidas" que no se
       restauran al acercarse (o transparentes).** El LOD
       (`lod.js`: `LOD_ON_DIST 56` / `LOD_OFF_DIST 44`, histéresis)

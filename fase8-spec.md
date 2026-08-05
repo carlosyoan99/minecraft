@@ -395,12 +395,9 @@ compuestos por partes (cabeza, torso, brazos, piernas) con texturas por
 parte, como el modelo del juego original.
 
 **Alcance:**
-1. Rediseñar el mesh de mobs como **grupo de partes** (cabeza, torso, 2
-   brazos, 2 piernas; variantes por especie: araña con patas, creeper con
-   patas cortas, conejo con orejas, esqueleto/zombi humanoide, enderman
-   alto).
-2. Adaptar `mobtextures.js` para generar teselas por parte (o reutilizar el
-   atlas existente por cara) y el remapeo de UV por parte.
+1. Rediseñar el mesh de mobs como **grupo de partes** (esquema `MOB_PARTS`
+   abajo).
+2. Adaptar `mobtextures.js` al atlas por parte (abajo).
 3. Mantener: quema solar (tinte), escala por tipo, `isBaby` a media escala,
    raycast de ataque (`mobMeshes`), etiquetas de nombre y los snapshots.
 4. Aplicar el mismo esquema (o al menos mejorar) a los jugadores remotos.
@@ -408,6 +405,116 @@ parte, como el modelo del juego original.
 **Criterio de aceptación:** cada especie de mob se distingue por su silueta
 (cabeza + cuerpo + extremidades), mantiene sus texturas, la quema solar y el
 raycast de combate siguen funcionando.
+
+#### Esquema multibloque: estructura de datos `MOB_PARTS`
+
+Nuevo módulo (o export desde `mobtextures.js`) que declara las partes de cada
+especie con **tamaño y posición relativos al grupo** (eje Y: 0 = pies, +Y =
+arriba; X/Z centrados en 0). Es la **única fuente de verdad** del modelo:
+`mobs.js` construye los meshes iterando esta tabla y `mobtextures.js` la usa
+para saber qué teselas generar.
+
+```js
+// Formato: { parts: [{ name, size: [w,h,d], pos: [x,y,z] }], scale }
+const MOB_PARTS = {
+	zombie: {
+		scale: 1,
+		parts: [
+			{ name: "head", size: [0.5, 0.5, 0.5], pos: [0, 1.55, 0] },
+			{ name: "body", size: [0.5, 0.75, 0.25], pos: [0, 1.05, 0] },
+			{ name: "armL", size: [0.25, 0.75, 0.25], pos: [-0.375, 1.05, 0] },
+			{ name: "armR", size: [0.25, 0.75, 0.25], pos: [0.375, 1.05, 0] },
+			{ name: "legL", size: [0.25, 0.75, 0.25], pos: [-0.125, 0.375, 0] },
+			{ name: "legR", size: [0.25, 0.75, 0.25], pos: [0.125, 0.375, 0] }
+		]
+	},
+	// ... resto de especies
+};
+```
+
+**Dimensiones por parte y por especie (unidades = bloques):**
+
+| Especie | Partes (tamaño `w×h×d`, centro `[x,y,z]`) | Altura total |
+|---------|-------------------------------------------|--------------|
+| **zombi** | head `0.5×0.5×0.5` `[0,1.55,0]` · body `0.5×0.75×0.25` `[0,1.05,0]` · armL/R `0.25×0.75×0.25` `[±0.375,1.05,0]` · legL/R `0.25×0.75×0.25` `[±0.125,0.375,0]` | 1.8 |
+| **esqueleto** | igual que zombi (silueta humanoide; cambian solo las texturas) | 1.8 |
+| **enderman** | head `0.5×0.5×0.5` `[0,2.05,0]` · body `0.5×0.75×0.25` `[0,1.35,0]` · armL/R `0.25×1.0×0.25` `[±0.375,1.4,0]` · legL/R `0.25×1.0×0.25` `[±0.125,0.5,0]` | 2.55 (alto) |
+| **creeper** | head `0.5×0.5×0.5` `[0,1.35,0]` · body `0.5×0.6×0.25` `[0,0.8,0]` · legFL/FR `0.25×0.5×0.25` `[±0.125,0.25,0.125]` · legBL/BR `0.25×0.5×0.25` `[±0.125,0.25,-0.125]` | 1.6 |
+| **araña** | body `0.7×0.5×0.7` `[0,0.35,-0.15]` · head `0.5×0.3×0.5` `[0,0.35,0.3]` · 8 patas `0.08×0.08×0.55` a los lados (con rotación) | ~0.6 (con patas) |
+| **conejo** | body `0.4×0.4×0.4` `[0,0.25,0]` · head `0.3×0.3×0.3` `[0,0.45,0.2]` · earL/R `0.08×0.3×0.05` `[±0.09,0.75,0.15]` | ~0.9 (con orejas) |
+| **lobo/vaca/cerdo/oveja** | body `0.6×0.6×1.0` `[0,0.55,0]` (alargado en Z) · head `0.4×0.4×0.4` `[0,0.6,0.55]` · 4 patas `0.15×0.5×0.15` `[±0.2,0.25,±0.3]` | ~1.1 |
+| **pollo** | body `0.4×0.4×0.4` `[0,0.3,0]` · head `0.25×0.25×0.25` `[0,0.5,0.15]` · 2 patas `0.06×0.3×0.06` | ~0.75 |
+
+Notas:
+- Las dimensiones **base** son las del modelo sin escala; el `scale` por
+  especie y el `MOB_SCALE` existente (araña 0.7, conejo 0.55, lobo 1.05) se
+  aplican al **grupo raíz** (compatibilidad con el snapshot y los tests).
+- Los bebés (`isBaby`) siguen a media escala del grupo (`0.5`).
+- Los brazos/piernas laterales comparten textura entre sí (misma `name`
+  base, sufijo L/R solo para la posición).
+
+#### Adaptación de `mobtextures.js`: atlas por parte
+
+Hoy cada tipo genera un **atlas 2x2** (front/side/top/bottom) de UNA tesela
+16×16 que cubre el mob entero. Con multibloque se pasa a **una tesela por
+parte** en un atlas de una fila (o columnas):
+
+- **Layout:** `canvas` de `N × 16` px, una tesela 16×16 por parte única del
+  mob. Humanoides: 4 teselas `[head, body, arm, leg]` (arm/leg compartidas
+  por los dos lados). Creeper: 3 `[head, body, leg]`. Araña: 2 `[body,
+  head]`. Conejo: 3 `[body, head, ear]`. Cuadrúpedos: 3 `[body, head,
+  leg]`. Pollo: 3 `[body, head, leg]`.
+- **Nueva API (sustituye/amplía la actual):**
+  - `getMobAtlas(type)` — devuelve la `CanvasTexture` de la fila (mismos
+    filtros `NearestFilter`, `colorSpace = SRGBColorSpace` y cache que hoy).
+  - `mobPartRects(type)` — devuelve `{ partName: [u0,v0,u1,v1] }` por parte
+    (reemplaza a `mobFaceRects()`; se mantiene una versión interna para la
+    compatibilidad del box simple si hiciera falta).
+  - `mobTextureTypes()` — sin cambios (lo audita `unit-sync.js` contra
+    `MOB_COLORS` del servidor).
+- **Funciones de dibujo por parte:** las actuales (`drawZombieFront`,
+  `drawCreeperFront`, ...) dibujan la tesela completa del mob; se
+  refactorizan en **una función por parte** reutilizando las paletas
+  existentes (`Z`, `C`, `S`, `E`, `SP`, `W`, `CO`, `P`, `CH`, `SH`, `R`):
+  p. ej. `drawZombieHead` (cara con ojos/pelo), `drawZombieBody` (camisa
+  azul rota), `drawZombieArm` (piel/manga), `drawZombieLeg` (pantalón);
+  `drawCreeperHead` (cara de 4 ojos), `drawCreeperBody` (moteado),
+  `drawCreeperLeg` (verde oscuro); `drawSpiderBody` (abdomen oscuro) y
+  `drawSpiderHead` (racimo de ojos). El contenido visual se conserva
+  (misma paleta y motivos), solo cambia la distribución por parte.
+- La tesela de una parte puede repetirse en sus 4 caras (caja) o, si se
+  quiere más detalle, pintar también `front`/`side` por parte (misma
+  convención de `FACE_ORDER` de hoy). La opción mínima: **1 tesela por
+  parte** para las 4 caras de su caja (bajo coste, silueta correcta).
+
+#### Adaptación de `public/mobs.js`: construcción del grupo
+
+- `makeMobMesh(type, fallbackColor)` pasa a construir un **`THREE.Group`**
+  con un mesh hijo por parte de `MOB_PARTS[type]` (o un solo box de
+  color plano si no hay atlas, como hoy). Cada parte es un
+  `BoxGeometry(size)` con los UVs remapeados hacia su tesela del atlas
+  (misma técnica de remapeo por grupos que usa hoy el box único: se
+  recogen los vértices únicos de cada grupo de la caja y se escriben los
+  UV de su rect).
+- **Un solo material por mob** (el atlas completo, base `0xffffff`): la
+  quema solar (`mesh.material.color.setHex(...)`) se aplica una vez al
+  material compartido y tiñe todas las partes (igual que hoy).
+- **Raycast de combate (crítico):** `mobMeshes` seguirá apuntando al
+  **grupo raíz** (así `updateMobs`/`removeMob` no cambian), pero el rayo
+  intersectará los **hijos** (las cajas). `raycastTerrainAndMobs` en
+  `input.js` debe intersectar con recursión y subir por `hit.object.parent`
+  hasta encontrar `userData.mobId`/`mobType` (que se copian al grupo raíz
+  y a cada hijo, o se leen del padre). Sin este cambio, el clic dejaría de
+  golpear a los mobs (regresión directa de B10).
+- **Posición/escala:** `mesh.position.set(m.x, m.y, m.z)` y la escala
+  `(isBaby ? 0.5 : 1) * MOB_SCALE[type]` se aplican al grupo raíz; las
+  partes usan las posiciones relativas de `MOB_PARTS`. La `y` del mob
+  (suelo + 1 en el servidor) queda en el grupo: las partes con Y desde 0
+  (pies) se anclan correctamente al suelo.
+- **Etiquetas de nombre** y **jugadores remotos**: el name tag se añade al
+  grupo (como hoy se añade al box); los remotos pueden reutilizar
+  `MOB_PARTS` con un esqueleto humanoide genérico (head/body/arms/legs con
+  el color plano del jugador) para dejar de ser una sola caja.
 
 ---
 
