@@ -853,9 +853,21 @@ errores.*
       tick > 0, broadcast server_metrics)
 
 ### Multijugador visible
-- [ ] Animación de rotura de bloque sincronizada: broadcast de
+- [x] Animación de rotura de bloque sincronizada: broadcast de
       `block_break_progress` a todos los jugadores en rango; el crack
-      del cliente pasa a overlay por-bloque (varios minadores a la vez)
+      del cliente pasa a overlay por-bloque (varios minadores a la vez).
+      Implementado: `net.js` gana `broadcastNear` (filtra por distancia
+      al bloque, 7 bloques como el alcance de interacción) y un wrapper
+      `broadcastMining` que se pasa a `mining.js` en `mainLoop` y en las
+      cancelaciones (`break_cancel`, creative y desconexión a mitad de
+      mina — si el jugador se va sin terminar, los que veían las grietas
+      reciben el stage -1). `public/world.js` pasa de una única caja de
+      crack a un overlay POR-BLOQUE (Map por "x,y,z", material clonado
+      por grieta): varios jugadores pueden minar a la vez y cada uno ve
+      el progreso de los demás; stage -1 y `block_update` ocultan solo
+      la grieta de ese bloque. Cubierto por `tests/unit-crack.js`
+      (misma secuencia de fases para minero y observador cercano, el
+      lejano no recibe nada, cancel y desconexión limpian en rango)
 
 ### Caza de errores y auditoría
 - [ ] Playtest (manual + headless): recolectar bugs en "Bugs conocidos"

@@ -276,7 +276,7 @@ en el servidor y `public/network.js` en el cliente).
 | `worlds_list` | `{worlds}` | Lista de mundos guardados: `{seed, name, chunkCount, lastSaved}` (Fase 7) |
 | `chunks_add` / `chunks_unload` | `{chunkData}` / `{keys}` | Chunks nuevos / a descargar |
 | `block_update` | `{x, y, z, blockId}` | Cambio de bloque replicado |
-| `block_break_progress` | `{x, y, z, stage}` | Grieta de rotura (0-9, -1 al cancelar) durante la minería (Fase 6) |
+| `block_break_progress` | `{x, y, z, stage}` | Grieta de rotura (0-9, -1 al cancelar) durante la minería — broadcast a todos los jugadores en rango del bloque (Fase 6/7) |
 | `player_join` / `player_move` / `player_leave` | posición, yaw | Otros jugadores |
 | `mobs_update` / `mob_death` / `mob_breed` | mobs, `{id}`, posición | Mobs en rango |
 | `server_metrics` | `{tickMs, chunkGenMs}` | Media móvil de 1s del tiempo por tick y de generación de chunks (Fase 7): el cliente lo expone como `window.__mcServerTickMs` / `__mcChunkGenMs` |

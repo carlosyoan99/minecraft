@@ -41,12 +41,46 @@ const mining = require("./mining.js");
 // de mobs siguen al mismo reloj (worldTime), así que el comando afecta a todo.
 const worldTime = () => commands.worldTime(state);
 
+// Distancia máxima (bloques) a la que se ven las grietas de rotura de otro
+// jugador: la misma que el alcance de interacción (7), como en Minecraft el
+// progreso de rotura es visible para cualquiera que pueda minar ese bloque.
+const CRACK_VIEW_DISTANCE = 7;
+
 function broadcast(event, data, exceptId = null) {
 	const msg = JSON.stringify({ event, data });
 	for (const p of state.players.values()) {
 		if (p.id === exceptId) continue;
 		if (p.ws.readyState === WebSocket.OPEN) p.ws.send(msg);
 	}
+}
+
+// Broadcast a los jugadores que están a `maxDist` bloques de un punto del
+// mundo (los demás no deberían ver ese bloque de cerca). Se usa para la
+// animación de rotura sincronizada: el progreso de la mina llega a todos los
+// que pueden ver el bloque, no solo al minero.
+function broadcastNear(x, y, z, event, data, maxDist = CRACK_VIEW_DISTANCE) {
+	const msg = JSON.stringify({ event, data });
+	for (const p of state.players.values()) {
+		if (p.ws.readyState !== WebSocket.OPEN) continue;
+		if (Math.hypot(x - p.x, y - p.y, z - p.z) > maxDist) continue;
+		p.ws.send(msg);
+	}
+}
+
+// sendFn de minería (mining.js lo llama como (player, event, data)): en vez
+// de enviar solo al minero, hace broadcast de las grietas a todos los que
+// vean el bloque (el parámetro player se ignora: el propio minero también
+// queda dentro del radio). Cualquier otro evento de mining.js (por ahora
+// ninguno) no se reenvía.
+function broadcastMining(_player, event, data) {
+	if (event !== "block_break_progress") return;
+	if (
+		typeof data?.x !== "number" ||
+		typeof data?.y !== "number" ||
+		typeof data?.z !== "number"
+	)
+		return;
+	broadcastNear(data.x, data.y, data.z, event, data);
 }
 
 // Estado inicial completo para un jugador (init). Se reenvía tras un cambio
@@ -330,7 +364,7 @@ function handleConnection(ws, req) {
 					// (finishMining con opts.creative). Se cancela cualquier sesión
 					// previa para que el cliente oculte sus grietas.
 					if (p.gamemode === "creative") {
-						mining.cancelMining(p, sendToClient);
+						mining.cancelMining(p, broadcastMining);
 						playerHelpers.finishMining(p, x, y, z, block, { creative: true });
 						return;
 					}
@@ -348,7 +382,7 @@ function handleConnection(ws, req) {
 						return;
 					mining.startMining(p, x, y, z, block);
 				} else if (action === "break_cancel") {
-					mining.cancelMining(p, sendToClient);
+					mining.cancelMining(p, broadcastMining);
 				} else if (action === "place") {
 					if (world.getBlock(x, y, z) !== B.AIR) return;
 					const slot = p.inventory[p.selectedSlot];
@@ -817,6 +851,13 @@ function handleConnection(ws, req) {
 
 	ws.on("close", () => {
 		const leaver = state.players.get(playerId);
+		// Si se desconecta a mitad de una mina, el bloque NO cambia (no llega
+		// block_update), así que los demás jugadores que veían las grietas se
+		// quedarían con el crack colgado: enviar stage -1 a los del radio.
+		if (leaver?.mining) {
+			const { x, y, z } = leaver.mining;
+			broadcastNear(x, y, z, "block_break_progress", { x, y, z, stage: -1 });
+		}
 		state.players.delete(playerId);
 		// biome-ignore lint/suspicious/noConsole: log de desconexión (operación normal del servidor)
 		console.log(
@@ -859,10 +900,12 @@ function mainLoop() {
 	}
 
 	// Minería (Fase 6): avanza las sesiones de rotura (dureza/velocidad); al
-	// completarse se rompe el bloque (drop condicional, XP, desgaste).
+	// completarse se rompe el bloque (drop condicional, XP, desgaste). Las
+	// grietas (block_break_progress) se hacen broadcast a TODOS los que vean
+	// el bloque (Fase 7): no solo el minero ve el progreso de rotura.
 	for (const p of state.players.values()) {
 		if (p.mining)
-			mining.tickMining(p, TICK_MS, world, playerHelpers, sendToClient);
+			mining.tickMining(p, TICK_MS, world, playerHelpers, broadcastMining);
 	}
 
 	// Spawn de mobs por fase del día (Fase 6): de día solo pasivos, de noche
@@ -930,6 +973,7 @@ function start() {
 // un ws fake para ejercitar los handlers; unit-metricas.js mide el tick).
 module.exports = {
 	broadcast,
+	broadcastNear,
 	handleConnection,
 	mainLoop,
 	getServerMetrics,

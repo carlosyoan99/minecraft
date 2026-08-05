@@ -1116,71 +1116,76 @@ export function unloadChunks(keys) {
 }
 
 // ============================================================
-// GRIETAS DE ROTURA (Fase 6, minería fina)
-// Una caja translúcida sobre el bloque en mina cuyo oscurecimiento sigue las
-// fases 0-9 que envía el servidor (block_break_progress). Es feedback local:
-// solo el jugador que mina ve sus grietas; stage -1 (o romperse el bloque)
-// las oculta.
+// GRIETAS DE ROTURA (Fase 6, minería fina; Fase 7, multijugador)
+// Cajas translúcidas sobre los bloques en mina cuyo oscurecimiento sigue las
+// fases 0-9 que envía el servidor (block_break_progress). Desde la Fase 7 el
+// servidor hace BROADCAST del progreso a todos los jugadores en rango, así
+// que el crack es un overlay POR-BLOQUE (Map por "x,y,z"): varios jugadores
+// pueden minar bloques distintos a la vez y cada uno ve las grietas de los
+// demás. stage -1 (cancelar) o romperse el bloque (block_update) ocultan
+// solo la grieta de ESE bloque.
 // ============================================================
-let crackMesh = null;
-const crackMaterial = new THREE.MeshBasicMaterial({
+const cracks = new Map(); // "x,y,z" -> { mesh, material }
+let crackGeometry = null; // caja compartida por todas las grietas (1.02: sobresale un pelo)
+const crackMaterialBase = new THREE.MeshBasicMaterial({
 	color: 0x111111,
 	transparent: true,
 	opacity: 0,
 	depthWrite: false
 });
-let crackTarget = null; // {x,y,z} del bloque en mina (para ocultarla al romperse)
 
-// Muestra el overlay sobre el bloque objetivo (sin progreso todavía).
+const crackKey = (x, y, z) => `${x},${y},${z}`;
+
+// Devuelve la grieta del bloque, creándola si no existe (cada grieta tiene
+// su material clonado: la opacidad es por-bloque).
+function getCrack(key, x, y, z) {
+	let c = cracks.get(key);
+	if (c) return c;
+	if (!crackGeometry) crackGeometry = new THREE.BoxGeometry(1.02, 1.02, 1.02);
+	const material = crackMaterialBase.clone();
+	const mesh = new THREE.Mesh(crackGeometry, material);
+	mesh.renderOrder = 3; // por encima del terreno y el agua
+	mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+	scene.add(mesh);
+	c = { mesh, material };
+	cracks.set(key, c);
+	return c;
+}
+
+function removeCrack(key) {
+	const c = cracks.get(key);
+	if (!c) return;
+	scene.remove(c.mesh);
+	c.material.dispose();
+	cracks.delete(key);
+}
+
+// Muestra el overlay sobre el bloque objetivo (sin progreso todavía): el
+// primer stage 0 del servidor (siguiente tick) ya lo oscurece.
 export function showCrack(x, y, z) {
-	if (!crackMesh) {
-		crackMesh = new THREE.Mesh(
-			new THREE.BoxGeometry(1.02, 1.02, 1.02),
-			crackMaterial
-		);
-		crackMesh.renderOrder = 3; // por encima del terreno y el agua
-		scene.add(crackMesh);
-	}
-	crackTarget = { x, y, z };
-	crackMesh.position.set(x + 0.5, y + 0.5, z + 0.5);
-	crackMaterial.opacity = 0;
+	getCrack(crackKey(x, y, z), x, y, z).material.opacity = 0;
 }
 
-// stage 0-9: oscurecimiento progresivo (pseudogrietas). stage <0 (cancelada)
-// solo oculta si coincide con el bloque en mina (un -1 tardío de un retarget
-// no debe borrar las grietas del bloque nuevo). El guard de target se aplica
-// por igual a todas las fases: un mensaje tardío de un bloque anterior no
-// debe teñir las grietas del bloque actual (orden WS lo evita en la práctica;
-// defensivo y consistente).
+// stage 0-9: oscurecimiento progresivo (pseudogrietas) SOLO del bloque en
+// cuestión. stage <0 (cancelada): oculta la grieta de ese bloque — un -1
+// tardío de un retarget no borra las grietas de otros bloques.
 export function setCrackStage(stage, x, y, z) {
-	if (!crackMesh) return;
-	if (
-		!crackTarget ||
-		crackTarget.x !== x ||
-		crackTarget.y !== y ||
-		crackTarget.z !== z
-	)
-		return;
 	if (stage < 0 || stage >= 10) {
-		hideCrack();
+		removeCrack(crackKey(x, y, z));
 		return;
 	}
-	crackMaterial.opacity = 0.08 + (stage / 9) * 0.45;
+	getCrack(crackKey(x, y, z), x, y, z).material.opacity =
+		0.08 + (stage / 9) * 0.45;
 }
 
+// Oculta todas las grietas (soltar el clic: el servidor manda el -1, pero
+// el feedback local es inmediato).
 export function hideCrack() {
-	crackTarget = null;
-	if (crackMesh) crackMaterial.opacity = 0;
+	for (const key of [...cracks.keys()]) removeCrack(key);
 }
 
-// Oculta las grietas si el bloque que cambió es el que se estaba minando
-// (el servidor acaba de romperlo y llega el block_update).
+// Oculta la grieta del bloque que cambió (el servidor acaba de romperlo y
+// llega el block_update). Por-bloque: otros cracks siguen visibles.
 export function hideCrackIfAt(x, y, z) {
-	if (
-		crackTarget &&
-		crackTarget.x === x &&
-		crackTarget.y === y &&
-		crackTarget.z === z
-	)
-		hideCrack();
+	removeCrack(crackKey(x, y, z));
 }
