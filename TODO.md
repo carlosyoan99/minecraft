@@ -880,6 +880,21 @@ errores.*
       mundo). Cubierto por `tests/unit-mundo.js` (bocas presentes y
       escasas, < 10% de columnas con hueco) y `tests/unit-biomas.js`
       (altura continua entre columnas adyacentes: salto máx ≤ 4)
+- [x] **audit-fase5.js no se podía ejecutar: ruta rota de `net.js`.**
+      La auditoría de la Fase 5 leía `path.join(ROOT, "net.js")` pero el
+      servidor vive en `server/` desde el refactor de la Fase 6 →
+      `ENOENT` al ejecutarla (exit 1, silencioso). Corregido en la
+      auditoría de Fase 7: apunta a `server/net.js` y vuelve a pasar.
+- [x] **E2E frágiles contra un mundo ya usado.** Los E2E (`e2e-comer`,
+      `e2e-durabilidad`, `e2e-reload`, `e2e-cofre`) modifican el mundo
+      (rompen bloques, el autosave los persiste) y dependen del estado
+      del área de spawn: contra un mundo fresco pasan (verificado:
+      `e2e-cofre` 12/12), pero al re-ejecutarlos contra el mismo mundo
+      pueden agotar su timeout interno (60s, que muere SIN imprimir
+      resultados — difícil de diagnosticar) y fallar. Recomendación
+      documentada en el propio código: ejecutarlos contra un servidor
+      desechable (`SEED` nueva). Mejora pendiente de la auditoría de
+      Fase 7: que el timer imprima el estado al expirar.
 
 ---
 
