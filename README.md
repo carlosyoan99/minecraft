@@ -88,15 +88,18 @@ npm start
 # o directamente: node server.js
 ```
 
-Abrir `http://localhost:3000`. Escribe una **semilla** en el menú
-(campo "Semilla del mundo") y clic en "Jugar": el servidor cambia
-el mundo activo a esa semilla (persistiendo el anterior) y la
-pantalla de carga cubre la generación. Vacío usa la semilla por
-defecto. Para un puerto distinto: `PORT=3998 node server.js`. La
-semilla por defecto también se configura con la env var
-`SEED=miNuevaSemilla node server.js` (cada semilla tiene su propio
-mundo en `world/<semilla>/`; volver a una semilla anterior
-recupera su mundo).
+Abrir `http://localhost:3000`. En el menú, el botón **🌍 Mundos**
+(Fase 7) muestra los mundos guardados (clic para abrirlos) y
+permite **crear uno nuevo**: escribe un nombre (opcional) y una
+semilla, o pulsa **🎲** para generar una semilla aleatoria al
+instante. Al crear, el servidor cambia el mundo activo a esa
+semilla (persistiendo el anterior), guarda el nombre en
+`world.json` y la pantalla de carga cubre la generación. También
+puedes escribir una **semilla** en el campo del menú principal y
+clic en "Jugar". Vacío usa la semilla por defecto. Para un puerto
+distinto: `PORT=3998 node server.js`. La semilla por defecto también se
+configura con la env var `SEED=miNuevaSemilla node server.js` (cada semilla tiene su propio mundo en `world/<semilla>/`;
+volver a una semilla anterior recupera su mundo).
 
 ### Controles
 
@@ -244,7 +247,8 @@ en el servidor y `public/network.js` en el cliente).
 | `eat` | `{}` | Comer el ítem seleccionado (rechazado si está lleno) |
 | `feed_mob` | `{mobId}` | Alimentar un animal (modo amor → cría) |
 | `attack_mob` | `{mobId}` | Atacar un mob (daño, desgaste, drops, XP) |
-| `set_seed` | `{seed}` | Elegir la semilla del mundo desde el menú (Fase 6): cambia el mundo activo y reenvía el `init` |
+| `set_seed` | `{seed, name?}` | Elegir/crear la semilla del mundo desde el menú (Fase 6/7): cambia el mundo activo, lo renombra con `name` si llega, y reenvía el `init` |
+| `worlds_list` | `{}` | Pedir la lista de mundos guardados (menú de mundos, Fase 7) |
 | `chat` | `{message}` | Mensaje de chat (máx 200 chars; con `/` es un comando) |
 
 **Servidor → Cliente:**
@@ -253,6 +257,7 @@ en el servidor y `public/network.js` en el cliente).
 |---|---|---|
 | `init` | posición, spawn, chunks, `food`, `saturation`, `xp/level/maxHealth`, `dayTime`, `seed` | Estado inicial (se reenvía tras `set_seed`) |
 | `seed_rejected` | `{reason}` | El servidor no pudo cambiar de semilla (otros jugadores o mundo ilegible) |
+| `worlds_list` | `{worlds}` | Lista de mundos guardados: `{seed, name, chunkCount, lastSaved}` (Fase 7) |
 | `chunks_add` / `chunks_unload` | `{chunkData}` / `{keys}` | Chunks nuevos / a descargar |
 | `block_update` | `{x, y, z, blockId}` | Cambio de bloque replicado |
 | `block_break_progress` | `{x, y, z, stage}` | Grieta de rotura (0-9, -1 al cancelar) durante la minería (Fase 6) |

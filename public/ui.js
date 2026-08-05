@@ -148,8 +148,10 @@ const settingsBtn = document.getElementById("settings-btn");
 const worldsBackBtn = document.getElementById("worlds-back-btn");
 const settingsBackBtn = document.getElementById("settings-back-btn");
 const worldsListEl = document.getElementById("worlds-list");
+const worldNameInput = document.getElementById("world-name-input");
 const seedInput = document.getElementById("seed-input");
 const seedCreateBtn = document.getElementById("seed-create-btn");
+const randomSeedBtn = document.getElementById("random-seed-btn");
 const nameInput = document.getElementById("name-input");
 const rdSlider = document.getElementById("rd-slider");
 const rdValue = document.getElementById("rd-value");
@@ -200,15 +202,22 @@ coordsToggle.addEventListener("change", () =>
 	setSetting("showCoords", coordsToggle.checked)
 );
 
-// Entrar al juego con una semilla: si difiere de la activa, se la pide al
-// servidor (set_seed) y se espera el init que la confirma (onWorldLoaded).
-// Con semilla vacía se juega el mundo activo tal cual.
-function startWithSeed(seed) {
+// Entrar al juego con una semilla: si difiere de la activa (o llega un nombre
+// nuevo para el mundo actual) se pide al servidor cambiar/renombrar el mundo
+// (set_seed) y se espera el init que lo confirma (onWorldLoaded). Con semilla
+// vacía se juega el mundo activo tal cual, salvo que llegue un nombre: en ese
+// caso se renombra el mundo activo (el campo `name` nunca se ignora).
+function startWithSeed(seed, worldName) {
 	seed = (seed || "").trim();
-	if (seed && seed !== currentSeed) {
+	const name = (worldName || "").trim();
+	if (seed && (seed !== currentSeed || name)) {
 		seedPending = seed;
 		showLoading(`Generando el mundo «${seed}»...`);
-		send("set_seed", { seed });
+		send("set_seed", { seed, name });
+	} else if (name && currentSeed) {
+		seedPending = currentSeed;
+		showLoading(`Renombrando el mundo «${currentSeed}»...`);
+		send("set_seed", { seed: currentSeed, name });
 	}
 	controls.lock(); // el lock en el gesto es fiable; la carga cubre el cambio
 }
@@ -222,9 +231,42 @@ startBtn.addEventListener("click", () => {
 	startWithSeed("");
 });
 
-seedCreateBtn.addEventListener("click", () => startWithSeed(seedInput.value));
+seedCreateBtn.addEventListener("click", () =>
+	startWithSeed(seedInput.value, worldNameInput.value)
+);
 seedInput.addEventListener("keydown", (e) => {
 	if (e.key === "Enter") seedCreateBtn.click();
+});
+worldNameInput.addEventListener("keydown", (e) => {
+	if (e.key === "Enter") seedCreateBtn.click();
+});
+
+// Semilla aleatoria (🎲): dos palabras + número — legible y con formato de
+// semilla de Minecraft. Rellena el campo y CREA el mundo directamente (un
+// solo gesto, como el "Random" de Minecraft al crear mundo).
+const RANDOM_WORDS = [
+	"bosque",
+	"montaña",
+	"llanura",
+	"desierto",
+	"lago",
+	"valle",
+	"cumbre",
+	"pradera",
+	"río",
+	"colina",
+	"isla",
+	"sabana"
+];
+function randomSeed() {
+	const a = RANDOM_WORDS[Math.floor(Math.random() * RANDOM_WORDS.length)];
+	const b = RANDOM_WORDS[Math.floor(Math.random() * RANDOM_WORDS.length)];
+	const n = Math.floor(Math.random() * 9000) + 1000;
+	return `${a}-${b}-${n}`;
+}
+randomSeedBtn.addEventListener("click", () => {
+	seedInput.value = randomSeed();
+	startWithSeed(seedInput.value, worldNameInput.value);
 });
 
 // Lista de mundos guardados (evento worlds_list del servidor, Fase 7)
@@ -243,7 +285,9 @@ export function renderWorldsList(worlds) {
 		const meta =
 			`${w.chunkCount} chunks` +
 			(w.lastSaved ? ` · ${w.lastSaved.slice(0, 19).replace("T", " ")}` : "");
-		item.innerHTML = `<span class="wi-name">${escapeHtml(w.name)}</span><span class="wi-meta">${escapeHtml(meta)}</span>`;
+		item.innerHTML =
+			`<span class="wi-left"><span class="wi-name">${escapeHtml(w.name)}</span><span class="wi-seed">semilla: ${escapeHtml(w.seed)}</span></span>` +
+			`<span class="wi-meta">${escapeHtml(meta)}</span>`;
 		item.title = `Abrir el mundo «${w.name}» (semilla: ${w.seed})`;
 		item.addEventListener("click", () => startWithSeed(w.seed));
 		worldsListEl.appendChild(item);

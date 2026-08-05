@@ -48,8 +48,14 @@
       <div class="menu-screen hidden" id="menu-worlds">
         <h2>🌍 Mundos</h2>
         <div id="worlds-list" class="worlds-list"></div>
+        <label class="menu-field">Nombre del mundo
+          <input id="world-name-input" type="text" maxlength="40" placeholder="opcional — si lo dejas vacío se usa la semilla" spellcheck="false" autocomplete="off">
+        </label>
         <label class="menu-field">Semilla de un mundo nuevo
-          <input id="seed-input" type="text" maxlength="40" placeholder="escribe una semilla y pulsa Crear" spellcheck="false" autocomplete="off">
+          <span class="seed-row">
+            <input id="seed-input" type="text" maxlength="40" placeholder="escribe una semilla o usa 🎲" spellcheck="false" autocomplete="off">
+            <button type="button" id="random-seed-btn" class="seed-random" title="Semilla aleatoria (crea un mundo nuevo al instante)">🎲</button>
+          </span>
         </label>
         <button type="button" id="seed-create-btn">Crear / Ir a esta semilla</button>
         <button type="button" id="worlds-back-btn" class="menu-secondary">Volver</button>

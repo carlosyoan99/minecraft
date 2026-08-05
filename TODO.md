@@ -746,15 +746,21 @@ errores.*
       `set_seed`). *(Avance parcial hecho en el commit de cierre de la
       Fase 6: `renderDistance` y `showCoords` con su UI; faltan FOV,
       sensibilidad, volumen por categoría y calidad gráfica)*
-- [~] **Selección y creación de mundos**: `save.listWorlds()` lee los
+- [x] **Selección y creación de mundos**: `save.listWorlds()` lee los
       subdirectorios de `world/` (semilla, `lastSaved`, nº de chunks);
       evento `worlds_list`. Menú con lista de mundos (clic → `set_seed`)
       y "crear nuevo mundo" con semilla escrita o aleatoria (🎲). La
       semilla es la identidad del mundo (`world.json` gana un campo
       opcional `name`, lectura defensiva, **sin** subir SCHEMA_VERSION).
-      *(Avance parcial hecho en el commit de cierre de la Fase 6:
-      `listWorlds`/`worlds_list` y la lista en el menú; falta el botón
-      de crear mundo con 🎲 y el campo `name`)*
+      Completado: el menú de mundos muestra la lista (nombre + semilla +
+      chunks + fecha), el campo `name` da nombre al mundo nuevo (o
+      renombra el activo con la misma semilla) y el botón 🎲 genera una
+      semilla aleatoria legible (dos palabras + número) y crea el mundo
+      al instante. El `set_seed` acepta `{seed, name?}`; el nombre se
+      persiste en `world.json` (los mundos viejos sin `name` usan la
+      semilla) y se restaura al cargar. Cubierto por la sección 11b de
+      `tests/unit-persistencia.js` (nombre, persistencia, listWorlds,
+      renombrado y saneo)
 - [~] **Mostrar coordenadas** en pantalla: overlay opcional en el HUD
       (`x, y, z`, actualizado ~10 veces por segundo), activable desde
       los ajustes. *(Hecho en el commit de cierre de la Fase 6;

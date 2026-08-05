@@ -607,7 +607,9 @@ function handleConnection(ws, req) {
 					break;
 				}
 				const seed = data.seed.trim();
-				const r = save.switchWorld(seed);
+				// Fase 7: `name` (opcional) da nombre al mundo nuevo (world.json); si la
+				// semilla ya existe, el nombre guardado en disco gana (loadWorld).
+				const r = save.switchWorld(seed, data.name);
 				if (r === "rechazo" || r === "error") {
 					p.ws.send(
 						JSON.stringify({ event: "seed_rejected", data: { reason: r } })

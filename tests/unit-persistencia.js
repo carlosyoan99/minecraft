@@ -543,6 +543,109 @@ function resetWorld() {
 	);
 }
 
+// --- 11b) Nombre del mundo (Fase 7): switchWorld con name, persistencia en
+// world.json y renombrado del mundo activo (misma semilla + nombre) ---
+{
+	const ROOT = path.join(TMP, "worldroot");
+	const SEED_BAK = constants.worldPaths.currentSeed;
+	fs.rmSync(ROOT, { recursive: true, force: true });
+	fs.mkdirSync(ROOT, { recursive: true });
+	state.chunks.clear();
+	state.mobs = [];
+	state.furnaces.clear();
+	state.chests.clear();
+
+	// Crear un mundo nuevo con nombre: se fija worldName y world.json lo guarda
+	let r = save.switchWorld("mundo_nuevo", "Mi Mundo");
+	check("switchWorld con nombre → true", r === true, `r=${r}`);
+	check(
+		"switchWorld fija el nombre activo (worldName)",
+		constants.worldPaths.worldName === "Mi Mundo",
+		constants.worldPaths.worldName
+	);
+	// ANTES del autosave (sin directorio ni world.json en disco todavía), la
+	// lista ya incluye el mundo activo recién creado con su nombre en memoria.
+	let w = save.listWorlds().find((x) => x.seed === "mundo_nuevo");
+	check(
+		"listWorlds incluye el mundo recién creado sin guardar (nombre en memoria)",
+		!!w && w.name === "Mi Mundo" && w.chunkCount === 0,
+		JSON.stringify(w)
+	);
+	save.saveWorld();
+	const meta = JSON.parse(
+		fs.readFileSync(constants.worldPaths.metaFile, "utf8")
+	);
+	check(
+		"world.json guarda el nombre del mundo",
+		meta.name === "Mi Mundo",
+		`name=${meta.name}`
+	);
+	check("world.json conserva la semilla", meta.seed === "mundo_nuevo");
+
+	// Al recargar el mundo se restaura el nombre (no se pierde por la semilla)
+	state.chunks.clear();
+	const loaded = save.loadWorld();
+	check("loadWorld carga el mundo nombrado", loaded === true);
+	check(
+		"loadWorld restaura el nombre desde world.json",
+		constants.worldPaths.worldName === "Mi Mundo",
+		constants.worldPaths.worldName
+	);
+
+	// listWorlds lo expone con su nombre
+	w = save.listWorlds().find((x) => x.seed === "mundo_nuevo");
+	check(
+		"listWorlds expone el nombre del mundo",
+		!!w && w.name === "Mi Mundo",
+		JSON.stringify(w)
+	);
+
+	// Renombrar el mundo ACTIVO: misma semilla + nombre nuevo → 'same' y persiste
+	r = save.switchWorld("mundo_nuevo", "Nuevo Nombre");
+	check("switchWorld misma semilla + nombre → same", r === "same", `r=${r}`);
+	check(
+		"same con nombre renombra el mundo activo",
+		constants.worldPaths.worldName === "Nuevo Nombre",
+		constants.worldPaths.worldName
+	);
+	const meta2 = JSON.parse(
+		fs.readFileSync(constants.worldPaths.metaFile, "utf8")
+	);
+	check(
+		"world.json se actualiza al renombrar",
+		meta2.name === "Nuevo Nombre",
+		`name=${meta2.name}`
+	);
+
+	// Sin nombre → la semilla actúa de nombre
+	r = save.switchWorld("otro_mundo");
+	check("switchWorld sin nombre → true", r === true, `r=${r}`);
+	check(
+		"sin nombre usa la semilla como nombre",
+		constants.worldPaths.worldName === "otro_mundo",
+		constants.worldPaths.worldName
+	);
+
+	// Sanidad: nombres con caracteres de control / espacios se limpian
+	r = save.switchWorld("saneada", "  Mi\u0000Mundo  ");
+	check("switchWorld con nombre sucio → true", r === true, `r=${r}`);
+	check(
+		"sanitizeWorldName limpia el nombre (control + espacios)",
+		constants.worldPaths.worldName === "MiMundo",
+		constants.worldPaths.worldName
+	);
+
+	// Restaurar el estado global para los tests siguientes
+	state.chunks.clear();
+	world.reinitNoise(SEED_BAK);
+	constants.setWorldSeed(SEED_BAK);
+	constants.worldPaths.worldName = SEED_BAK;
+	check(
+		"restaurado: worldName vuelve a la semilla activa",
+		constants.worldPaths.worldName === SEED_BAK
+	);
+}
+
 // --- 12) listWorlds: lista de mundos guardados (Fase 7, menú del cliente) ---
 {
 	constants.worldPaths.worldRoot = path.join(TMP, "worldroot");
@@ -574,10 +677,19 @@ function resetWorld() {
 	);
 
 	const worlds = save.listWorlds();
+	// 2 directorios + el mundo ACTIVO (aún sin directorio) que la lista incluye
+	// siempre con su nombre en memoria (Fase 7).
 	check(
-		"listWorlds: un mundo por directorio",
-		worlds.length === 2,
+		"listWorlds: un mundo por directorio + el activo sin guardar",
+		worlds.length === 3,
 		`${worlds.length} mundos`
+	);
+	check(
+		"listWorlds: incluye el mundo activo aunque no tenga directorio aún",
+		worlds.some(
+			(w) => w.seed === "miSemilla2026" && w.name === "miSemilla2026"
+		),
+		worlds.map((w) => w.seed).join(", ")
 	);
 	const miMundo = worlds.find((w) => w.seed === "Mi Semilla");
 	check(

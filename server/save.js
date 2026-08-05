@@ -19,12 +19,25 @@ const { chunks, players, furnaces, chests, dirtyChunks } = state;
 // I/O a un directorio temporal mutando constants.worldPaths).
 const P = constants.worldPaths;
 
+// Nombre mostrado de un mundo (Fase 7, campo `name` del menú): se sanea como
+// el nombre del jugador pero con más margen (40 caracteres). Un mundo sin
+// nombre usa su semilla como nombre (buildMeta/listWorlds ya lo asumen).
+function sanitizeWorldName(raw) {
+	if (typeof raw !== "string") return null;
+	const name = raw
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: saneo intencional de caracteres de control (0x00-0x1f y DEL) del nombre del mundo
+		.replace(/[\u0000-\u001f\u007f]/g, "")
+		.trim()
+		.slice(0, 40);
+	return name || null;
+}
+
 // Estado global (mobs, hornos, metadatos): pequeño, cabe en un solo archivo.
 function buildMeta() {
 	return {
 		schemaVersion: SCHEMA_VERSION,
 		seed: P.currentSeed,
-		name: P.currentSeed, // Fase 7: nombre mostrado en el menú de mundos (por defecto, la semilla)
+		name: P.worldName || P.currentSeed, // Fase 7: nombre mostrado en el menú de mundos (por defecto, la semilla)
 		lastSaved: new Date().toISOString(),
 		mobs: state.mobs
 			.filter((m) => m.alive)
@@ -118,6 +131,10 @@ function loadWorld() {
 					`⚠️  La semilla del mundo guardado (${meta.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`
 				);
 			}
+			// Fase 7: restaurar el nombre mostrado del mundo (lectura defensiva: los
+			// world.json antiguos no lo traen y usan la semilla como nombre, y un
+			// world.json manipulado se sanea igual que el del menú).
+			P.worldName = sanitizeWorldName(meta.name) || P.currentSeed;
 			state.mobs = restoreMobs(meta.mobs);
 			restoreFurnaces(meta.furnaces);
 			restoreChests(meta.chests);
@@ -144,7 +161,8 @@ function loadWorld() {
 // Cambio de mundo en runtime (Fase 6: campo de semilla del menú del cliente).
 // Devuelve:
 //   true     — mundo cambiado a la nueva semilla (cargado de disco o fresco)
-//   'same'   — misma semilla (mismo directorio): solo se actualiza el nombre
+//   'same'   — misma semilla (mismo directorio): normaliza la semilla activa
+//              y, si llega un nombre nuevo, renombra el mundo (persistido)
 //   'rechazo'— el mundo de esa semilla existe pero no se puede abrir (formato
 //              más nuevo): se revierte y no se toca nada (integridad)
 //   'error'  — no se pudo persistir el mundo actual antes de cambiar: no se
@@ -153,12 +171,20 @@ function loadWorld() {
 // cambia rutas y re-seeda el ruido → carga (o deja listo para generar) el
 // mundo de la nueva semilla. El jugador que la pidió genera/recibe los chunks
 // del spawn en net.js (set_seed → ensureChunksAround + init).
-function switchWorld(newSeed) {
+function switchWorld(newSeed, newName) {
 	const prevSeed = P.currentSeed;
 	if (constants.seedDir(newSeed) === constants.seedDir(prevSeed)) {
-		// Misma semilla: solo normalizar el nombre activo (si difiere en formato)
+		// Misma semilla: solo normalizar la semilla activa (si difiere en formato)
 		// sin tocar el mundo; el cliente recibe un init de confirmación igualmente.
 		if (newSeed !== prevSeed) constants.setWorldSeed(newSeed);
+		// Fase 7: con un nombre nuevo se RENOMBRA el mundo activo (el campo `name`
+		// del menú sirve también para esto) y se persiste en world.json. Si el
+		// guardado fallara, el nombre queda en memoria y el autosave lo reintenta.
+		const name = sanitizeWorldName(newName);
+		if (name && name !== P.worldName) {
+			P.worldName = name;
+			saveWorld();
+		}
 		return "same";
 	}
 
@@ -178,7 +204,7 @@ function switchWorld(newSeed) {
 	state.furnaces.clear();
 	state.chests.clear();
 
-	constants.setWorldSeed(newSeed);
+	constants.setWorldSeed(newSeed, sanitizeWorldName(newName) || newSeed);
 	world.reinitNoise(newSeed);
 
 	const r = loadWorld();
@@ -189,7 +215,7 @@ function switchWorld(newSeed) {
 		);
 		constants.setWorldSeed(prevSeed);
 		world.reinitNoise(prevSeed);
-		loadWorld();
+		loadWorld(); // restaura también el nombre del mundo anterior
 		return "rechazo";
 	}
 	// biome-ignore lint/suspicious/noConsole: log de cambio de semilla
@@ -287,6 +313,7 @@ function migrateLegacyWorld() {
 function listWorlds() {
 	const out = [];
 	if (!fs.existsSync(P.worldRoot)) return out;
+	let activeFound = false; // ¿el mundo activo ya tiene directorio en disco?
 	for (const dir of fs.readdirSync(P.worldRoot)) {
 		const dirPath = path.join(P.worldRoot, dir);
 		let stat;
@@ -314,11 +341,29 @@ function listWorlds() {
 					.readdirSync(chunksDir)
 					.filter((f) => f.endsWith(".json")).length;
 			}
+			// Fase 7: el mundo ACTIVO muestra su nombre en memoria (puede ser más
+			// reciente que world.json — mundo recién creado o renombrado en esta
+			// sesión, antes de que el autosave haya vuelto a escribir el archivo).
+			if (constants.seedDir(seed) === constants.seedDir(P.currentSeed)) {
+				activeFound = true;
+				if (P.worldName) name = P.worldName;
+			}
 		} catch (e) {
 			// biome-ignore lint/suspicious/noConsole: aviso de mundo ilegible en el menú
 			console.warn(`⚠️  Mundo ilegible en world/${dir}: ${e.message}`);
 		}
 		out.push({ seed, name, chunkCount, lastSaved });
+	}
+	// El mundo activo recién creado aún no tiene directorio (los chunks se
+	// escriben en el primer autosave): incluirlo igualmente para que el menú lo
+	// muestre con su nombre sin esperar los 30s del guardado automático.
+	if (!activeFound) {
+		out.push({
+			seed: P.currentSeed,
+			name: P.worldName || P.currentSeed,
+			chunkCount: 0,
+			lastSaved: null
+		});
 	}
 	out.sort((a, b) => (b.lastSaved || "").localeCompare(a.lastSaved || ""));
 	return out;

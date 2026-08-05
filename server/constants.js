@@ -52,6 +52,10 @@ function seedDir(seed) {
 const worldPaths = {
 	worldRoot: WORLD_ROOT,
 	currentSeed: SEED, // semilla activa (el directorio se deriva de ella)
+	// Fase 7: nombre MOSTRADO del mundo (world.json, campo `name` del menú).
+	// La semilla es la identidad; el nombre es solo cosmético y viaja con
+	// set_seed. Por defecto, la semilla (buildMeta/loadWorld lo mantienen).
+	worldName: SEED,
 	worldDir: null,
 	chunksDir: null,
 	legacyFile: null,
@@ -67,12 +71,15 @@ worldPaths.metaFile = path.join(worldPaths.worldDir, "world.json");
 
 // Cambia la semilla activa (y sus rutas) en runtime. No toca ruido ni estado:
 // eso lo hace save.switchWorld() (persistir → limpiar → re-seedar).
-function setWorldSeed(seed) {
+// `name` (opcional) fija el nombre mostrado del mundo nuevo; si no llega, se
+// conserva el actual (loadWorld restaura el del disco al cargar).
+function setWorldSeed(seed, name) {
 	worldPaths.currentSeed = seed;
 	worldPaths.worldDir = path.join(worldPaths.worldRoot, seedDir(seed));
 	worldPaths.chunksDir = path.join(worldPaths.worldDir, "chunks");
 	worldPaths.legacyFile = path.join(worldPaths.worldDir, "world.dat");
 	worldPaths.metaFile = path.join(worldPaths.worldDir, "world.json");
+	if (name !== undefined) worldPaths.worldName = name;
 }
 
 const SCHEMA_VERSION = 2; // versión actual del formato de guardado
