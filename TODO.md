@@ -974,20 +974,25 @@ fix propio (el diagnóstico debe confirmarlo).
       madera/hojas); piedra/minerales siguen requiriendo pico.
       Regresión: `unit-raycast.js`, `unit-geopool.js`, `unit-mineria.js`,
       `e2e-durabilidad.js`.
-- [ ] **B2: pierdes vida constantemente sin causa (mueres en pocos
-      segundos).** El jugador nace con `health 20 / food 20 / saturation
-      20` (net.js) → no es hambre; candidatos: mobs hostiles atacando
-      cerca del spawn, lava, caída. **Diagnóstico obligatorio antes de
-      corregir**: telemetría de daño por origen con evento
-      `damage_debug` (`source` = mob/fall/lava/starve, `amount`/
-      `realAmount`, `healthBefore/After`, posición y meta por origen) —
-      plan completo (campos, call sites a instrumentar y procedimiento)
-      en [`fase8-spec.md`](fase8-spec.md) §B2. Canales: consola del
-      servidor con `DAMAGE_DEBUG=1`, evento WS → `window.__mcLastDamage`
-      en F3, y anillo `state.damageLog` para tests headless. La hipótesis
-      principal es indefensión ante mobs (resuelta con B10+B3). Solo si
-      el diagnóstico lo confirma, considerar zona segura de spawn o
-      periodo de gracia (decisión a validar con el usuario).
+- [~] **B2: pierdes vida constantemente sin causa (mueres en pocos
+      segundos).** ✅ **Diagnóstico CONFIRMADO (reproducción en vivo con
+      la telemetría `damage_debug`)**: la causa son los **mobs hostiles
+      cerca del spawn** — no lava, no caída, no hambre (comida llena).
+      Evidencia: (1) `tests/diag-b2.js` conectó un cliente AFK al
+      servidor vivo: a los ~60s un **zombi** (id 519521) entró en rango
+      y atacó **2 HP cada ~1s** (9 golpes / 18 HP en ~15s → muerte en
+      ~10s más) con la comida llena (los valores impares intermedios son
+      la regeneración +1 por comida llena, no otra fuente); (2) escaneo
+      del mundo guardado: **0 lava y 0 agua a ≤10 bloques del spawn**
+      (descartado daño ambiental) y **5 hostiles a <40 bloques del
+      spawn** — `zombie@(0,-3)` (¡a 3 bloques!), `zombie@(14,-3)`,
+      `skeleton@(14,2)`, `creeper@(10,31)`, `skeleton@(25,26)` — de
+      noche además spawnean hostiles a ≥24 bloques que convergen al
+      jugador. En definitiva: **el spawn no tiene zona segura**.
+      **Fix pendiente — decisión de diseño a validar con el usuario**
+      (spec §B2): zona segura de spawn (sin spawn hostil ni aggro cerca
+      de él), periodo de gracia inicial al entrar/reaparecer, o ambos.
+      Herramienta de reproducción: `tests/diag-b2.js` (WS_URL/DURATION).
 
 ### Bloque B — Correcciones de mecánica
 

@@ -186,11 +186,21 @@ aprovecha para transportar `source` y `meta` sin cambiar su API pública.
    re-ejecutar el mismo procedimiento para validar que ya no aparecen
    daños sin origen.
 
-**Resultado esperado del diagnóstico:** los primeros eventos de daño serán
-`source=mob` a los pocos segundos de spawnear (hostiles de noche dentro del
-radio de detección atacando sin que el jugador pueda golpearlos), lo que
-convierte B2 en una consecuencia de B10+B3: al corregir el combate y la
-minería, B2 queda resuelto sin cambios adicionales de balance.
+**Resultado CONFIRMADO del diagnóstico (ejecutado con la telemetría):**
+la causa real es `source=mob` — **hostiles cerca del spawn, sin zona
+segura**. Reproducción en vivo (`tests/diag-b2.js`, cliente AFK contra el
+servidor): a los ~60 s un **zombi** entró en rango y aplicó 2 HP cada ~1 s
+(9 golpes / 18 HP en ~15 s → muerte en ~10 s más) con `food 20` llena; los
+valores impares intermedios son la regeneración +1 por comida llena, no otra
+fuente. Escaneo del mundo: **0 lava y 0 agua a ≤10 bloques del spawn**
+(descartados daños ambientales) y **5 hostiles a <40 bloques del spawn**
+(zombie a 3 bloques, zombie/skeleton a 14, creeper a 32, skeleton a 35); de
+noche además spawnean hostiles a ≥24 bloques que convergen al jugador.
+**Conclusión:** B10 (combate) y B3 (minería) permiten defenderse, pero NO
+resuelven B2 para un jugador recién llegado o AFK: sigue necesitando zona
+segura de spawn o periodo de gracia — **decisión de diseño pendiente de
+validar con el usuario** (opciones: zona segura de spawn sin spawn/aggro
+hostil cerca; gracia inicial al entrar/reaparecer; o ambos).
 
 ---
 
