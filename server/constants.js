@@ -13,7 +13,7 @@ const SAVE_INTERVAL_MS = 30000; // Guardar cada 30s
 const VIEW_DISTANCE_CHUNKS = 6; // Chunks generados alrededor de cada jugador al conectar
 const UNLOAD_DISTANCE_CHUNKS = 10; // Chunks sin jugadores a menos de esta distancia (en chunks) se descargan
 const UNLOAD_INTERVAL_MS = 10000; // Cada 10s se buscan chunks lejanos que descargar
-const DAY_CYCLE_MS = 240000; // 4 minutos: 2 de día, 2 de noche
+const DAY_CYCLE_MS = 1200000; // 20 minutos como Minecraft: ~10 de día, ~10 de noche (atardecer/amanecer suaves en el cliente)
 // La semilla se configura con la env var SEED (defecto miSemilla2026).
 // Cambiar la SEED genera un mundo TOTALMENTE nuevo: cada semilla tiene su
 // propio directorio de mundo (world/<semilla>/), así nunca se pisan ni se

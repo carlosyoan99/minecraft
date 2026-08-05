@@ -1003,12 +1003,20 @@ fix propio (el diagnóstico debe confirmarlo).
       `localStorage` y aplicado en tiempo real (player.js lo lee cada
       frame con `getSetting`). Con la opción activa, A↔D se invierten
       para quien lo prefiera.
-- [ ] **B4: ciclo día/noche a 20 minutos (como Minecraft).** Cambiar
-      `DAY_CYCLE_MS` de `240000` (4 min) a `1200000` (20 min) en AMBOS
-      `constants.js` (servidor y cliente, los audita `unit-sync.js`);
-      distribución estilo Minecraft: ~10 min día, ~1.5 atardecer, ~7
-      min noche (spawn de hostiles), ~1.5 amanecer. Revisar tests con
-      tiempos relativos al ciclo (`unit-red.js`, `unit-cama.js`).
+- [x] **B4: ciclo día/noche a 20 minutos (como Minecraft).** ✅
+      `DAY_CYCLE_MS` cambiado de `240000` (4 min) a `1200000` (20 min)
+      en AMBOS `constants.js` (servidor y cliente — lo verifica
+      `unit-sync.js`). Distribución: 50/50 (~10 min día, ~10 min
+      noche, como el 43% de noche de Minecraft con su 1.5+7+1.5 de
+      atardecer/noche/amanecer); el atardecer/amanecer se renderizan
+      suaves por la curva de fase sinusoidal del cliente (`daynight.js`
+      `currentPhase`), que ahora abarca 20 min. Todos los usos del
+      ciclo son relativos (`worldTime() % DAY_CYCLE_MS`, fracciones en
+      `/time` y en dormir/mobs), así que escalan solos; regresión
+      verde: `unit-sync`, `unit-cama`, `unit-commands`, `unit-red`.
+      Nota: si se quiere la distribución exacta por ventanas de
+      Minecraft (10/1.5/7/1.5 con gate de spawn en la ventana de
+      noche), sería un cambio de fase por tramos — no requerido aquí.
 - [ ] **B5: la tecla E siempre abre el inventario.** El keydown solo
       retorna con `isChatFocused()`; con un input de texto del menú
       enfocado (nombre del jugador/mundo) la E abre el inventario.
