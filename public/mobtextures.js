@@ -197,7 +197,7 @@ function drawEndermanTop(ctx, rng) {
 	fill(ctx, E.body);
 	speckle(ctx, rng, E.bodyLight, 0.05);
 }
-function drawEndermanBottom(ctx, rng) {
+function drawEndermanBottom(ctx, _rng) {
 	fill(ctx, "#0f0f17");
 }
 
@@ -494,7 +494,7 @@ function drawRabbitSide(ctx, rng) {
 	speckle(ctx, rng, R.bodyDark, 0.14);
 	speckle(ctx, rng, R.bodyLight, 0.1);
 }
-function drawRabbitTop(ctx, rng) {
+function drawRabbitTop(ctx, _rng) {
 	fill(ctx, R.body);
 	// orejas largas con interior rosado
 	rect(ctx, 3, 1, 3, 11, R.ear);

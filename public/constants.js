@@ -159,52 +159,6 @@ export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
 }
 
-// Colores de la comida cruda para el swatch del hotbar
-// (itemColor cae en BLOCK_COLORS[id], luego aquí, o gris por defecto)
-const FOOD_COLORS = {
-	107: 0xc0392b, // carne de vaca cruda
-	108: 0xe67e80, // chuleta de cerdo cruda
-	109: 0xf2e3c6, // pollo crudo
-	110: 0xb8715b, // cordero crudo
-	111: 0x8b5a2b, // carne de vaca cocinada
-	112: 0xb5651d, // chuleta de cerdo cocinada
-	113: 0xd9a066, // pollo cocinado
-	114: 0x9c5b33 // cordero cocinado
-};
-// Colores de la comida de cría para el swatch del hotbar
-const BREED_COLORS = {
-	115: 0xe8c56a, // trigo
-	116: 0xe67e22, // zanahoria
-	117: 0x8b6914, // semillas
-	118: 0xd9c8a8, // conejo crudo
-	119: 0x9c5b33, // conejo asado
-	120: 0xe8e4d0 // hilo
-};
-// Colores de la armadura para el swatch del hotbar y los slots (Fase 7)
-const ARMOR_COLORS = {
-	132: 0xb8860b, // cuero
-	220: 0xc9a06b,
-	221: 0xc9a06b,
-	222: 0xc9a06b,
-	223: 0xc9a06b, // cuero
-	224: 0xc8c8c8,
-	225: 0xc8c8c8,
-	226: 0xc8c8c8,
-	227: 0xc8c8c8, // hierro
-	228: 0x7fe8d9,
-	229: 0x7fe8d9,
-	230: 0x7fe8d9,
-	231: 0x7fe8d9 // diamante
-};
-export function itemColor(id) {
-	return (
-		BLOCK_COLORS[id] ||
-		FOOD_COLORS[id] ||
-		BREED_COLORS[id] ||
-		ARMOR_COLORS[id] ||
-		0xcccccc
-	);
-}
 export const PLACEABLE_BLOCKS = new Set([
 	1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18, 21, 22, 23, 24
 ]);

@@ -135,13 +135,6 @@ function sendInit(p) {
 const app = express();
 app.use(express.static(path.join(__dirname, "..", "public")));
 
-// Envía un evento a un jugador concreto (usado por la minería y los tests).
-function sendToClient(player, event, data) {
-	if (player.ws.readyState === WebSocket.OPEN) {
-		player.ws.send(JSON.stringify({ event, data }));
-	}
-}
-
 // ============================================================
 // NOMBRE DE JUGADOR (Fase 7)
 // El servidor es la fuente de verdad del nombre: se recibe con `?name=` en

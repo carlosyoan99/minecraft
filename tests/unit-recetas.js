@@ -11,7 +11,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const crafting = require(path.join(ROOT, "server", "crafting.js"));
-const { B, I, FOOD_VALUES, isFood, FUEL_ITEMS, canHarvest } = require(
+const { B, I, isFood, FUEL_ITEMS, canHarvest } = require(
 	path.join(ROOT, "server", "constants.js")
 );
 

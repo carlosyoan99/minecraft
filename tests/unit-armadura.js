@@ -13,13 +13,7 @@ const state = require("../server/state.js");
 const world = require("../server/world.js");
 const crafting = require("../server/crafting.js");
 const playerHelpers = require("../server/players.js");
-const {
-	B,
-	I,
-	ARMOR_SLOTS,
-	ARMOR_DURABILITY,
-	isArmor
-} = require("../server/constants.js");
+const { I, ARMOR_SLOTS, ARMOR_DURABILITY } = require("../server/constants.js");
 
 world.setDiskLoader(() => null);
 crafting.loadRecipes();

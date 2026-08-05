@@ -891,7 +891,11 @@ errores.*
       `node tests/audit-fase7.js` (con `--regresion` lanza además la
       suite unitaria de fases 0-6). Medido el 2026-08-05: tick 1.0 ms ·
       gen 0.0 ms · 169 chunks · 68 visibles · 108k tris. La limpieza de
-      código muerto se hace en la pasada de caza de errores (playtest)
+      código muerto se completó (pasada de caza de errores): eliminados
+      `sendToClient` (net.js), `getRenderDistance` (world.js),
+      `itemColor` + `FOOD_COLORS`/`BREED_COLORS`/`ARMOR_COLORS`
+      (constants.js) y variables de import sin usar en los tests;
+      biome del repo completo a 0 errores
 - [ ] Actualizar `README.md` (protocolo WS: `set_name`, `settings`,
       `worlds_list`, `player_rename`, `block_break_progress` en
       broadcast, `init` con `name`) y las guías (`CLAUDE.md`/

@@ -86,9 +86,7 @@ state.chunks.clear();
 for (let cx = -1; cx <= 1; cx++)
 	for (let cz = -1; cz <= 1; cz++) world.generateChunk(cx, cz);
 
-// Centro: todos sus vecinos están cargados → el conteo de caras es exacto
-// (el cliente también cuenta así cuando el vecino existe).
-const { faces, solidFaces, waterFaces } = countFaces(0, 0);
+// Centro: todos sus vecinos están cargados (el conteo de caras es exacto).
 const c00 = state.chunks.get("0,0");
 let _blocks = 0;
 for (let i = 0; i < c00.length; i++) if (c00[i] !== B.AIR) _blocks++;

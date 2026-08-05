@@ -851,7 +851,8 @@ export function itemIconIds() {
 // CSS `background` del icono recortado del atlas. `scale` agranda la tesela
 // (hotbar 1.5x, paneles 1x). null si el ítem no tiene icono.
 let atlasUrl = null;
-const tileIndex = new Map();	export function itemIconCss(id, scale = 1) {
+const tileIndex = new Map();
+export function itemIconCss(id, scale = 1) {
 	if (!ICONS[id]) return null;
 	if (!tileIndex.size) {
 		itemIconIds().forEach((x, i) => {

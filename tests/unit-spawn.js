@@ -7,7 +7,11 @@ const world = require("../server/world.js");
 let ok = 0,
 	fail = 0;
 const check = (n, c, x) => {
-	c ? ok++ : (fail++, console.log("FAIL: " + n + " " + (x || "")));
+	if (c) ok++;
+	else {
+		fail++;
+		console.log("FAIL: " + n + " " + (x || ""));
+	}
 };
 
 // --- 1) findSpawn(0,0): el punto devuelto nunca está sobre un lago ---

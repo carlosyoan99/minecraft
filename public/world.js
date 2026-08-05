@@ -44,9 +44,6 @@ const TORCH_LIGHT_GAIN = 1.4;
 // reenvía los chunks del nuevo radio (settings → chunks_add).
 // ============================================================
 let renderDistance = 6; // chunks (2..10); debe coincidir con el servidor
-export function getRenderDistance() {
-	return renderDistance;
-}
 
 function withinRenderDistance(cx, cz) {
 	const pcx = Math.floor(camera.position.x / CHUNK_SIZE);

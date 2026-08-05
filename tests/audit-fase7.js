@@ -195,14 +195,20 @@ async function auditCdp() {
 	let chromeProc = null;
 	const userData = fs.mkdtempSync(path.join(os.tmpdir(), "mc-audit7-chrome-"));
 	try {
-	const up = await waitFor(async () => {
-		// Si el servidor hijo murió (p. ej. puerto 3999 ocupado), no confiar en
-		// un HTTP 200 de OTRO proceso: exigir que siga vivo.
-		if (server.exitCode !== null) return false;
-		return (await httpGet(`http://127.0.0.1:${AUDIT_PORT}/`)).status === 200;
-	}, 60, 250);
-	check("CDP: el servidor desechable responde HTTP 200", up);
-	if (!up) return;
+		const up = await waitFor(
+			async () => {
+				// Si el servidor hijo murió (p. ej. puerto 3999 ocupado), no confiar en
+				// un HTTP 200 de OTRO proceso: exigir que siga vivo.
+				if (server.exitCode !== null) return false;
+				return (
+					(await httpGet(`http://127.0.0.1:${AUDIT_PORT}/`)).status === 200
+				);
+			},
+			60,
+			250
+		);
+		check("CDP: el servidor desechable responde HTTP 200", up);
+		if (!up) return;
 
 		const debugPort = 9222 + (process.pid % 500);
 		chromeProc = spawn(
@@ -305,14 +311,19 @@ async function auditCdp() {
 			"CDP: la generación de chunks no domina el tick (< 100 ms de media)",
 			genAvg < 100,
 			`${genAvg.toFixed(2)} ms`
-		);		const visAvg = Math.max(...samples.map((s) => s.vis ?? 0));
+		);
+		const visAvg = Math.max(...samples.map((s) => s.vis ?? 0));
 		const trisAvg = Math.max(...samples.map((s) => s.tris ?? 0));
 		check(
 			"CDP: el bucle de render corre (FPS > 0; números de SwiftShader conservadores)",
 			fpsAvg > 0,
 			`${fpsAvg.toFixed(1)} fps`
 		);
-		check("CDP: el mundo renderizado tiene chunks (meshes) > 0", chunks > 0, `${chunks}`);
+		check(
+			"CDP: el mundo renderizado tiene chunks (meshes) > 0",
+			chunks > 0,
+			`${chunks}`
+		);
 		// biome-ignore lint/suspicious/noConsole: informe de métricas de la auditoría
 		console.log(
 			`📊 CDP: tick ${tickAvg.toFixed(2)} ms · gen ${genAvg.toFixed(2)} ms · ${fpsAvg.toFixed(1)} fps · ${chunks} chunks · ${visAvg} visibles · ${trisAvg} tris`

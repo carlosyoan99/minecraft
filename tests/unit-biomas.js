@@ -12,7 +12,6 @@ const world = require("../server/world.js");
 const state = require("../server/state.js");
 const {
 	CHUNK_SIZE,
-	WORLD_HEIGHT,
 	B,
 	isSolidBlock,
 	NOT_MINEABLE
