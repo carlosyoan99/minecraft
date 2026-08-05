@@ -242,7 +242,7 @@ function connect() {
 function fallDamageExpect(blocks) {
 	const { FALL_DAMAGE_FREE_BLOCKS } = require("../server/constants.js");
 	return Math.max(0, Math.floor(blocks) - FALL_DAMAGE_FREE_BLOCKS);
-}// ============================================================
+} // ============================================================
 // B2 (Fase 8): GRACIA INICIAL DE SPAWN — 30s sin daño de mobs
 // (lava/caída/hambre siguen doliendo; la zona segura de spawn es
 // la otra mitad del fix, probada en unit-mobs-ia)

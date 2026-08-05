@@ -32,7 +32,11 @@ ws.on("message", (raw) => {
 	const msg = JSON.parse(raw.toString());
 	const d = msg.data || {};
 	if (msg.event === "init") {
-		check("init trae moonTime numérico", Number.isFinite(d.moonTime), `moonTime=${d.moonTime}`);
+		check(
+			"init trae moonTime numérico",
+			Number.isFinite(d.moonTime),
+			`moonTime=${d.moonTime}`
+		);
 		check(
 			"init trae dayTime numérico",
 			Number.isFinite(d.dayTime),
@@ -44,7 +48,9 @@ ws.on("message", (raw) => {
 			`rango=${d.moonTime}`
 		);
 		// Enviar /time set y comprobar el broadcast de re-sincronización
-		ws.send(JSON.stringify({ event: "chat", data: { message: "/time set night" } }));
+		ws.send(
+			JSON.stringify({ event: "chat", data: { message: "/time set night" } })
+		);
 		setTimeout(() => ws.close(), 800);
 	}
 	if (msg.event === "time_set") {

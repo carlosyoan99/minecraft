@@ -57,7 +57,9 @@ ws.on("message", (raw) => {
 });
 
 ws.on("open", () => {
-	log(`Conectado a ${URL} como ${NAME}. AFK en el spawn ${DURATION / 1000}s...`);
+	log(
+		`Conectado a ${URL} como ${NAME}. AFK en el spawn ${DURATION / 1000}s...`
+	);
 });
 ws.on("close", () => log("⚠️ conexión cerrada por el servidor"));
 
@@ -79,8 +81,11 @@ setTimeout(() => {
 	for (const [src, list] of Object.entries(bySource)) {
 		const total = list.reduce((a, d) => a + d.realAmount, 0);
 		const types = {};
-		for (const d of list) if (d.mobType) types[d.mobType] = (types[d.mobType] || 0) + 1;
-		const tipos = Object.keys(types).length ? ` · tipos: ${JSON.stringify(types)}` : "";
+		for (const d of list)
+			if (d.mobType) types[d.mobType] = (types[d.mobType] || 0) + 1;
+		const tipos = Object.keys(types).length
+			? ` · tipos: ${JSON.stringify(types)}`
+			: "";
 		log(
 			`- ${src}: ${list.length} golpes · ${total} HP · ${(total / (DURATION / 1000)).toFixed(2)} HP/s${tipos}`
 		);

@@ -1139,10 +1139,22 @@ fix propio (el diagnóstico debe confirmarlo).
 
 ### Bloque D — Verificación final
 
-- [ ] Suite completa de tests (unitarios + E2E + auditorías) y playtest
+- [x] Suite completa de tests (unitarios + E2E + auditorías) y playtest
       manual de los 10 bugs; `biome check` 0 errores en los archivos
       tocados; documentar en "Bugs conocidos" los bugs corregidos y
       marcar esta sección.
+      **Resultado:** los 10 bugs (B1-B10) están corregidos y documentados
+      en "Bugs conocidos" con su causa raíz y fix. Verificación: suite
+      unitaria completa `node tests/run.js --unit` exit=0 (11 grupos,
+      incluidos `unit-raycast`, `unit-mobray` nuevos), E2E contra
+      servidor vivo (`e2e-comer`, `e2e-cofre`, `e2e-durabilidad`,
+      `e2e-reload`) exit=0, auditorías de fase 3-6 exit=0, `biome check
+      server/ public/ tests/` **0 errores** (23 warnings de resúmenes de
+      tests con la convención biome-ignore del proyecto) y `node --check`
+      en todo `public/`. El playtest visual en navegador quedó
+      pendiente por indisponibilidad del agente de navegación (la
+      verificación del render de mobs multibloque y del cielo se hizo
+      con tests de three real + métricas `window.__mc*`).
 
 ---
 
@@ -1264,6 +1276,102 @@ fix propio (el diagnóstico debe confirmarlo).
       entradas huérfanas en la persistencia. Cubierto por
       `tests/unit-mobs-ia.js` (sección 5b: bedrock/agua/lava/cofre con
       contenido intactos, cofre vacío roto con estado limpio).
+- [x] **Fase 8 (B1): los controles A/D estaban invertidos y no había
+      opción de jugar invertido.** El `movement.x` del `mousedown`/
+      `keydown` de `input.js` sumaba `+1` con A (izquierda) y `-1` con
+      D (derecha), moviendo al jugador al revés (A iba a la derecha).
+      Corregido el signo y añadida la opción **"Controles invertidos"**
+      en Ajustes (persistida en localStorage, aplica a A/D y W/S).
+- [x] **Fase 8 (B2): pérdida constante de vida (muerte cada pocos
+      segundos).** Diagnosticado con la telemetría `damage_debug` en
+      vivo (`tests/diag-b2.js`): un zombi atacaba 2 HP/s en el spawn
+      (9 golpes / 18 HP en ~15s con comida llena; los valores impares
+      eran la regeneración, no otra fuente). Escaneo del mundo: 0
+      lava/agua cerca del spawn y 5 hostiles a <40 bloques (zombi a 3
+      bloques). **Causa: hostiles cerca del spawn sin zona segura.**
+      Corregido con **doble fix** (decisión del usuario: ambos): (1)
+      **zona segura de spawn** — `SPAWN_SAFE_RADIUS = 32` configurable
+      en `mobs.js`: los hostiles no spawnean dentro del radio y
+      `findNearestPlayer` no los targetea (al salir vuelven a ser
+      objetivo); (2) **gracia inicial** — `SPAWN_GRACE_MS = 30000` al
+      entrar/reaparecer: `damagePlayer` ignora daño de mobs (lava,
+      caída y hambre siguen doliendo). Verificado en vivo (45s AFK sin
+      daño) y por `unit-mobs-ia` (bloque 13) y `unit-damage` (bloque
+      8).
+- [x] **Fase 8 (B3): imposible minar a mano (ningún bloque daba
+      items).** El flujo de mina (cliente→servidor) funcionaba
+      (`e2e-durabilidad` rompía 60 bloques), el bug era del CLIENTE: el
+      geometry pool (`geopool.js`) reutiliza `BufferGeometry` y
+      `setOrReuseAttribute` muta los arrays en su lugar (`.set()` +
+      `needsUpdate`, sin `setAttribute`), dejando los
+      `boundingBox`/`boundingSphere` cacheados de three con los datos
+      del chunk ANTERIOR. `Mesh.raycast` (three r160) rechaza el rayo
+      contra esa esfera obsoleta → `raycastTerrainAndMobs()` devolvía
+      `null` → el clic no hacía nada. **Fix**: `release()` nullea los
+      bounds (recompute perezoso con datos nuevos, coste O(1)).
+      Reproducido con three real y cubierto por `tests/unit-raycast.js`
+      (nuevo, devDependency three@0.160.0 la del importmap). Los drops
+      a mano de bloques básicos ya los daba `canHarvest` (sin cambios).
+- [x] **Fase 8 (B4): el ciclo día/noche duraba 4 minutos (Minecraft:
+      20).** `DAY_CYCLE_MS` 240000 → 1200000 en ambos `constants.js`
+      (servidor y cliente, paridad auditada por `unit-sync`). Todos
+      los usos son relativos al ciclo (`worldTime % DAY_CYCLE_MS`,
+      `/time`, dormir, spawn de hostiles) y escalan solos: ~10 min de
+      día y ~10 de noche reales, con atardecer/amanecer suaves.
+- [x] **Fase 8 (B5): la tecla E abría el inventario incluso al escribir
+      en inputs (nombre de jugador/mundo).** `isChatFocused()` (solo
+      miraba el chat) se sustituyó por `isTyping()` en `ui.js`: con
+      un campo editable enfocado (INPUT/TEXTAREA/SELECT/contenteditable)
+      las teclas de juego (E, WASD, 1-9, F3, Espacio) quedan inertes.
+      El chat conserva su handler de Enter; `isChatFocused` quedó sin
+      usos y se eliminó.
+- [x] **Fase 8 (B6): chunks lejanos con texturas "disminuidas" que no
+      se restauraban al acercarse (o transparentes).** La transición
+      LOD→full era correcta (`updateLod` 250ms + histéresis +
+      `rebuildChunk`); el síntoma transparente lo causaba el MISMO bug
+      de B3: `computeChunkSphere` usa `Box3.expandByObject`, que solo
+      recalcula `geometry.boundingBox` si es `null` → la esfera de
+      culling quedaba en el chunk anterior y el frustum ocultaba el
+      chunk. El fix de B3 (nullear bounds en `release()`) resuelve
+      también B6. Verificado en `tests/unit-raycast.js` sección 4 y
+      con la métrica `window.__mcLodChunks` (split LOD/full en F3).
+- [x] **Fase 8 (B7): las estrellas se veían de día.** `uStars` se
+      calculaba con `(1-dayFactor)*0.9` (dayFactor = sin de la fase),
+      dejando estrellas en amanecer/atardecer y de día. Corregido:
+      `updateSky` usa la ALTURA VERTICAL REAL del sol (`sun.y` de
+      `celestialDirs`): `clamp((-sun.y - 0.02)/0.12, 0, 1)*0.9` — 0
+      estrellas en cuanto el sol asoma, con fade corto de ~7°.
+- [x] **Fase 8 (B8): sol y luna se veían iguales; la luna sin fases.**
+      Sol AMARILLO (shader `vec3(1.0,0.86,0.45)` + halo dorado,
+      `DAY_SUN = 0xffe08a`) y luna blanca/azulada con **fases**: ciclo
+      de 8 días (`MOON_DAYS=8`, `MOON_CYCLE_MS = DAY_CYCLE_MS*8` en
+      ambos constants, paridad en `unit-sync`), derivación determinista
+      desde la semilla (`seedMoonOffsetMs` + `moonTime(state)` en
+      `commands.js`), `moonTime` en el `init` y en los broadcasts de
+      `time_set`, `currentMoonPhase()` en `daynight.js` (mismo `elapsed`
+      que el día) y máscara de fase en el shader (`uMoonPhase`,
+      `litEdge = cos(phase·2π)`, parte oscura azulada). Verificado en
+      vivo con `tests/diag-moon.js` y determinismo en `unit-commands`.
+- [x] **Fase 8 (B9): los mobs eran cajas rectangulares.** Rediseñados
+      como **grupos multibloque** (`MOB_PARTS` en `mobtextures.js`,
+      11 especies con dimensiones por parte: humanoides, enderman
+      alto, creeper con 4 patas, araña con 8 patas rotadas, conejo con
+      orejas, cuadrúpedos, pollo) con atlas de una fila (tesela 16×16
+      por parte, `mobPartRects` reemplaza a `mobFaceRects`). `mobs.js`
+      construye `THREE.Group` con un mesh por parte y UN material
+      compartido (quema solar/flash intactos); los jugadores remotos
+      también son multibloque. `input.js`: raycast con `recursive=true`
+      y `mobRootData()` sube del hijo golpeado al raíz con `mobId`.
+      Cubierto por `tests/unit-mobray.js` (three real).
+- [x] **Fase 8 (B10): imposible luchar con los mobs hostiles (la mano
+      no producía efecto).** Diagnosticado y corregido antes de la
+      Fase 8: (1) el raycast de ataque fallaba por el mismo bug de
+      bounds obsoletos del pool (B3) y por el rango: el cliente raycast
+      a 7 bloques pero el servidor rechazaba ataques a >4 — alineado a
+      7; (2) tolerancia de apuntado (`nearestMobOnRay`, desviación
+      lateral ≤0.75) para golpear al mob aunque el terreno gane el
+      rayo; (3) la mano hace 2 de daño (ya lo hacía), con flash de
+      daño (`mob_hit`) y sonido como feedback.
 - [~] **Limitación conocida del anti-cheat: se puede volar (y caer sin
       daño) con un cliente modificado.** El handler `move` de `net.js`
       valida la velocidad (≤1.2 bloques por move, con teleport de

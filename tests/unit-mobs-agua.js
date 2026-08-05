@@ -8,12 +8,18 @@ const { isSolidBlock, B } = require("../server/constants.js");
 let ok = 0,
 	fail = 0;
 const check = (n, c, x) => {
-	c ? ok++ : (fail++, console.log("FAIL: " + n + " " + (x || "")));
+	if (c) ok++;
+	else {
+		fail++;
+		// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
+		console.log(`FAIL: ${n} ${x || ""}`);
+	}
 };
 
 // Mock de world.getBlock controlable por el test: recibe (wx, wy, wz).
 let blockAt = null;
-require("../server/world.js").getBlock = (wx, wy, wz) => blockAt(wy);
+// biome-ignore lint/correctness/noUnusedFunctionParameters: mock con firma fija
+require("../server/world.js").getBlock = (_wx, wy, _wz) => blockAt(wy);
 
 // Repetir settleOnGround hasta estabilizar (máx. 2000 pasos de 0.04 bloques).
 function settleUntilStable(mob) {
@@ -96,5 +102,6 @@ check(
 check("isSolidBlock(AIR) === false", isSolidBlock(B.AIR) === false);
 check("isSolidBlock(3=roca) === true", isSolidBlock(3) === true);
 
-console.log(ok + " OK, " + fail + " FAIL");
+// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
+console.log(`${ok} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

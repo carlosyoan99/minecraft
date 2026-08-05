@@ -98,7 +98,7 @@ world.setDiskLoader(() => null);
 
 	// La media se calcula cuando pasa la ventana de 1s desde el último envío.
 	// Como el test es instantáneo, forzar el corte ajustando el reloj interno.
-	const metrics = net.getServerMetrics();	// Si la ventana no se cerró aún, tickMs queda en 0; el test de broadcast
+	const metrics = net.getServerMetrics(); // Si la ventana no se cerró aún, tickMs queda en 0; el test de broadcast
 	// con reloj forzado está abajo. Aquí comprobamos que el bucle no rompió
 	// el estado compartido (mobs sigue siendo un array tras los filtros del
 	// tick y el jugador de prueba sigue conectado).
