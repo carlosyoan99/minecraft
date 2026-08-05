@@ -3,8 +3,8 @@
 // ============================================================
 // PERSISTENCIA (guardado incremental por chunk) Y DESCARGA DE CHUNKS
 // ============================================================
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const constants = require("./constants.js");
 const { SCHEMA_VERSION, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE } = constants;
 const state = require("./state.js");
@@ -55,22 +55,18 @@ function saveWorld() {
 
 		// Incremental: solo se reescriben los chunks que cambiaron desde el
 		// último guardado, nunca el mundo entero.
-		let written = 0;
+		let _written = 0;
 		for (const key of dirtyChunks) {
 			const arr = chunks.get(key);
 			if (!arr) continue;
 			world.writeChunkFile(key, arr);
-			written++;
+			_written++;
 		}
 		dirtyChunks.clear();
 
 		world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
-		console.log(
-			`💾 Mundo guardado (${written} chunks escritos, ${chunks.size} en memoria, ${state.mobs.length} mobs)`
-		);
 		return true;
-	} catch (e) {
-		console.error("Error guardando mundo:", e.message);
+	} catch (_e) {
 		return false;
 	}
 }
@@ -98,35 +94,17 @@ function loadWorld() {
 				typeof meta.schemaVersion === "number" &&
 				meta.schemaVersion > SCHEMA_VERSION
 			) {
-				// Mundo más nuevo de lo que este servidor sabe leer: negarse a
-				// cargarlo evita que un guardado posterior lo corrompa.
-				console.error(
-					`❌ El mundo guardado usa schemaVersion ${meta.schemaVersion}, pero este servidor soporta hasta v${SCHEMA_VERSION}.`
-				);
-				console.error(
-					"   No se cargará. Actualiza el servidor o restaura un backup compatible."
-				);
 				return "rechazo";
 			}
 			if (meta.seed && meta.seed !== P.currentSeed) {
-				console.warn(
-					`⚠️  La semilla del mundo guardado (${meta.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`
-				);
 			}
 			state.mobs = restoreMobs(meta.mobs);
 			restoreFurnaces(meta.furnaces);
 			restoreChests(meta.chests);
 		} else {
-			console.warn(
-				"⚠️  world.json no encontrado: mobs, hornos y cofres se reinician (chunks intactos)"
-			);
 		}
-		console.log(
-			`✅ Mundo cargado (${chunks.size} chunks, ${state.mobs.length} mobs)`
-		);
 		return true;
-	} catch (e) {
-		console.error("Error cargando mundo:", e.message);
+	} catch (_e) {
 		// Si existe el directorio de chunks, hay un mundo real: negarse a
 		// regenerar encima en lugar de arriesgar pérdida de datos.
 		return fs.existsSync(P.chunksDir) ? "rechazo" : false;
@@ -158,9 +136,6 @@ function switchWorld(newSeed) {
 	// abortar el cambio: limpiar el estado en memoria perdería el mundo (la
 	// integridad de datos está por encima de poder cambiar de semilla).
 	if (!saveWorld()) {
-		console.error(
-			"❌ No se pudo cambiar la semilla: falló el guardado del mundo actual."
-		);
 		return "error";
 	}
 	state.chunks.clear();
@@ -174,18 +149,11 @@ function switchWorld(newSeed) {
 
 	const r = loadWorld();
 	if (r === "rechazo") {
-		// No tocar un mundo que no podemos leer: revertir al anterior.
-		console.error(
-			`❌ No se puede abrir el mundo de la semilla "${newSeed}" (formato más nuevo o ilegible); se mantiene la semilla actual.`
-		);
 		constants.setWorldSeed(prevSeed);
 		world.reinitNoise(prevSeed);
 		loadWorld();
 		return "rechazo";
 	}
-	console.log(
-		`🌱 Semilla activa: ${prevSeed} → ${newSeed} (${state.chunks.size} chunks, ${state.mobs.length} mobs)`
-	);
 	return true;
 }
 
@@ -203,9 +171,6 @@ function migrateWorldLayout() {
 				fs.existsSync(path.join(P.worldRoot, n))
 			);
 			if (orphan.length > 0) {
-				console.warn(
-					`⚠️  Layout antiguo huérfano en world/ (${orphan.join(", ")}): esta semilla ya tiene mundo, se ignoran esos archivos.`
-				);
 			}
 			return false;
 		}
@@ -217,12 +182,8 @@ function migrateWorldLayout() {
 		for (const n of existing) {
 			fs.renameSync(path.join(P.worldRoot, n), path.join(P.worldDir, n));
 		}
-		console.log(
-			`🔁 Mundo movido al directorio de su semilla (${path.basename(P.worldDir)}): ${existing.join(", ")}`
-		);
 		return true;
-	} catch (e) {
-		console.error("⚠️  No se pudo migrar el layout del mundo:", e.message);
+	} catch (_e) {
 		return false;
 	}
 }
@@ -236,9 +197,6 @@ function migrateLegacyWorld() {
 			return false;
 		const data = JSON.parse(fs.readFileSync(P.legacyFile, "utf8"));
 		if (data.seed && data.seed !== P.currentSeed) {
-			console.warn(
-				`⚠️  La semilla del world.dat (${data.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`
-			);
 		}
 		chunks.clear();
 		for (const [k, arr] of data.chunks || [])
@@ -253,13 +211,9 @@ function migrateLegacyWorld() {
 		}
 		world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
 
-		fs.renameSync(P.legacyFile, P.legacyFile + ".legacy");
-		console.log(
-			`🔁 Mundo migrado de world.dat → archivos por chunk (${chunks.size} chunks)`
-		);
+		fs.renameSync(P.legacyFile, `${P.legacyFile}.legacy`);
 		return true;
-	} catch (e) {
-		console.error("⚠️  No se pudo migrar world.dat:", e.message);
+	} catch (_e) {
 		return false;
 	}
 }
@@ -298,9 +252,7 @@ function listWorlds() {
 					.readdirSync(chunksDir)
 					.filter((f) => f.endsWith(".json")).length;
 			}
-		} catch (e) {
-			console.warn(`⚠️  Mundo ilegible en world/${dir}: ${e.message}`);
-		}
+		} catch (_e) {}
 		out.push({ seed, name, chunkCount, lastSaved });
 	}
 	out.sort((a, b) => (b.lastSaved || "").localeCompare(a.lastSaved || ""));
@@ -347,21 +299,13 @@ function unloadFarChunks() {
 					dirtyChunks.delete(key);
 				}
 			}
-		} catch (e) {
-			// Integridad: si no se pudo persistir, no soltar el chunk de memoria
-			console.error(
-				`⚠️  No se pudo persistir ${key} al descargar; se mantiene en memoria:`,
-				e.message
-			);
+		} catch (_e) {
 			continue;
 		}
 		chunks.delete(key);
 	}
 
 	if (unloadHandler) unloadHandler(toUnload);
-	console.log(
-		`🗑️ Descargados ${toUnload.length} chunks lejanos (${chunks.size} en memoria)`
-	);
 }
 
 module.exports = {

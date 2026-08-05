@@ -6,9 +6,8 @@ const crafting = require("../server/crafting.js");
 const state = require("../server/state.js");
 
 let fails = 0;
-function check(name, ok, extra = "") {
+function check(_name, ok, _extra = "") {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 }
 
 crafting.loadRecipes();
@@ -33,7 +32,7 @@ check("grid vacio -> sin receta", crafting.matchRecipe(grid()) === null);
 	check(
 		"tronco suelto -> planks x4",
 		r && r.result.id === 7 && r.result.count === 4,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 
@@ -43,7 +42,7 @@ check("grid vacio -> sin receta", crafting.matchRecipe(grid()) === null);
 	check(
 		"tronco en esquina (offset) -> planks",
 		r && r.result.id === 7,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 
@@ -53,7 +52,7 @@ check("grid vacio -> sin receta", crafting.matchRecipe(grid()) === null);
 	check(
 		"planks verticales -> stick",
 		r && r.result.id === 100,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 
@@ -69,7 +68,7 @@ check(
 	check(
 		"2x2 planks -> crafting_table (15)",
 		r && r.result.id === 15,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 
@@ -89,7 +88,7 @@ check(
 	check(
 		"anillo de cobblestone -> horno (16)",
 		r && r.result.id === 16,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 
@@ -101,7 +100,7 @@ check(
 	check(
 		"pico de madera (200)",
 		r && r.result.id === 200,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 
@@ -113,7 +112,7 @@ check(
 	check(
 		"pico de piedra (201)",
 		r && r.result.id === 201,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 
@@ -123,7 +122,7 @@ check(
 	check(
 		"arena suelta -> vidrio (17)",
 		r && r.result.id === 17,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 
@@ -322,8 +321,4 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 state.furnaces.clear();
 crafting.tickFurnaces();
 check("tickFurnaces mapa vacio", true);
-
-console.log(
-	fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
-);
 process.exit(fails === 0 ? 0 : 1);

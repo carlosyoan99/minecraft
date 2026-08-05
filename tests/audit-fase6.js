@@ -27,7 +27,7 @@
 // CON LOD 100.5 FPS media (136.5 estables) vs SIN LOD 24.3 (30 estables).
 // Uso: node tests/audit-fase6.js
 // ============================================================
-const path = require("path");
+const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const { B, CHUNK_SIZE, WORLD_HEIGHT } = require(
 	path.join(ROOT, "server", "constants.js")
@@ -36,9 +36,8 @@ const world = require(path.join(ROOT, "server", "world.js"));
 const state = require(path.join(ROOT, "server", "state.js"));
 
 let fails = 0;
-const check = (n, ok, extra) => {
+const check = (_n, ok, _extra) => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${n}${extra ? " — " + extra : ""}`);
 };
 
 // --- Reglas EXACTAS del cliente (fuente de verdad: public/world.js) ---
@@ -132,11 +131,6 @@ function countFullFaces(cx, cz) {
 function lodTier(dist) {
 	return dist > 56 ? "lod" : "full";
 }
-
-console.log("========== PARTE 1: LOD — CARAS Y TRIÁNGULOS ==========\n");
-console.log(
-	"Generando área de render completa (radio 6 = 13×13 chunks, disco ignorado)..."
-);
 world.setDiskLoader(() => null);
 state.chunks.clear();
 const R = 6;
@@ -147,18 +141,15 @@ for (let cx = -R; cx <= R; cx++)
 const spawn = world.findSpawn(0, 0);
 const px = spawn.x,
 	pz = spawn.z;
-console.log(
-	`Spawn: (${px.toFixed(1)}, ${pz.toFixed(1)}) — decide el tier de cada chunk`
-);
 
 let fullFaces = 0,
 	lodFaces = 0,
 	fullChunks = 0,
 	lodChunks = 0,
-	total = 0;
+	_total = 0;
 for (let cx = -R; cx <= R; cx++) {
 	for (let cz = -R; cz <= R; cz++) {
-		total++;
+		_total++;
 		const cxp = cx * CHUNK_SIZE + CHUNK_SIZE / 2,
 			czp = cz * CHUNK_SIZE + CHUNK_SIZE / 2;
 		const dist = Math.hypot(px - cxp, pz - czp);
@@ -179,26 +170,10 @@ for (let cx = -R; cx <= R; cx++)
 const noLodTris = allFullFaces * 2;
 const reduction = 1 - withLodTris / noLodTris;
 
-console.log(
-	`\nÁrea radio 6: ${total} chunks → ${lodChunks} en LOD (lejanos) + ${fullChunks} en detalle completo`
-);
-console.log(
-	`Caras: ${fullFaces.toLocaleString()} full + ${lodFaces.toLocaleString()} LOD (quads)`
-);
-console.log(
-	`Triángulos: ${withLodTris.toLocaleString()} CON LOD vs ${noLodTris.toLocaleString()} sin LOD → reducción del ${(reduction * 100).toFixed(1)}%`
-);
-console.log(
-	`Coste medio por chunk: ${(withLodTris / total).toFixed(0)} triángulos con LOD vs ${(noLodTris / total).toFixed(0)} sin LOD`
-);
-console.log(
-	"  (referencia: auditoría Fase 2 renderizaba ~310K triángulos estables)"
-);
-
 check(
 	"Perf: el LOD reduce los triángulos del área activa ≥ 20% (los lejanos dominan el recuento bruto)",
 	reduction >= 0.2,
-	(reduction * 100).toFixed(1) + "%"
+	`${(reduction * 100).toFixed(1)}%`
 );
 check(
 	"Perf: los chunks lejanos (radio 6) son mayoría LOD, como espera el diseño",
@@ -226,17 +201,12 @@ check(
 		}
 	lodF = countFullFaces(lodCx, lodCz);
 	lodQ = countLodQuads(lodCx, lodCz);
-	console.log(
-		`\nChunk lejano de muestra (${lodCx},${lodCz}): ${lodF} caras full vs ${lodQ} quads LOD → ${(100 - (lodQ / lodF) * 100).toFixed(1)}% menos geometría`
-	);
 	check(
 		"Perf: un chunk LOD cuesta < 30% de su versión full (ahorro dominante en el anillo)",
 		lodQ / lodF < 0.3,
 		`${(100 - (lodQ / lodF) * 100).toFixed(1)}% ahorro`
 	);
 }
-
-console.log("\n========== PARTE 2: MEMORIA DE GEOMETRÍA ==========\n");
 // Bytes por vértice: full = pos(3) + normal(3) + uv(2) floats; LOD = pos(3)
 // + normal(3) + color(3). Cada cara/quad = 2 triángulos = 6 vértices.
 const FLOATS_FULL = 8,
@@ -246,27 +216,16 @@ const bytesFull = (faces) => faces * 6 * FLOATS_FULL * BYTES;
 const bytesLod = (quads) => quads * 6 * FLOATS_LOD * BYTES;
 const memWithLod = bytesFull(fullFaces) + bytesLod(lodFaces);
 const memNoLod = bytesFull(allFullFaces);
-console.log(
-	`Geometría CON LOD: ${(memWithLod / 1024 / 1024).toFixed(2)} MB (${fullFaces.toLocaleString()} caras full + ${lodFaces.toLocaleString()} quads LOD)`
-);
-console.log(
-	`Geometría sin LOD: ${(memNoLod / 1024 / 1024).toFixed(2)} MB (${allFullFaces.toLocaleString()} caras full)`
-);
-console.log(
-	`Ahorro en memoria GPU/JS: ${(100 - (memWithLod / memNoLod) * 100).toFixed(1)}% (${((memNoLod - memWithLod) / 1024 / 1024).toFixed(2)} MB)`
-);
 check(
 	"Mem: el área activa con LOD cabe holgada en presupuesto (< 30 MB de geometría bruta)",
 	memWithLod < 30 * 1024 * 1024,
-	(memWithLod / 1024 / 1024).toFixed(2) + " MB"
+	`${(memWithLod / 1024 / 1024).toFixed(2)} MB`
 );
 check(
 	"Mem: con LOD la geometría bruta se reduce ≥ 40% vs todo full",
 	memWithLod / memNoLod < 0.6,
-	(100 - (memWithLod / memNoLod) * 100).toFixed(1) + "% ahorro"
+	`${(100 - (memWithLod / memNoLod) * 100).toFixed(1)}% ahorro`
 );
-
-console.log("\n========== PARTE 3: POOL DE GEOMETRÍAS ==========\n");
 // Reutilización real del pool (public/geopool.js es módulo puro, sin three):
 // simula el ciclo del cliente al moverse — descargar un chunk (release) y
 // cargar otro nuevo (acquire) — y verifica que la segunda carga NO crea
@@ -276,14 +235,14 @@ console.log("\n========== PARTE 3: POOL DE GEOMETRÍAS ==========\n");
 	// import que unit-geopool.js (copia a un .mjs temporal e import dinámico).
 	const src = path.join(ROOT, "public", "geopool.js");
 	const tmp = path.join(
-		require("os").tmpdir(),
+		require("node:os").tmpdir(),
 		`audit-geopool-${process.pid}.mjs`
 	);
-	require("fs").copyFileSync(src, tmp);
+	require("node:fs").copyFileSync(src, tmp);
 	const { createGeometryPool, setOrReuseAttribute } = await import(
-		"file://" + tmp
+		`file://${tmp}`
 	);
-	require("fs").unlinkSync(tmp);
+	require("node:fs").unlinkSync(tmp);
 
 	// Geometría falsa (como unit-geopool): attributes + dispose registrado.
 	function makeFakeGeometry() {
@@ -355,7 +314,9 @@ console.log("\n========== PARTE 3: POOL DE GEOMETRÍAS ==========\n");
 	const batch = [];
 	for (let i = 0; i < 30; i++) batch.push(pool.acquire("water"));
 	const beforeDispose = pool.stats().created;
-	batch.forEach((g) => pool.release("water", g));
+	batch.forEach((g) => {
+		pool.release("water", g);
+	});
 	const s3 = pool.stats();
 	// De las 30 liberadas, 24 caben en el pool water (tope) y 6 se disponen.
 	// created no crece: el pool NUNCA vuelve a fabricar geometría al liberar.
@@ -380,12 +341,8 @@ console.log("\n========== PARTE 3: POOL DE GEOMETRÍAS ==========\n");
 		attrAllocs === allocs3 + 1,
 		`${allocs3}→${attrAllocs}`
 	);
-	console.log(
-		`  Estadísticas finales del pool: ${pool.stats().created} creadas · ${pool.stats().reused} reutilizadas · ${pool.stats().disposed} liberadas`
-	);
 })()
 	.then(() => {
-		console.log("\n========== PARTE 4: DETERMINISMO ==========\n");
 		// El LOD es función pura de la altura de superficie: regenerar un chunk
 		// debe dar la MISMA geometría LOD (muros y tapas idénticos). Se regenera
 		// DOS veces y se comparan ENTRE SÍ: los árboles usan Math.random sin
@@ -405,12 +362,8 @@ console.log("\n========== PARTE 3: POOL DE GEOMETRÍAS ==========\n");
 		);
 
 		world.setDiskLoader(null);
-		console.log(
-			`\n${fails === 0 ? "✅ AUDITORÍA FASE 6: todos los checks pasan" : `❌ ${fails} checks fallaron`}`
-		);
 		process.exit(fails ? 1 : 0);
 	})
-	.catch((e) => {
-		console.error("ERROR en auditoría:", e);
+	.catch((_e) => {
 		process.exit(1);
 	});

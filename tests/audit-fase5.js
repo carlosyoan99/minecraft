@@ -20,8 +20,8 @@
 //
 // Uso: node tests/audit-fase5.js
 // ============================================================
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const { TOOL_DURABILITY, XP_PER_LEVEL, MAX_LEVEL_HEALTH_BONUS, B, I } = require(
 	path.join(ROOT, "server", "constants.js")
@@ -31,9 +31,8 @@ const world = require(path.join(ROOT, "server", "world.js"));
 const mobsMod = require(path.join(ROOT, "server", "mobs.js"));
 
 let fails = 0;
-function check(name, ok, extra = "") {
+function check(_name, ok, _extra = "") {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 }
 
 const OPEN = 1;
@@ -59,13 +58,6 @@ function mkPlayer(over = {}) {
 		...over
 	};
 }
-
-// ============================================================
-// PARTE 1: SINCRONIZACIÓN DE DURABILIDAD SERVIDOR ↔ CLIENTE
-// ============================================================
-console.log(
-	"========== PARTE 1: SINCRONIZACIÓN SERVIDOR ↔ CLIENTE ==========\n"
-);
 
 // 1a) TOOL_DURABILITY (servidor) == DURABILITY (cliente): parse del ESM
 {
@@ -101,7 +93,7 @@ console.log(
 	p.inventory[0] = { id: I.DIAMOND_PICKAXE, count: 1, durability: 1234 };
 	playersMod.sendInventory(p);
 	const msg = sent.find((m) => m.event === "inventory_update");
-	const slot = msg && msg.data.inventory[0];
+	const slot = msg?.data.inventory[0];
 	check(
 		"inventory_update incluye durability en el wire",
 		slot && slot.durability === 1234,
@@ -124,13 +116,6 @@ console.log(
 	);
 }
 
-// ============================================================
-// PARTE 2: SIN DUPLICACIÓN AL ROMPERSE UNA HERRAMIENTA
-// ============================================================
-console.log(
-	"\n========== PARTE 2: SIN DUPLICACIÓN AL ROMPERSE (mitad de acción) ==========\n"
-);
-
 // Replica EXACTA de la secuencia del handler break de net.js (bloque de
 // piedra con un pico de durabilidad 1): setBlock(AIR) → drop → wear.
 {
@@ -152,12 +137,12 @@ console.log(
 	check(
 		"drop añadido UNA vez (1 adoquín)",
 		playersMod.countInInventory(p, B.COBBLESTONE) === 1,
-		"adoquín=" + playersMod.countInInventory(p, B.COBBLESTONE)
+		`adoquín=${playersMod.countInInventory(p, B.COBBLESTONE)}`
 	);
 	check(
 		"herramienta rota SIN copias (0 picos)",
 		playersMod.countInInventory(p, I.STONE_PICKAXE) === 0,
-		"picos=" + playersMod.countInInventory(p, I.STONE_PICKAXE)
+		`picos=${playersMod.countInInventory(p, I.STONE_PICKAXE)}`
 	);
 	check(
 		"total de slots coherente (1 drop, 0 herramientas)",
@@ -199,16 +184,11 @@ console.log(
 		playersMod.countInInventory(p, I.IRON_PICKAXE) === 0
 	);
 }
-
-// ============================================================
-// PARTE 3: XP / NIVELES (opcional Fase 5)
-// ============================================================
-console.log("\n========== PARTE 3: EXPERIENCIA Y NIVELES ==========\n");
 {
 	const p = mkPlayer();
 	playersMod.addXp(p, XP_PER_LEVEL * 3 + 40);
-	check("340 XP → nivel 3", p.level === 3, "level=" + p.level);
-	check("maxHealth = 23 (20+3)", p.maxHealth === 20 + 3, "max=" + p.maxHealth);
+	check("340 XP → nivel 3", p.level === 3, `level=${p.level}`);
+	check("maxHealth = 23 (20+3)", p.maxHealth === 20 + 3, `max=${p.maxHealth}`);
 	check("xp conservada en el objeto", p.xp === XP_PER_LEVEL * 3 + 40);
 }
 {
@@ -241,14 +221,9 @@ console.log("\n========== PARTE 3: EXPERIENCIA Y NIVELES ==========\n");
 	check(
 		`applyToolWear barato (10k usos en ${ms.toFixed(1)} ms)`,
 		ms < 1000,
-		ms.toFixed(1) + "ms"
+		`${ms.toFixed(1)}ms`
 	);
 }
-
-// ============================================================
-// PARTE 4: REGRESIÓN (drops de la Fase 3 y cría siguen intactos)
-// ============================================================
-console.log("\n========== PARTE 4: REGRESIÓN FASE 3/4 ==========\n");
 {
 	const realRandom = Math.random;
 	Math.random = () => 0.5;
@@ -256,7 +231,7 @@ console.log("\n========== PARTE 4: REGRESIÓN FASE 3/4 ==========\n");
 	Math.random = realRandom;
 	check(
 		"vaca sigue dando carne (Fase 3 intacta)",
-		cow && cow[0] && cow[0].id === I.BEEF,
+		cow?.[0] && cow[0].id === I.BEEF,
 		JSON.stringify(cow)
 	);
 }
@@ -267,9 +242,5 @@ check(
 check(
 	"world.getHeight intacto (Fase 4)",
 	typeof world.getHeight === "function"
-);
-
-console.log(
-	`\n${fails === 0 ? "✅ AUDITORÍA: todos los checks pasan" : `❌ ${fails} checks fallaron`}`
 );
 process.exit(fails ? 1 : 0);

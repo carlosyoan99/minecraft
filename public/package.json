@@ -1,0 +1,5 @@
+{
+	"name": "mi-minecraft-client",
+	"private": true,
+	"type": "module"
+}

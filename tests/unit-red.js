@@ -21,9 +21,8 @@ world.setDiskLoader(() => null);
 crafting.loadRecipes();
 
 let fails = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // --- ws fake: captura mensajes salientes y permite inyectar entrantes ---
@@ -87,7 +86,7 @@ function connect() {
 	check(
 		"init: chunkData presente",
 		init.data.chunkData && Object.keys(init.data.chunkData).length > 0,
-		Object.keys(init.data.chunkData || {}).length + " chunks"
+		`${Object.keys(init.data.chunkData || {}).length} chunks`
 	);
 	check("el jugador queda registrado en state", !!player);
 	check(
@@ -135,7 +134,7 @@ function connect() {
 	check(
 		"move demasiado rápido → teleport",
 		ws.events("teleport").length === 1,
-		ws.events("teleport").length + ""
+		`${ws.events("teleport").length}`
 	);
 	check("la posición NO se corrompe (vuelve a la autoritativa)", p.x === bx);
 
@@ -201,7 +200,7 @@ function connect() {
 	check(
 		"el pico se desgasta (-1)",
 		p.inventory[0].durability === 131,
-		"dur=" + p.inventory[0].durability
+		`dur=${p.inventory[0].durability}`
 	);
 	check("inventory_update enviado", ws.events("inventory_update").length >= 1);
 	check(
@@ -280,7 +279,7 @@ function connect() {
 {
 	const p = global.__PLAYER;
 	const ws = global.__WS;
-	const sendToClient = (pl, event, data) =>
+	const _sendToClient = (pl, event, data) =>
 		pl.ws.send(JSON.stringify({ event, data }));
 	const bx = Math.floor(p.x + 1),
 		by = Math.floor(p.y),
@@ -319,7 +318,7 @@ function connect() {
 	check(
 		"creative: la herramienta NO se desgasta (durabilidad plena)",
 		p.inventory[0].durability === 1562,
-		"dur=" + p.inventory[0].durability
+		`dur=${p.inventory[0].durability}`
 	);
 	const cobbleAfter = p.inventory.reduce(
 		(acc, s) => acc + (s && s.id === B.COBBLESTONE ? s.count : 0),
@@ -347,7 +346,7 @@ function connect() {
 		world.getBlock(bx, by + 1, bz) === B.AIR &&
 			!p.inventory.some((s) => s && s.id === B.DIAMOND_ORE)
 	);
-	check("creative: sin XP de mineral", p.xp === 0, "xp=" + p.xp);
+	check("creative: sin XP de mineral", p.xp === 0, `xp=${p.xp}`);
 
 	// 3) NOT_MINEABLE sigue protegido (agua) aunque sea creative
 	const wx2 = bx + 1,
@@ -417,7 +416,7 @@ function connect() {
 	check(
 		"se consume 1 del slot",
 		p.inventory[0].count === 4,
-		"count=" + p.inventory[0].count
+		`count=${p.inventory[0].count}`
 	);
 
 	// Colocar donde ya hay un bloque → rechazado
@@ -524,7 +523,7 @@ function connect() {
 	check(
 		"add_fuel: fija el combustible y consume una unidad",
 		f.fuelItem === B.PLANKS && p.inventory[0].count === 1,
-		"count=" + (p.inventory[0] && p.inventory[0].count)
+		`count=${p.inventory[0]?.count}`
 	);
 
 	p.inventory[0] = { id: B.COAL_ORE, count: 1 };
@@ -648,12 +647,12 @@ function connect() {
 	check(
 		"feed_mob: consume el trigo",
 		p.inventory[0].count === 2,
-		"count=" + p.inventory[0].count
+		`count=${p.inventory[0].count}`
 	);
 	check(
 		"feed_mob: el animal entra en modo amor",
 		cow.loveUntil > 0,
-		"love=" + cow.loveUntil
+		`love=${cow.loveUntil}`
 	);
 
 	// Comida equivocada → rechazado (no consume)
@@ -722,7 +721,7 @@ function connect() {
 	check(
 		"/reload pide a los clientes regenerar el atlas (textures_reload)",
 		ws.events("textures_reload").length >= 1,
-		ws.events("textures_reload").length + ""
+		`${ws.events("textures_reload").length}`
 	);
 }
 
@@ -750,12 +749,12 @@ function connect() {
 	check(
 		"attack_mob: espada de hierro hace 5 de daño",
 		zombie.health === 15,
-		"health=" + zombie.health
+		`health=${zombie.health}`
 	);
 	check(
 		"attack_mob: la espada se desgasta (-1)",
 		p.inventory[0].durability === 250,
-		"dur=" + p.inventory[0].durability
+		`dur=${p.inventory[0].durability}`
 	);
 
 	// Matar el mob → drops + XP + mob_death
@@ -771,7 +770,7 @@ function connect() {
 		zombie.alive === false
 	);
 	check("attack_mob: broadcast mob_death", ws.events("mob_death").length === 1);
-	check("attack_mob: XP por matar zombie (MOB_XP)", p.xp === 5, "xp=" + p.xp);
+	check("attack_mob: XP por matar zombie (MOB_XP)", p.xp === 5, `xp=${p.xp}`);
 
 	// Mob fuera de rango (>4) → rechazado
 	const lejos = new mobs.Mob(
@@ -802,7 +801,7 @@ function connect() {
 	check(
 		'init: el jugador trae nombre por defecto "Jugador-XXXX"',
 		typeof p.name === "string" && /^Jugador-[A-Za-z0-9]+$/.test(p.name),
-		"name=" + p.name
+		`name=${p.name}`
 	);
 
 	// set_name: cambia el nombre y lo propaga a los demás (player_rename)
@@ -832,7 +831,7 @@ function connect() {
 	check(
 		"set_name: nombre recortado a 16 caracteres",
 		p.name === "x".repeat(16),
-		"len=" + p.name.length
+		`len=${p.name.length}`
 	);
 
 	// Volver a un nombre normal para los checks siguientes
@@ -855,7 +854,7 @@ function connect() {
 			.some(
 				(m) => m.data.id === p.name && m.data.message === "hola desde el nombre"
 			),
-		"name=" + p.name
+		`name=${p.name}`
 	);
 
 	// init: otherPlayers incluye el nombre (con otro jugador conectado)
@@ -898,7 +897,7 @@ function connect() {
 	check(
 		"ajustes: renderDistance inicial = VIEW_DISTANCE_CHUNKS (6)",
 		p.renderDistance === 6,
-		"rd=" + p.renderDistance
+		`rd=${p.renderDistance}`
 	);
 
 	ws.sent.length = 0;
@@ -910,7 +909,7 @@ function connect() {
 	check(
 		"settings: envía chunks_add con los del radio (el cliente los vuelve a pedir)",
 		ws.events("chunks_add").length >= 1,
-		ws.events("chunks_add").length + ""
+		`${ws.events("chunks_add").length}`
 	);
 
 	ws.emit(
@@ -920,7 +919,7 @@ function connect() {
 	check(
 		"settings: recorta a 10 (máximo)",
 		p.renderDistance === 10,
-		"rd=" + p.renderDistance
+		`rd=${p.renderDistance}`
 	);
 
 	ws.emit(
@@ -930,7 +929,7 @@ function connect() {
 	check(
 		"settings: recorta a 2 (mínimo)",
 		p.renderDistance === 2,
-		"rd=" + p.renderDistance
+		`rd=${p.renderDistance}`
 	);
 
 	ws.emit(
@@ -945,12 +944,9 @@ function connect() {
 	check(
 		"worlds_list: el servidor responde una lista de mundos",
 		!!wl && Array.isArray(wl.data.worlds),
-		wl ? wl.data.worlds.length + " mundos" : "sin respuesta"
+		wl ? `${wl.data.worlds.length} mundos` : "sin respuesta"
 	);
 }
 
 world.setDiskLoader(null);
-console.log(
-	fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
-);
 process.exit(fails ? 1 : 0);

@@ -13,14 +13,14 @@
 // ============================================================
 
 // Distancias en BLOQUES desde el jugador al centro del chunk.
-export const LOD_ON_DIST = 56;   // al alejarse más de esto → LOD
-export const LOD_OFF_DIST = 44;  // al acercarse menos de esto → detalle completo
+export const LOD_ON_DIST = 56; // al alejarse más de esto → LOD
+export const LOD_OFF_DIST = 44; // al acercarse menos de esto → detalle completo
 
 // Devuelve el tier deseado: 'full' | 'lod'. `current` es el tier actual
 // (por defecto 'full': un chunk recién cargado empieza en detalle completo
 // y solo baja a LOD si ya está lejos). Con histéresis entre las dos
 // distancias para no alternar en la frontera.
-export function lodTierFor(dist, current = 'full') {
-  if (current === 'lod') return dist < LOD_OFF_DIST ? 'full' : 'lod';
-  return dist > LOD_ON_DIST ? 'lod' : 'full';
+export function lodTierFor(dist, current = "full") {
+	if (current === "lod") return dist < LOD_OFF_DIST ? "full" : "lod";
+	return dist > LOD_ON_DIST ? "lod" : "full";
 }

@@ -4,9 +4,9 @@
 // RED: HTTP + WebSocket, handler de conexión y bucle principal
 // ============================================================
 const express = require("express");
-const http = require("http");
+const http = require("node:http");
 const WebSocket = require("ws");
-const path = require("path");
+const path = require("node:path");
 const { v4: uuidv4 } = require("uuid");
 const constants = require("./constants.js");
 const {
@@ -103,6 +103,7 @@ function sendToClient(player, event, data) {
 function sanitizeName(raw) {
 	if (typeof raw !== "string") return null;
 	const name = raw
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: saneo intencional de caracteres de control (0x00-0x1f y DEL) del nombre
 		.replace(/[\u0000-\u001f\u007f]/g, "")
 		.trim()
 		.slice(0, 16);
@@ -126,7 +127,7 @@ function handleConnection(ws, req) {
 	const spawnX = spawn.x,
 		spawnY = spawn.y,
 		spawnZ = spawn.z;
-	const generated = world.ensureChunksAround(
+	const _generated = world.ensureChunksAround(
 		spawnX,
 		spawnZ,
 		VIEW_DISTANCE_CHUNKS
@@ -164,9 +165,6 @@ function handleConnection(ws, req) {
 		respawnPoint: null
 	};
 	state.players.set(playerId, player);
-	console.log(
-		`🟢 Jugador conectado: ${player.name} (${state.players.size} en línea)`
-	);
 
 	sendInit(player);
 
@@ -255,7 +253,7 @@ function handleConnection(ws, req) {
 			case "set_name": {
 				// Fase 7: cambiar el nombre visible (desde el menú/ajustes). Se sanea y
 				// se propaga a todos los clientes con player_rename (tags flotantes).
-				const name = sanitizeName(data && data.name);
+				const name = sanitizeName(data?.name);
 				if (!name) break;
 				p.name = name;
 				broadcast("player_rename", { id: playerId, name });
@@ -268,7 +266,7 @@ function handleConnection(ws, req) {
 				// y se reenvían TAMBIÉN los ya generados del radio (si antes se bajó,
 				// el cliente descartó los lejanos y los necesita de nuevo). El cliente
 				// decide qué construir/ocultar.
-				const rd = data && data.renderDistance;
+				const rd = data?.renderDistance;
 				if (typeof rd === "number" && Number.isFinite(rd)) {
 					const clamped = Math.min(10, Math.max(2, Math.round(rd)));
 					if (clamped !== p.renderDistance) {
@@ -793,11 +791,8 @@ function handleConnection(ws, req) {
 	});
 
 	ws.on("close", () => {
-		const leaver = state.players.get(playerId);
+		const _leaver = state.players.get(playerId);
 		state.players.delete(playerId);
-		console.log(
-			`🔴 Jugador desconectado: ${leaver ? leaver.name : playerId} (${state.players.size} en línea)`
-		);
 		broadcast("player_leave", { id: playerId });
 	});
 
@@ -853,12 +848,7 @@ function start() {
 
 	setInterval(mainLoop, TICK_MS);
 
-	server.listen(PORT, () => {
-		console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
-		console.log(
-			`🌍 Semilla: ${SEED}  |  📦 Chunks: ${state.chunks.size}  |  🧟 Mobs: ${state.mobs.length}`
-		);
-	});
+	server.listen(PORT, () => {});
 }
 
 // handleConnection se exporta para tests unitarios (tests/unit-red.js usa un

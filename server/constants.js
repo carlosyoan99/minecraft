@@ -3,7 +3,7 @@
 // ============================================================
 // CONFIGURACIÓN Y CONSTANTES COMPARTIDAS DEL SERVIDOR
 // ============================================================
-const path = require("path");
+const path = require("node:path");
 
 const PORT = process.env.PORT || 3000;
 const CHUNK_SIZE = 16;
@@ -110,37 +110,46 @@ const B = {
 	LAVA: 25 // no sólido como el agua: pozos de lava decorativos en superficie (Fase 7)
 };
 const I = {
-  STICK: 100,
-  COAL: 101,
-  IRON_INGOT: 102,
-  GOLD_INGOT: 103,
-  DIAMOND: 104,
-  REDSTONE: 105,
-  EMERALD: 106,
-  BEEF: 107,
-  PORKCHOP: 108,
-  CHICKEN: 109,
-  MUTTON: 110, // comida cruda (se cocina en el horno)
-  COOKED_BEEF: 111,
-  COOKED_PORKCHOP: 112,
-  COOKED_CHICKEN: 113,
-  COOKED_MUTTON: 114, // comida cocinada
-  WHEAT: 115,
-  CARROT: 116,
-  SEEDS: 117, // comida de cría de animales (se obtiene de la hierba)
-  RABBIT: 118,
-  COOKED_RABBIT: 119, // conejo crudo (Fase 5: nuevo pasivo) y asado
-  STRING: 120, // hilo: drop de la araña (Fase 5)
-  LEATHER: 132, // cuero: drop de la vaca y el conejo, material de la armadura de cuero (Fase 7)
-  // Armadura (Fase 7): casco, pechera, pantalones y botas × 3 materiales
-  LEATHER_HELMET: 220, LEATHER_CHESTPLATE: 221, LEATHER_LEGGINGS: 222, LEATHER_BOOTS: 223,
-  IRON_HELMET: 224, IRON_CHESTPLATE: 225, IRON_LEGGINGS: 226, IRON_BOOTS: 227,
-  DIAMOND_HELMET: 228, DIAMOND_CHESTPLATE: 229, DIAMOND_LEGGINGS: 230, DIAMOND_BOOTS: 231,
-  WOODEN_PICKAXE: 200,
-  STONE_PICKAXE: 201,
-  IRON_PICKAXE: 202,
-  GOLDEN_PICKAXE: 203,
-  DIAMOND_PICKAXE: 204,
+	STICK: 100,
+	COAL: 101,
+	IRON_INGOT: 102,
+	GOLD_INGOT: 103,
+	DIAMOND: 104,
+	REDSTONE: 105,
+	EMERALD: 106,
+	BEEF: 107,
+	PORKCHOP: 108,
+	CHICKEN: 109,
+	MUTTON: 110, // comida cruda (se cocina en el horno)
+	COOKED_BEEF: 111,
+	COOKED_PORKCHOP: 112,
+	COOKED_CHICKEN: 113,
+	COOKED_MUTTON: 114, // comida cocinada
+	WHEAT: 115,
+	CARROT: 116,
+	SEEDS: 117, // comida de cría de animales (se obtiene de la hierba)
+	RABBIT: 118,
+	COOKED_RABBIT: 119, // conejo crudo (Fase 5: nuevo pasivo) y asado
+	STRING: 120, // hilo: drop de la araña (Fase 5)
+	LEATHER: 132, // cuero: drop de la vaca y el conejo, material de la armadura de cuero (Fase 7)
+	// Armadura (Fase 7): casco, pechera, pantalones y botas × 3 materiales
+	LEATHER_HELMET: 220,
+	LEATHER_CHESTPLATE: 221,
+	LEATHER_LEGGINGS: 222,
+	LEATHER_BOOTS: 223,
+	IRON_HELMET: 224,
+	IRON_CHESTPLATE: 225,
+	IRON_LEGGINGS: 226,
+	IRON_BOOTS: 227,
+	DIAMOND_HELMET: 228,
+	DIAMOND_CHESTPLATE: 229,
+	DIAMOND_LEGGINGS: 230,
+	DIAMOND_BOOTS: 231,
+	WOODEN_PICKAXE: 200,
+	STONE_PICKAXE: 201,
+	IRON_PICKAXE: 202,
+	GOLDEN_PICKAXE: 203,
+	DIAMOND_PICKAXE: 204,
 	WOODEN_AXE: 205,
 	STONE_AXE: 206,
 	IRON_AXE: 207,
@@ -331,14 +340,32 @@ const isTool = (id) => !!TOOL_DURABILITY[id];
 // ============================================================
 const ARMOR_SLOTS = ["helmet", "chestplate", "leggings", "boots"];
 const ARMOR_DAMAGE_REDUCTION = {
-	[I.LEATHER_HELMET]: 0.04, [I.LEATHER_CHESTPLATE]: 0.08, [I.LEATHER_LEGGINGS]: 0.06, [I.LEATHER_BOOTS]: 0.03,
-	[I.IRON_HELMET]: 0.08, [I.IRON_CHESTPLATE]: 0.12, [I.IRON_LEGGINGS]: 0.1, [I.IRON_BOOTS]: 0.06,
-	[I.DIAMOND_HELMET]: 0.12, [I.DIAMOND_CHESTPLATE]: 0.16, [I.DIAMOND_LEGGINGS]: 0.14, [I.DIAMOND_BOOTS]: 0.08
+	[I.LEATHER_HELMET]: 0.04,
+	[I.LEATHER_CHESTPLATE]: 0.08,
+	[I.LEATHER_LEGGINGS]: 0.06,
+	[I.LEATHER_BOOTS]: 0.03,
+	[I.IRON_HELMET]: 0.08,
+	[I.IRON_CHESTPLATE]: 0.12,
+	[I.IRON_LEGGINGS]: 0.1,
+	[I.IRON_BOOTS]: 0.06,
+	[I.DIAMOND_HELMET]: 0.12,
+	[I.DIAMOND_CHESTPLATE]: 0.16,
+	[I.DIAMOND_LEGGINGS]: 0.14,
+	[I.DIAMOND_BOOTS]: 0.08
 };
 const ARMOR_DURABILITY = {
-	[I.LEATHER_HELMET]: 55, [I.LEATHER_CHESTPLATE]: 80, [I.LEATHER_LEGGINGS]: 75, [I.LEATHER_BOOTS]: 65,
-	[I.IRON_HELMET]: 165, [I.IRON_CHESTPLATE]: 240, [I.IRON_LEGGINGS]: 225, [I.IRON_BOOTS]: 195,
-	[I.DIAMOND_HELMET]: 363, [I.DIAMOND_CHESTPLATE]: 528, [I.DIAMOND_LEGGINGS]: 495, [I.DIAMOND_BOOTS]: 429
+	[I.LEATHER_HELMET]: 55,
+	[I.LEATHER_CHESTPLATE]: 80,
+	[I.LEATHER_LEGGINGS]: 75,
+	[I.LEATHER_BOOTS]: 65,
+	[I.IRON_HELMET]: 165,
+	[I.IRON_CHESTPLATE]: 240,
+	[I.IRON_LEGGINGS]: 225,
+	[I.IRON_BOOTS]: 195,
+	[I.DIAMOND_HELMET]: 363,
+	[I.DIAMOND_CHESTPLATE]: 528,
+	[I.DIAMOND_LEGGINGS]: 495,
+	[I.DIAMOND_BOOTS]: 429
 };
 const isArmor = (id) => !!ARMOR_DAMAGE_REDUCTION[id];
 
@@ -473,10 +500,11 @@ module.exports = {
 	isAxe,
 	isShovel,
 	isSolidBlock,
-  BREED_FOOD,
-  MOB_COLORS,
-  HOSTILE,
-  BURNS_IN_SUN,	TOOL_DURABILITY,
+	BREED_FOOD,
+	MOB_COLORS,
+	HOSTILE,
+	BURNS_IN_SUN,
+	TOOL_DURABILITY,
 	isTool,
 	SWORD_DAMAGE,
 	ARMOR_SLOTS,
@@ -484,13 +512,13 @@ module.exports = {
 	ARMOR_DURABILITY,
 	isArmor,
 	applyArmorDamageReduction,
-  XP_PER_LEVEL,
-  MAX_LEVEL_HEALTH_BONUS,
-  MOB_XP,
-  ORE_XP,
-  BLOCK_HARDNESS,
-  TOOL_TIER_SPEED,
-  miningSpeed,
-  breakSeconds,
-  canHarvest
+	XP_PER_LEVEL,
+	MAX_LEVEL_HEALTH_BONUS,
+	MOB_XP,
+	ORE_XP,
+	BLOCK_HARDNESS,
+	TOOL_TIER_SPEED,
+	miningSpeed,
+	breakSeconds,
+	canHarvest
 };

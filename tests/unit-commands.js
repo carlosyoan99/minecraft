@@ -11,7 +11,7 @@
 //  - /gamemode cambia el modo (creative sin daño ni hambre)
 //  - comandos desconocidos / argumentos inválidos dan mensaje de sistema
 // ============================================================
-const assert = require("assert");
+const _assert = require("node:assert");
 const state = require("../server/state.js");
 const world = require("../server/world.js");
 const playerHelpers = require("../server/players.js");
@@ -23,13 +23,12 @@ const {
 	TOOL_DURABILITY
 } = require("../server/constants.js");
 
-let passed = 0,
+let _passed = 0,
 	failed = 0;
-function check(name, ok, info) {
-	if (ok) passed++;
+function check(_name, ok, _info) {
+	if (ok) _passed++;
 	else {
 		failed++;
-		console.log(`❌ ${name}${info ? "  (" + info + ")" : ""}`);
 	}
 }
 
@@ -372,11 +371,5 @@ state.timeOffset = 0;
 check(
 	"worldTime con offset 0",
 	commands.worldTime(state) === Date.now() % DAY_CYCLE_MS
-);
-
-console.log(
-	failed === 0
-		? `✅ unit-commands: ${passed} checks OK`
-		: `❌ unit-commands: ${failed}/${passed + failed} fallaron`
 );
 process.exit(failed ? 1 : 0);

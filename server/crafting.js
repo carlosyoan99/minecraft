@@ -3,8 +3,8 @@
 // ============================================================
 // CRAFTEO (recetas por patrón 3x3) Y HORNOS
 // ============================================================
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const state = require("./state.js");
 
 const { furnaces } = state;
@@ -41,8 +41,7 @@ function isValidFurnaceRecipes(f) {
 		return "recetas_horno.json no es un objeto";
 	for (const [k, r] of Object.entries(f)) {
 		if (
-			!r ||
-			!r.result ||
+			!r?.result ||
 			typeof r.result.id !== "number" ||
 			typeof r.time !== "number"
 		) {
@@ -110,15 +109,11 @@ function watchRecipeFiles(onChange) {
 			path.dirname(recipeFile),
 			path.dirname(furnaceRecipeFile)
 		])) {
-			fs.watch(dir, (ev, filename) => {
+			fs.watch(dir, (_ev, filename) => {
 				if (filename && files.has(filename)) reload();
 			});
 		}
-	} catch (e) {
-		console.warn(
-			`⚠️  No se pudo vigilar las recetas (hot-reload desactivado): ${e.message}`
-		);
-	}
+	} catch (_e) {}
 }
 
 // grid: array de 9 celdas, cada una null o { id, count }
@@ -192,7 +187,7 @@ function isCookable(itemId) {
 }
 
 function tickFurnaces() {
-	for (const [key, f] of furnaces) {
+	for (const [_key, f] of furnaces) {
 		const recipe = f.inputItem ? furnaceRecipes[String(f.inputItem.id)] : null;
 		const canCook =
 			recipe && f.inputItem.count > 0 && (f.fuelTicksLeft > 0 || f.fuelItem);

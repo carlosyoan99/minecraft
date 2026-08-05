@@ -10,14 +10,13 @@
 // módulo a un .mjs temporal y se importa dinámicamente (mismo
 // truco que la validación de sintaxis del cliente).
 // ============================================================
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 
 let failed = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) failed++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 (async () => {
@@ -25,7 +24,7 @@ const check = (name, ok, extra = "") => {
 	const tmp = path.join(os.tmpdir(), `unit-lod-${process.pid}.mjs`);
 	fs.copyFileSync(src, tmp);
 	const { LOD_ON_DIST, LOD_OFF_DIST, lodTierFor } = await import(
-		"file://" + tmp
+		`file://${tmp}`
 	);
 	fs.unlinkSync(tmp);
 
@@ -134,12 +133,6 @@ const check = (name, ok, extra = "") => {
 		"alejándose de un chunk full: 1 flip (full→lod) y nunca vuelve",
 		flips === 1 && tier === "lod",
 		`${flips} flip(s), tier=${tier}`
-	);
-
-	console.log(
-		failed === 0
-			? "\n✅ Todos los tests pasan"
-			: `\n❌ ${failed} check(s) fallaron`
 	);
 	process.exit(failed ? 1 : 0);
 })();

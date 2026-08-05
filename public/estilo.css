@@ -642,7 +642,7 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	right: 3px;
 	font-size: 10px;
 	font-weight: bold;
-}/* Fase 7: columna de armadura equipada (4 slots, clic para quitar) */
+} /* Fase 7: columna de armadura equipada (4 slots, clic para quitar) */
 .armor-col {
 	display: flex;
 	flex-direction: column;
@@ -679,7 +679,7 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	border-radius: 2px;
 }
 .craft-layout,
-  .furnace-layout {
+.furnace-layout {
 	display: flex;
 	align-items: center;
 	gap: 10px;

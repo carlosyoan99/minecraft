@@ -34,7 +34,8 @@ function addToInventory(player, itemId, count = 1, durability) {
 		player.inventory[empty] = {
 			id: itemId,
 			count: 1,
-			durability: durability ?? TOOL_DURABILITY[itemId] ?? ARMOR_DURABILITY[itemId]
+			durability:
+				durability ?? TOOL_DURABILITY[itemId] ?? ARMOR_DURABILITY[itemId]
 		};
 		return true;
 	}

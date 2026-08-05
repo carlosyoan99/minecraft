@@ -38,7 +38,8 @@ function lootSlots() {
 	const slots = new Array(CHEST_SLOTS).fill(null);
 	const n = 1 + Math.floor(Math.random() * 3); // 1..3 stacks
 	for (let i = 0; i < n; i++) {
-		const [id, min, max] = LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)];
+		const [id, min, max] =
+			LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)];
 		slots[i] = { id, count: min + Math.floor(Math.random() * (max - min + 1)) };
 	}
 	return slots;

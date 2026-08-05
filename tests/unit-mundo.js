@@ -30,9 +30,8 @@ function idx(x, y, z) {
 world.setDiskLoader(() => null);
 
 let failed = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) failed++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // Superficie efectiva de una columna: en un lago el terreno se hunde hasta
@@ -283,10 +282,4 @@ check(
 
 // Limpiar el hook para no afectar a otros tests del proceso.
 world.setDiskLoader(null);
-
-console.log(
-	failed === 0
-		? "\n✅ Todos los tests pasan"
-		: `\n❌ ${failed} check(s) fallaron`
-);
 process.exit(failed ? 1 : 0);

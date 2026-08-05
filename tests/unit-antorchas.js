@@ -21,18 +21,17 @@ const state = require("../server/state.js");
 const world = require("../server/world.js");
 const crafting = require("../server/crafting.js");
 const { B, I, isSolidBlock } = require("../server/constants.js");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 
 // Forzar generación fresca (sin leer el world/ real del proyecto).
 world.setDiskLoader(() => null);
 crafting.loadRecipes(); // las tablas de recetas se leen del disco (como unit-red.js)
 
 let fails = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // ============================================================
@@ -192,7 +191,7 @@ world.setBlock(px, py - 1, pz, B.AIR);
 	check(
 		"place consume 1 del slot (4 → 3)",
 		p.inventory[0].count === 3,
-		"count=" + p.inventory[0].count
+		`count=${p.inventory[0].count}`
 	);
 	world.setBlock(bx, by, bz, B.AIR);
 	world.setBlock(bx, by - 1, bz, B.AIR);
@@ -220,9 +219,7 @@ check(
 	check(
 		"receta de la antorcha: carbón + palo → 4 antorchas",
 		recipe && recipe.result.id === B.TORCH && recipe.result.count === 4,
-		recipe
-			? "id=" + recipe.result.id + " x" + recipe.result.count
-			: "sin receta"
+		recipe ? `id=${recipe.result.id} x${recipe.result.count}` : "sin receta"
 	);
 }
 
@@ -233,7 +230,7 @@ check(
 	const src = path.join(__dirname, "..", "public", "lighting.js");
 	const tmp = path.join(os.tmpdir(), `unit-luz-${process.pid}.mjs`);
 	fs.copyFileSync(src, tmp);
-	const luz = await import("file://" + tmp);
+	const luz = await import(`file://${tmp}`);
 	fs.unlinkSync(tmp);
 	const { isLightPassable, computeChunkLight, LIGHT_RADIUS, LIGHT_ATTEN } = luz;
 
@@ -267,21 +264,21 @@ check(
 	check(
 		"luz: la celda de la antorcha está a 1.0",
 		Math.abs(out[(30 * CS + 8) * CS + 8] - 1) < 1e-6,
-		"v=" + out[(30 * CS + 8) * CS + 8].toFixed(4)
+		`v=${out[(30 * CS + 8) * CS + 8].toFixed(4)}`
 	);
 
 	// A 1 bloque de distancia: atenuada pero presente
 	check(
 		"luz: 1 bloque adyacente atenuada (≈0.8)",
 		Math.abs(lightAt(9, 30, 8) - LIGHT_ATTEN) < 0.02,
-		"v=" + lightAt(9, 30, 8).toFixed(4)
+		`v=${lightAt(9, 30, 8).toFixed(4)}`
 	);
 
 	// A LIGHT_RADIUS bloques: llega un resto mínimo (el alcance)
 	check(
 		"luz: a LIGHT_RADIUS bloques llega un resto > 0",
 		lightAt(8 + LIGHT_RADIUS, 30, 8) > 0,
-		"v=" + lightAt(8 + LIGHT_RADIUS, 30, 8).toFixed(4)
+		`v=${lightAt(8 + LIGHT_RADIUS, 30, 8).toFixed(4)}`
 	);
 
 	// Más allá del radio: cero
@@ -315,7 +312,7 @@ check(
 	check(
 		"luz: una pared sólida bloquea la luz",
 		out2[idx2] === 0,
-		"v=" + out2[idx2].toFixed(4)
+		`v=${out2[idx2].toFixed(4)}`
 	);
 
 	// Una antorcha FUERA del chunk no hace trabajo en él (pero sí la caja de radio)
@@ -326,10 +323,6 @@ check(
 	check(
 		"luz: antorcha lejana se ignora (mismo resultado)",
 		out3[(30 * CS + 8) * CS + 8] === 1
-	);
-
-	console.log(
-		fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
 	);
 	process.exit(fails ? 1 : 0);
 })();

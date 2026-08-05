@@ -10,14 +10,13 @@
 // separadas, categoría desconocida → dispose, y setOrReuseAttribute
 // (reutiliza el array cuando el tamaño coincide).
 // ============================================================
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 
 let failed = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) failed++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // Geometría falsa: registra attributes y dispose.
@@ -47,7 +46,7 @@ function FakeAttr(data, itemSize) {
 	const tmp = path.join(os.tmpdir(), `unit-geopool-${process.pid}.mjs`);
 	fs.copyFileSync(src, tmp);
 	const { createGeometryPool, setOrReuseAttribute } = await import(
-		"file://" + tmp
+		`file://${tmp}`
 	);
 	fs.unlinkSync(tmp);
 
@@ -83,10 +82,10 @@ function FakeAttr(data, itemSize) {
 
 	// --- 2) Tope del pool: el exceso se libera con dispose ---
 	{
-		let made = 0;
+		let _made = 0;
 		const pool = createGeometryPool({
 			makeGeometry: () => {
-				made++;
+				_made++;
 				return makeFakeGeometry();
 			},
 			maxPooled: 2
@@ -208,11 +207,5 @@ function FakeAttr(data, itemSize) {
 			r && g.getAttribute("normal").array.length === 3
 		);
 	}
-
-	console.log(
-		failed === 0
-			? "\n✅ Todos los tests pasan"
-			: `\n❌ ${failed} check(s) fallaron`
-	);
 	process.exit(failed ? 1 : 0);
 })();

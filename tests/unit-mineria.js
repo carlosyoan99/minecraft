@@ -22,9 +22,8 @@ const {
 
 world.setDiskLoader(() => null);
 let failed = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) failed++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 function mkPlayer(extra = {}) {
@@ -45,14 +44,14 @@ function mkPlayer(extra = {}) {
 		...extra
 	};
 }
-const noopSend = () => [];
-const sendFnCollect = (arr) => (pl, ev, data) => arr.push({ ev, data });
+const _noopSend = () => [];
+const sendFnCollect = (arr) => (_pl, ev, data) => arr.push({ ev, data });
 
 // --- 1) breakSeconds: dureza y velocidad por herramienta ---
 check(
 	"mano sobre piedra = dureza (1.8s)",
 	Math.abs(breakSeconds(0, B.STONE) - BLOCK_HARDNESS[B.STONE]) < 1e-9,
-	breakSeconds(0, B.STONE) + "s"
+	`${breakSeconds(0, B.STONE)}s`
 );
 check(
 	"pico de madera sobre piedra = dureza/2",
@@ -135,7 +134,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	check(
 		"el pico se desgastó (-1)",
 		p.inventory[0].durability === 250,
-		"dur=" + p.inventory[0].durability
+		`dur=${p.inventory[0].durability}`
 	);
 	const stages = sends
 		.filter((s) => s.ev === "block_break_progress")
@@ -143,7 +142,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	check(
 		"se envían varias fases de grieta",
 		stages.length >= 10,
-		stages.length + " eventos"
+		`${stages.length} eventos`
 	);
 	check(
 		"las fases van de 0 a 9 sin decrecer",
@@ -172,7 +171,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 			world.getBlock(10, 5, 5) === B.AIR &&
 			p.inventory.some((s) => s && s.id === B.COAL_ORE) &&
 			p.xp === 1,
-		"xp=" + p.xp
+		`xp=${p.xp}`
 	);
 }
 
@@ -250,7 +249,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	check(
 		"creative: la herramienta NO se desgasta",
 		p.inventory[0].durability === 1562,
-		"dur=" + p.inventory[0].durability
+		`dur=${p.inventory[0].durability}`
 	);
 
 	// tickMining con una sesión activa y el jugador en creative → done al momento
@@ -292,7 +291,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	check(
 		"la herramienta se desgasta igualmente",
 		p.inventory[0].durability === 59,
-		"dur=" + p.inventory[0].durability
+		`dur=${p.inventory[0].durability}`
 	);
 }
 {
@@ -317,9 +316,4 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 }
 
 world.setDiskLoader(null);
-console.log(
-	failed === 0
-		? "\n✅ Todos los tests pasan"
-		: `\n❌ ${failed} check(s) fallaron`
-);
 process.exit(failed ? 1 : 0);

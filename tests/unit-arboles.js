@@ -10,13 +10,12 @@
 const world = require("../server/world.js");
 const { CHUNK_SIZE, WORLD_HEIGHT, B } = require("../server/constants.js");
 
-let passed = 0,
+let _passed = 0,
 	failed = 0;
-function check(name, ok, info) {
-	if (ok) passed++;
+function check(_name, ok, _info) {
+	if (ok) _passed++;
 	else {
 		failed++;
-		console.log(`❌ ${name}${info ? "  (" + info + ")" : ""}`);
 	}
 }
 
@@ -88,10 +87,4 @@ try {
 } finally {
 	Math.random = realRandom;
 }
-
-console.log(
-	failed === 0
-		? `✅ unit-arboles: ${passed} checks OK`
-		: `❌ unit-arboles: ${failed}/${passed + failed} fallaron`
-);
 process.exit(failed ? 1 : 0);

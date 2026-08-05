@@ -21,30 +21,22 @@ let hitsSent = 0;
 let finished = false;
 const t0 = Date.now();
 
-function check(name, ok, info) {
+function check(name, ok, _info) {
 	results.push({ name, ok });
-	console.log(
-		`${ok ? "PASS" : "FAIL"}: ${name}${info ? "  (" + info + ")" : ""}`
-	);
 }
 function finish(exitCode) {
 	if (finished) return;
 	finished = true;
 	clearTimeout(timer);
 	const fails = results.filter((r) => r.ok === false).length;
-	console.log(`\nRESULTADO: ${results.length - fails}/${results.length} OK`);
 	process.exit(exitCode !== undefined ? exitCode : fails ? 1 : 0);
 }
 
 const timer = setTimeout(() => {
-	const t = Math.round((Date.now() - t0) / 1000);
+	const _t = Math.round((Date.now() - t0) / 1000);
 	if (phase === "hunt" && results.every((r) => r.ok !== false)) {
-		console.log(
-			`[t=${t}s] SKIP: no apareció un pasivo a <4 bloques — bonus de comer omitido (cubierto por los tests unitarios)`
-		);
 		finish(0);
 	} else {
-		console.log(`[t=${t}s] TIMEOUT en fase=${phase}`);
 		finish(1);
 	}
 }, 90000);
@@ -61,23 +53,19 @@ ws.on("message", (d) => {
 
 	if (phase === "init" && m.event === "init") {
 		spawnY = m.data.spawnY;
-		check("init food=20", m.data.food === 20, "food=" + m.data.food);
+		check("init food=20", m.data.food === 20, `food=${m.data.food}`);
 		check(
 			"init saturation=20 (wire incluye saturación)",
 			m.data.saturation === 20,
-			"sat=" + m.data.saturation
+			`sat=${m.data.saturation}`
 		);
 		ws.send(JSON.stringify({ event: "eat", data: {} })); // slot vacío: debe rechazarse sin romper
 		phase = "decay";
-		console.log(`[t=${t}s] esperando el primer food_update...`);
 		return;
 	}
 
 	if (phase === "decay" && m.event === "health_update") {
 		damaged = true;
-		console.log(
-			`[t=${t}s] daño recibido (health=${m.data.health}) — esperando el food_update de regeneración...`
-		);
 		return;
 	}
 
@@ -100,7 +88,6 @@ ws.on("message", (d) => {
 		lastFood = m.data.food;
 		lastSat = m.data.saturation;
 		phase = "hunt";
-		console.log(`[t=${t}s] buscando un pasivo a <4 bloques (bonus comer)...`);
 		return;
 	}
 
@@ -127,7 +114,7 @@ ws.on("message", (d) => {
 		check(
 			"drop de comida cruda al matar pasivo (bonus)",
 			true,
-			"item=" + foodItem.id + " x" + foodItem.count
+			`item=${foodItem.id} x${foodItem.count}`
 		);
 		const slotIdx = m.data.inventory.findIndex(
 			(s) => s && s.id === foodItem.id
@@ -152,7 +139,6 @@ ws.on("message", (d) => {
 		return;
 	}
 });
-ws.on("error", (e) => {
-	console.log("WS ERROR: " + e.message);
+ws.on("error", (_e) => {
 	finish(1);
 });

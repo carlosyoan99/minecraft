@@ -13,7 +13,7 @@
 //   DENTRO de la misma llamada, así que nunca se observa health 0).
 // - Tiempos en ms (misma unidad que los acumuladores de tickPlayer).
 // ============================================================
-const path = require("path");
+const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const playersMod = require(path.join(ROOT, "server", "players.js"));
 const mobsMod = require(path.join(ROOT, "server", "mobs.js"));
@@ -44,16 +44,13 @@ const mk = (o = {}) => ({
 });
 
 let fails = 0;
-const check = (n, ok, extra) => {
+const check = (_n, ok, _extra) => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${n}${extra ? " — " + extra : ""}`);
 };
 const fmt = (x) =>
 	x === null
 		? "nunca"
 		: `${(x / 1000).toFixed(0)}s (~${Math.round(x / 60000)} min)`;
-
-console.log("========== PARTE 1: BALANCE DEL HAMBRE ==========\n");
 
 // A) Parado, sin daño ni comida: ¿cuándo baja el hambre y cuándo muere?
 {
@@ -72,9 +69,6 @@ console.log("========== PARTE 1: BALANCE DEL HAMBRE ==========\n");
 			break;
 		} // respawn = muerte
 	}
-	console.log(
-		`A) Parado: saturación agotada ${fmt(sat0)}, comida baja ${fmt(foodBaja)}, muerte por inanición ${fmt(muere)}`
-	);
 	check(
 		"A: la comida aguanta >=8 min parado antes de bajar (amortiguador generoso)",
 		foodBaja >= 480000,
@@ -103,9 +97,6 @@ console.log("========== PARTE 1: BALANCE DEL HAMBRE ==========\n");
 			break;
 		}
 	}
-	console.log(
-		`B) Moviéndose: comida baja ${fmt(foodBaja)}, muerte por inanición ${fmt(muere)}`
-	);
 	check(
 		"B: en movimiento la comida aguanta >=4 min (exige comer, no castiga)",
 		foodBaja >= 240000,
@@ -126,16 +117,10 @@ console.log("========== PARTE 1: BALANCE DEL HAMBRE ==========\n");
 		playersMod.tickPlayer(p, TICK);
 		t += TICK;
 	}
-	console.log(
-		`C) Regenerar tras pelea breve (health 16): sana a ${p.health} en ${(t / 1000).toFixed(0)}s, food ${20}→${p.food}`
-	);
 	check(
 		"C: la regen agota ~3 HP de reserva (16→19) y se detiene al llegar food<18 — fiel a Minecraft",
 		p.health === 19 && p.food === 17 && t >= 4000 && t <= 10000,
 		`health=${p.health} food=${p.food} t=${t / 1000}s`
-	);
-	console.log(
-		"   (para curarse del todo hay que comer: la reserva de regen no llega a sanar el último punto)"
 	);
 }
 
@@ -159,9 +144,6 @@ console.log("========== PARTE 1: BALANCE DEL HAMBRE ==========\n");
 			break;
 		} // aquí el golpe directo sí deja health 0
 	}
-	console.log(
-		`D) Pelea sostenida (2 de daño/2s): reserva de regen agotada ${fmt(regenStop)}, muerte ${fmt(muere)}`
-	);
 	check(
 		"D: la reserva de regen aguanta solo ~6s de pelea (no se puede tanquear)",
 		regenStop >= 4000 && regenStop <= 8000,
@@ -178,11 +160,11 @@ console.log("========== PARTE 1: BALANCE DEL HAMBRE ==========\n");
 {
 	const p = mk({ food: 5, saturation: 3 });
 	playersMod.eatFood(p, 111); // carne de vaca cocinada: +8 food, +12.8 sat
-	check("E: comer cocinada (111) +8 food", p.food === 13, "food=" + p.food);
+	check("E: comer cocinada (111) +8 food", p.food === 13, `food=${p.food}`);
 	check(
 		"E: comer cocinada +12.8 sat",
 		p.saturation === 15.8,
-		"sat=" + p.saturation
+		`sat=${p.saturation}`
 	);
 	const q = mk({ food: 5, saturation: 3 });
 	playersMod.eatFood(q, 107); // cruda: +3 food, +1.8 sat
@@ -190,9 +172,6 @@ console.log("========== PARTE 1: BALANCE DEL HAMBRE ==========\n");
 		"E: la cruda restaura menos (+3/+1.8) — incentiva el horno",
 		q.food === 8 && q.saturation === 4.8,
 		`food=${q.food} sat=${q.saturation}`
-	);
-	console.log(
-		"   (una cocinada (+8) cubre ~40% de la barra: ~8 min parado / ~4 min moviéndose)"
 	);
 }
 
@@ -220,8 +199,6 @@ console.log("========== PARTE 1: BALANCE DEL HAMBRE ==========\n");
 		`health=${p.health} food=${p.food} sat=${p.saturation}`
 	);
 }
-
-console.log("\n========== PARTE 2: RENDIMIENTO DEL TICK DE MOBS ==========\n");
 state.players.clear();
 state.players.set("fp1", {
 	id: "fp1",
@@ -268,29 +245,26 @@ function bench(n, isNight) {
 	for (let i = 0; i < T; i++) for (const m of state.mobs) m.tick(isNight);
 	const ms = Number(process.hrtime.bigint() - t0) / 1e6;
 	const perTick = ms / T;
-	const perMob = (ms / T / n) * 1000;
+	const _perMob = (ms / T / n) * 1000;
 	const snap = state.mobs.map(mobsMod.mobSnapshot);
 	const t1 = process.hrtime.bigint();
-	const json = JSON.stringify({ event: "mobs_update", data: snap });
-	const jsonMs = Number(process.hrtime.bigint() - t1) / 1e6;
-	console.log(
-		`${n} mobs (${isNight ? "noche" : "día"}): ${perTick.toFixed(3)} ms/tick (${perMob.toFixed(2)} µs/mob), mobs_update ${(json.length / 1024).toFixed(1)} KB en ${jsonMs.toFixed(2)} ms`
-	);
+	const _json = JSON.stringify({ event: "mobs_update", data: snap });
+	const _jsonMs = Number(process.hrtime.bigint() - t1) / 1e6;
 	return perTick;
 }
 const t30 = bench(30, false);
-const t100 = bench(100, false);
+const _t100 = bench(100, false);
 const t300 = bench(300, false);
 const t300n = bench(300, true);
 check(
 	"Perf: 30 mobs (típico) < 0.5 ms/tick (presupuesto de 50ms)",
 	t30 < 0.5,
-	t30.toFixed(3) + "ms"
+	`${t30.toFixed(3)}ms`
 );
 check(
 	"Perf: 300 mobs (cría intensiva) < 2 ms/tick",
 	t300 < 2,
-	t300.toFixed(3) + "ms"
+	`${t300.toFixed(3)}ms`
 );
 check(
 	"Perf: escala lineal (300 <= ~12x de 30)",
@@ -300,10 +274,8 @@ check(
 check(
 	"Perf: de noche (hostiles persiguiendo) no degrada",
 	t300n < 2,
-	t300n.toFixed(3) + "ms"
+	`${t300n.toFixed(3)}ms`
 );
-
-console.log("\n========== PARTE 3: PERSISTENCIA DE LA CRÍA ==========\n");
 {
 	const restored = mobsMod.restoreMobs([
 		{
@@ -331,8 +303,4 @@ console.log("\n========== PARTE 3: PERSISTENCIA DE LA CRÍA ==========\n");
 		mobsMod.mobSnapshot(restored).isBaby === true
 	);
 }
-
-console.log(
-	`\n${fails === 0 ? "✅ AUDITORÍA: todos los checks pasan" : `❌ ${fails} checks fallaron`}`
-);
 process.exit(fails ? 1 : 0);

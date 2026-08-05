@@ -7,8 +7,8 @@
 // puede alcanzar. Carga recetas.json y recetas_horno.json y
 // valida cada receta contra el universo de IDs de B/I.
 // ============================================================
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const crafting = require(path.join(ROOT, "server", "crafting.js"));
 const { B, I, FOOD_VALUES, isFood, FUEL_ITEMS, canHarvest } = require(
@@ -21,9 +21,8 @@ crafting.loadRecipes();
 const KNOWN = new Set([...Object.values(B), ...Object.values(I)]);
 
 let fails = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // ============================================================
@@ -35,7 +34,7 @@ const recetas = JSON.parse(
 check(
 	"hay recetas de crafteo",
 	Object.keys(recetas).length > 0,
-	Object.keys(recetas).length + " recetas"
+	`${Object.keys(recetas).length} recetas`
 );
 
 let shapeOk = true,
@@ -49,11 +48,8 @@ for (const r of Object.values(recetas)) {
 	// 1) Shape: array no vacío de strings de igual longitud
 	const shape = r.shape;
 	if (!Array.isArray(shape) || shape.length === 0) shapeOk = false;
-	const len = shape && shape[0] ? shape[0].length : 0;
-	if (
-		shape &&
-		shape.some((row) => typeof row !== "string" || row.length !== len)
-	)
+	const len = shape?.[0] ? shape[0].length : 0;
+	if (shape?.some((row) => typeof row !== "string" || row.length !== len))
 		shapeOk = false;
 
 	// 2) Ingredientes: todos los caracteres del shape tienen mapeo y el ID existe
@@ -99,16 +95,16 @@ check(
 
 // 5) Regresión conocida: hilo_a_lana usa hilo (120), no conejo (118)
 {
-	const r = recetas["hilo_a_lana"];
+	const r = recetas.hilo_a_lana;
 	check("hilo_a_lana existe", !!r);
 	check(
 		"hilo_a_lana: ingrediente es hilo (120) — regresión Fase 5",
-		r && r.ingredients && r.ingredients["#"] === I.STRING,
+		r?.ingredients && r.ingredients["#"] === I.STRING,
 		r && JSON.stringify(r.ingredients)
 	);
 	check(
 		"hilo_a_lana: resultado es lana (18)",
-		r && r.result && r.result.id === B.WOOL
+		r?.result && r.result.id === B.WOOL
 	);
 }
 
@@ -139,7 +135,7 @@ const horno = JSON.parse(
 check(
 	"hay recetas de horno",
 	Object.keys(horno).length > 0,
-	Object.keys(horno).length + " recetas"
+	`${Object.keys(horno).length} recetas`
 );
 
 let hornoOk = true,
@@ -152,7 +148,7 @@ for (const [inp, r] of Object.entries(horno)) {
 		hornoResultOk = false;
 	if (!(r.time > 0)) hornoTimeOk = false;
 	// La salida debe ser distinta de la entrada (nunca una receta identidad)
-	if (Number(inp) === (r.result && r.result.id)) hornoOk = false;
+	if (Number(inp) === r.result?.id) hornoOk = false;
 }
 check("todas las entradas de horno son IDs existentes y no identidad", hornoOk);
 check(
@@ -224,7 +220,7 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 	check(
 		"existen recetas para las 20 herramientas (200-219)",
 		tools.length === 20,
-		tools.length + " recetas"
+		`${tools.length} recetas`
 	);
 
 	// Cada herramienta usa palos (100) + el material de su nivel.
@@ -302,8 +298,4 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 			canHarvest(202, B.DIAMOND_ORE)
 	);
 }
-
-console.log(
-	fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
-);
 process.exit(fails ? 1 : 0);

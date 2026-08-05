@@ -20,9 +20,8 @@ const { B, I } = require("../server/constants.js");
 world.setDiskLoader(() => null);
 
 let fails = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // --- ws fake: captura mensajes salientes y permite inyectar entrantes ---
@@ -121,7 +120,7 @@ const { ws, player: p } = connect();
 	check(
 		"chest_open envía chest_state con 27 slots",
 		st && Array.isArray(st.data.slots) && st.data.slots.length === 27,
-		st ? st.data.slots.length + "" : "sin estado"
+		st ? `${st.data.slots.length}` : "sin estado"
 	);
 	check("chest_open registra el cofre abierto (clave)", p.openChest === key);
 
@@ -192,7 +191,7 @@ const { ws, player: p } = connect();
 	check(
 		"put apila items iguales en el cofre (5+2=7)",
 		c[0].count === 7,
-		"count=" + c[0].count
+		`count=${c[0].count}`
 	);
 
 	// put de herramienta → conserva su durabilidad (no se apila)
@@ -234,7 +233,7 @@ const { ws, player: p } = connect();
 	);
 
 	// --- take: recuperar items (inventario lleno → rechazado) ---
-	c.forEach((s, i) => {
+	c.forEach((_s, i) => {
 		c[i] = null;
 	}); // vaciar para no llenar el inventario del jugador
 	c[0] = { id: I.DIAMOND, count: 3 };
@@ -363,7 +362,7 @@ const { ws, player: p } = connect();
 	check(
 		"receta del cofre: 8 tablones alrededor → cofre",
 		recipe && recipe.result.id === B.CHEST,
-		recipe ? "id=" + recipe.result.id : "sin receta"
+		recipe ? `id=${recipe.result.id}` : "sin receta"
 	);
 }
 
@@ -398,7 +397,4 @@ const { ws, player: p } = connect();
 }
 
 world.setDiskLoader(null);
-console.log(
-	fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
-);
 process.exit(fails ? 1 : 0);

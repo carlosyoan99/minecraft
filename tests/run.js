@@ -8,9 +8,9 @@
 //   node tests/run.js --unit            → solo unitarios
 //   WS_URL=ws://host:puerto node tests/run.js --e2e  → solo E2E contra ese servidor
 // ============================================================
-const { spawnSync } = require("child_process");
-const http = require("http");
-const path = require("path");
+const { spawnSync } = require("node:child_process");
+const http = require("node:http");
+const path = require("node:path");
 
 const UNIT = [
 	"unit-hambre.js",
@@ -53,7 +53,6 @@ function run(file) {
 		stdio: "inherit"
 	});
 	if (r.status !== 0) failed++;
-	console.log(r.status === 0 ? `✅ ${file}` : `❌ ${file}`);
 	return r.status === 0;
 }
 
@@ -76,26 +75,15 @@ function serverUp(wsUrl) {
 
 (async () => {
 	if (!args.includes("--e2e")) {
-		console.log("=== Tests unitarios ===");
 		for (const f of UNIT) run(f);
 	}
 
 	if (!args.includes("--unit")) {
-		console.log("\n=== E2E (requieren servidor) ===");
 		const wsUrl = process.env.WS_URL || "ws://localhost:3998";
 		if (await serverUp(wsUrl)) {
 			for (const f of E2E) run(f);
 		} else {
-			console.log(
-				`⏭️  Omitidos: no hay servidor en ${wsUrl}. Arranca uno (node server.js o PORT=3998) y relanza, o usa WS_URL.`
-			);
 		}
 	}
-
-	console.log(
-		failed === 0
-			? "\n✅ Todos los tests pasan"
-			: `\n❌ ${failed} test(s) fallaron`
-	);
 	process.exit(failed ? 1 : 0);
 })();

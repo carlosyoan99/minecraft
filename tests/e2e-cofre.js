@@ -29,29 +29,22 @@ const t0 = Date.now();
 const worldMap = new Map(); // "cx,cz" -> array de ids (init + chunks_add)
 let cur = { x: 0, y: 64, z: 0 }; // posición conocida del jugador
 let phase = "init";
-let chestSlot = -1; // slot del cofre en el inventario
+let _chestSlot = -1; // slot del cofre en el inventario
 let placeAt = null; // {x,y,z} donde se colocó el cofre
-let breaksSent = false; // ¿se envió el break del cofre?
+let _breaksSent = false; // ¿se envió el break del cofre?
 let takeInventoryOk = false; // ¿el inventory_update del take confirmó el adoquín?
 
-function check(name, ok, info) {
+function check(name, ok, _info) {
 	results.push({ name, ok });
-	console.log(
-		`${ok ? "PASS" : "FAIL"}: ${name}${info ? "  (" + info + ")" : ""}`
-	);
 }
 function finish(exitCode) {
 	if (finished) return;
 	finished = true;
 	clearTimeout(timer);
 	const fails = results.filter((r) => r.ok === false).length;
-	console.log(`\nRESULTADO: ${results.length - fails}/${results.length} OK`);
 	process.exit(exitCode !== undefined ? exitCode : fails ? 1 : 0);
 }
 const timer = setTimeout(() => {
-	console.log(
-		`[t=${Math.round((Date.now() - t0) / 1000)}s] TIMEOUT en fase=${phase}`
-	);
 	finish(1);
 }, 60000);
 
@@ -107,7 +100,7 @@ ws.on("message", (d) => {
 	} catch {
 		return;
 	}
-	const t = Math.round((Date.now() - t0) / 1000);
+	const _t = Math.round((Date.now() - t0) / 1000);
 
 	// ============ INIT: guardar el mundo y pedir tablones ============
 	if (phase === "init" && m.event === "init") {
@@ -116,7 +109,6 @@ ws.on("message", (d) => {
 			worldMap.set(key, arr);
 		send("chat", { message: "/give 7 8" }); // 8 tablones para el cofre
 		phase = "give-tablones";
-		console.log(`[t=${t}s] pidiendo 8 tablones...`);
 		return;
 	}
 
@@ -151,7 +143,7 @@ ws.on("message", (d) => {
 		const idx = m.data.inventory.findIndex((s) => s && s.id === CHEST);
 		if (idx === -1) return;
 		check("el cofre se craftea (ID 22)", true, `slot=${idx}`);
-		chestSlot = idx;
+		_chestSlot = idx;
 		send("inventory_select", { slot: idx });
 		const spot = airWithGroundNear(cur.x, cur.y, cur.z);
 		if (!spot) {
@@ -204,7 +196,7 @@ ws.on("message", (d) => {
 		check(
 			"chest_state con 27 slots",
 			Array.isArray(m.data.slots) && m.data.slots.length === 27,
-			m.data.slots.length + " slots"
+			`${m.data.slots.length} slots`
 		);
 		check(
 			"el cofre está vacío al abrirlo",
@@ -286,9 +278,8 @@ ws.on("message", (d) => {
 			y: placeAt.y,
 			z: placeAt.z
 		});
-		breaksSent = true;
+		_breaksSent = true;
 		phase = "break";
-		console.log(`[t=${t}s] rompiendo el cofre (minería fina ~1.5s a mano)...`);
 		return;
 	}
 
@@ -332,7 +323,6 @@ ws.on("message", (d) => {
 		finish(1);
 	}
 });
-ws.on("error", (e) => {
-	console.log("WS ERROR: " + e.message);
+ws.on("error", (_e) => {
 	finish(1);
 });

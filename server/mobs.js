@@ -341,8 +341,7 @@ function spawnMobs(isNight) {
 			if (!state.chunks.has(key)) continue;
 			const wx = cx * CHUNK_SIZE + Math.floor(Math.random() * CHUNK_SIZE) + 0.5;
 			const wz = cz * CHUNK_SIZE + Math.floor(Math.random() * CHUNK_SIZE) + 0.5;
-			if (world.isLake && world.isLake(Math.floor(wx), Math.floor(wz)))
-				continue; // sin mobs en lagos
+			if (world.isLake?.(Math.floor(wx), Math.floor(wz))) continue; // sin mobs en lagos
 			const type = types[Math.floor(Math.random() * types.length)];
 			if (HOSTILE.has(type)) {
 				// Hostiles: a ≥ 24 bloques del jugador más cercano.

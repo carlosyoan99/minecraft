@@ -11,27 +11,21 @@
 // RECETAS_PATH (ruta del recetas.json del SERVIDOR — en el CI se pasa la
 // del servidor desechable; por defecto la del proyecto).
 // ============================================================
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const WebSocket = require("ws");
 const URL = process.env.WS_URL || "ws://localhost:3998";
 const RECETAS_PATH =
 	process.env.RECETAS_PATH || path.join(__dirname, "..", "recetas.json");
 
 const results = [];
-const check = (name, ok, info) => {
+const check = (name, ok, _info) => {
 	results.push({ name, ok });
-	console.log(
-		`${ok ? "PASS" : "FAIL"}: ${name}${info ? "  (" + info + ")" : ""}`
-	);
 };
 let finished = false;
 let phase = "init";
-const t0 = Date.now();
+const _t0 = Date.now();
 const timer = setTimeout(() => {
-	console.log(
-		`[t=${Math.round((Date.now() - t0) / 1000)}s] TIMEOUT en fase=${phase}`
-	);
 	finish(1);
 }, 30000);
 
@@ -46,7 +40,6 @@ function finish(exitCode) {
 		fs.writeFileSync(RECETAS_PATH, original);
 	} catch {}
 	const fails = results.filter((r) => r.ok === false).length;
-	console.log(`\nRESULTADO: ${results.length - fails}/${results.length} OK`);
 	process.exit(exitCode !== undefined ? exitCode : fails ? 1 : 0);
 }
 
@@ -81,7 +74,6 @@ ws.on("message", (d) => {
 		const k = Object.keys(rec)[0];
 		rec[k] = { ...rec[k] }; // reescritura inofensiva pero real (mtime cambia)
 		atomicWrite(RECETAS_PATH, JSON.stringify(rec, null, 2));
-		console.log(`[t=0s] recetas.json modificado — esperando al watcher...`);
 		return;
 	}
 
@@ -127,7 +119,6 @@ ws.on("message", (d) => {
 		}
 	}
 });
-ws.on("error", (e) => {
-	console.log("WS ERROR: " + e.message);
+ws.on("error", (_e) => {
 	finish(1);
 });

@@ -23,9 +23,8 @@ function idx(x, y, z) {
 }
 
 let failed = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) failed++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // --- 1) Los 5 biomas existen en la semilla ---
@@ -234,10 +233,4 @@ if (mountainChunk) {
 }
 
 world.setDiskLoader(null);
-
-console.log(
-	failed === 0
-		? "\n✅ Todos los tests pasan"
-		: `\n❌ ${failed} check(s) fallaron`
-);
 process.exit(failed ? 1 : 0);

@@ -24,42 +24,50 @@
 //                 en el juego: cada una tiene un set de attributes distinto,
 //                 por eso no se mezclan).
 // Devuelve { acquire, release, size, stats }.
-export function createGeometryPool({ makeGeometry, maxPooled = 24, categories = ['terrain', 'water', 'lod'] }) {
-  const pools = new Map(categories.map((c) => [c, []]));
-  let created = 0;   // geometrías nuevas fabricadas
-  let reused = 0;    // geometrías re-adquiridas del pool
-  let disposed = 0;  // geometrías liberadas de verdad (pool lleno o categoría no gestionada)
+export function createGeometryPool({
+	makeGeometry,
+	maxPooled = 24,
+	categories = ["terrain", "water", "lod"]
+}) {
+	const pools = new Map(categories.map((c) => [c, []]));
+	let created = 0; // geometrías nuevas fabricadas
+	let reused = 0; // geometrías re-adquiridas del pool
+	let disposed = 0; // geometrías liberadas de verdad (pool lleno o categoría no gestionada)
 
-  return {
-    // Devuelve una geometría lista para rellenar: del pool si hay, si no crea
-    // una nueva (makeGeometry). Si la categoría no existe, crea igualmente
-    // (defensivo: world.js siempre usa categorías válidas).
-    acquire(category) {
-      const pool = pools.get(category);
-      if (pool && pool.length > 0) {
-        reused++;
-        return pool.pop();
-      }
-      created++;
-      return makeGeometry();
-    },
+	return {
+		// Devuelve una geometría lista para rellenar: del pool si hay, si no crea
+		// una nueva (makeGeometry). Si la categoría no existe, crea igualmente
+		// (defensivo: world.js siempre usa categorías válidas).
+		acquire(category) {
+			const pool = pools.get(category);
+			if (pool && pool.length > 0) {
+				reused++;
+				return pool.pop();
+			}
+			created++;
+			return makeGeometry();
+		},
 
-    // Devuelve la geometría al pool de su categoría. Si el pool está lleno o
-    // la categoría no existe, la libera con dispose() (devuelve false).
-    release(category, geometry) {
-      const pool = pools.get(category);
-      if (!pool || pool.length >= maxPooled) {
-        disposed++;
-        geometry.dispose();
-        return false;
-      }
-      pool.push(geometry);
-      return true;
-    },
+		// Devuelve la geometría al pool de su categoría. Si el pool está lleno o
+		// la categoría no existe, la libera con dispose() (devuelve false).
+		release(category, geometry) {
+			const pool = pools.get(category);
+			if (!pool || pool.length >= maxPooled) {
+				disposed++;
+				geometry.dispose();
+				return false;
+			}
+			pool.push(geometry);
+			return true;
+		},
 
-    size(category) { return (pools.get(category) || []).length; },
-    stats() { return { created, reused, disposed }; },
-  };
+		size(category) {
+			return (pools.get(category) || []).length;
+		},
+		stats() {
+			return { created, reused, disposed };
+		}
+	};
 }
 
 // Rellena un attribute de la geometría reutilizando su array cuando el
@@ -70,13 +78,19 @@ export function createGeometryPool({ makeGeometry, maxPooled = 24, categories = 
 //   - en cualquier otro caso se crea un Float32BufferAttribute nuevo con
 //     Float32BufferAttributeCtor (inyectado: THREE.Float32BufferAttribute
 //     en el juego; un fake en los tests).
-export function setOrReuseAttribute(geo, name, data, itemSize, Float32BufferAttributeCtor) {
-  const existing = geo.getAttribute(name);
-  if (existing && existing.array && existing.array.length === data.length) {
-    existing.array.set(data);
-    existing.needsUpdate = true;
-    return existing;
-  }
-  geo.setAttribute(name, new Float32BufferAttributeCtor(data, itemSize));
-  return geo.getAttribute(name);
+export function setOrReuseAttribute(
+	geo,
+	name,
+	data,
+	itemSize,
+	Float32BufferAttributeCtor
+) {
+	const existing = geo.getAttribute(name);
+	if (existing?.array && existing.array.length === data.length) {
+		existing.array.set(data);
+		existing.needsUpdate = true;
+		return existing;
+	}
+	geo.setAttribute(name, new Float32BufferAttributeCtor(data, itemSize));
+	return geo.getAttribute(name);
 }

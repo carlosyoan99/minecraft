@@ -8,15 +8,14 @@
 //   3. JSON inválido → ok:false y se mantienen las tablas anteriores
 //   4. JSON válido pero malformado (falta result) → ok:false, mismas tablas
 // ============================================================
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const crafting = require("../server/crafting.js");
 
 let failed = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) failed++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 const ORIG = path.join(__dirname, "..", "recetas.json");
@@ -76,7 +75,7 @@ try {
 	check(
 		"matchRecipe usa la receta recargada (count 5)",
 		match && match.result.id === 100 && match.result.count === 5,
-		`count=${match && match.result.count}`
+		`count=${match?.result.count}`
 	);
 
 	// --- 3) JSON inválido → ok:false y las tablas NO cambian ---
@@ -87,7 +86,7 @@ try {
 	check(
 		"tras JSON inválido matchRecipe sigue viendo la receta anterior (count 5)",
 		m3 && m3.result.id === 100 && m3.result.count === 5,
-		`id/count=${m3 && m3.result.id}/${m3 && m3.result.count}`
+		`id/count=${m3?.result.id}/${m3?.result.count}`
 	);
 
 	// --- 4) JSON válido pero malformado (falta result) → ok:false, swap atómico ---
@@ -104,7 +103,7 @@ try {
 	check(
 		"tras receta malformada matchRecipe sigue igual (count 5)",
 		m4 && m4.result.id === 100 && m4.result.count === 5,
-		`id/count=${m4 && m4.result.id}/${m4 && m4.result.count}`
+		`id/count=${m4?.result.id}/${m4?.result.count}`
 	);
 
 	// --- 5) El horno también se recarga: cambiar el tiempo de una receta ---
@@ -129,10 +128,4 @@ try {
 	crafting.setRecipePaths(ORIG, ORIG_HORNO);
 	fs.rmSync(TMP, { recursive: true, force: true });
 }
-
-console.log(
-	failed === 0
-		? "\n✅ Todos los tests pasan"
-		: `\n❌ ${failed} check(s) fallaron`
-);
 process.exit(failed ? 1 : 0);

@@ -6,9 +6,9 @@
 // writeChunkFile, readChunkFile, loadChunkFromDisk) sobre un
 // directorio temporal — NUNCA toca el world/ real del proyecto.
 // ============================================================
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "mc-persist-"));
 const constants = require("../server/constants.js");
@@ -33,9 +33,8 @@ const state = require("../server/state.js");
 const { SCHEMA_VERSION, CHUNK_SIZE, WORLD_HEIGHT, B, SEED } = constants;
 
 let fails = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 function resetWorld() {
@@ -51,7 +50,7 @@ function resetWorld() {
 		"atomicWrite escribe el archivo",
 		fs.readFileSync(f, "utf8") === "hola"
 	);
-	check("atomicWrite no deja .tmp", !fs.existsSync(f + ".tmp"));
+	check("atomicWrite no deja .tmp", !fs.existsSync(`${f}.tmp`));
 }
 
 // --- 2) writeChunkFile / readChunkFile / loadChunkFromDisk round-trip ---
@@ -66,7 +65,7 @@ function resetWorld() {
 	check(
 		"writeChunkFile guarda schemaVersion",
 		parsed && parsed.schemaVersion === SCHEMA_VERSION,
-		"v=" + (parsed && parsed.schemaVersion)
+		`v=${parsed?.schemaVersion}`
 	);
 	check(
 		"writeChunkFile guarda cx/cz",
@@ -143,7 +142,7 @@ function resetWorld() {
 	check(
 		"saveWorld limpia dirtyChunks",
 		state.dirtyChunks.size === 0,
-		"size=" + state.dirtyChunks.size
+		`size=${state.dirtyChunks.size}`
 	);
 	// Un chunk limpio no se reescribe: al guardar de nuevo el archivo no cambia de mtime
 	const antes = fs.statSync(
@@ -231,7 +230,7 @@ function resetWorld() {
 	check(
 		"schemaVersion más nueva → rechazo (no carga ni corrompe)",
 		r === "rechazo",
-		"r=" + r
+		`r=${r}`
 	);
 
 	fs.rmSync(path.join(TMP, "world"), { recursive: true, force: true });
@@ -266,7 +265,7 @@ function resetWorld() {
 	);
 	check(
 		"world.dat renombrado a .legacy",
-		fs.existsSync(constants.worldPaths.legacyFile + ".legacy")
+		fs.existsSync(`${constants.worldPaths.legacyFile}.legacy`)
 	);
 	check("meta escrito", fs.existsSync(constants.worldPaths.metaFile));
 	check("chunks en memoria tras migrar", state.chunks.has("0,0"));
@@ -436,7 +435,7 @@ function resetWorld() {
 
 	// Cambiar a otra semilla → mundo nuevo (paths nuevos, estado limpio)
 	const r1 = save.switchWorld("Otra Semilla 2026!");
-	check("switchWorld a otra semilla → true", r1 === true, "r=" + r1);
+	check("switchWorld a otra semilla → true", r1 === true, `r=${r1}`);
 	check(
 		"switchWorld cambia worldDir al seedDir de la nueva semilla",
 		constants.worldPaths.worldDir ===
@@ -452,7 +451,7 @@ function resetWorld() {
 	check(
 		"switchWorld: mundo fresco sin chunks en memoria aún",
 		state.chunks.size === 0,
-		"chunks=" + state.chunks.size
+		`chunks=${state.chunks.size}`
 	);
 
 	// Misma semilla → 'same' (no toca nada)
@@ -463,7 +462,7 @@ function resetWorld() {
 
 	// Volver a la semilla original → recupera el mundo guardado
 	const r2 = save.switchWorld(SEED);
-	check("switchWorld de vuelta → true", r2 === true, "r=" + r2);
+	check("switchWorld de vuelta → true", r2 === true, `r=${r2}`);
 	check(
 		"switchWorld recupera el chunk de la semilla anterior",
 		state.chunks.get("0,0") && state.chunks.get("0,0")[3] === B.DIAMOND_ORE
@@ -495,7 +494,7 @@ function resetWorld() {
 	);
 	const dirAntesRechazo = constants.worldPaths.worldDir;
 	const r3 = save.switchWorld("ilegible");
-	check("switchWorld mundo ilegible → rechazo", r3 === "rechazo", "r=" + r3);
+	check("switchWorld mundo ilegible → rechazo", r3 === "rechazo", `r=${r3}`);
 	check(
 		"switchWorld rechazo revierte el worldDir",
 		constants.worldPaths.worldDir === dirAntesRechazo,
@@ -511,7 +510,7 @@ function resetWorld() {
 	fs.writeFileSync(constants.worldPaths.worldDir, "soy-un-archivo"); // reemplaza el dir por un archivo
 	const dirAntesError = constants.worldPaths.worldDir;
 	const r4 = save.switchWorld("otra");
-	check("switchWorld fallo de guardado → error", r4 === "error", "r=" + r4);
+	check("switchWorld fallo de guardado → error", r4 === "error", `r=${r4}`);
 	check(
 		"switchWorld error no cambia worldDir",
 		constants.worldPaths.worldDir === dirAntesError
@@ -540,7 +539,7 @@ function resetWorld() {
 	check(
 		"reinitNoise: semillas distintas generan mundos distintos",
 		JSON.stringify(before) !== JSON.stringify(after),
-		"len=" + before.length
+		`len=${before.length}`
 	);
 }
 
@@ -578,7 +577,7 @@ function resetWorld() {
 	check(
 		"listWorlds: un mundo por directorio",
 		worlds.length === 2,
-		worlds.length + " mundos"
+		`${worlds.length} mundos`
 	);
 	const miMundo = worlds.find((w) => w.seed === "Mi Semilla");
 	check(
@@ -598,7 +597,4 @@ function resetWorld() {
 }
 
 fs.rmSync(TMP, { recursive: true, force: true });
-console.log(
-	fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
-);
 process.exit(fails ? 1 : 0);

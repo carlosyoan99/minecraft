@@ -68,11 +68,8 @@ let walkTimer = null;
 let walked = 0; // bloques caminados en total
 let phase = "init";
 
-function check(name, ok, info) {
+function check(name, ok, _info) {
 	results.push({ name, ok });
-	console.log(
-		`${ok ? "PASS" : "FAIL"}: ${name}${info ? "  (" + info + ")" : ""}`
-	);
 }
 function finish(exitCode) {
 	if (finished) return;
@@ -80,14 +77,10 @@ function finish(exitCode) {
 	clearTimeout(timer);
 	if (walkTimer) clearTimeout(walkTimer);
 	const fails = results.filter((r) => r.ok === false).length;
-	console.log(`\nRESULTADO: ${results.length - fails}/${results.length} OK`);
 	process.exit(exitCode !== undefined ? exitCode : fails ? 1 : 0);
 }
 
 const timer = setTimeout(() => {
-	console.log(
-		`[t=${Math.round((Date.now() - t0) / 1000)}s] TIMEOUT en fase=${phase} (breaksSent=${breaksSent})`
-	);
 	finish(1);
 }, 120000); // 60 minas × ~0.9 s + holgura (Fase 6: minería con progreso)
 
@@ -191,9 +184,6 @@ function tryFreshArea() {
 		);
 		breaksSent = 1;
 		phase = "breaking";
-		console.log(
-			`[t=${Math.round((Date.now() - t0) / 1000)}s] rompiendo ${DURABILITY} bloques de piedra (durabilidad 60 → 0)...`
-		);
 		return;
 	}
 	if (walked >= WALK_MAX) {
@@ -233,7 +223,7 @@ ws.on("message", (d) => {
 	} catch {
 		return;
 	}
-	const t = Math.round((Date.now() - t0) / 1000);
+	const _t = Math.round((Date.now() - t0) / 1000);
 
 	// ============ INIT: almacenar mundo y craftear el pico ============
 	if (phase === "init" && m.event === "init") {
@@ -250,9 +240,6 @@ ws.on("message", (d) => {
 		grid[7] = { id: STICK, count: 1 };
 		ws.send(JSON.stringify({ event: "craft", data: { grid } }));
 		phase = "craft";
-		console.log(
-			`[t=${t}s] crafteando pico de madera (durabilidad ${DURABILITY})...`
-		);
 		return;
 	}
 
@@ -305,7 +292,7 @@ ws.on("message", (d) => {
 			check(
 				`rotura ${breaksSent}/${DURABILITY}: durabilidad ${expected}`,
 				pick && pick.id === WOODEN_PICKAXE && pick.durability === expected,
-				`dur=${pick && pick.durability}`
+				`dur=${pick?.durability}`
 			);
 			check(
 				`rotura ${breaksSent}/${DURABILITY}: 1 adoquín exacto (sin duplicar)`,
@@ -351,7 +338,6 @@ ws.on("message", (d) => {
 		return;
 	}
 });
-ws.on("error", (e) => {
-	console.log("WS ERROR: " + e.message);
+ws.on("error", (_e) => {
 	finish(1);
 });

@@ -11,7 +11,7 @@
 //    por chunk (para extrapolar el presupuesto de VIEW_DISTANCE).
 // Uso: node tests/audit-fase4.js
 // ============================================================
-const path = require("path");
+const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const { B, isSolidBlock, CHUNK_SIZE, WORLD_HEIGHT } = require(
 	path.join(ROOT, "server", "constants.js")
@@ -20,9 +20,8 @@ const world = require(path.join(ROOT, "server", "world.js"));
 const state = require(path.join(ROOT, "server", "state.js"));
 
 let fails = 0;
-const check = (n, ok, extra) => {
+const check = (_n, ok, _extra) => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${n}${extra ? " — " + extra : ""}`);
 };
 
 // --- Culling ---
@@ -56,13 +55,13 @@ function countFaces(cx, cz) {
 	let faces = 0,
 		solidFaces = 0,
 		waterFaces = 0,
-		blocks = 0;
+		_blocks = 0;
 	for (let x = 0; x < CHUNK_SIZE; x++) {
 		for (let y = 0; y < WORLD_HEIGHT; y++) {
 			for (let z = 0; z < CHUNK_SIZE; z++) {
 				const block = chunk[(y * CHUNK_SIZE + z) * CHUNK_SIZE + x];
 				if (block === B.AIR) continue;
-				blocks++;
+				_blocks++;
 				const wx = baseX + x,
 					wy = y,
 					wz = baseZ + z;
@@ -80,11 +79,6 @@ function countFaces(cx, cz) {
 	return { faces, solidFaces, waterFaces };
 }
 
-console.log("========== PARTE 1: CULLING DE CARAS CON CUEVAS ==========\n");
-console.log(
-	"Generando 3×3 chunks frescos (disco ignorado vía setDiskLoader)..."
-);
-
 // Generación fresca (sin leer disco) + chunks vecinos cargados para que el
 // culling entre bordes sea real (getBlock devuelve el bloque real, no aire).
 world.setDiskLoader(() => null);
@@ -96,14 +90,8 @@ for (let cx = -1; cx <= 1; cx++)
 // (el cliente también cuenta así cuando el vecino existe).
 const { faces, solidFaces, waterFaces } = countFaces(0, 0);
 const c00 = state.chunks.get("0,0");
-let blocks = 0;
-for (let i = 0; i < c00.length; i++) if (c00[i] !== B.AIR) blocks++;
-console.log(
-	`Chunk 0,0: ${blocks} bloques no-aire → ${faces} caras dibujadas (${solidFaces} sólidas + ${waterFaces} agua), ratio caras/bloques = ${(faces / blocks).toFixed(2)}`
-);
-console.log(
-	"  (ratio bajo = culling eficiente; las cuevas reducen caras frente a un macizo)"
-);
+let _blocks = 0;
+for (let i = 0; i < c00.length; i++) if (c00[i] !== B.AIR) _blocks++;
 
 // 1) No hay caras ocultas dibujadas: toda cara dibujada tiene un vecino visible
 //    (independiente: contra un bloque sólido NO se dibuja — sería un bug de culling).
@@ -134,7 +122,7 @@ console.log(
 	check(
 		"Culling: 0 caras dibujadas contra un bloque sólido (sin caras ocultas)",
 		hidden === 0,
-		hidden + " caras"
+		`${hidden} caras`
 	);
 }
 
@@ -165,7 +153,7 @@ console.log(
 	check(
 		"Culling: 0 caras visibles sin dibujar (sin huecos, dentro y entre chunks)",
 		missing === 0,
-		missing + " caras"
+		`${missing} caras`
 	);
 }
 
@@ -185,7 +173,7 @@ console.log(
 	check(
 		"Culling: el agua solo dibuja caras contra aire (superficie/orilla, sin caras internas)",
 		badWater === 0,
-		badWater + " caras"
+		`${badWater} caras`
 	);
 }
 
@@ -244,18 +232,13 @@ console.log(
 							}
 						}
 			}
-		console.log(
-			`  (lago encontrado en chunk ${cx0},${cz0}: ${bedFaces} caras de lecho contra el agua)`
-		);
 		check(
 			"Culling: el lecho del lago dibuja sus caras contra el agua (se ve bajo la superficie)",
 			bedFaces > 0,
-			bedFaces + " caras de lecho"
+			`${bedFaces} caras de lecho`
 		);
 	}
 }
-
-console.log("\n========== PARTE 2: GENERACIÓN EN TIEMPO REAL ==========\n");
 {
 	// Benchmark con cuevas: área 5x5 (25 chunks) con generación fresca.
 	const R = 2;
@@ -274,22 +257,13 @@ console.log("\n========== PARTE 2: GENERACIÓN EN TIEMPO REAL ==========\n");
 			const c = state.chunks.get(`${cx},${cz}`);
 			for (let i = 0; i < c.length; i++) if (c[i] !== B.AIR) totalBlocks++;
 		}
-	const triangles = totalFaces * 2; // cada cara = 2 triángulos
-	console.log(
-		`25 chunks generados en ${ms.toFixed(1)} ms → ${perChunk.toFixed(2)} ms/chunk (con cuevas + lagos)`
-	);
-	console.log(
-		`Caras totales: ${totalFaces} (${(totalFaces / 25).toFixed(0)}/chunk) → ~${triangles.toLocaleString()} triángulos para un área de radio 2`
-	);
+	const _triangles = totalFaces * 2; // cada cara = 2 triángulos
 	// Presupuesto de render para un radio típico de 3-4 chunks (escena del juego).
-	const r4 = 81;
-	console.log(
-		`Estimación radio 4 (${r4} chunks): ~${((totalFaces / 25) * r4 * 2).toLocaleString()} triángulos — referencia: auditoría Fase 2 renderizaba 310K estable`
-	);
+	const _r4 = 81;
 	check(
 		"Perf: generación con cuevas < 5 ms/chunk (presupuesto holgado para streaming)",
 		perChunk < 5,
-		perChunk.toFixed(2) + " ms"
+		`${perChunk.toFixed(2)} ms`
 	);
 	check(
 		"Perf: las cuevas se notan en el ratio caras/bloques (más aire subterráneo = menos geometría)",
@@ -302,13 +276,10 @@ console.log("\n========== PARTE 2: GENERACIÓN EN TIEMPO REAL ==========\n");
 	const BYTES_PER_CHUNK = CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE;
 	const kbChunk = BYTES_PER_CHUNK / 1024;
 	const mbArea4 = (kbChunk * 81) / 1024;
-	console.log(
-		`Memoria en RAM: ${kbChunk.toFixed(0)} KB/chunk (Uint8Array puro) → área de radio 4 (81 chunks) ≈ ${mbArea4.toFixed(1)} MB; en disco ~5× más (JSON)`
-	);
 	check(
 		"Mem: el área activa de radio 4 cabe holgada (< 60 MB en RAM + disco)",
 		mbArea4 < 60,
-		mbArea4.toFixed(1) + " MB"
+		`${mbArea4.toFixed(1)} MB`
 	);
 
 	// Determinismo: regenerar y comparar (caves + lagos son función pura de coordenadas).
@@ -322,12 +293,8 @@ console.log("\n========== PARTE 2: GENERACIÓN EN TIEMPO REAL ==========\n");
 	check(
 		"Gen: la regeneración de un chunk con cuevas es bit-idéntica (sin costuras ni sorpresas)",
 		diffs === 0,
-		diffs + " diffs"
+		`${diffs} diffs`
 	);
 }
 world.setDiskLoader(null);
-
-console.log(
-	`\n${fails === 0 ? "✅ AUDITORÍA FASE 4: todos los checks pasan" : `❌ ${fails} checks fallaron`}`
-);
 process.exit(fails ? 1 : 0);

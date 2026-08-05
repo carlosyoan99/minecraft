@@ -23,7 +23,7 @@
       <div class="loading-bar"><div id="loading-fill"></div></div>
       <div id="loading-status">Conectando al servidor...</div>
       <div id="loading-tip"></div>
-      <div id="loading-error" class="hidden">Conexión perdida con el servidor.<button id="loading-retry">Reintentar</button></div>
+      <div id="loading-error" class="hidden">Conexión perdida con el servidor.<button type="button" id="loading-retry">Reintentar</button></div>
     </div>
   </div>
 
@@ -37,10 +37,10 @@
         <label class="menu-field">Nombre de jugador
           <input id="name-input" type="text" maxlength="16" spellcheck="false" autocomplete="off">
         </label>
-        <button id="start-btn">Jugar</button>
+        <button type="button" id="start-btn">Jugar</button>
         <div class="menu-actions">
-          <button id="worlds-btn">🌍 Mundos</button>
-          <button id="settings-btn">⚙️ Ajustes</button>
+          <button type="button" id="worlds-btn">🌍 Mundos</button>
+          <button type="button" id="settings-btn">⚙️ Ajustes</button>
         </div>
       </div>
 
@@ -51,8 +51,8 @@
         <label class="menu-field">Semilla de un mundo nuevo
           <input id="seed-input" type="text" maxlength="40" placeholder="escribe una semilla y pulsa Crear" spellcheck="false" autocomplete="off">
         </label>
-        <button id="seed-create-btn">Crear / Ir a esta semilla</button>
-        <button id="worlds-back-btn" class="menu-secondary">Volver</button>
+        <button type="button" id="seed-create-btn">Crear / Ir a esta semilla</button>
+        <button type="button" id="worlds-back-btn" class="menu-secondary">Volver</button>
       </div>
 
       <!-- Pantalla de ajustes (Fase 7) -->
@@ -67,7 +67,7 @@
         <label class="menu-field toggle">Mostrar coordenadas en pantalla
           <input id="coords-toggle" type="checkbox">
         </label>
-        <button id="settings-back-btn" class="menu-secondary">Volver</button>
+        <button type="button" id="settings-back-btn" class="menu-secondary">Volver</button>
       </div>
     </div>
   </div>
@@ -79,7 +79,7 @@
     <div class="stat">🍗 <span class="bar"><span id="food-fill" class="fill"></span><span id="sat-fill" class="fill sat"></span></span> <span id="food">20</span>/20</div>
     <div class="stat">⭐ <span class="bar"><span id="xp-fill" class="fill xp"></span></span> Nv <span id="level">0</span></div>
   </div>
-  <button id="mute-btn" title="Silenciar sonido">🔊</button>
+  <button type="button" id="mute-btn" title="Silenciar sonido">🔊</button>
   <div id="fps">-- FPS</div>
   <div id="debug-hud" class="hidden"></div>
 
@@ -94,7 +94,7 @@
       <div id="craft-result" class="slot result"></div>
     </div>
     <div id="craft-inventory" class="grid9"></div>
-    <button id="craft-clear-btn">Devolver items</button>
+    <button type="button" id="craft-clear-btn">Devolver items</button>
     <p class="hint">Click en un item del inventario para colocarlo en la mesa.</p>
   </div>
 

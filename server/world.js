@@ -3,9 +3,9 @@
 // ============================================================
 // MUNDO: GENERACIÓN, ACCESO A BLOQUES Y ARCHIVOS DE CHUNK
 // ============================================================
-const fs = require("fs");
-const path = require("path");
-const zlib = require("zlib"); // gzip del guardado por chunk (Fase 7)
+const fs = require("node:fs");
+const path = require("node:path");
+const zlib = require("node:zlib"); // gzip del guardado por chunk (Fase 7)
 const { createNoise2D, createNoise3D } = require("simplex-noise");
 const constants = require("./constants.js");
 const { CHUNK_SIZE, WORLD_HEIGHT, SCHEMA_VERSION, B, isSolidBlock } = constants;
@@ -41,29 +41,29 @@ let noise2D_ms_a, noise2D_ms_b, noise2D_ms_region, noise2D_ms_depth;
 let noise2D_pond, noise2D_pond_region, noise2D_lava;
 function reinitNoise(seed) {
 	noise2D = createNoise2D(seededNoise(seed));
-	noise2D_detail = createNoise2D(seededNoise(seed + "_detail"));
-	noise2D_ore = createNoise2D(seededNoise(seed + "_ore"));
+	noise2D_detail = createNoise2D(seededNoise(`${seed}_detail`));
+	noise2D_ore = createNoise2D(seededNoise(`${seed}_ore`));
 	// Ruido 2D para montañas (Fase 4): donde es alto, el bioma es montaña (el
 	// terreno se eleva y las cumbres altas se cubren de nieve). Determinista y
 	// continuo entre chunks, como el resto de la generación.
-	noise2D_mountain = createNoise2D(seededNoise(seed + "_mountain"));
+	noise2D_mountain = createNoise2D(seededNoise(`${seed}_mountain`));
 	// Ruido 3D para cuevas (Fase 4): dos octavas sembradas, muestreadas en
 	// coordenadas de mundo para que las cuevas sean continuas entre chunks.
-	noise3D_cave = createNoise3D(seededNoise(seed + "_cave"));
-	noise3D_cave_fine = createNoise3D(seededNoise(seed + "_cave_fine"));
+	noise3D_cave = createNoise3D(seededNoise(`${seed}_cave`));
+	noise3D_cave_fine = createNoise3D(seededNoise(`${seed}_cave_fine`));
 	// Ruido 2D para lagos (Fase 4): donde es alto, el terreno se hunde y el
 	// agua llena la depresión hasta SEA_LEVEL. Muestreado en coordenadas de
 	// mundo → lagos continuos entre chunks y deterministas.
-	noise2D_lake = createNoise2D(seededNoise(seed + "_lake"));
+	noise2D_lake = createNoise2D(seededNoise(`${seed}_lake`));
 	// Minas abandonadas (Fase 7).
-	noise2D_ms_a = createNoise2D(seededNoise(seed + "_ms_a"));
-	noise2D_ms_b = createNoise2D(seededNoise(seed + "_ms_b"));
-	noise2D_ms_region = createNoise2D(seededNoise(seed + "_ms_region"));
-	noise2D_ms_depth = createNoise2D(seededNoise(seed + "_ms_depth"));
+	noise2D_ms_a = createNoise2D(seededNoise(`${seed}_ms_a`));
+	noise2D_ms_b = createNoise2D(seededNoise(`${seed}_ms_b`));
+	noise2D_ms_region = createNoise2D(seededNoise(`${seed}_ms_region`));
+	noise2D_ms_depth = createNoise2D(seededNoise(`${seed}_ms_depth`));
 	// Pozos decorativos (Fase 7).
-	noise2D_pond = createNoise2D(seededNoise(seed + "_pond"));
-	noise2D_pond_region = createNoise2D(seededNoise(seed + "_pond_region"));
-	noise2D_lava = createNoise2D(seededNoise(seed + "_lava"));
+	noise2D_pond = createNoise2D(seededNoise(`${seed}_pond`));
+	noise2D_pond_region = createNoise2D(seededNoise(`${seed}_pond_region`));
+	noise2D_lava = createNoise2D(seededNoise(`${seed}_lava`));
 }
 reinitNoise(constants.SEED); // al arrancar, la SEED de la env var
 const SEA_LEVEL = 5; // bloques de agua: y ∈ (LAKE_FLOOR, SEA_LEVEL)
@@ -362,7 +362,7 @@ function writeChunkFile(key, arr) {
 // Lee y valida un archivo de chunk; devuelve el objeto {cx, cz, data} o null
 // si el archivo no existe como JSON válido (con aviso, nunca silencioso).
 // Acepta tanto JSON plano (formatos v1-v3) como gzip (Fase 7).
-function readChunkFile(file, origen) {
+function readChunkFile(file, _origen) {
 	let parsed;
 	try {
 		const buf = fs.readFileSync(file);
@@ -372,10 +372,7 @@ function readChunkFile(file, origen) {
 				? zlib.gunzipSync(buf).toString("utf8")
 				: buf.toString("utf8");
 		parsed = JSON.parse(text);
-	} catch (e) {
-		console.warn(
-			`⚠️  Archivo de chunk ilegible, se ignora: ${origen}: ${e.message}`
-		);
+	} catch (_e) {
 		return null;
 	}
 	if (
@@ -384,22 +381,15 @@ function readChunkFile(file, origen) {
 		typeof parsed.cx !== "number" ||
 		typeof parsed.cz !== "number"
 	) {
-		console.warn(`⚠️  Archivo de chunk ignorado (formato inválido): ${origen}`);
 		return null;
 	}
 	if (
 		typeof parsed.schemaVersion === "number" &&
 		parsed.schemaVersion > SCHEMA_VERSION
 	) {
-		console.warn(
-			`⚠️  Chunk (${parsed.cx},${parsed.cz}) es de una versión más nueva (v${parsed.schemaVersion}); se ignora (se regenerará y se sobrescribirá al guardar)`
-		);
 		return null;
 	}
 	if (parsed.data.length !== CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE) {
-		console.warn(
-			`⚠️  Archivo de chunk ignorado (longitud inesperada): ${origen}`
-		);
 		return null;
 	}
 	return parsed;
@@ -520,7 +510,11 @@ function generateChunk(cx, cz) {
 			const pond =
 				!lake && !mouth && height > SEA_LEVEL + 1 && isPondAt(wx, wz);
 			const lavaPond =
-				!pond && !lake && !mouth && height > SEA_LEVEL + 1 && isLavaPondAt(wx, wz);
+				!pond &&
+				!lake &&
+				!mouth &&
+				height > SEA_LEVEL + 1 &&
+				isLavaPondAt(wx, wz);
 			if (pond) {
 				data[idx(x, height - 1, z)] = B.WATER;
 				data[idx(x, height - 2, z)] = B.SAND;
@@ -535,7 +529,11 @@ function generateChunk(cx, cz) {
 			// suelo del pasillo (raro y determinista).
 			if (mineshaftAt(wx, wz)) {
 				const depth = mineshaftDepth(wx, wz, height);
-				for (let y = depth + 1; y < depth + MS_TUNNEL_H && y < height - 1; y++) {
+				for (
+					let y = depth + 1;
+					y < depth + MS_TUNNEL_H && y < height - 1;
+					y++
+				) {
 					if (data[idx(x, y, z)] === B.STONE) data[idx(x, y, z)] = B.AIR;
 				}
 				if (

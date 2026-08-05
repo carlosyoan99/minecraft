@@ -5,9 +5,8 @@ const players = require("../server/players.js");
 
 const CLOSED = 3;
 let fails = 0;
-function check(name, ok, extra = "") {
+function check(_name, ok, _extra = "") {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 }
 
 function makePlayer(over = {}) {
@@ -106,8 +105,4 @@ function makePlayer(over = {}) {
 		`food=${p.food} sat=${p.saturation}`
 	);
 }
-
-console.log(
-	fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
-);
 process.exit(fails === 0 ? 0 : 1);

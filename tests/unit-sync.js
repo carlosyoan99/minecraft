@@ -6,17 +6,16 @@
 // wire del inventario/colocación se rompe silenciosamente. Este
 // test parsea el ESM del cliente y compara contra el servidor.
 // ============================================================
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const server = require(path.join(ROOT, "server", "constants.js"));
 
 const src = fs.readFileSync(path.join(ROOT, "public/constants.js"), "utf8");
 
 let fails = 0;
-const check = (name, ok, extra = "") => {
+const check = (_name, ok, _extra = "") => {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 };
 
 // Parse de un objeto exportado tipo `export const X = { 1: v, 2: v, ... };`
@@ -58,7 +57,7 @@ function parseNum(name) {
 	check(
 		"BLOCK_COLORS cliente cubre todos los bloques de B (salvo el aire)",
 		!!clientBlocks && missing.length === 0,
-		"faltan: " + missing.join(",")
+		`faltan: ${missing.join(",")}`
 	);
 	// Y no hay bloques extra (cliente = servidor, mismo universo)
 	const extra = Object.keys(clientBlocks || {})
@@ -67,7 +66,7 @@ function parseNum(name) {
 	check(
 		"BLOCK_COLORS no tiene bloques que el servidor no conozca",
 		extra.length === 0,
-		"extra: " + extra.join(",")
+		`extra: ${extra.join(",")}`
 	);
 }
 
@@ -81,7 +80,7 @@ function parseNum(name) {
 	check(
 		"ITEM_NAMES cliente cubre todos los ítems de I",
 		!!clientItems && missing.length === 0,
-		"faltan: " + missing.join(",")
+		`faltan: ${missing.join(",")}`
 	);
 }
 
@@ -143,27 +142,27 @@ function parseNum(name) {
 check(
 	"WATER cliente (20) == servidor",
 	parseNum("WATER") === server.B.WATER,
-	"cliente=" + parseNum("WATER")
+	`cliente=${parseNum("WATER")}`
 );
 check(
 	"SNOW cliente (21) == servidor",
 	parseNum("SNOW") === server.B.SNOW,
-	"cliente=" + parseNum("SNOW")
+	`cliente=${parseNum("SNOW")}`
 );
 check(
 	"LAVA cliente (25) == servidor",
 	parseNum("LAVA") === server.B.LAVA,
-	"cliente=" + parseNum("LAVA")
+	`cliente=${parseNum("LAVA")}`
 );
 check(
 	"XP_PER_LEVEL cliente == servidor",
 	parseNum("XP_PER_LEVEL") === server.XP_PER_LEVEL,
-	"cliente=" + parseNum("XP_PER_LEVEL")
+	`cliente=${parseNum("XP_PER_LEVEL")}`
 );
 check(
 	"DAY_CYCLE_MS cliente == servidor",
 	parseNum("DAY_CYCLE_MS") === server.DAY_CYCLE_MS,
-	"cliente=" + parseNum("DAY_CYCLE_MS")
+	`cliente=${parseNum("DAY_CYCLE_MS")}`
 );
 
 // --- 8) Los items de crafteo de la Fase 3/5 están todos en ITEM_NAMES ---
@@ -183,8 +182,4 @@ check(
 		[118, 119, 120].every((id) => id in clientItems)
 	);
 }
-
-console.log(
-	fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
-);
 process.exit(fails ? 1 : 0);

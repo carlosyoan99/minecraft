@@ -10,12 +10,12 @@
 // bucle de animación en window.__mc* y se actualiza solo (1s) mientras
 // está activo.
 // ============================================================
-import * as THREE from 'three';
-import { scene, camera } from './scene.js';
-import { chunkMeshes, lodMeshes, getClientBlock } from './world.js';
-import { CHUNK_SIZE, WORLD_HEIGHT, WATER } from './constants.js';
+import * as THREE from "three";
+import { CHUNK_SIZE, WATER, WORLD_HEIGHT } from "./constants.js";
+import { camera, scene } from "./scene.js";
+import { chunkMeshes, getClientBlock, lodMeshes } from "./world.js";
 
-const hudEl = document.getElementById('debug-hud');
+const hudEl = document.getElementById("debug-hud");
 let enabled = false;
 
 // ============================================================
@@ -34,11 +34,11 @@ const borderMaterial = new THREE.LineBasicMaterial({ vertexColors: true });
 // El aire y el agua no cuentan; un chunk desconocido (-1) se trata como
 // vacío (el borde queda a nivel 0 solo en esquinas de zona no cargada).
 function surfaceY(wx, wz) {
-  for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
-    const b = getClientBlock(wx, y, wz);
-    if (b !== 0 && b !== -1 && b !== WATER) return y + 1;
-  }
-  return 0;
+	for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+		const b = getClientBlock(wx, y, wz);
+		if (b !== 0 && b !== -1 && b !== WATER) return y + 1;
+	}
+	return 0;
 }
 
 // Reconstruye el grid: un cuadrado por chunk siguiendo la superficie del
@@ -48,46 +48,49 @@ function surfaceY(wx, wz) {
 // cada segundo mientras el modo está activo, para reflejar chunks nuevos,
 // descargas y ediciones de bloques.
 function rebuildBorders() {
-  for (const child of [...borderGroup.children]) {
-    borderGroup.remove(child);
-    if (child.geometry) child.geometry.dispose();
-  }
-  const positions = [];
-  const colors = [];
-  const [r, g, b] = [1.0, 0.12, 0.08]; // rojo brillante estilo MC debug
-  const off = 0.15; // un poco por encima del terreno: evita z-fighting
-  // Los bordes cubren ambos tiers (detalle completo y LOD, Fase 6)
-  for (const key of new Set([...chunkMeshes.keys(), ...lodMeshes.keys()])) {
-    const [cx, cz] = key.split(',').map(Number);
-    const x0 = cx * CHUNK_SIZE + 0.01, z0 = cz * CHUNK_SIZE + 0.01;
-    const x1 = x0 + CHUNK_SIZE - 0.02, z1 = z0 + CHUNK_SIZE - 0.02;
-    const corners = [
-      [x0, surfaceY(x0, z0) + off, z0],
-      [x1, surfaceY(x1, z0) + off, z0],
-      [x1, surfaceY(x1, z1) + off, z1],
-      [x0, surfaceY(x0, z1) + off, z1],
-    ];
-    for (let i = 0; i < 4; i++) {
-      const a = corners[i], c = corners[(i + 1) % 4];
-      positions.push(a[0], a[1], a[2], c[0], c[1], c[2]);
-      colors.push(r, g, b, r, g, b);
-    }
-  }
-  if (positions.length === 0) return;
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  const lines = new THREE.LineSegments(geo, borderMaterial);
-  lines.renderOrder = 2; // por encima del agua translúcida
-  borderGroup.add(lines);
+	for (const child of [...borderGroup.children]) {
+		borderGroup.remove(child);
+		if (child.geometry) child.geometry.dispose();
+	}
+	const positions = [];
+	const colors = [];
+	const [r, g, b] = [1.0, 0.12, 0.08]; // rojo brillante estilo MC debug
+	const off = 0.15; // un poco por encima del terreno: evita z-fighting
+	// Los bordes cubren ambos tiers (detalle completo y LOD, Fase 6)
+	for (const key of new Set([...chunkMeshes.keys(), ...lodMeshes.keys()])) {
+		const [cx, cz] = key.split(",").map(Number);
+		const x0 = cx * CHUNK_SIZE + 0.01,
+			z0 = cz * CHUNK_SIZE + 0.01;
+		const x1 = x0 + CHUNK_SIZE - 0.02,
+			z1 = z0 + CHUNK_SIZE - 0.02;
+		const corners = [
+			[x0, surfaceY(x0, z0) + off, z0],
+			[x1, surfaceY(x1, z0) + off, z0],
+			[x1, surfaceY(x1, z1) + off, z1],
+			[x0, surfaceY(x0, z1) + off, z1]
+		];
+		for (let i = 0; i < 4; i++) {
+			const a = corners[i],
+				c = corners[(i + 1) % 4];
+			positions.push(a[0], a[1], a[2], c[0], c[1], c[2]);
+			colors.push(r, g, b, r, g, b);
+		}
+	}
+	if (positions.length === 0) return;
+	const geo = new THREE.BufferGeometry();
+	geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+	geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+	const lines = new THREE.LineSegments(geo, borderMaterial);
+	lines.renderOrder = 2; // por encima del agua translúcida
+	borderGroup.add(lines);
 }
 
 // ============================================================
 // PANEL DE MÉTRICAS (estilo F3)
 // ============================================================
 function fmt(n) {
-  if (!Number.isFinite(n)) return '--';
-  return n >= 10000 ? (n / 1000).toFixed(0) + 'K' : n.toFixed(0);
+	if (!Number.isFinite(n)) return "--";
+	return n >= 10000 ? `${(n / 1000).toFixed(0)}K` : n.toFixed(0);
 }
 
 // Caras en la geometría cargada: 1 cara (cuadrilátero) = 2 triángulos =
@@ -95,49 +98,51 @@ function fmt(n) {
 // caras = count / 6 (el /18 original mostraba un tercio de las reales).
 // Cuenta los dos tiers: completo (texturizado) + LOD (heightmap simplificado).
 function totalFaces() {
-  let faces = 0;
-  for (const group of [...chunkMeshes.values(), ...lodMeshes.values()]) {
-    for (const o of group.children) {
-      const pos = o.geometry && o.geometry.attributes.position;
-      if (pos) faces += pos.count / 6;
-    }
-  }
-  return faces;
+	let faces = 0;
+	for (const group of [...chunkMeshes.values(), ...lodMeshes.values()]) {
+		for (const o of group.children) {
+			const pos = o.geometry?.attributes.position;
+			if (pos) faces += pos.count / 6;
+		}
+	}
+	return faces;
 }
 
 function updateHud() {
-  if (!enabled || !hudEl) return;
-  const fps = window.__mcFps, frame = window.__mcFrameMs, cull = window.__mcCullMs;
-  const chunks = window.__mcChunks ?? chunkMeshes.size + lodMeshes.size;
-  const vis = window.__mcVisibleChunks ?? 0;
-  const tris = window.__mcTriangles ?? 0;
-  const pool = window.__mcGeoPool;
-  const p = camera.position;
-  hudEl.innerHTML = [
-    '<b>⛏ Mi Minecraft — Depuración (F3)</b>',
-    `FPS: ${fps ? fps.toFixed(0) : '--'} · Frame: ${frame ? frame.toFixed(1) : '--'} ms · Culling: ${cull ? cull.toFixed(2) : '--'} ms`,
-    `Posición: ${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}`,
-    `Chunks: ${vis}/${chunks} visibles (${chunkMeshes.size + lodMeshes.size} en memoria)`,
-    `Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
-    `Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : '--'}`,
-  ].join('<br>');
+	if (!enabled || !hudEl) return;
+	const fps = window.__mcFps,
+		frame = window.__mcFrameMs,
+		cull = window.__mcCullMs;
+	const chunks = window.__mcChunks ?? chunkMeshes.size + lodMeshes.size;
+	const vis = window.__mcVisibleChunks ?? 0;
+	const tris = window.__mcTriangles ?? 0;
+	const pool = window.__mcGeoPool;
+	const p = camera.position;
+	hudEl.innerHTML = [
+		"<b>⛏ Mi Minecraft — Depuración (F3)</b>",
+		`FPS: ${fps ? fps.toFixed(0) : "--"} · Frame: ${frame ? frame.toFixed(1) : "--"} ms · Culling: ${cull ? cull.toFixed(2) : "--"} ms`,
+		`Posición: ${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}`,
+		`Chunks: ${vis}/${chunks} visibles (${chunkMeshes.size + lodMeshes.size} en memoria)`,
+		`Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
+		`Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : "--"}`
+	].join("<br>");
 }
 
 // ============================================================
 // TOGGLE + BUCLE (solo mientras está activo)
 // ============================================================
 export function toggleDebug() {
-  enabled = !enabled;
-  hudEl.classList.toggle('hidden', !enabled);
-  borderGroup.visible = enabled;
-  if (enabled) {
-    rebuildBorders();
-    updateHud();
-  }
-  return enabled;
+	enabled = !enabled;
+	hudEl.classList.toggle("hidden", !enabled);
+	borderGroup.visible = enabled;
+	if (enabled) {
+		rebuildBorders();
+		updateHud();
+	}
+	return enabled;
 }
 setInterval(() => {
-  if (!enabled) return;
-  rebuildBorders(); // barato: chunks nuevos/descargas y ediciones de bloques
-  updateHud();
+	if (!enabled) return;
+	rebuildBorders(); // barato: chunks nuevos/descargas y ediciones de bloques
+	updateHud();
 }, 1000);

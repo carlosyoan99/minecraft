@@ -5,7 +5,7 @@
 //  - XP simple / niveles: addXp, maxHealth por nivel (máx +10), conservación al morir.
 //  - Nuevos mobs: spider/wolf/rabbit (salud, drops, daño de espada por material).
 //  - Recetas: hilo(118) → lana y conejo crudo(118) → asado(119) en el horno.
-const path = require("path");
+const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const {
 	TOOL_DURABILITY,
@@ -24,12 +24,11 @@ const crafting = require(path.join(ROOT, "server", "crafting.js"));
 const world = require(path.join(ROOT, "server", "world.js"));
 
 let fails = 0;
-function check(name, ok, extra = "") {
+function check(_name, ok, _extra = "") {
 	if (!ok) fails++;
-	console.log(`${ok ? "PASS" : "FAIL"}: ${name}${extra ? " — " + extra : ""}`);
 }
 
-const OPEN = 1;
+const _OPEN = 1;
 const CLOSED = 3;
 function mkPlayer(over = {}) {
 	return {
@@ -56,11 +55,6 @@ function mkPlayer(over = {}) {
 
 crafting.loadRecipes();
 
-// ============================================================
-// DURABILIDAD
-// ============================================================
-console.log("=== DURABILIDAD DE HERRAMIENTAS ===");
-
 // 1) TOOL_DURABILITY cubre todas las herramientas (200-219)
 {
 	let all = true;
@@ -83,7 +77,7 @@ console.log("=== DURABILIDAD DE HERRAMIENTAS ===");
 	check(
 		"herramienta nueva con durabilidad plena",
 		slots[0].durability === TOOL_DURABILITY[I.WOODEN_PICKAXE],
-		"dur=" + slots[0].durability
+		`dur=${slots[0].durability}`
 	);
 	check("las herramientas no se apilan (2 slots)", slots.length === 2);
 }
@@ -137,7 +131,7 @@ console.log("=== DURABILIDAD DE HERRAMIENTAS ===");
 	check(
 		"el drop NO se duplica (1 adoquín)",
 		playersMod.countInInventory(p, B.COBBLESTONE) === 1,
-		"count=" + playersMod.countInInventory(p, B.COBBLESTONE)
+		`count=${playersMod.countInInventory(p, B.COBBLESTONE)}`
 	);
 	check(
 		"la herramienta rota desaparece",
@@ -160,14 +154,9 @@ console.log("=== DURABILIDAD DE HERRAMIENTAS ===");
 	check(
 		"round-trip por la mesa conserva durabilidad (no se repara gratis)",
 		found.length === 1 && found[0].durability === 30,
-		"dur=" + (found[0] && found[0].durability)
+		`dur=${found[0]?.durability}`
 	);
 }
-
-// ============================================================
-// DAÑO DE ESPADA POR MATERIAL
-// ============================================================
-console.log("\n=== DAÑO DE ESPADA ===");
 check(
 	"todas las espadas tienen daño",
 	[215, 216, 217, 218, 219].every((id) => SWORD_DAMAGE[id] > 0)
@@ -183,21 +172,16 @@ check(
 	SWORD_DAMAGE[218] < SWORD_DAMAGE[217]
 );
 
-// ============================================================
-// XP Y NIVELES SIMPLES
-// ============================================================
-console.log("\n=== EXPERIENCIA / NIVELES ===");
-
 // 7) addXp acumula y sube de nivel cada XP_PER_LEVEL, subiendo maxHealth
 {
 	const p = mkPlayer();
 	playersMod.addXp(p, 150);
-	check("150 XP → nivel 1", p.level === 1, "level=" + p.level);
-	check("maxHealth 20 + 1", p.maxHealth === 21, "max=" + p.maxHealth);
+	check("150 XP → nivel 1", p.level === 1, `level=${p.level}`);
+	check("maxHealth 20 + 1", p.maxHealth === 21, `max=${p.maxHealth}`);
 	playersMod.addXp(p, 49);
-	check("199 XP → sigue nivel 1 (aún no 2)", p.level === 1, "level=" + p.level);
+	check("199 XP → sigue nivel 1 (aún no 2)", p.level === 1, `level=${p.level}`);
 	playersMod.addXp(p, 1);
-	check("200 XP → nivel 2", p.level === 2, "level=" + p.level);
+	check("200 XP → nivel 2", p.level === 2, `level=${p.level}`);
 	check("maxHealth 20 + 2", p.maxHealth === 22);
 }
 
@@ -209,7 +193,7 @@ console.log("\n=== EXPERIENCIA / NIVELES ===");
 	check(
 		"maxHealth tope en 30 (+10)",
 		p.maxHealth === 20 + MAX_LEVEL_HEALTH_BONUS,
-		"max=" + p.maxHealth
+		`max=${p.maxHealth}`
 	);
 }
 
@@ -219,7 +203,7 @@ console.log("\n=== EXPERIENCIA / NIVELES ===");
 	const p = mkPlayer({ health: 3 });
 	playersMod.addXp(p, 300); // nivel 3 → maxHealth 23
 	playersMod.damagePlayer(p, 999); // daño masivo → respawn interno
-	check("respawn con maxHealth (23)", p.health === 23, "health=" + p.health);
+	check("respawn con maxHealth (23)", p.health === 23, `health=${p.health}`);
 	check("la XP se conserva al morir", p.xp === 300 && p.level === 3);
 }
 
@@ -232,11 +216,6 @@ check(
 	"MOB_XP cubre hostiles y pasivos nuevos",
 	MOB_XP.spider > 0 && MOB_XP.wolf > 0 && MOB_XP.rabbit > 0 && MOB_XP.zombie > 0
 );
-
-// ============================================================
-// NUEVOS MOBS (spider, wolf, rabbit) Y DROPS
-// ============================================================
-console.log("\n=== NUEVOS MOBS Y DROPS ===");
 
 // 11) Salud por tipo
 check(
@@ -258,12 +237,12 @@ check(
 	Math.random = realRandom;
 	check(
 		"spider dropea hilo (118)",
-		spider && spider[0] && spider[0].id === I.STRING,
+		spider?.[0] && spider[0].id === I.STRING,
 		JSON.stringify(spider)
 	);
 	check(
 		"rabbit dropea conejo crudo (118)",
-		rabbit && rabbit[0] && rabbit[0].id === I.RABBIT,
+		rabbit?.[0] && rabbit[0].id === I.RABBIT,
 		JSON.stringify(rabbit)
 	);
 }
@@ -283,7 +262,7 @@ check(
 	check(
 		"2x2 hilo → lana (18)",
 		r && r.result.id === 18,
-		JSON.stringify(r && r.result)
+		JSON.stringify(r?.result)
 	);
 }
 check("conejo crudo (118) es cocinable", crafting.isCookable(118) === true);
@@ -299,9 +278,5 @@ check(
 		state: "idle",
 		isBaby: false
 	}).type === "spider"
-);
-
-console.log(
-	fails === 0 ? "\n✅ Todos los tests pasan" : `\n❌ ${fails} tests fallaron`
 );
 process.exit(fails === 0 ? 0 : 1);
