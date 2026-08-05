@@ -140,6 +140,10 @@ function stopMining() {
 // conejo también come zanahorias (Fase 5)
 const PASSIVE_MOBS = new Set(["cow", "pig", "chicken", "sheep", "rabbit"]);
 
+// Fase 8 (B9): los mobs son GRUPOS de partes (MOB_PARTS) — el rayo intersecta
+// los HIJOS (las cajas) con recursión y luego se sube por el árbol hasta el
+// grupo raíz que tiene userData.mobId/mobType. El terreno son meshes simples
+// (hijos de chunkMeshes); intersectar con recursive=true también los cubre.
 function raycastTerrainAndMobs() {
 	raycaster.setFromCamera({ x: 0, y: 0 }, camera);
 	const terrainMeshes = [];
@@ -150,9 +154,23 @@ function raycastTerrainAndMobs() {
 	const mobList = Array.from(mobMeshes.values());
 	const hits = raycaster.intersectObjects(
 		[...terrainMeshes, ...mobList],
-		false
+		true // Fase 8 (B9): recursivo para llegar a las partes de los mobs
 	);
 	return hits[0] || null;
+}
+
+// Sube desde el mesh golpeado (puede ser una parte del grupo) hasta el grupo
+// raíz del mob y devuelve su userData, o null si no era un mob. Sin esto, con
+// el mob multibloque el clic golpearía la caja de una parte que no lleva
+// mobId → regresión directa de B10.
+function mobRootData(hit) {
+	if (!hit) return null;
+	let o = hit.object;
+	while (o) {
+		if (o.userData?.mobId) return o.userData;
+		o = o.parent;
+	}
+	return null;
 }
 
 // Fase 8 (B10): mob más cercano a lo LARGO del rayo (proyección) que quede
@@ -182,7 +200,7 @@ function nearestMobOnRay(ray, distTerreno) {
 			best = mesh.userData;
 		}
 	}
-	return best && best.mobId ? { id: best.mobId, type: best.mobType } : null;
+	return best?.mobId ? { id: best.mobId, type: best.mobType } : null;
 }
 
 renderer.domElement.addEventListener("mousedown", (e) => {
@@ -195,9 +213,12 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	// vacío) pero hay un mob DELANTE (proyección sobre el rayo, desviación
 	// lateral <= 0.75) en vez de caer exactamente dentro de su caja, el clic
 	// golpea al mob (antes solo acertaba si el rayo tocaba la caja; con el mob
-	// de pie junto a un bloque o moviéndose, el terreno ganaba).
+	// de pie junto a un bloque o moviéndose, el terreno ganaba). Fase 8 (B9):
+	// el hit puede ser una PARTE del grupo multibloque → se sube al raíz con
+	// mobRootData() para leer mobId/mobType.
+	const rootData = mobRootData(hit);
 	const hitMob =
-		hit?.object.userData.mobId ||
+		(rootData?.mobId && { id: rootData.mobId, type: rootData.mobType }) ||
 		nearestMobOnRay(raycaster.ray, hit ? hit.distance : raycaster.far);
 
 	// Alimentar animales: clic derecho sobre un animal pasivo con su comida de

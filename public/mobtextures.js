@@ -1,15 +1,19 @@
 // ============================================================
 // TEXTURAS PROCEDURALES DE MOBS (16x16 px por tesela, pixel-art)
-// Reemplazan los MOB_COLORS planos del servidor: cada tipo de mob
-// tiene un atlas 2x2 (frente / lado / arriba / abajo) generado en un
-// canvas al cargar el cliente. Sin assets binarios ni build step.
-// El mesh se construye texturizado por cara en public/mobs.js (UVs
-// por cara hacia el atlas). Misma filosofía que textures.js.
+// Fase 8 (B9): los mobs ya NO son un box único — cada especie es un
+// GRUPO de partes (cabeza, cuerpo, extremidades) y cada parte única
+// tiene SU tesela en un atlas de una fila (N × 16 px). El mesh se
+// construye en public/mobs.js iterando MOB_PARTS y remapeando los UV
+// de cada caja hacia la tesela de su parte. Sin assets binarios ni
+// build step. Misma filosofía que textures.js.
+//
+// MOB_PARTS es la ÚNICA fuente de verdad del modelo: mobs.js la usa
+// para construir los meshes y este módulo para saber qué teselas
+// generar. Coordenadas relativas al grupo (Y: 0 = pies, +Y = arriba).
 // ============================================================
 import * as THREE from "three";
 
 const TILE = 16; // px por tesela
-const COLS = 2; // teselas por fila (atlas 2x2)
 
 // --- PRNG determinista (mulberry32): el atlas es estable entre cargas ---
 function mulberry32(seed) {
@@ -46,8 +50,192 @@ function speckle(ctx, rng, color, density) {
 }
 
 // ============================================================
-// ZOMBIE — piel verdosa, camisa azul rota, pantalón oscuro
+// ESQUEMA MULTIBLOQUE (Fase 8, B9): dimensiones por parte y especie.
+// Formato: { parts: [{ name, size:[w,h,d], pos:[x,y,z], tile?,
+//                       rot? }] }
+//  - name: identidad de la parte (armL/armR comparten "arm", etc.)
+//  - tile: tesela del atlas a usar (por defecto, `name`)
+//  - rot:  rotación en radianes [x,y,z] (patas de la araña)
+// Las posiciones son relativas al grupo; la escala por especie
+// (MOB_SCALE en mobs.js) y isBaby se aplican al grupo raíz.
 // ============================================================
+export const MOB_PARTS = {
+	zombie: {
+		parts: [
+			{ name: "head", size: [0.5, 0.5, 0.5], pos: [0, 1.55, 0] },
+			{ name: "body", size: [0.5, 0.75, 0.25], pos: [0, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [-0.375, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [0.375, 1.05, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [-0.125, 0.375, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [0.125, 0.375, 0] }
+		]
+	},
+	// Esqueleto: misma silueta humanoide, cambian solo las texturas.
+	skeleton: {
+		parts: [
+			{ name: "head", size: [0.5, 0.5, 0.5], pos: [0, 1.55, 0] },
+			{ name: "body", size: [0.5, 0.75, 0.25], pos: [0, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [-0.375, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [0.375, 1.05, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [-0.125, 0.375, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [0.125, 0.375, 0] }
+		]
+	},
+	// Enderman: alto (2.55 bloques), brazos y piernas largos.
+	enderman: {
+		parts: [
+			{ name: "head", size: [0.5, 0.5, 0.5], pos: [0, 2.05, 0] },
+			{ name: "body", size: [0.5, 0.75, 0.25], pos: [0, 1.35, 0] },
+			{ name: "arm", size: [0.25, 1.0, 0.25], pos: [-0.375, 1.4, 0] },
+			{ name: "arm", size: [0.25, 1.0, 0.25], pos: [0.375, 1.4, 0] },
+			{ name: "leg", size: [0.25, 1.0, 0.25], pos: [-0.125, 0.5, 0] },
+			{ name: "leg", size: [0.25, 1.0, 0.25], pos: [0.125, 0.5, 0] }
+		]
+	},
+	// Creeper: cuerpo bajo y 4 patas (delanteras y traseras).
+	creeper: {
+		parts: [
+			{ name: "head", size: [0.5, 0.5, 0.5], pos: [0, 1.35, 0] },
+			{ name: "body", size: [0.5, 0.6, 0.25], pos: [0, 0.8, 0] },
+			{ name: "leg", size: [0.25, 0.5, 0.25], pos: [-0.125, 0.25, 0.125] },
+			{ name: "leg", size: [0.25, 0.5, 0.25], pos: [0.125, 0.25, 0.125] },
+			{ name: "leg", size: [0.25, 0.5, 0.25], pos: [-0.125, 0.25, -0.125] },
+			{ name: "leg", size: [0.25, 0.5, 0.25], pos: [0.125, 0.25, -0.125] }
+		]
+	},
+	// Araña: abdomen + cabeza y 8 patas (4 por lado, rotadas en diagonal).
+	spider: {
+		parts: [
+			{ name: "body", size: [0.7, 0.5, 0.7], pos: [0, 0.35, -0.15] },
+			{ name: "head", size: [0.5, 0.3, 0.5], pos: [0, 0.35, 0.3] },
+			{
+				name: "leg",
+				tile: "body",
+				size: [0.08, 0.08, 0.55],
+				pos: [-0.5, 0.4, 0.35],
+				rot: [0, 0.9, 0]
+			},
+			{
+				name: "leg",
+				tile: "body",
+				size: [0.08, 0.08, 0.55],
+				pos: [0.5, 0.4, 0.35],
+				rot: [0, -0.9, 0]
+			},
+			{
+				name: "leg",
+				tile: "body",
+				size: [0.08, 0.08, 0.55],
+				pos: [-0.5, 0.4, 0.1],
+				rot: [0, 0.45, 0]
+			},
+			{
+				name: "leg",
+				tile: "body",
+				size: [0.08, 0.08, 0.55],
+				pos: [0.5, 0.4, 0.1],
+				rot: [0, -0.45, 0]
+			},
+			{
+				name: "leg",
+				tile: "body",
+				size: [0.08, 0.08, 0.55],
+				pos: [-0.5, 0.4, -0.15],
+				rot: [0, -0.45, 0]
+			},
+			{
+				name: "leg",
+				tile: "body",
+				size: [0.08, 0.08, 0.55],
+				pos: [0.5, 0.4, -0.15],
+				rot: [0, 0.45, 0]
+			},
+			{
+				name: "leg",
+				tile: "body",
+				size: [0.08, 0.08, 0.55],
+				pos: [-0.5, 0.4, -0.4],
+				rot: [0, -0.9, 0]
+			},
+			{
+				name: "leg",
+				tile: "body",
+				size: [0.08, 0.08, 0.55],
+				pos: [0.5, 0.4, -0.4],
+				rot: [0, 0.9, 0]
+			}
+		]
+	},
+	// Conejo: cuerpo + cabeza + orejas largas.
+	rabbit: {
+		parts: [
+			{ name: "body", size: [0.4, 0.4, 0.4], pos: [0, 0.25, 0] },
+			{ name: "head", size: [0.3, 0.3, 0.3], pos: [0, 0.45, 0.2] },
+			{ name: "ear", size: [0.08, 0.3, 0.05], pos: [-0.09, 0.75, 0.15] },
+			{ name: "ear", size: [0.08, 0.3, 0.05], pos: [0.09, 0.75, 0.15] }
+		]
+	},
+	// Cuadrúpedos (lobo, vaca, cerdo, oveja): cuerpo alargado + cabeza + 4 patas.
+	wolf: {
+		parts: [
+			{ name: "body", size: [0.6, 0.6, 1.0], pos: [0, 0.55, 0] },
+			{ name: "head", size: [0.4, 0.4, 0.4], pos: [0, 0.6, 0.55] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [-0.2, 0.25, 0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [0.2, 0.25, 0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [-0.2, 0.25, -0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [0.2, 0.25, -0.3] }
+		]
+	},
+	cow: {
+		parts: [
+			{ name: "body", size: [0.6, 0.6, 1.0], pos: [0, 0.55, 0] },
+			{ name: "head", size: [0.4, 0.4, 0.4], pos: [0, 0.6, 0.55] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [-0.2, 0.25, 0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [0.2, 0.25, 0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [-0.2, 0.25, -0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [0.2, 0.25, -0.3] }
+		]
+	},
+	pig: {
+		parts: [
+			{ name: "body", size: [0.6, 0.6, 1.0], pos: [0, 0.55, 0] },
+			{ name: "head", size: [0.4, 0.4, 0.4], pos: [0, 0.6, 0.55] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [-0.2, 0.25, 0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [0.2, 0.25, 0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [-0.2, 0.25, -0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [0.2, 0.25, -0.3] }
+		]
+	},
+	sheep: {
+		parts: [
+			{ name: "body", size: [0.6, 0.6, 1.0], pos: [0, 0.55, 0] },
+			{ name: "head", size: [0.4, 0.4, 0.4], pos: [0, 0.6, 0.55] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [-0.2, 0.25, 0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [0.2, 0.25, 0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [-0.2, 0.25, -0.3] },
+			{ name: "leg", size: [0.15, 0.5, 0.15], pos: [0.2, 0.25, -0.3] }
+		]
+	},
+	// Pollo: cuerpo bajo + cabeza + 2 patas finas.
+	chicken: {
+		parts: [
+			{ name: "body", size: [0.4, 0.4, 0.4], pos: [0, 0.3, 0] },
+			{ name: "head", size: [0.25, 0.25, 0.25], pos: [0, 0.5, 0.15] },
+			{ name: "leg", size: [0.06, 0.3, 0.06], pos: [-0.1, 0.15, 0] },
+			{ name: "leg", size: [0.06, 0.3, 0.06], pos: [0.1, 0.15, 0] }
+		]
+	}
+};
+
+// ============================================================
+// PALETAS Y DIBUJO POR PARTE
+// Una función por parte única (head/body/arm/leg/ear). Las teselas
+// repetidas (brazos/piernas laterales, patas) se generan una vez.
+// Los motivos visuales se conservan de la versión de box único: solo
+// cambia la distribución por parte.
+// ============================================================
+
+// --- ZOMBIE: piel verdosa, camisa azul rota, pantalón oscuro ---
 const Z = {
 	skin: "#5d8f4a",
 	skinDark: "#4a7a3a",
@@ -58,152 +246,129 @@ const Z = {
 	pants: "#4a4a5a",
 	pantsDark: "#393948"
 };
-function drawZombieFront(ctx, rng) {
+function drawZombieHead(ctx, rng) {
 	fill(ctx, Z.skin);
-	// pelo despeinado
-	rect(ctx, 1, 0, 14, 2, Z.hair);
+	rect(ctx, 1, 0, 14, 2, Z.hair); // pelo despeinado
 	for (let i = 0; i < 5; i++) px(ctx, 1 + Math.floor(rng() * 14), 2, Z.hair);
-	// ojos (2x1)
-	rect(ctx, 4, 3, 2, 1, Z.eye);
+	rect(ctx, 4, 3, 2, 1, Z.eye); // ojos 2x1
 	rect(ctx, 10, 3, 2, 1, Z.eye);
 	px(ctx, 7, 4, Z.skinDark);
 	px(ctx, 8, 4, Z.skinDark); // nariz
-	// boca torcida
-	rect(ctx, 5, 6, 6, 2, Z.eye);
+	rect(ctx, 5, 6, 6, 2, Z.eye); // boca torcida
 	px(ctx, 6, 6, Z.skinDark);
 	px(ctx, 9, 7, Z.skinDark);
-	// cuello
-	rect(ctx, 6, 8, 4, 1, Z.skinDark);
-	// camisa rota
-	rect(ctx, 1, 9, 14, 7, Z.shirt);
-	speckle(ctx, rng, Z.shirtDark, 0.14);
-	px(ctx, 2, 11, Z.skin);
-	px(ctx, 13, 12, Z.skin);
 }
-function drawZombieSide(ctx, rng) {
+function drawZombieBody(ctx, rng) {
+	fill(ctx, Z.shirt);
+	speckle(ctx, rng, Z.shirtDark, 0.16);
+	px(ctx, 2, 4, Z.skin); // rasgones que dejan ver la piel
+	px(ctx, 13, 5, Z.skin);
+	px(ctx, 5, 11, Z.skinDark);
+	px(ctx, 10, 10, Z.skinDark);
+}
+function drawZombieArm(ctx, rng) {
 	fill(ctx, Z.skin);
-	speckle(ctx, rng, Z.skinDark, 0.14);
-	rect(ctx, 0, 9, TILE, 7, Z.shirt);
-	speckle(ctx, rng, Z.shirtDark, 0.12);
-}
-function drawZombieTop(ctx, rng) {
-	fill(ctx, Z.hair);
 	speckle(ctx, rng, Z.skinDark, 0.15);
+	rect(ctx, 0, 0, TILE, 6, Z.shirt); // manga
+	speckle(ctx, rng, Z.shirtDark, 0.15);
 }
-function drawZombieBottom(ctx, rng) {
+function drawZombieLeg(ctx, rng) {
 	fill(ctx, Z.pants);
-	speckle(ctx, rng, Z.pantsDark, 0.2);
+	speckle(ctx, rng, Z.pantsDark, 0.22);
+	rect(ctx, 0, 13, TILE, 3, Z.skinDark); // pie
 }
 
-// ============================================================
-// CREEPER — verde moteado con la cara clásica de 4 ojos
-// ============================================================
+// --- CREEPER: verde moteado, cara clásica de 4 ojos en la cabeza ---
 const C = {
 	body: "#2e7d32",
 	bodyDark: "#1b5e20",
 	bodyLight: "#43a047",
 	face: "#0d0d0d"
 };
-function drawCreeperFront(ctx, rng) {
+function drawCreeperHead(ctx, rng) {
 	fill(ctx, C.body);
-	speckle(ctx, rng, C.bodyDark, 0.1);
-	speckle(ctx, rng, C.bodyLight, 0.06);
-	// ojos 2x2 y boca característica del creeper
-	rect(ctx, 3, 2, 2, 2, C.face);
+	speckle(ctx, rng, C.bodyDark, 0.12);
+	rect(ctx, 3, 2, 2, 2, C.face); // 4 ojos 2x2
 	rect(ctx, 11, 2, 2, 2, C.face);
 	rect(ctx, 5, 7, 2, 2, C.face);
 	rect(ctx, 9, 7, 2, 2, C.face);
-	rect(ctx, 6, 9, 4, 1, C.face);
+	rect(ctx, 6, 9, 4, 1, C.face); // boca característica
 	rect(ctx, 7, 10, 2, 1, C.face);
 }
-function drawCreeperSide(ctx, rng) {
+function drawCreeperBody(ctx, rng) {
 	fill(ctx, C.body);
-	speckle(ctx, rng, C.bodyDark, 0.12);
+	speckle(ctx, rng, C.bodyDark, 0.14);
 	speckle(ctx, rng, C.bodyLight, 0.08);
 }
-function drawCreeperTop(ctx, rng) {
+function drawCreeperLeg(ctx, rng) {
 	fill(ctx, C.bodyDark);
-	speckle(ctx, rng, C.body, 0.3);
-}
-function drawCreeperBottom(ctx, rng) {
-	fill(ctx, C.bodyDark);
+	speckle(ctx, rng, C.body, 0.2);
 	speckle(ctx, rng, C.bodyLight, 0.1);
 }
 
-// ============================================================
-// SKELETON — huesos pálidos, cuencas negras y costillas
-// ============================================================
+// --- SKELETON: huesos pálidos, cuencas negras y costillas ---
 const S = {
 	bone: "#d8d8d8",
 	boneDark: "#9a9a9a",
 	boneLight: "#f0f0f0",
 	socket: "#141414"
 };
-function drawSkeletonFront(ctx, rng) {
+function drawSkeletonHead(ctx, rng) {
 	fill(ctx, S.bone);
 	speckle(ctx, rng, S.boneDark, 0.08);
-	// cráneo: cuencas
-	rect(ctx, 3, 1, 3, 2, S.socket);
+	rect(ctx, 3, 1, 3, 2, S.socket); // cuencas
 	rect(ctx, 10, 1, 3, 2, S.socket);
 	rect(ctx, 7, 2, 2, 1, S.socket); // nariz
-	// mandíbula
-	rect(ctx, 4, 5, 8, 2, S.boneDark);
+	rect(ctx, 4, 5, 8, 2, S.boneDark); // mandíbula
 	px(ctx, 5, 5, S.bone);
 	px(ctx, 10, 6, S.bone);
-	// costillas en el torso
-	rect(ctx, 1, 9, 14, 7, S.boneDark);
-	rect(ctx, 3, 10, 10, 1, S.bone);
-	rect(ctx, 4, 12, 8, 1, S.bone);
-	rect(ctx, 5, 14, 6, 1, S.bone);
 }
-function drawSkeletonSide(ctx, rng) {
-	fill(ctx, S.bone);
-	speckle(ctx, rng, S.boneDark, 0.1);
-	// costillas verticales
-	for (let y = 9; y < TILE; y += 2) rect(ctx, 0, y, TILE, 1, S.boneDark);
-}
-function drawSkeletonTop(ctx, rng) {
-	fill(ctx, S.boneLight);
-	speckle(ctx, rng, S.boneDark, 0.12);
-}
-function drawSkeletonBottom(ctx, rng) {
+function drawSkeletonBody(ctx, rng) {
 	fill(ctx, S.boneDark);
-	speckle(ctx, rng, S.bone, 0.15);
+	rect(ctx, 3, 1, 10, 1, S.bone); // costillas
+	rect(ctx, 4, 4, 8, 1, S.bone);
+	rect(ctx, 5, 7, 6, 1, S.bone);
+	rect(ctx, 6, 10, 4, 1, S.bone);
+	speckle(ctx, rng, S.bone, 0.1);
+}
+function drawSkeletonArm(ctx, rng) {
+	fill(ctx, S.bone);
+	speckle(ctx, rng, S.boneDark, 0.12);
+	for (let y = 2; y < TILE; y += 4) rect(ctx, 0, y, TILE, 1, S.boneDark);
+}
+function drawSkeletonLeg(ctx, rng) {
+	fill(ctx, S.boneDark);
+	speckle(ctx, rng, S.bone, 0.18);
 }
 
-// ============================================================
-// ENDERMAN — negro profundo con ojos morados brillantes
-// ============================================================
+// --- ENDERMAN: negro profundo, ojos morados brillantes ---
 const E = {
 	body: "#16161f",
 	bodyLight: "#242433",
 	eye: "#b26bd6",
 	eyeHot: "#d9a3f0"
 };
-function drawEndermanFront(ctx, rng) {
+function drawEndermanHead(ctx, rng) {
 	fill(ctx, E.body);
 	speckle(ctx, rng, E.bodyLight, 0.06);
-	// ojos morados 3x2 con núcleo brillante
-	rect(ctx, 4, 2, 3, 2, E.eye);
+	rect(ctx, 4, 2, 3, 2, E.eye); // ojos morados 3x2
 	rect(ctx, 9, 2, 3, 2, E.eye);
 	px(ctx, 5, 2, E.eyeHot);
 	px(ctx, 10, 3, E.eyeHot);
 }
-function drawEndermanSide(ctx, rng) {
+function drawEndermanBody(ctx, rng) {
+	fill(ctx, E.body);
+	speckle(ctx, rng, E.bodyLight, 0.1);
+}
+function drawEndermanArm(ctx, rng) {
 	fill(ctx, E.body);
 	speckle(ctx, rng, E.bodyLight, 0.08);
 }
-function drawEndermanTop(ctx, rng) {
-	fill(ctx, E.body);
-	speckle(ctx, rng, E.bodyLight, 0.05);
-}
-function drawEndermanBottom(ctx, _rng) {
+function drawEndermanLeg(ctx, _rng) {
 	fill(ctx, "#0f0f17");
 }
 
-// ============================================================
-// SPIDER — cuerpo oscuro con racimo de ojos rojos
-// ============================================================
+// --- SPIDER: abdomen oscuro, cabeza con racimo de ojos rojos ---
 const SP = {
 	body: "#4a3f35",
 	bodyDark: "#332b24",
@@ -211,41 +376,24 @@ const SP = {
 	eye: "#e03030",
 	eyeHot: "#ff8080"
 };
-function drawSpiderFront(ctx, rng) {
+function drawSpiderBody(ctx, rng) {
 	fill(ctx, SP.body);
-	speckle(ctx, rng, SP.bodyDark, 0.12);
-	// racimo de ojos rojos (4 en fila)
-	rect(ctx, 4, 2, 8, 2, SP.bodyDark);
-	px(ctx, 5, 2, SP.eye);
+	speckle(ctx, rng, SP.bodyDark, 0.18);
+	rect(ctx, 0, 2, TILE, 2, SP.bodyDark); // marca dorsal
+	rect(ctx, 0, 12, TILE, 2, SP.bodyDark);
+}
+function drawSpiderHead(ctx, _rng) {
+	fill(ctx, SP.bodyDark);
+	rect(ctx, 4, 2, 8, 2, SP.body); // banda de ojos
+	px(ctx, 5, 2, SP.eye); // racimo de ojos rojos
 	px(ctx, 7, 2, SP.eyeHot);
 	px(ctx, 9, 2, SP.eye);
 	px(ctx, 11, 2, SP.eyeHot);
-	// quelíceros
-	px(ctx, 6, 4, SP.eye);
+	px(ctx, 6, 4, SP.eye); // quelíceros
 	px(ctx, 10, 4, SP.eye);
 }
-function drawSpiderSide(ctx, rng) {
-	fill(ctx, SP.body);
-	speckle(ctx, rng, SP.bodyDark, 0.1);
-	// patas diagonales
-	for (let i = 0; i < 4; i++) {
-		const y = 3 + i * 3;
-		rect(ctx, 0, y, 5, 1, SP.bodyDark);
-		rect(ctx, 11, y, 5, 1, SP.bodyDark);
-	}
-}
-function drawSpiderTop(ctx, rng) {
-	fill(ctx, SP.bodyDark);
-	speckle(ctx, rng, SP.bodyLight, 0.12);
-}
-function drawSpiderBottom(ctx, rng) {
-	fill(ctx, SP.bodyDark);
-	speckle(ctx, rng, SP.body, 0.2);
-}
 
-// ============================================================
-// WOLF — gris con orejas y hocico claro
-// ============================================================
+// --- WOLF: gris con orejas y hocico claro ---
 const W = {
 	fur: "#9a9a9a",
 	furDark: "#767676",
@@ -254,41 +402,31 @@ const W = {
 	nose: "#2a2a2a",
 	eye: "#2a2a2a"
 };
-function drawWolfFront(ctx, rng) {
+function drawWolfBody(ctx, rng) {
+	fill(ctx, W.fur);
+	speckle(ctx, rng, W.furDark, 0.18);
+	speckle(ctx, rng, W.furLight, 0.08);
+	rect(ctx, 0, 13, TILE, 3, W.furLight); // vientre claro
+}
+function drawWolfHead(ctx, rng) {
 	fill(ctx, W.fur);
 	speckle(ctx, rng, W.furDark, 0.1);
-	// orejas
-	rect(ctx, 2, 0, 2, 2, W.furDark);
+	rect(ctx, 2, 0, 2, 2, W.furDark); // orejas
 	rect(ctx, 12, 0, 2, 2, W.furDark);
-	// ojos
-	px(ctx, 4, 3, W.eye);
+	px(ctx, 4, 3, W.eye); // ojos
 	px(ctx, 11, 3, W.eye);
-	// hocico claro con nariz
-	rect(ctx, 5, 5, 6, 6, W.muzzle);
+	rect(ctx, 5, 5, 6, 6, W.muzzle); // hocico claro
 	rect(ctx, 7, 5, 2, 2, W.nose);
 	px(ctx, 6, 7, W.nose);
 	px(ctx, 9, 7, W.nose);
 	rect(ctx, 6, 9, 4, 1, W.nose); // boca
 }
-function drawWolfSide(ctx, rng) {
-	fill(ctx, W.fur);
-	speckle(ctx, rng, W.furDark, 0.16);
-	speckle(ctx, rng, W.furLight, 0.08);
-}
-function drawWolfTop(ctx, rng) {
-	fill(ctx, W.fur);
-	rect(ctx, 2, 0, 2, 2, W.furDark);
-	rect(ctx, 12, 0, 2, 2, W.furDark);
-	speckle(ctx, rng, W.furDark, 0.1);
-}
-function drawWolfBottom(ctx, rng) {
-	fill(ctx, W.muzzle);
-	speckle(ctx, rng, W.fur, 0.12);
+function drawWolfLeg(ctx, rng) {
+	fill(ctx, W.furDark);
+	speckle(ctx, rng, W.fur, 0.2);
 }
 
-// ============================================================
-// COW — marrón con manchas blancas y hocico rosa
-// ============================================================
+// --- COW: marrón con manchas blancas y hocico rosa ---
 const CO = {
 	body: "#6b4226",
 	bodyDark: "#52301c",
@@ -297,54 +435,41 @@ const CO = {
 	horn: "#d8cfa8",
 	eye: "#141414"
 };
-function drawCowFront(ctx, rng) {
-	fill(ctx, CO.body);
-	speckle(ctx, rng, CO.bodyDark, 0.12);
-	// cuernos
-	px(ctx, 1, 1, CO.horn);
-	px(ctx, 2, 1, CO.horn);
-	px(ctx, 13, 1, CO.horn);
-	px(ctx, 14, 1, CO.horn);
-	// ojos
-	px(ctx, 4, 3, CO.eye);
-	px(ctx, 11, 3, CO.eye);
-	// hocico rosa claro con fosas
-	rect(ctx, 5, 6, 6, 5, CO.muzzle);
-	px(ctx, 6, 7, CO.bodyDark);
-	px(ctx, 9, 7, CO.bodyDark);
-	rect(ctx, 6, 9, 4, 1, CO.bodyDark);
-}
-function drawCowSide(ctx, rng) {
+function drawCowBody(ctx, rng) {
 	fill(ctx, CO.body);
 	speckle(ctx, rng, CO.bodyDark, 0.14);
-	// manchas blancas irregulares
-	for (let i = 0; i < 4; i++) {
-		const x = Math.floor(rng() * 10);
-		const y = Math.floor(rng() * 10);
+	for (let i = 0; i < 5; i++) {
+		// manchas blancas irregulares
 		rect(
 			ctx,
-			x,
-			y,
+			Math.floor(rng() * 10),
+			Math.floor(rng() * 11),
 			3 + Math.floor(rng() * 3),
 			2 + Math.floor(rng() * 2),
 			CO.patch
 		);
 	}
 }
-function drawCowTop(ctx, rng) {
+function drawCowHead(ctx, rng) {
 	fill(ctx, CO.body);
-	rect(ctx, 0, 0, 7, 6, CO.patch);
-	rect(ctx, 9, 8, 7, 5, CO.patch);
-	speckle(ctx, rng, CO.bodyDark, 0.1);
+	speckle(ctx, rng, CO.bodyDark, 0.12);
+	px(ctx, 1, 1, CO.horn); // cuernos
+	px(ctx, 2, 1, CO.horn);
+	px(ctx, 13, 1, CO.horn);
+	px(ctx, 14, 1, CO.horn);
+	px(ctx, 4, 3, CO.eye); // ojos
+	px(ctx, 11, 3, CO.eye);
+	rect(ctx, 5, 6, 6, 5, CO.muzzle); // hocico rosa
+	px(ctx, 6, 7, CO.bodyDark);
+	px(ctx, 9, 7, CO.bodyDark);
+	rect(ctx, 6, 9, 4, 1, CO.bodyDark);
 }
-function drawCowBottom(ctx, rng) {
+function drawCowLeg(ctx, rng) {
 	fill(ctx, CO.bodyDark);
-	speckle(ctx, rng, CO.body, 0.2);
+	speckle(ctx, rng, CO.body, 0.25);
 }
 
-// ============================================================
-// PIG — rosa con hocico oscuro y fosas
-// ============================================================
+// --- PIG: rosa con hocico oscuro y fosas ---
 const P = {
 	body: "#f0a8b8",
 	bodyDark: "#d98a9e",
@@ -352,37 +477,28 @@ const P = {
 	snout: "#d98a9e",
 	eye: "#3a1a1a"
 };
-function drawPigFront(ctx, rng) {
+function drawPigBody(ctx, rng) {
+	fill(ctx, P.body);
+	speckle(ctx, rng, P.bodyDark, 0.1);
+	speckle(ctx, rng, P.bodyLight, 0.12);
+}
+function drawPigHead(ctx, rng) {
 	fill(ctx, P.body);
 	speckle(ctx, rng, P.bodyDark, 0.08);
-	// orejas
-	px(ctx, 2, 1, P.bodyDark);
+	px(ctx, 2, 1, P.bodyDark); // orejas
 	px(ctx, 13, 1, P.bodyDark);
-	// ojos
-	px(ctx, 4, 3, P.eye);
+	px(ctx, 4, 3, P.eye); // ojos
 	px(ctx, 11, 3, P.eye);
-	// hocico ovalado con fosas
-	rect(ctx, 5, 6, 6, 4, P.snout);
-	rect(ctx, 6, 7, 2, 2, P.eye);
+	rect(ctx, 5, 6, 6, 4, P.snout); // hocico ovalado
+	rect(ctx, 6, 7, 2, 2, P.eye); // fosas
 	rect(ctx, 9, 7, 2, 2, P.eye);
 }
-function drawPigSide(ctx, rng) {
-	fill(ctx, P.body);
-	speckle(ctx, rng, P.bodyDark, 0.14);
-	speckle(ctx, rng, P.bodyLight, 0.1);
-}
-function drawPigTop(ctx, rng) {
-	fill(ctx, P.bodyLight);
-	speckle(ctx, rng, P.body, 0.15);
-}
-function drawPigBottom(ctx, rng) {
+function drawPigLeg(ctx, rng) {
 	fill(ctx, P.bodyDark);
-	speckle(ctx, rng, P.body, 0.18);
+	speckle(ctx, rng, P.body, 0.2);
 }
 
-// ============================================================
-// CHICKEN — crema con cresta roja y pico naranja
-// ============================================================
+// --- CHICKEN: crema con cresta roja y pico naranja ---
 const CH = {
 	body: "#f2e08a",
 	bodyDark: "#d9c26a",
@@ -391,43 +507,32 @@ const CH = {
 	beak: "#e88a2a",
 	eye: "#141414"
 };
-function drawChickenFront(ctx, rng) {
+function drawChickenBody(ctx, rng) {
+	fill(ctx, CH.body);
+	speckle(ctx, rng, CH.bodyDark, 0.12);
+	rect(ctx, 2, 6, 12, 4, CH.bodyLight); // ala
+	rect(ctx, 2, 6, 12, 1, CH.bodyDark);
+}
+function drawChickenHead(ctx, rng) {
 	fill(ctx, CH.body);
 	speckle(ctx, rng, CH.bodyDark, 0.1);
-	// cresta roja
-	rect(ctx, 5, 0, 2, 2, CH.comb);
+	rect(ctx, 5, 0, 2, 2, CH.comb); // cresta
 	rect(ctx, 9, 0, 2, 2, CH.comb);
 	px(ctx, 7, 0, CH.comb);
 	px(ctx, 8, 0, CH.comb);
-	// ojo
-	px(ctx, 5, 3, CH.eye);
-	// pico naranja
-	rect(ctx, 7, 3, 3, 2, CH.beak);
+	px(ctx, 5, 3, CH.eye); // ojo
+	rect(ctx, 7, 3, 3, 2, CH.beak); // pico naranja
 	px(ctx, 9, 4, CH.beak);
-	// barbilla
-	px(ctx, 7, 5, CH.comb);
+	px(ctx, 7, 5, CH.comb); // barbilla
 	px(ctx, 8, 5, CH.comb);
 }
-function drawChickenSide(ctx, rng) {
-	fill(ctx, CH.body);
-	speckle(ctx, rng, CH.bodyDark, 0.12);
-	// ala
-	rect(ctx, 2, 6, 12, 4, CH.bodyLight);
-	rect(ctx, 2, 6, 12, 1, CH.bodyDark);
-}
-function drawChickenTop(ctx, rng) {
-	fill(ctx, CH.bodyLight);
-	rect(ctx, 6, 0, 4, 2, CH.comb);
-	speckle(ctx, rng, CH.body, 0.15);
-}
-function drawChickenBottom(ctx, rng) {
-	fill(ctx, CH.bodyDark);
-	speckle(ctx, rng, CH.body, 0.2);
+function drawChickenLeg(ctx, rng) {
+	fill(ctx, CH.beak);
+	rect(ctx, 0, 13, TILE, 3, CH.bodyDark); // pie
+	speckle(ctx, rng, CH.bodyDark, 0.2);
 }
 
-// ============================================================
-// SHEEP — lana blanca rizada con cara crema
-// ============================================================
+// --- SHEEP: lana blanca rizada, cara crema ---
 const SH = {
 	wool: "#f5f5f0",
 	woolDark: "#d9d9d2",
@@ -436,36 +541,27 @@ const SH = {
 	ear: "#c9b89a",
 	eye: "#2a2a2a"
 };
-function drawSheepFront(ctx, rng) {
+function drawSheepBody(ctx, rng) {
 	fill(ctx, SH.wool);
-	speckle(ctx, rng, SH.woolDark, 0.12);
-	// cara crema con orejas
-	rect(ctx, 3, 3, 10, 9, SH.face);
-	rect(ctx, 1, 5, 2, 3, SH.ear);
+	speckle(ctx, rng, SH.woolDark, 0.22);
+	speckle(ctx, rng, SH.woolLight, 0.12);
+}
+function drawSheepHead(ctx, rng) {
+	fill(ctx, SH.face);
+	speckle(ctx, rng, SH.ear, 0.1);
+	rect(ctx, 1, 5, 2, 3, SH.ear); // orejas laterales
 	rect(ctx, 13, 5, 2, 3, SH.ear);
-	// ojos y hocico
-	px(ctx, 5, 5, SH.eye);
+	px(ctx, 5, 5, SH.eye); // ojos
 	px(ctx, 10, 5, SH.eye);
-	rect(ctx, 7, 8, 2, 1, SH.eye);
+	rect(ctx, 7, 8, 2, 1, SH.eye); // hocico
 	rect(ctx, 6, 10, 4, 1, SH.ear);
 }
-function drawSheepSide(ctx, rng) {
-	fill(ctx, SH.wool);
-	speckle(ctx, rng, SH.woolDark, 0.2);
-	speckle(ctx, rng, SH.woolLight, 0.1);
-}
-function drawSheepTop(ctx, rng) {
-	fill(ctx, SH.woolLight);
-	speckle(ctx, rng, SH.wool, 0.25);
-}
-function drawSheepBottom(ctx, rng) {
+function drawSheepLeg(ctx, rng) {
 	fill(ctx, SH.woolDark);
 	speckle(ctx, rng, SH.wool, 0.25);
 }
 
-// ============================================================
-// RABBIT — crema con orejas largas en el lomo
-// ============================================================
+// --- RABBIT: crema con orejas largas ---
 const R = {
 	body: "#d9c8a8",
 	bodyDark: "#b89a6e",
@@ -475,132 +571,91 @@ const R = {
 	nose: "#e88a8a",
 	eye: "#2a2a2a"
 };
-function drawRabbitFront(ctx, rng) {
+function drawRabbitBody(ctx, rng) {
+	fill(ctx, R.body);
+	speckle(ctx, rng, R.bodyDark, 0.14);
+	speckle(ctx, rng, R.bodyLight, 0.12);
+}
+function drawRabbitHead(ctx, rng) {
 	fill(ctx, R.body);
 	speckle(ctx, rng, R.bodyDark, 0.1);
-	// ojos
-	px(ctx, 4, 3, R.eye);
+	px(ctx, 4, 3, R.eye); // ojos
 	px(ctx, 11, 3, R.eye);
-	// nariz rosa y boca
-	px(ctx, 7, 5, R.nose);
+	px(ctx, 7, 5, R.nose); // nariz rosa y boca
 	px(ctx, 8, 5, R.nose);
 	px(ctx, 7, 6, R.bodyDark);
 	px(ctx, 8, 6, R.bodyDark);
 	px(ctx, 6, 7, R.bodyDark);
 	px(ctx, 9, 7, R.bodyDark);
 }
-function drawRabbitSide(ctx, rng) {
-	fill(ctx, R.body);
-	speckle(ctx, rng, R.bodyDark, 0.14);
-	speckle(ctx, rng, R.bodyLight, 0.1);
-}
-function drawRabbitTop(ctx, _rng) {
-	fill(ctx, R.body);
-	// orejas largas con interior rosado
-	rect(ctx, 3, 1, 3, 11, R.ear);
-	rect(ctx, 10, 1, 3, 11, R.ear);
-	rect(ctx, 4, 2, 1, 9, R.earIn);
-	rect(ctx, 11, 2, 1, 9, R.earIn);
-}
-function drawRabbitBottom(ctx, rng) {
-	fill(ctx, R.bodyLight);
-	speckle(ctx, rng, R.body, 0.15);
+function drawRabbitEar(ctx, _rng) {
+	fill(ctx, R.ear);
+	rect(ctx, 0, 2, TILE, 12, R.earIn); // interior rosado
 }
 
 // ============================================================
-// MAPA DE RECETAS POR TIPO (una tesela por cara: front/side/top/bottom)
+// MAPA DE TEXELAS POR TIPO: parte única → función de dibujo.
+// El ORDEN define la columna en el atlas (0 = primera tesela).
 // ============================================================
 const MOB_TEXTURES = {
 	zombie: {
-		front: drawZombieFront,
-		side: drawZombieSide,
-		top: drawZombieTop,
-		bottom: drawZombieBottom
+		head: drawZombieHead,
+		body: drawZombieBody,
+		arm: drawZombieArm,
+		leg: drawZombieLeg
 	},
 	creeper: {
-		front: drawCreeperFront,
-		side: drawCreeperSide,
-		top: drawCreeperTop,
-		bottom: drawCreeperBottom
+		head: drawCreeperHead,
+		body: drawCreeperBody,
+		leg: drawCreeperLeg
 	},
 	skeleton: {
-		front: drawSkeletonFront,
-		side: drawSkeletonSide,
-		top: drawSkeletonTop,
-		bottom: drawSkeletonBottom
+		head: drawSkeletonHead,
+		body: drawSkeletonBody,
+		arm: drawSkeletonArm,
+		leg: drawSkeletonLeg
 	},
 	enderman: {
-		front: drawEndermanFront,
-		side: drawEndermanSide,
-		top: drawEndermanTop,
-		bottom: drawEndermanBottom
+		head: drawEndermanHead,
+		body: drawEndermanBody,
+		arm: drawEndermanArm,
+		leg: drawEndermanLeg
 	},
-	spider: {
-		front: drawSpiderFront,
-		side: drawSpiderSide,
-		top: drawSpiderTop,
-		bottom: drawSpiderBottom
-	},
-	wolf: {
-		front: drawWolfFront,
-		side: drawWolfSide,
-		top: drawWolfTop,
-		bottom: drawWolfBottom
-	},
-	cow: {
-		front: drawCowFront,
-		side: drawCowSide,
-		top: drawCowTop,
-		bottom: drawCowBottom
-	},
-	pig: {
-		front: drawPigFront,
-		side: drawPigSide,
-		top: drawPigTop,
-		bottom: drawPigBottom
-	},
+	spider: { body: drawSpiderBody, head: drawSpiderHead },
+	wolf: { body: drawWolfBody, head: drawWolfHead, leg: drawWolfLeg },
+	cow: { body: drawCowBody, head: drawCowHead, leg: drawCowLeg },
+	pig: { body: drawPigBody, head: drawPigHead, leg: drawPigLeg },
 	chicken: {
-		front: drawChickenFront,
-		side: drawChickenSide,
-		top: drawChickenTop,
-		bottom: drawChickenBottom
+		body: drawChickenBody,
+		head: drawChickenHead,
+		leg: drawChickenLeg
 	},
-	sheep: {
-		front: drawSheepFront,
-		side: drawSheepSide,
-		top: drawSheepTop,
-		bottom: drawSheepBottom
-	},
-	rabbit: {
-		front: drawRabbitFront,
-		side: drawRabbitSide,
-		top: drawRabbitTop,
-		bottom: drawRabbitBottom
-	}
+	sheep: { body: drawSheepBody, head: drawSheepHead, leg: drawSheepLeg },
+	rabbit: { body: drawRabbitBody, head: drawRabbitHead, ear: drawRabbitEar }
 };
 
-const FACE_ORDER = ["front", "side", "top", "bottom"];
 const atlasCache = new Map();
 
-// Atlas 2x2 de un tipo de mob (frente=0, lado=1, arriba=2, abajo=3).
-// Se genera una sola vez y se cachea; devuelve null si el tipo es desconocido
-// (el mesh cae a material de color plano, como MOB_COLORS).
+// Atlas de una fila: una tesela 16×16 por parte única del mob, en el orden
+// de MOB_TEXTURES[type]. Se genera una sola vez y se cachea; devuelve null si
+// el tipo es desconocido (el mesh cae a material de color plano).
 export function getMobAtlas(type) {
 	const recetas = MOB_TEXTURES[type];
 	if (!recetas) return null;
 	const cached = atlasCache.get(type);
 	if (cached) return cached;
+	const partNames = Object.keys(recetas);
 	const canvas = document.createElement("canvas");
-	canvas.width = COLS * TILE;
-	canvas.height = 2 * TILE; // 2 filas
+	canvas.width = partNames.length * TILE;
+	canvas.height = TILE; // una sola fila
 	const ctx = canvas.getContext("2d");
-	FACE_ORDER.forEach((cara, i) => {
+	partNames.forEach((part, i) => {
 		const rng = mulberry32(
 			0x9e3779b9 ^ (type.length * 7919) ^ (i * 2654435761)
 		);
 		ctx.save();
-		ctx.translate((i % COLS) * TILE, Math.floor(i / COLS) * TILE);
-		recetas[cara](ctx, rng);
+		ctx.translate(i * TILE, 0);
+		recetas[part](ctx, rng);
 		ctx.restore();
 	});
 	const texture = new THREE.CanvasTexture(canvas);
@@ -612,21 +667,19 @@ export function getMobAtlas(type) {
 	return texture;
 }
 
-// Rectángulos UV [u0, v0, u1, v1] de cada cara en el atlas 2x2 (v0 abajo, v1
-// arriba, misma convención que textures.js). Índice de tesela i: fila i/2,
-// columna i%2 — front=0, side=1, top=2, bottom=3.
-export function mobFaceRects() {
-	const rows = 2;
-	const r = (i) => {
-		const col = i % COLS;
-		const row = Math.floor(i / COLS);
-		const u0 = col / COLS,
-			u1 = (col + 1) / COLS;
-		const v1 = 1 - row / rows,
-			v0 = 1 - (row + 1) / rows;
-		return [u0, v0, u1, v1];
-	};
-	return { front: r(0), side: r(1), top: r(2), bottom: r(3) };
+// Rectángulos UV [u0, v0, u1, v1] de cada parte en el atlas de una fila
+// (v0 abajo, v1 arriba, misma convención que textures.js). El layout es
+// 1 columna por parte: u0 = i/N, u1 = (i+1)/N, v0 = 0, v1 = 1.
+export function mobPartRects(type) {
+	const recetas = MOB_TEXTURES[type];
+	if (!recetas) return {};
+	const partNames = Object.keys(recetas);
+	const n = partNames.length;
+	const out = {};
+	partNames.forEach((part, i) => {
+		out[part] = [i / n, 0, (i + 1) / n, 1];
+	});
+	return out;
 }
 
 // Tipos cubiertos por las texturas (lo audita tests/unit-sync.js contra

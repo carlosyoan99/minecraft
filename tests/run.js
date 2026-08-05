@@ -33,6 +33,7 @@ const UNIT = [
 	"unit-lod.js",
 	"unit-geopool.js",
 	"unit-raycast.js", // Fase 8 (B3): bounds obsoletos en el pool → raycast de minería
+	"unit-mobray.js", // Fase 8 (B9): raycast de mobs multibloque (grupo de partes)
 	"unit-cofre.js",
 	"unit-antorchas.js",
 	"unit-cama.js",

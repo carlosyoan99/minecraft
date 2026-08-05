@@ -1079,7 +1079,7 @@ fix propio (el diagnóstico debe confirmarlo).
       el mismo `elapsed` que el día. Verificado en vivo con
       `tests/diag-moon.js` (init trae moonTime en rango y `/time set`
       re-sincroniza) y determinismo/ciclo en `unit-commands.js`.
-- [ ] **B9: los mobs son cajas rectangulares → formas multibloque estilo
+- [x] **B9: los mobs son cajas rectangulares → formas multibloque estilo
       Minecraft.** Hoy cada mob es UN `BoxGeometry(0.6, 1.8, 0.6)` con
       texturas por cara (`public/mobs.js` + `mobtextures.js`).
       **Corregir**: rediseñar como **grupo de partes** con el esquema
@@ -1093,6 +1093,22 @@ fix propio (el diagnóstico debe confirmarlo).
       que intersectar los hijos y subir al raíz por `userData.mobId`),
       etiquetas de nombre, snapshots. Aplicar el mismo esquema (o
       mejorar) a los jugadores remotos.
+      **Resultado:** implementado según el spec — `MOB_PARTS` exportado
+      desde `mobtextures.js` con las 11 especies (humanoides, enderman
+      alto 2.55, creeper con 4 patas, araña con 8 patas rotadas, conejo
+      con orejas, cuadrúpedos alargados, pollo), atlas de UNA FILA (una
+      tesela 16×16 por parte única; `mobPartRects(type)` reemplaza a
+      `mobFaceRects`) y funciones de dibujo por parte que conservan las
+      paletas y motivos. `mobs.js` construye un `THREE.Group` con un
+      mesh por parte (UVs remapeados a su tesela), UN material
+      compartido (`userData.material`) para quema solar/flash intactos,
+      y los jugadores remotos también son multibloque (silueta
+      humanoide con color plano). `input.js`: el raycast intersecta con
+      `recursive=true` y `mobRootData()` sube del hijo golpeado al raíz
+      con `mobId` — regresión B10 cubierta por `tests/unit-mobray.js`
+      (nuevo, three real: el rayo acierta las partes, sube al raíz, el
+      bloque delante gana a la minería y un grupo vacío no intercepta).
+      Registrado en `tests/run.js`.
 - [x] **B6: chunks lejanos con texturas "disminuidas" que no se
       restauran al acercarse (o transparentes).** El LOD
       (`lod.js`: `LOD_ON_DIST 56` / `LOD_OFF_DIST 44`, histéresis)

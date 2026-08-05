@@ -1,65 +1,95 @@
 // ============================================================
 // JUGADORES REMOTOS Y MOBS (meshes en la escena)
+// Fase 8 (B9): los mobs son GRUPOS de partes (cabeza, cuerpo,
+// extremidades) según el esquema MOB_PARTS de mobtextures.js — cada
+// parte es un BoxGeometry con los UVs remapeados hacia su tesela del
+// atlas de una fila. Un SOLO material por mob (el atlas completo,
+// base 0xffffff): la quema solar y el flash de daño tiñen el grupo
+// entero. El grupo raíz conserva userData.mobId/mobType para el
+// raycast de combate (input.js intersecta los hijos y sube al raíz).
 // ============================================================
 import * as THREE from "three";
-import { getMobAtlas, mobFaceRects } from "./mobtextures.js";
+import { getMobAtlas, MOB_PARTS, mobPartRects } from "./mobtextures.js";
 import { scene } from "./scene.js";
 
 const remotePlayers = new Map(); // id -> mesh
-export const mobMeshes = new Map(); // id -> mesh
+export const mobMeshes = new Map(); // id -> mesh (grupo raíz)
 
+// ============================================================
+// CONSTRUCCIÓN DE UN GRUPO DE PARTES
+// `parts` es el array de MOB_PARTS[type]; `material` es compartido
+// por todo el grupo. Con textura se remapean los UV de cada caja a
+// su tesela (mobPartRects); sin textura (fallback/jugadores remotos)
+// se dejan los UV por defecto y el color del material decide.
+// ============================================================
+function buildPartGroup(parts, material, rects = null) {
+	const group = new THREE.Group();
+	for (const part of parts) {
+		const [w, h, d] = part.size;
+		const geo = new THREE.BoxGeometry(w, h, d);
+		if (rects) {
+			// BoxGeometry es indexada con 6 grupos (+X, -X, +Y, -Y, +Z, -Z):
+			// se remapean TODOS sus vértices a la tesela de la parte (una
+			// tesela cubre las 6 caras de la caja — opción mínima del spec).
+			const rect = rects[part.tile || part.name];
+			if (rect) {
+				const [u0, v0, u1, v1] = rect;
+				const uv = geo.attributes.uv;
+				const index = geo.index;
+				const seen = new Set();
+				geo.groups.forEach((g) => {
+					for (let k = 0; k < g.count; k++) {
+						const v = index.getX(g.start + k);
+						if (seen.has(v)) continue;
+						seen.add(v);
+						const ox = uv.getX(v),
+							oy = uv.getY(v);
+						uv.setXY(v, u0 + (u1 - u0) * ox, v0 + (v1 - v0) * oy);
+					}
+				});
+				uv.needsUpdate = true;
+			}
+		}
+		const mesh = new THREE.Mesh(geo, material);
+		mesh.castShadow = true;
+		mesh.position.set(part.pos[0], part.pos[1], part.pos[2]);
+		if (part.rot) mesh.rotation.set(part.rot[0], part.rot[1], part.rot[2]);
+		group.add(mesh);
+	}
+	return group;
+}
+
+// Esqueleto humanoide genérico para jugadores remotos (misma silueta que el
+// zombi: cabeza + cuerpo + brazos + piernas) con el color plano del jugador.
+const HUMANOID_PARTS = MOB_PARTS.zombie?.parts || [];
+
+// buildPartGroup ya pone castShadow en cada parte; el material es plano.
 function makeHumanoid(color) {
-	const mesh = new THREE.Mesh(
-		new THREE.BoxGeometry(0.6, 1.8, 0.6),
-		new THREE.MeshLambertMaterial({ color })
-	);
-	mesh.castShadow = true;
-	return mesh;
+	const material = new THREE.MeshLambertMaterial({ color });
+	return buildPartGroup(HUMANOID_PARTS, material);
 }
 
 // ============================================================
-// MESH DE MOB TEXTURIZADO POR CARA (Fase 7)
-// En vez del color plano de MOB_COLORS, cada mob usa su atlas 2x2 de
-// mobtextures.js (frente/lado/arriba/abajo): se reasignan los UV de cada
-// cara del BoxGeometry hacia la tesela correspondiente del atlas.
-// BoxGeometry genera 6 grupos en el orden +X, -X, +Y, -Y, +Z, -Z.
+// MESH DE MOB MULTIBLOQUE (Fase 8, B9)
+// Grupo de partes según MOB_PARTS[type], texturizadas con su atlas
+// de una fila. Un material compartido por mob (base blanco con mapa):
+// la quema solar y el flash tiñen el grupo entero multiplicativamente.
 // ============================================================
-const BOX_FACE_TEX = ["side", "side", "top", "bottom", "front", "side"]; // -Z usa lado
-
 function makeMobMesh(type, fallbackColor = 0x999999) {
 	const atlas = getMobAtlas(type);
-	const geo = new THREE.BoxGeometry(0.6, 1.8, 0.6);
 	const material = atlas
 		? new THREE.MeshLambertMaterial({ map: atlas, color: 0xffffff })
 		: new THREE.MeshLambertMaterial({ color: fallbackColor }); // tipo sin textura
-	if (atlas && geo.groups.length === 6) {
-		// BoxGeometry es indexada: cada grupo cubre 6 índices (2 triángulos)
-		// que referencian 4 vértices de la cara. Se recogen los vértices únicos
-		// del grupo y se remapean sus UV a la tesela de esa cara en el atlas.
-		const rects = mobFaceRects();
-		const uv = geo.attributes.uv;
-		const index = geo.index;
-		geo.groups.forEach((group, g) => {
-			const rect = rects[BOX_FACE_TEX[g]];
-			const [u0, v0, u1, v1] = rect;
-			const seen = new Set();
-			for (let k = 0; k < group.count; k++) {
-				const v = index.getX(group.start + k);
-				if (seen.has(v)) continue;
-				seen.add(v);
-				const ox = uv.getX(v),
-					oy = uv.getY(v);
-				uv.setXY(v, u0 + (u1 - u0) * ox, v0 + (v1 - v0) * oy);
-			}
-		});
-		uv.needsUpdate = true;
-	}
-	const mesh = new THREE.Mesh(geo, material);
-	mesh.castShadow = true;
-	// updateMobs lo usa para el color base (quema solar): con textura el color
-	// del material es multiplicativo (base blanco), sin textura el plano.
-	mesh.userData.textured = !!atlas;
-	return mesh;
+	const parts = MOB_PARTS[type]?.parts || [
+		{ name: "body", size: [0.6, 1.8, 0.6], pos: [0, 0.9, 0] } // fallback: box único
+	];
+	const rects = atlas ? mobPartRects(type) : null;
+	const group = buildPartGroup(parts, material, rects);
+	// El material compartido se guarda en el grupo raíz: la quema solar y el
+	// flash de daño lo tiñen entero (antes mesh.material del box único).
+	group.userData.material = material;
+	group.userData.textured = !!atlas;
+	return group;
 }
 
 // ============================================================
@@ -160,9 +190,10 @@ export function updateMobs(list) {
 		// (noche/techo) vuelve a su color base. El servidor manda `burning` en
 		// cada mobs_update.
 		const burning = !!m.burning;
-		if (burning !== mesh.userData.burning) {
+		const material = mesh.userData.material;
+		if (material && burning !== mesh.userData.burning) {
 			mesh.userData.burning = burning;
-			mesh.material.color.setHex(burning ? 0xff7710 : mesh.userData.baseColor);
+			material.color.setHex(burning ? 0xff7710 : mesh.userData.baseColor);
 		}
 	}
 	for (const [id, mesh] of mobMeshes) {
@@ -184,29 +215,29 @@ export function removeMob(id) {
 // ============================================================
 // FLASH DE DAÑO (Fase 8, B10): feedback visual al golpear un mob.
 // Tiñe el mob de rojo durante ~120ms (mob_hit del servidor) y lo
-// restaura a su color base (con textura: blanco multiplicativo; sin
-// textura: el color plano de MOB_COLORS). Se guarda el timeout por
-// mob para no pisar el color base con flashes consecutivos.
+// restaura a su color base. El material es COMPARTIDO por las partes
+// (userData.material del grupo raíz), así que un flash tiñe el mob
+// entero. Se guarda el timeout por mob para no pisar el color base
+// con flashes consecutivos.
 // ============================================================
 const hitFlashTimeouts = new Map();
-// Color base capturado UNA vez por mob (primer golpe). Sin esto, dos golpes
-// seguidos capturarían el rojo como "base" y el mob quedaría rojo para siempre.
 const hitFlashBase = new Map();
 const HIT_FLASH_MS = 120;
 export function flashMob(id) {
 	const mesh = mobMeshes.get(id);
-	if (!mesh) return;
+	const material = mesh?.userData.material;
+	if (!mesh || !material) return;
 	const prev = hitFlashTimeouts.get(id);
 	if (prev) clearTimeout(prev);
 	// Captura la base solo en el primer golpe de la ráfaga (respeta la quema
 	// solar que pueda estar activa en el mob).
-	if (!hitFlashBase.has(id)) hitFlashBase.set(id, mesh.material.color.getHex());
-	mesh.material.color.setHex(0xff4444); // rojo de daño
+	if (!hitFlashBase.has(id)) hitFlashBase.set(id, material.color.getHex());
+	material.color.setHex(0xff4444); // rojo de daño
 	const base = hitFlashBase.get(id);
 	hitFlashTimeouts.set(
 		id,
 		setTimeout(() => {
-			mesh.material.color.setHex(base);
+			material.color.setHex(base);
 			hitFlashTimeouts.delete(id);
 			hitFlashBase.delete(id);
 		}, HIT_FLASH_MS)
