@@ -115,6 +115,9 @@ function sendInit(p) {
 				spawnY: p.y,
 				spawnZ: p.z,
 				dayTime: worldTime(), // reloj del servidor: el cliente extrapola el ciclo visual
+				// Fase 8 (B8): reloj de la luna (ciclo de 8 días) con el offset de
+				// semilla ya aplicado — el cliente lo extrapola igual que el día.
+				moonTime: commands.moonTime(state),
 				mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
 				inventory: p.inventory,
 				armor: p.armor, // Fase 7: 4 slots (casco, pechera, pantalones, botas)
@@ -764,7 +767,10 @@ function handleConnection(ws, req) {
 				// del mundo sigue a state.timeOffset; todos los clientes re-sincronizan).
 				state.timeOffset =
 					(0 - (Date.now() % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS;
-				broadcast("time_set", { dayTime: worldTime() });
+				broadcast("time_set", {
+					dayTime: worldTime(),
+					moonTime: commands.moonTime(state) // Fase 8 (B8): fase lunar en sync
+				});
 				// Punto de reaparición: las coordenadas del BLOQUE de la cama (los
 				// offsets se aplican al reaparecer en players.damagePlayer; guardarlos
 				// ya desplazados rompería la limpieza al romper la cama).

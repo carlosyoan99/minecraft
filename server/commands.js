@@ -9,14 +9,17 @@
 // al emisor; el chat normal (sin /) sigue igual.
 // ============================================================
 const WebSocket = require("ws");
+const constants = require("./constants.js");
 const {
 	B,
 	I,
 	DAY_CYCLE_MS,
+	MOON_CYCLE_MS,
+	seedMoonOffsetMs,
 	WORLD_HEIGHT,
 	isTool,
 	NOT_MINEABLE
-} = require("./constants.js");
+} = constants;
 
 // Índice nombre -> ID: claves de B/I en minúsculas (wooden_pickaxe, diamond,
 // stone...) + alias en español (pico_de_madera, diamante, piedra...).
@@ -128,6 +131,21 @@ function systemMessage(player, text) {
 // que día/noche, ambiente y IA de mobs sigan al reloj ajustado.
 function worldTime(state) {
 	return (Date.now() + (state.timeOffset || 0)) % DAY_CYCLE_MS;
+}
+
+// Fase 8 (B8): reloj de la LUNA en ms dentro del ciclo lunar de 8 días.
+// Mismo reloj base que worldTime (Date.now() + timeOffset) + offset
+// determinista de la semilla: todos los jugadores ven la misma fase en el
+// mismo instante y el reinicio del servidor conserva la fase correcta.
+// `timeOffset` desplaza el reloj entero, así que /time set también mueve la
+// fase lunar (fiel a Minecraft). Se envía ya con el offset aplicado para que
+// el cliente no necesite la función de hash.
+function moonTime(state) {
+	const seed = constants.worldPaths.currentSeed || "";
+	return (
+		(Date.now() + (state.timeOffset || 0) + seedMoonOffsetMs(seed)) %
+		MOON_CYCLE_MS
+	);
 }
 
 function parseId(tok) {
@@ -286,7 +304,9 @@ function executeCommand(player, raw, ctx) {
 			state.timeOffset =
 				(target - (Date.now() % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS;
 			const t = worldTime(state);
-			broadcast("time_set", { dayTime: t }); // todos los clientes re-sincronizan el ciclo visual
+			// Fase 8 (B8): time_set también re-sincroniza la fase lunar (moonTime
+			// ya incluye el offset de semilla, así el cliente no necesita el hash).
+			broadcast("time_set", { dayTime: t, moonTime: moonTime(state) });
 			systemMessage(
 				player,
 				`Hora fijada a ${Math.round(t)} ms del ciclo (${t >= DAY_CYCLE_MS / 2 ? "noche" : "día"})`
@@ -362,4 +382,4 @@ function executeCommand(player, raw, ctx) {
 	return true;
 }
 
-module.exports = { executeCommand, worldTime };
+module.exports = { executeCommand, worldTime, moonTime };

@@ -1038,13 +1038,18 @@ fix propio (el diagnóstico debe confirmarlo).
 
 ### Bloque C — Estética y rendimiento
 
-- [ ] **B7: estrellas visibles de día.** En `public/sky.js` las
+- [x] **B7: estrellas visibles de día.** En `public/sky.js` las
       estrellas se pintan con `uStars = (1 - dayFactor) * 0.9` y
       `dir.y > 0.05`: aparecen en amanecer/atardecer. **Corregir**:
       dibujar estrellas solo cuando el sol está bajo el horizonte
       (posición vertical real del sol, no `dayFactor`), con fade suave;
       0 estrellas en crepúsculo.
-- [ ] **B8: el sol y la luna se ven iguales → sol más amarillo + fases
+      **Resultado:** `updateSky` ahora calcula `uStars` con la ALTURA
+      VERTICAL REAL del sol (`sun.y`, de `celestialDirs`):
+      `clamp((-sun.y - 0.02) / 0.12, 0, 1) * 0.9` — 0 estrellas en cuanto
+      el sol asoma sobre el horizonte (ni en amanecer ni en atardecer),
+      fade corto de ~7° para que la aparición nocturna no parpadee.
+- [x] **B8: el sol y la luna se ven iguales → sol más amarillo + fases
       lunares.** El shader de `sky.js` ya diferencia sutilmente (sol
       cálido `vec3(1.0,0.96,0.85)`, luna fría `vec3(0.92,0.95,1.0)`);
       la luna es siempre disco lleno. **Corregir**: sol más amarillo
@@ -1061,6 +1066,19 @@ fix propio (el diagnóstico debe confirmarlo).
       `moonSide`, parte oscura azulada + halo). Test: `tests/unit-luna.js`
       (determinismo por semilla, ciclo exacto de 8×, `/time set`
       coherente).
+      **Resultado:** implementado según el spec — sol AMARILLO
+      (`vec3(1.0, 0.86, 0.45)` + halo dorado en el shader, `DAY_SUN =
+      0xffe08a` en daynight.js), luna blanca/azulada con máscara de fase
+      (uniform `uMoonPhase`, terminación `litEdge = cos(phase·2π)` que
+      barre el disco, parte oscura azulada visible en menguante),
+      `MOON_DAYS = 8` / `MOON_CYCLE_MS = DAY_CYCLE_MS * 8` en ambos
+      constants (paridad auditada por `unit-sync`), `seedMoonOffsetMs`
+      + `moonTime(state)` en commands.js, campo `moonTime` en el `init`
+      y en los broadcasts de `time_set` (commands.js y dormir en
+      net.js), y `currentMoonPhase()` en daynight.js que extrapola con
+      el mismo `elapsed` que el día. Verificado en vivo con
+      `tests/diag-moon.js` (init trae moonTime en rango y `/time set`
+      re-sincroniza) y determinismo/ciclo en `unit-commands.js`.
 - [ ] **B9: los mobs son cajas rectangulares → formas multibloque estilo
       Minecraft.** Hoy cada mob es UN `BoxGeometry(0.6, 1.8, 0.6)` con
       texturas por cara (`public/mobs.js` + `mobtextures.js`).

@@ -10,6 +10,12 @@ export const WORLD_HEIGHT = 64;
 // cliente lo usa para extrapolar la fase visual del ciclo desde el dayTime
 // del init.
 export const DAY_CYCLE_MS = 1200000;
+// Fase 8 (B8): ciclo de fases lunares — 8 días de juego por ciclo completo,
+// derivado del MISMO reloj del mundo (dayTime) + offset de semilla. Mantener
+// en sincronía con MOON_DAYS/MOON_CYCLE_MS de server-side constants.js — lo
+// verifica tests/unit-sync.js.
+export const MOON_DAYS = 8;
+export const MOON_CYCLE_MS = DAY_CYCLE_MS * MOON_DAYS;
 
 export const BLOCK_COLORS = {
 	1: 0x8b5a2b,

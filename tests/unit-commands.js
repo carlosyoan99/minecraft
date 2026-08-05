@@ -448,4 +448,60 @@ check(
 	"worldTime con offset 0",
 	commands.worldTime(state) === Date.now() % DAY_CYCLE_MS
 );
+
+// --- Fase 8 (B8): fases lunares ---
+const {
+	MOON_CYCLE_MS,
+	MOON_DAYS,
+	seedMoonOffsetMs
+} = require("../server/constants.js");
+check(
+	"MOON_CYCLE_MS = DAY_CYCLE_MS * 8",
+	MOON_CYCLE_MS === DAY_CYCLE_MS * MOON_DAYS
+);
+check(
+	"moonTime modula al ciclo lunar",
+	commands.moonTime(state) < MOON_CYCLE_MS
+);
+// Determinismo por semilla: la misma semilla da siempre el mismo offset y
+// semillas distintas (en general) offsets distintos.
+const off1 = seedMoonOffsetMs("miSemilla2026");
+const off2 = seedMoonOffsetMs("miSemilla2026");
+check(
+	"seedMoonOffsetMs determinista (misma semilla → mismo offset)",
+	off1 === off2
+);
+check(
+	"seedMoonOffsetMs en [0, MOON_CYCLE_MS)",
+	off1 >= 0 && off1 < MOON_CYCLE_MS
+);
+check(
+	"seedMoonOffsetMs cambia con la semilla (semilla distinta → offset distinto)",
+	seedMoonOffsetMs("otraSemilla") !== off1
+);
+// /time set re-sincroniza la luna: el broadcast time_set lleva moonTime y
+// moonTime y worldTime se mueven juntos (el mismo timeOffset desplaza ambos).
+{
+	const h = makeHarness();
+	commands.executeCommand(h.player, "/time set night", h.ctx);
+	const ev = h.broadcasts.find((b) => b.event === "time_set");
+	check(
+		"/time set: el broadcast incluye moonTime",
+		!!ev?.data?.moonTime && Number.isFinite(ev.data.moonTime)
+	);
+}
+// La luna comparte timeOffset con el día: subir el reloj del mundo un día
+// (DAY_CYCLE_MS) avanza moonTime exactamente un día dentro del ciclo lunar.
+{
+	const off0 = state.timeOffset;
+	const mt0 = commands.moonTime(state);
+	state.timeOffset = off0 + DAY_CYCLE_MS; // +1 día de juego
+	const mt1 = commands.moonTime(state);
+	check(
+		"moonTime avanza 1 día con timeOffset (+DAY_CYCLE_MS)",
+		(mt1 - mt0 + MOON_CYCLE_MS) % MOON_CYCLE_MS === DAY_CYCLE_MS,
+		`delta=${(mt1 - mt0 + MOON_CYCLE_MS) % MOON_CYCLE_MS}`
+	);
+	state.timeOffset = off0; // restaurar
+}
 process.exit(failed ? 1 : 0);

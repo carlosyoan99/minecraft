@@ -168,6 +168,19 @@ check(
 	parseNum("DAY_CYCLE_MS") === server.DAY_CYCLE_MS,
 	`cliente=${parseNum("DAY_CYCLE_MS")}`
 );
+// Fase 8 (B8): el ciclo lunar (8 días) debe ser idéntico en ambos lados — el
+// cliente extrapola la fase con MOON_CYCLE_MS y el servidor la deriva con el
+// mismo valor (si divergen, la máscara del disco lunar se desfasa del reloj).
+check(
+	"MOON_DAYS cliente (8) == servidor",
+	parseNum("MOON_DAYS") === server.MOON_DAYS,
+	`cliente=${parseNum("MOON_DAYS")} servidor=${server.MOON_DAYS}`
+);
+check(
+	"MOON_CYCLE_MS cliente == servidor",
+	parseNum("MOON_CYCLE_MS") === server.MOON_CYCLE_MS,
+	`cliente=${parseNum("MOON_CYCLE_MS")} servidor=${server.MOON_CYCLE_MS}`
+);
 check(
 	"EYE_HEIGHT cliente (1.6) == servidor",
 	parseNum("EYE_HEIGHT") === server.EYE_HEIGHT,

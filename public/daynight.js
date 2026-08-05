@@ -6,7 +6,7 @@
 // (spawns nocturnos) ya la decide el servidor con el mismo reloj.
 // ============================================================
 import * as THREE from "three";
-import { DAY_CYCLE_MS } from "./constants.js";
+import { DAY_CYCLE_MS, MOON_CYCLE_MS } from "./constants.js";
 import { ambient, scene, sun } from "./scene.js";
 import { updateSky } from "./sky.js"; // Fase 7: dome procedural (degradado + sol/luna)
 
@@ -14,11 +14,14 @@ import { updateSky } from "./sky.js"; // Fase 7: dome procedural (degradado + so
 const DAY_SKY = new THREE.Color(0x87ceeb);
 const NIGHT_SKY = new THREE.Color(0x0b1026);
 const DUSK_SKY = new THREE.Color(0xff7a3d); // amanecer/atardecer
-const DAY_SUN = new THREE.Color(0xfff2d0);
+// Fase 8 (B8): el sol es AMARILLO/cálido (antes blanco pálido 0xfff2d0) para
+// distinguirlo de la luna, que es blanca/azulada (NIGHT_SUN).
+const DAY_SUN = new THREE.Color(0xffe08a);
 const NIGHT_SUN = new THREE.Color(0x9fb4d8); // tinte lunar
 const skyColor = new THREE.Color(); // scratch reutilizado cada frame (evita allocs)
 
 let dayTimeAtInit = 0;
+let moonTimeAtInit = 0; // Fase 8 (B8): reloj de la luna (ciclo de 8 días)
 let initWall = 0;
 
 // Devuelve la fase actual del ciclo en [0, 1): 0 = amanecer, 0.25 = mediodía,
@@ -29,9 +32,21 @@ export function currentPhase() {
 	return ((dayTimeAtInit + elapsed) % DAY_CYCLE_MS) / DAY_CYCLE_MS;
 }
 
-export function initDayNight(serverDayTime) {
+export function initDayNight(serverDayTime, serverMoonTime) {
 	dayTimeAtInit = (serverDayTime || 0) % DAY_CYCLE_MS;
+	// Fase 8 (B8): el servidor envía moonTime (0..MOON_CYCLE_MS-1, ya con el
+	// offset de semilla aplicado) y se extrapola con el MISMO elapsed que el
+	// día, así día y luna avanzan en fase aunque /time set los re-sincronice.
+	moonTimeAtInit = (serverMoonTime || 0) % MOON_CYCLE_MS;
 	initWall = performance.now();
+}
+
+// Fase lunar 0..1 extrapolada igual que currentPhase(): 0 = luna nueva,
+// 0.25 = cuarto creciente, 0.5 = luna llena, 0.75 = menguante. Determinista
+// por semilla (el offset ya viaja en moonTime) y en fase con el día.
+export function currentMoonPhase() {
+	const elapsed = performance.now() - initWall;
+	return ((moonTimeAtInit + elapsed) % MOON_CYCLE_MS) / MOON_CYCLE_MS;
 }
 
 // Se llama cada frame desde el bucle de render.
@@ -68,6 +83,7 @@ export function updateDayNight() {
 		scene.fog.far = 70 + dayFactor * 130 + dusk * 40; // 70 de noche → ~240 de día
 	}
 
-	// Fase 7: actualizar el dome del cielo (degradado, sol/luna, estrellas)
-	updateSky(phase, dayFactor, dusk);
+	// Fase 7: actualizar el dome del cielo (degradado, sol/luna, estrellas).
+	// Fase 8 (B8): además se pasa la fase lunar para la máscara del disco.
+	updateSky(phase, dayFactor, dusk, currentMoonPhase());
 }

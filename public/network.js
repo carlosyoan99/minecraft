@@ -68,7 +68,7 @@ socket.addEventListener("message", (e) => {
 			applyXp(data.xp || 0, data.level || 0);
 			applyFood(data.food, data.saturation);
 			updateMobs(data.mobs);
-			initDayNight(data.dayTime);
+			initDayNight(data.dayTime, data.moonTime); // Fase 8 (B8): + fase lunar
 			for (const p of data.otherPlayers)
 				spawnRemotePlayer(p.id, p.x, p.y, p.z, p.name);
 			// Fase 6: cerrar la pantalla de carga (esperando el init de la semilla
@@ -205,8 +205,10 @@ socket.addEventListener("message", (e) => {
 			applyChestState(data);
 			break; // Fase 6: slots del cofre abierto
 		case "time_set":
-			initDayNight(data.dayTime);
-			break; // Fase 6: /time set re-sincroniza el ciclo visual
+			// Fase 6: /time set re-sincroniza el ciclo visual; Fase 8 (B8):
+			// también la fase lunar (el servidor manda moonTime en el mismo evento).
+			initDayNight(data.dayTime, data.moonTime);
+			break;
 		case "seed_rejected":
 			onSeedRejected(data.reason);
 			break; // Fase 6: el servidor no pudo cambiar de semilla

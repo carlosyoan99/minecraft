@@ -14,6 +14,19 @@ const VIEW_DISTANCE_CHUNKS = 6; // Chunks generados alrededor de cada jugador al
 const UNLOAD_DISTANCE_CHUNKS = 10; // Chunks sin jugadores a menos de esta distancia (en chunks) se descargan
 const UNLOAD_INTERVAL_MS = 10000; // Cada 10s se buscan chunks lejanos que descargar
 const DAY_CYCLE_MS = 1200000; // 20 minutos como Minecraft: ~10 de día, ~10 de noche (atardecer/amanecer suaves en el cliente)
+// Fase 8 (B8): fases lunares — ciclo completo cada 8 días de juego, derivado
+// del MISMO reloj del mundo (worldTime) + offset determinista por semilla.
+const MOON_DAYS = 8;
+const MOON_CYCLE_MS = DAY_CYCLE_MS * MOON_DAYS;
+
+// Offset por semilla (determinista y estable, sin cripto): mismo mundo → la
+// luna está en la misma fase en el mismo instante, para todos los jugadores
+// y entre reinicios (el reloj base es Date.now(), no un contador de ticks).
+function seedMoonOffsetMs(seed) {
+	let h = 0;
+	for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+	return h % MOON_CYCLE_MS;
+}
 // Gracia inicial de spawn (Fase 8, B2): tras entrar o reaparecer, N ms sin
 // daño de MOBS (lava/caída/hambre siguen doliendo). Da tiempo a orientarse
 // sin morir en el spawn; la zona segura de spawn es la otra mitad del fix.
@@ -514,6 +527,9 @@ module.exports = {
 	UNLOAD_DISTANCE_CHUNKS,
 	UNLOAD_INTERVAL_MS,
 	DAY_CYCLE_MS,
+	MOON_DAYS,
+	MOON_CYCLE_MS,
+	seedMoonOffsetMs,
 	SPAWN_GRACE_MS,
 	SEED,
 	OPS,

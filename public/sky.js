@@ -35,6 +35,7 @@ uniform vec3 uMoonDir;    // dirección normalizada de la luna
 uniform float uSunGlow;   // 0..1 brillo del sol (día)
 uniform float uMoonGlow;  // 0..1 brillo de la luna (noche)
 uniform float uStars;     // 0..1 intensidad de las estrellas
+uniform float uMoonPhase; // 0 nueva … 0.5 llena … 1 nueva (Fase 8, B8)
 
 // Hash determinista por dirección (estrellas sin assets, estables entre frames)
 float hash3(vec3 p) {
@@ -54,19 +55,33 @@ void main() {
 	float band = pow(1.0 - abs(dir.y), 2.2);
 	col = mix(col, uDuskTint, uDusk * band * 0.9);
 
-	// Sol: disco brillante + halo suave (umbral 0.997 ≈ disco de ~4°)
+	// Sol (Fase 8, B8): disco AMARILLO cálido + halo dorado (antes blanco
+	// pálido 1.0, 0.96, 0.85 — se confundía con la luna). Umbral 0.997 ≈ 4°.
 	float sunD = max(dot(dir, uSunDir), 0.0);
 	float sunDisc = step(0.997, sunD);
 	float sunHalo = pow(sunD, 6.0);
-	col += uSunGlow * (sunDisc * vec3(1.0, 0.96, 0.85) * 1.6 + sunHalo * vec3(1.0, 0.8, 0.5) * 0.35);
+	col += uSunGlow * (sunDisc * vec3(1.0, 0.86, 0.45) * 1.6 + sunHalo * vec3(1.0, 0.7, 0.3) * 0.35);
 
-	// Luna: disco pálido + halo tenue
+	// Luna (Fase 8, B8): disco BLANCO/azulado con FASES — el terminador
+	// (límite iluminado) barre el disco según uMoonPhase: 0 nueva (nada
+	// iluminado), 0.5 llena (todo), creciente/menguante entre medias. La
+	// parte "de noche" del disco se pinta azul oscuro (no transparente).
 	float moonD = max(dot(dir, uMoonDir), 0.0);
 	float moonDisc = step(0.9992, moonD);
 	float moonHalo = pow(moonD, 14.0);
-	col += uMoonGlow * (moonDisc * vec3(0.92, 0.95, 1.0) * 1.3 + moonHalo * vec3(0.5, 0.6, 0.85) * 0.25);
+	// Dirección lateral de la luna (perpendicular a la vertical) para saber
+	// en qué mitad del disco está cada píxel del dome.
+	vec3 moonSide = normalize(cross(uMoonDir, vec3(0.0, 1.0, 0.0)));
+	float xRel = dot(dir, moonSide); // -1 borde izq … +1 borde der
+	float litEdge = cos(uMoonPhase * 6.2831853); // +1 (nueva) … -1 (llena)
+	float lit = step(litEdge, xRel); // 1 en la zona iluminada del disco
+	col += uMoonGlow * (moonDisc * (lit * 0.85 + 0.15)) * vec3(0.94, 0.96, 1.0) * 1.3;
+	col += uMoonGlow * moonDisc * (1.0 - lit) * vec3(0.15, 0.18, 0.3) * 0.5; // parte oscura
+	col += uMoonGlow * moonHalo * vec3(0.5, 0.6, 0.85) * 0.25;
 
-	// Estrellas: solo en el hemisferio superior, por la noche
+	// Estrellas (Fase 8, B7): SOLO cuando el sol está bajo el horizonte — el
+	// cliente manda uStars = 0 en cuanto el sol asoma (ni amanecer/atardecer),
+	// así que el hemisferio superior basta para el techo nocturno.
 	float star = 0.0;
 	if (uStars > 0.01 && dir.y > 0.05) {
 		// Celdas de dirección: cada una con un punto brillante si su hash pasa el umbral
@@ -89,7 +104,8 @@ const uniforms = {
 	uMoonDir: { value: new THREE.Vector3(0, -1, 0) },
 	uSunGlow: { value: 1 },
 	uMoonGlow: { value: 0 },
-	uStars: { value: 0 }
+	uStars: { value: 0 },
+	uMoonPhase: { value: 0.25 } // Fase 8 (B8): cuarto creciente por defecto
 };
 
 const skyGeo = new THREE.SphereGeometry(280, 32, 20);
@@ -122,7 +138,7 @@ function celestialDirs(phase) {
 
 // Se llama cada frame desde daynight.js. dayFactor y dusk son los mismos
 // que usa la iluminación, así que cielo, luz y niebla van en fase.
-export function updateSky(phase, dayFactor, dusk) {
+export function updateSky(phase, dayFactor, dusk, moonPhase = 0.25) {
 	const { sun, moon } = celestialDirs(phase);
 	uniforms.uSunDir.value.copy(sun);
 	uniforms.uMoonDir.value.copy(moon);
@@ -130,7 +146,15 @@ export function updateSky(phase, dayFactor, dusk) {
 	// de noche. dayFactor = max(0, sin) ya aproxima bien la altura del sol.
 	uniforms.uSunGlow.value = dayFactor;
 	uniforms.uMoonGlow.value = 1 - dayFactor;
-	uniforms.uStars.value = (1 - dayFactor) * 0.9;
+	// Fase 8 (B7): estrellas SOLO cuando el sol está BAJO el horizonte. Antes
+	// uStars = (1-dayFactor)*0.9 dejaba estrellas de día y en amanecer/
+	// atardecer. Ahora usamos la altura vertical real del sol (sun.y = sin):
+	// 0 estrellas en cuanto el sol está sobre el horizonte, con un fade corto
+	// (0.12 rad ≈ 7°) para que la aparición nocturna no parpadee.
+	const fade = 0.12;
+	uniforms.uStars.value =
+		THREE.MathUtils.clamp((-sun.y - 0.02) / fade, 0, 1) * 0.9;
+	uniforms.uMoonPhase.value = moonPhase; // Fase 8 (B8): máscara del disco
 	uniforms.uDusk.value = dusk;
 
 	// Colores del degradado según la hora (paleta pura de skycolors.js)
