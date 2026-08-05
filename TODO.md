@@ -903,6 +903,127 @@ errores.*
 
 ---
 
+## Fase 8 — Caza de bugs (corrección de errores)
+
+Fase centrada en **identificar y corregir los errores reportados** por el
+usuario (playtest). La especificación completa vive en
+[`fase8-spec.md`](fase8-spec.md) (diagnóstico por bug, archivos implicados y
+criterios de aceptación). Resumen de la priorización:
+
+**Hallazgo transversal:** los bugs bloqueantes están encadenados — el
+jugador nace con vida/comida llenas (la pérdida de vida no es hambre), los
+mobs hostiles atacan cerca del spawn y, como el raycast de mobs falla y no
+se puede minar, el jugador no puede defenderse ni progresar. Corregir
+combate (B10) y minería (B3) puede resolver la pérdida de vida (B2) sin un
+fix propio (el diagnóstico debe confirmarlo).
+
+### Bloque A — Bugs bloqueantes (hacen el juego injugable)
+
+- [ ] **B10: imposible luchar contra los mobs hostiles (no se puede ni
+      apuntar).** El raycast de mobs (`raycastTerrainAndMobs` en
+      `public/input.js`, rango 7) o el rango del servidor (4 en
+      `attack_mob`) fallan: el rayo puede no intersectar el mob, o el
+      ataque se descarta en silencio (rango cliente 7 > rango servidor
+      4). **Corregir**: diagnosticar y arreglar el raycast/apuntado;
+      alinear rangos (o ampliar el del servidor a 7); confirmar que la
+      mano hace daño base 2 (ya previsto, `SWORD_DAMAGE[tool] || 2`);
+      añadir **knockback** (retroceso del mob, replicado vía
+      `mobs_update`) y **feedback de daño** (flash/parpadeo o
+      partículas). Regresión: `unit-mobs-ia.js`, `unit-red.js`,
+      `unit-metricas.js`.
+- [ ] **B3: imposible minar a mano (el clic no inicia la mina).** La
+      mecánica existe y debería funcionar (mano = velocidad 1, lenta):
+      `startMiningAt` → `block_action break` → `tickMining` →
+      `finishMining`. El clic no hace nada → diagnosticar:
+      `controls.isLocked` falso, rayo que no intersecta el terreno,
+      servidor que descarta el evento, o el `pointerlockchange` que
+      cancela la mina. **Corregir**: arreglar el clic **y dar drop a
+      mano de bloques básicos** (tierra, césped, madera, arena, hojas)
+      — `canHarvest` ya dropea eso a mano; piedra/minerales siguen
+      necesitando pico (se rompen lento, sin drop). Regresión:
+      `unit-mineria.js`, `e2e-durabilidad.js`.
+- [ ] **B2: pierdes vida constantemente sin causa (mueres en pocos
+      segundos).** El jugador nace con `health 20 / food 20 / saturation
+      20` (net.js) → no es hambre; candidatos: mobs hostiles atacando
+      cerca del spawn, lava, caída. **Diagnóstico obligatorio antes de
+      corregir**: añadir telemetría de daño por origen (mob/lava/caída/
+      hambre; p. ej. en F3/debug) y confirmar la causa — la hipótesis
+      principal es indefensión ante mobs (resuelta con B10+B3). Solo si
+      el diagnóstico lo confirma, considerar zona segura de spawn o
+      periodo de gracia (decisión a validar con el usuario).
+
+### Bloque B — Correcciones de mecánica
+
+- [ ] **B1: controles izquierda/derecha invertidos + opción "Controles
+      invertidos".** Diagnosticar la inversión real (probablemente en
+      `public/player.js`, cómo `move.left`/`move.right` desplazan la
+      cámara) y corregirla; **además** añadir el ajuste
+      `invertControls` (default `false`) en `public/settings.js` +
+      control en el menú de Ajustes (`index.html`), persistido en
+      `localStorage` y aplicado en tiempo real.
+- [ ] **B4: ciclo día/noche a 20 minutos (como Minecraft).** Cambiar
+      `DAY_CYCLE_MS` de `240000` (4 min) a `1200000` (20 min) en AMBOS
+      `constants.js` (servidor y cliente, los audita `unit-sync.js`);
+      distribución estilo Minecraft: ~10 min día, ~1.5 atardecer, ~7
+      min noche (spawn de hostiles), ~1.5 amanecer. Revisar tests con
+      tiempos relativos al ciclo (`unit-red.js`, `unit-cama.js`).
+- [ ] **B5: la tecla E siempre abre el inventario.** El keydown solo
+      retorna con `isChatFocused()`; con un input de texto del menú
+      enfocado (nombre del jugador/mundo) la E abre el inventario.
+      **Corregir**: ignorar las teclas de juego (E, WASD, 1-9, F3)
+      cuando `document.activeElement` es un `INPUT`/`TEXTAREA`/campo
+      editable — generalizar la guarda de foco sin romper el chat.
+
+### Bloque C — Estética y rendimiento
+
+- [ ] **B7: estrellas visibles de día.** En `public/sky.js` las
+      estrellas se pintan con `uStars = (1 - dayFactor) * 0.9` y
+      `dir.y > 0.05`: aparecen en amanecer/atardecer. **Corregir**:
+      dibujar estrellas solo cuando el sol está bajo el horizonte
+      (posición vertical real del sol, no `dayFactor`), con fade suave;
+      0 estrellas en crepúsculo.
+- [ ] **B8: el sol y la luna se ven iguales → sol más amarillo + fases
+      lunares.** El shader de `sky.js` ya diferencia sutilmente (sol
+      cálido `vec3(1.0,0.96,0.85)`, luna fría `vec3(0.92,0.95,1.0)`);
+      la luna es siempre disco lleno. **Corregir**: sol más amarillo
+      (subir R/G, bajar B; también `DAY_SUN` en `daynight.js`), luna
+      más blanca/azulada y con **fases** (máscara de fase en el shader;
+      ciclo estilo Minecraft: un ciclo completo de fases cada **8 días
+      de juego** = 8 ciclos día/noche); la fase lunar se deriva del
+      mismo reloj del día/noche para que todos la vean igual.
+- [ ] **B9: los mobs son cajas rectangulares → formas multibloque estilo
+      Minecraft.** Hoy cada mob es UN `BoxGeometry(0.6, 1.8, 0.6)` con
+      texturas por cara (`public/mobs.js` + `mobtextures.js`).
+      **Corregir**: rediseñar como **grupo de partes** (cabeza, torso,
+      2 brazos, 2 piernas; variantes por especie: araña con patas,
+      creeper con patas cortas, conejo con orejas, esqueleto/zombi
+      humanoide, enderman alto); adaptar `mobtextures.js` (teselas por
+      parte o reutilizar el atlas) y el remapeo de UV. Mantener:
+      quema solar, escala por tipo, `isBaby` a media escala, raycast de
+      ataque (`userData.mobId/mobType` en el mesh raíz), etiquetas de
+      nombre, snapshots. Aplicar el mismo esquema (o mejorar) a los
+      jugadores remotos.
+- [ ] **B6: chunks lejanos con texturas "disminuidas" que no se
+      restauran al acercarse (o transparentes).** El LOD
+      (`lod.js`: `LOD_ON_DIST 56` / `LOD_OFF_DIST 44`, histéresis)
+      debería reconstruir a detalle completo al acercarse; no lo hace.
+      **Corregir SOLO el LOD** (decisión del usuario: no bajar el
+      renderDistance por defecto): diagnosticar la transición
+      LOD→full en `public/world.js` (distancia al centro del chunk,
+      bucle que no reevalúa, geometría LOD que no se elimina o material
+      sin atlas) y que el chunk reconstruya con texturas completas al
+      cruzar el umbral. Reproducción visual (F3/`window.__mc*`,
+      playtest headless); regresión: `unit-lod.js`.
+
+### Bloque D — Verificación final
+
+- [ ] Suite completa de tests (unitarios + E2E + auditorías) y playtest
+      manual de los 10 bugs; `biome check` 0 errores en los archivos
+      tocados; documentar en "Bugs conocidos" los bugs corregidos y
+      marcar esta sección.
+
+---
+
 ## Bugs conocidos (pendientes de corrección)
 
 - [x] **Inventario: el mouse sigue bloqueado y no se puede
