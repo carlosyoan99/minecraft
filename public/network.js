@@ -139,6 +139,16 @@ socket.addEventListener("message", (e) => {
 		case "mob_breed":
 			spawnHearts(data.x, data.y, data.z);
 			break;
+		case "damage_debug": {
+			// Fase 8 (B2): telemetría de daño — cola circular de las últimas 20
+			// entradas (diagnóstico de la pérdida de vida sin causa). El F3
+			// (debug.js) muestra la última; se puede activar el detalle desde la
+			// consola con window.__mcDamageDebug = true.
+			if (!window.__mcLastDamage) window.__mcLastDamage = [];
+			window.__mcLastDamage.push(data);
+			if (window.__mcLastDamage.length > 20) window.__mcLastDamage.shift();
+			break;
+		}
 		case "teleport":
 			teleport(data.x, data.y, data.z);
 			break;

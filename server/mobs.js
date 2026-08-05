@@ -162,13 +162,27 @@ class Mob {
 
 	attack(player, dmg, cooldownMs) {
 		if (this.attackCooldown > Date.now()) return;
-		damagePlayer(player, dmg);
+		// Fase 8 (B2): telemetría de daño por origen (mob atacante + distancia).
+		damagePlayer(player, dmg, {
+			source: "mob",
+			meta: {
+				mobId: this.id,
+				mobType: this.type,
+				dist: this.distTo(player)
+			}
+		});
 		this.attackCooldown = Date.now() + cooldownMs;
 	}
 
 	explode() {
 		for (const p of players.values()) {
-			if (this.distTo(p) < 3.5) damagePlayer(p, 10);
+			// Fase 8 (B2): telemetría — la explosión del creeper cuenta como daño
+			// de mob (mobType creeper) con su distancia.
+			if (this.distTo(p) < 3.5)
+				damagePlayer(p, 10, {
+					source: "mob",
+					meta: { mobType: "creeper", dist: this.distTo(p) }
+				});
 		}
 		for (let dx = -2; dx <= 2; dx++) {
 			for (let dy = -2; dy <= 2; dy++) {

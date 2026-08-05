@@ -352,7 +352,11 @@ function applyFallDamage(player) {
 		if (player.fallFromY != null) {
 			if (!inWater) {
 				const dmg = fallDamage(player.fallFromY - player.y);
-				if (dmg > 0) damagePlayer(player, dmg);
+				if (dmg > 0)
+					damagePlayer(player, dmg, {
+						source: "fall",
+						meta: { fallBlocks: player.fallFromY - player.y }
+					});
 			}
 			player.fallFromY = null;
 		}
@@ -373,9 +377,48 @@ function applyFallDamage(player) {
 	);
 }
 
+// ============================================================
+// TELEMETRÍA DE DAÑO (Fase 8, B2)
+// Registra cada daño aplicado por origen para diagnosticar la pérdida de
+// vida "sin causa" (plan completo en fase8-spec.md §B2). Canales:
+//  1. state.damageLog — anillo de las últimas ~50 entradas (tests headless).
+//  2. Evento WS `damage_debug` al jugador afectado → window.__mcLastDamage
+//     en el cliente (mostrado por el F3, activable con window.__mcDamageDebug).
+//  3. Consola del servidor, solo con DAMAGE_DEBUG=1 en el entorno.
+// `source` y `meta` viajan en opts de damagePlayer (sin cambiar su API).
+// ============================================================
+const DAMAGE_LOG_MAX = 50;
+function logDamage(player, source, amount, real, meta = {}) {
+	const entry = {
+		source,
+		amount,
+		realAmount: real,
+		healthBefore: player.health,
+		healthAfter: Math.max(0, player.health - real),
+		x: player.x,
+		y: player.y,
+		z: player.z,
+		time: Date.now(),
+		...meta
+	};
+	state.damageLog.push(entry);
+	if (state.damageLog.length > DAMAGE_LOG_MAX) state.damageLog.shift();
+	if (player.ws && player.ws.readyState === WebSocket.OPEN) {
+		player.ws.send(JSON.stringify({ event: "damage_debug", data: entry }));
+	}
+	if (process.env.DAMAGE_DEBUG === "1") {
+		// biome-ignore lint/suspicious/noConsole: telemetría opt-in de diagnóstico
+		console.log(
+			`[damage] ${source} ${amount}->${real} @ ${player.x.toFixed(1)},${player.y.toFixed(1)},${player.z.toFixed(1)}`,
+			meta
+		);
+	}
+}
+
 // opts.armor=false → el daño ignora la armadura (inanición, como en Minecraft:
 // la armadura solo protege de ataques y explosiones). Con armadura activa se
 // desgasta la durabilidad de las piezas (sendInventory para el HUD del cliente).
+// opts.source/opts.meta alimentan la telemetría logDamage (Fase 8, B2).
 function damagePlayer(player, amount, opts = {}) {
 	if (player.gamemode === "creative") return; // creative (/gamemode): sin daño (mobs, inanición...)
 	let real = amount;
@@ -384,6 +427,7 @@ function damagePlayer(player, amount, opts = {}) {
 		real = applyArmorDamageReduction(player, amount);
 		sendInventory(player); // la durabilidad de la armadura pudo cambiar
 	}
+	logDamage(player, opts.source || "unknown", amount, real, opts.meta);
 	player.health = Math.max(0, player.health - real);
 	sendHealth(player);
 	if (player.health <= 0) respawnPlayer(player);
@@ -451,7 +495,7 @@ function tickPlayer(player, dtMs) {
 		player.lavaAccum = (player.lavaAccum || 0) + dtMs;
 		if (player.lavaAccum >= LAVA_DAMAGE_INTERVAL_MS) {
 			player.lavaAccum = 0;
-			damagePlayer(player, LAVA_DAMAGE);
+			damagePlayer(player, LAVA_DAMAGE, { source: "lava" });
 		}
 	} else {
 		player.lavaAccum = 0;
@@ -494,7 +538,11 @@ function tickPlayer(player, dtMs) {
 		player.starveAccum += dtMs;
 		if (player.starveAccum >= FOOD_STARVE_INTERVAL_MS) {
 			player.starveAccum = 0;
-			damagePlayer(player, 1, { armor: false });
+			damagePlayer(player, 1, {
+				source: "starve",
+				meta: { food: player.food, saturation: player.saturation },
+				armor: false
+			});
 		}
 	} else {
 		player.starveAccum = 0;

@@ -120,6 +120,9 @@ function updateHud() {
 	// Fase 7: métricas del servidor (broadcast server_metrics, media de 1s)
 	const srvTick = window.__mcServerTickMs;
 	const srvGen = window.__mcChunkGenMs;
+	// Fase 8 (B2): telemetría de daño — última entrada recibida (damage_debug).
+	// Se muestra solo si hay registros o si el usuario pidió el detalle.
+	const lastDmg = window.__mcLastDamage?.at(-1);
 	const p = camera.position;
 	hudEl.innerHTML = [
 		"<b>⛏ Mi Minecraft — Depuración (F3)</b>",
@@ -128,7 +131,8 @@ function updateHud() {
 		`Chunks: ${vis}/${chunks} visibles (${chunkMeshes.size + lodMeshes.size} en memoria)`,
 		`Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
 		`Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : "--"}`,
-		`Tick servidor: ${Number.isFinite(srvTick) ? srvTick.toFixed(2) : "--"} ms · Gen chunk: ${Number.isFinite(srvGen) ? srvGen.toFixed(2) : "--"} ms`
+		`Tick servidor: ${Number.isFinite(srvTick) ? srvTick.toFixed(2) : "--"} ms · Gen chunk: ${Number.isFinite(srvGen) ? srvGen.toFixed(2) : "--"} ms`,
+		`Daño: ${lastDmg ? `${lastDmg.source} ${lastDmg.amount}→${lastDmg.realAmount} @ ${lastDmg.x.toFixed(0)},${lastDmg.y.toFixed(0)},${lastDmg.z.toFixed(0)}` : "--"}`
 	].join("<br>");
 }
 

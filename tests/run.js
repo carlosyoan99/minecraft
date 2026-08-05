@@ -43,6 +43,7 @@ const UNIT = [
 	"unit-itemicons.js",
 	"unit-ajustes.js",
 	"unit-metricas.js",
+	"unit-damage.js",
 	"unit-sky.js"
 ];
 const E2E = [
