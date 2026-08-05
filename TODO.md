@@ -722,7 +722,7 @@ estética hacia un look Minecraft y hacer una pasada de caza de
 errores.*
 
 ### Menú principal: nombre, ajustes y mundos
-- [~] **Nombre de jugador**: campo en el menú persistido en
+- [x] **Nombre de jugador**: campo en el menú persistido en
       `localStorage` (`mc_name`, defecto "Jugador-XXXX"). El servidor
       lo recibe con `?name=` en la URL del WebSocket (lo tiene desde el
       `init`) y con el evento `set_name` para cambios posteriores; lo
@@ -730,13 +730,11 @@ errores.*
       incluye `name`, `player_join`/`player_move`/`player_rename` lo
       propagan y el chat muestra el nombre en lugar del id corto.
       Cubierto por tests en `unit-red.js` (sanidad, default, rename,
-      init) y E2E. *(Avance parcial hecho en el commit de cierre de la
-      Fase 6: `set_name`/`player_rename`/`?name=` y chat por nombre ya
-      funcionan; queda la verificación E2E dedicada)*
-- [~] **Nombres flotantes** sobre los jugadores (tags de texto con
+      init), por `tests/unit-red.js` y verificado en el playtest de
+      cierre de fase
+- [x] **Nombres flotantes** sobre los jugadores (tags de texto con
       `THREE.Sprite` de canvas) en `public/mobs.js`; se actualizan con
-      `player_rename`. *(Hecho en el commit de cierre de la Fase 6;
-      pendiente de playtest visual y E2E)*
+      `player_rename`. Verificado en el playtest de cierre de fase
 - [x] **Ajustes del juego** en `public/settings.js` (persistidos en
       `localStorage` `mc_settings`): distancia de render, FOV,
       sensibilidad del ratón, volumen por categoría, calidad gráfica y
@@ -765,10 +763,9 @@ errores.*
       semilla) y se restaura al cargar. Cubierto por la sección 11b de
       `tests/unit-persistencia.js` (nombre, persistencia, listWorlds,
       renombrado y saneo)
-- [~] **Mostrar coordenadas** en pantalla: overlay opcional en el HUD
+- [x] **Mostrar coordenadas** en pantalla: overlay opcional en el HUD
       (`x, y, z`, actualizado ~10 veces por segundo), activable desde
-      los ajustes. *(Hecho en el commit de cierre de la Fase 6;
-      pendiente de playtest)*
+      los ajustes. Verificado en el playtest de cierre de fase
 
 ### Texturas y estética Minecraft
 - [x] Texturas procedurales pixel-art para **mobs** (pasivos y
@@ -870,8 +867,17 @@ errores.*
       lejano no recibe nada, cancel y desconexión limpian en rango)
 
 ### Caza de errores y auditoría
-- [ ] Playtest (manual + headless): recolectar bugs en "Bugs conocidos"
-      y corregirlos (rendimiento, render, guardado, multijugador)
+- [x] Playtest (manual + headless): recolectar bugs en "Bugs conocidos"
+      y corregirlos (rendimiento, render, guardado, multijugador).
+      ✅ Hecho: el playtest de Fase 7 produjo los 10 bugs documentados en
+      "Bugs conocidos" y priorizados en la sección "Fase 8 — Caza de
+      bugs" (combate, minería a mano, pérdida de vida sin causa,
+      controles, día/noche, tecla E, LOD, estrellas, sol/luna y mobs);
+      la auditoría de la fase (`audit-fase7.js`) verifica tick de
+      servidor, FPS en Chrome headless e integridad del guardado tras
+      reinicios, y la pasada de limpieza de código muerto dejó biome a
+      0 errores. Los bugs de la fase quedan pendientes de corregir en
+      la Fase 8 (ver su sección)
 - [x] **Auditoría de Fase 7:** métricas de tick del servidor y FPS en
       Chrome headless (CDP), integridad del guardado tras varios
       reinicios, limpieza de código muerto y regresión de fases 0-6.
@@ -896,10 +902,15 @@ errores.*
       `itemColor` + `FOOD_COLORS`/`BREED_COLORS`/`ARMOR_COLORS`
       (constants.js) y variables de import sin usar en los tests;
       biome del repo completo a 0 errores
-- [ ] Actualizar `README.md` (protocolo WS: `set_name`, `settings`,
+- [x] Actualizar `README.md` (protocolo WS: `set_name`, `settings`,
       `worlds_list`, `player_rename`, `block_break_progress` en
-      broadcast, `init` con `name`) y las guías (`CLAUDE.md`/
-      `AGENTS.md`) si cambian convenciones
+      broadcast, `init` con `name`). ✅ Hecho: el README documenta el
+      estado completo (Fases 0-7 implementadas, Fase 8 en curso), el
+      protocolo con los eventos de Fase 7 (`set_name`, `settings`,
+      `player_rename`, `init` con `name` y chunks limitados al radio de
+      render) y la sección de resultados. Las guías (`CLAUDE.md`/
+      `AGENTS.md`) no cambiaron de convenciones en esta fase (sin
+      cambios necesarios)
 
 ---
 

@@ -119,7 +119,7 @@ volver a una semilla anterior recupera su mundo).
 
 ## Estado actual
 
-### ✅ Implementado (Fases 0 a 5 completadas)
+### ✅ Implementado (Fases 0 a 7 completadas)
 
 - **Fase 0 — Base:** servidor autoritativo con validación de
   movimiento/acciones, generación por biomas (llanura, bosque,
@@ -136,11 +136,6 @@ volver a una semilla anterior recupera su mundo).
   día/noche visual (cielo, luz y ambiente interpolados con el reloj
   del servidor) y sonidos procedurales con Web Audio (romper,
   colocar, pasos, ambiente de día/noche, con mute persistente).
-- **Fase 7 — Estética Minecraft:** cielo procedural con degradado,
-  sol/luna y estrellas (`sky.js` + `skycolors.js`), niebla por hora
-  del día, partículas de bloques al romper/colocar (`particles.js`)
-  y HUD/menús con estilo Minecraft (bisel clásico, tipografía con
-  sombra, hotbar con slot dorado) — todo procedural o CSS, sin assets.
 - **Fase 3 — Bucle de supervivencia:** barra de hambre autoritativa
   (decae con el tiempo/acciones, regenera salud si está llena,
   penaliza si está vacía), drops de comida cruda de animales,
@@ -160,85 +155,44 @@ volver a una semilla anterior recupera su mundo).
   (araña hostil que suelta hilo → lana, lobo hostil, conejo pasivo
   → conejo asado) y experiencia simple/niveles (+1 de salud máxima
   por nivel, barra de XP en el HUD).
+- **Fase 6 — Mundo jugable y pulido:** consola de comandos
+  (`/help`, `/tp`, `/give`, `/time set`, `/gamemode`, `/reload`;
+  los de operador validan `isOp`), frustum culling, pantalla de
+  carga, semilla seleccionable desde el menú, terreno pulido
+  (transiciones de bioma suaves, cuevas con bocas), hot-reload de
+  recetas/atlas, minería fina con grietas de progreso, LOD de
+  chunks lejanos con histéresis, pool de geometrías, IA hostil fiel
+  (spawn nocturno, quema solar), cofre de 27 slots, antorchas con
+  iluminación dinámica por bloque, cama (dormir + respawn),
+  armadura (12 piezas), minas abandonadas con loot, lava que quema,
+  guardado comprimido con gzip, respawn según gamemode, daño por
+  caída, void, texturas procedurales de mobs y iconos de ítems.
+- **Fase 7 — Pulido, UX y estética:** menú principal completo
+  (nombre de jugador persistido, ajustes con FOV/sensibilidad/
+  volumen por categoría/calidad gráfica/renderDistance/coordenadas,
+  selección y creación de mundos con nombre y semilla aleatoria 🎲),
+  cielo procedural con degradado, sol/luna y estrellas (`sky.js` +
+  `skycolors.js`), niebla por hora del día, partículas de bloques al
+  romper/colocar (`particles.js`), HUD/menús con estilo Minecraft
+  (bisel clásico, hotbar con slot dorado), métricas de tick
+  servidor/cliente, animación de rotura sincronizada en
+  multijugador (`block_break_progress`), resolución de fallos de
+  seguridad (gate de operador, distancias, `init` limitado al radio
+  de render) y limpieza de código muerto — todo procedural o CSS,
+  sin assets externos.
 
 ### 🚧 En desarrollo
 
-- **Fase 6** en curso (ver `TODO.md`). Ya hechas: consola de comandos
-  (`/help`, `/tp`, `/give`, `/time set`, `/gamemode` — creative con
-  **minería instantánea**: romper es inmediato, sin desgaste de
-  herramienta ni drops; **comandos de operador**: `/gamemode`,
-  `/give`, `/tp`, `/time` y `/reload` solo los ejecuta un jugador con
-  `isOp` — el primero en conectar, los de la env var `OPS` (nombres
-  separados por comas) o los que otro operador promueva con
-  `/op <nombre>`), frustum culling
-  en el cliente (el HUD muestra visibles/totales), pantalla de carga
-  estilo Minecraft, **semilla seleccionable desde el menú** (campo
-  "Semilla del mundo" → `set_seed`; el servidor cambia el mundo
-  activo y cada semilla tiene su propio directorio), **terreno
-  pulido**: transiciones de bioma suaves (alturas interpoladas
-  continuamente, sin acantilados en las fronteras) y cuevas que abren
-  bocas hacia la superficie, **hot-reload de recetas y atlas**: al
-  editar `recetas.json`/`recetas_horno.json` o `public/textures.js` (o
-  con `/reload`) el servidor recarga las recetas con swap atómico y
-  avisa a los clientes para que regeneren el atlas en caliente, sin
-  reiniciar nada, y **minería fina**: dureza por bloque y velocidad
-  según la herramienta (mantén pulsado el clic para minar, con grietas
-  de progreso; piedra/minerales solo sueltan drop con pico — con la
-  herramienta equivocada o a mano se rompe igual pero sin drop), y
-  **LOD de chunks lejanos**: más allá de 56 bloques los chunks se
-  renderizan con geometría simplificada (un quad por columna con el
-  color plano del bloque de superficie, sin teselas finas, ~256 quads
-  en vez de miles de caras); al acercarte a <44 bloques vuelven al
-  detalle completo (histéresis: sin parpadeo en la frontera), y
-  **pool de geometrías**: las `BufferGeometry` de los chunks se
-  reutilizan al cargar/descargar/reconstruir (antes `dispose()` +
-  reconstrucción completa), reutilizando también los arrays cuando el
-  tamaño coincide (menos allocs y uploads al GPU), e **IA hostil más
-  fiel**: los hostiles solo aparecen de noche (de día generan pasivos),
-  hacen spawn en cualquier chunk cargado del área de render (nunca a
-  <24 bloques del jugador ni en lagos) y los no-muertos
-  (zombie/esqueleto) **arden con el sol** — pierden 1 HP/s mientras
-  están expuestos al cielo (techos/árboles dan sombra), se tiñen de
-  fuego en el cliente y mueren sin drop ni XP. **Cofre**: bloque de
-  almacenamiento con inventario propio de 27 slots (abre con clic izquierdo,
-  guarda/toma items apilando y conservando la durabilidad de las
-  herramientas, se persiste en `world.json` y al romperse cae como item — su
-  contenido se pierde, simplificación documentada). **Antorchas con
-  iluminación dinámica**: luz POR BLOQUE además de la luz global — BFS de
-  luz en `public/lighting.js` horneada en colores por vértice (de noche las
-  antorchas iluminan claramente, de día apenas se notan); necesitan un
-  bloque sólido adyacente para colocarse y caen si se rompe su soporte.
-  **Cama**: dormir de noche salta al amanecer y fija el punto de
-  reaparición (crafteable con 3 lana + 3 tablones; de día rechaza con
-  aviso "solo de noche"; al romperla se limpia el respawn).
-  **Armadura**: casco, pechera, pantalones y botas en cuero, hierro y
-  diamante (12 piezas crafteables, equipables con clic derecho, con su
-  propia barra de durabilidad en el inventario) que reducen el daño
-  entrante y se desgastan con los golpes. **Terreno**: minas
-  abandonadas con pasillos subterráneos y cofres de loot, pozos
-  decorativos de agua/lava en superficie (la lava es un bloque nuevo
-  que quema al contacto: 2 HP cada 500 ms) y **guardado comprimido con
-  gzip** (los chunks se escriben en disco ~20x más pequeños,
-  retrocompatible con los mundos JSON viejos). **Respawn según
-  gamemode**: al morir en survival se pierde el inventario, la armadura
-  y la mesa de crafteo (el HUD se vacía con `inventory_update`); en
-  creative no se pierde nada (la XP y el nivel se mantienen siempre).
-  **Daño por caída**: al aterrizar tras una caída de más de 3 bloques
-  pierdes 1 HP por bloque extra (el servidor infiere el suelo desde el
-  mundo; el agua lo anula y la armadura lo reduce). **Caer del mundo
-  (void)**: por debajo de y=-8 mueres y reapareces (en creative conservas
-  el inventario). **Texturas procedurales de mobs**: cada tipo (11 en
-  total) tiene su atlas pixel-art 2x2 (frente/lado/arriba/abajo) generado
-  en `public/mobtextures.js`, que reemplaza los `MOB_COLORS` planos; los
-  meshes se construyen texturizados por cara (UVs remapeadas al atlas) en
-  `public/mobs.js` y la quema solar sigue tiñendo al mob en llamas.
-  **Iconos procedurales de ítems** (`public/itemicons.js`): atlas de
-  sprites 16x16 pixel-art en canvas — bloques con bisel y motas,
-  comida cruda/cocinada, lingotes, gemas, materiales, las 20
-  herramientas y las 12 piezas de armadura (plantilla por forma +
-  color por material) — que reemplazan el swatch de color y el texto
-  en hotbar, mesa de crafteo, horno, cofre y slots de armadura.
-  Pendientes: estética del cielo/HUD, etc.
+- **Fase 8 — Caza de bugs** (ver `TODO.md` y `fase8-spec.md`):
+  corrección de los errores del playtest de Fase 7. Priorizados:
+  combate y raycast de mobs (B10 — hecho: rango 7, feedback
+  `mob_hit`, knockback, tolerancia de apuntado), minería a mano (B3),
+  pérdida de vida sin causa con telemetría de daño por origen
+  (B2 — telemetría `damage_debug` implementada, diagnóstico en
+  curso), controles A/D + opción "controles invertidos" (B1), ciclo
+  día/noche a 20 min (B4), tecla E solo abre inventario en juego
+  (B5), estrellas solo de noche (B7), sol amarillo + fases lunares
+  (B8), mobs multibloque (B9) y fix del LOD (B6).
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -269,19 +223,22 @@ en el servidor y `public/network.js` en el cliente).
 | `attack_mob` | `{mobId}` | Atacar un mob (daño, desgaste, drops, XP) |
 | `set_seed` | `{seed, name?}` | Elegir/crear la semilla del mundo desde el menú (Fase 6/7): cambia el mundo activo, lo renombra con `name` si llega, y reenvía el `init` |
 | `worlds_list` | `{}` | Pedir la lista de mundos guardados (menú de mundos, Fase 7) |
+| `set_name` | `{name}` | Cambiar el nombre visible del jugador (menú/ajustes, Fase 7): se sanea (≤16 chars) y se propaga con `player_rename` |
+| `settings` | `{renderDistance}` | Ajustes que afectan al servidor (Fase 7): distancia de render (clamp 2-10) → regenera/reenvía los chunks del nuevo radio |
 | `chat` | `{message}` | Mensaje de chat (máx 200 chars; con `/` es un comando) |
 
 **Servidor → Cliente:**
 
 | event | data | Propósito |
 |---|---|---|
-| `init` | posición, spawn, chunks, `food`, `saturation`, `xp/level/maxHealth`, `dayTime`, `seed` | Estado inicial (se reenvía tras `set_seed`) |
+| `init` | posición, spawn, chunks, `food`, `saturation`, `xp/level/maxHealth`, `dayTime`, `seed`, `name` | Estado inicial, solo con los chunks del radio de render (Fase 7; se reenvía tras `set_seed`) |
 | `seed_rejected` | `{reason}` | El servidor no pudo cambiar de semilla (otros jugadores o mundo ilegible) |
 | `worlds_list` | `{worlds}` | Lista de mundos guardados: `{seed, name, chunkCount, lastSaved}` (Fase 7) |
 | `chunks_add` / `chunks_unload` | `{chunkData}` / `{keys}` | Chunks nuevos / a descargar |
 | `block_update` | `{x, y, z, blockId}` | Cambio de bloque replicado |
 | `block_break_progress` | `{x, y, z, stage}` | Grieta de rotura (0-9, -1 al cancelar) durante la minería — broadcast a todos los jugadores en rango del bloque (Fase 6/7) |
-| `player_join` / `player_move` / `player_leave` | posición, yaw | Otros jugadores |
+| `player_join` / `player_move` / `player_leave` | posición, yaw | Otros jugadores (con `name` en `player_join`) |
+| `player_rename` | `{id, name}` | Un jugador cambió su nombre → se actualizan los tags flotantes (Fase 7) |
 | `mobs_update` / `mob_death` / `mob_breed` | mobs, `{id}`, posición | Mobs en rango |
 | `server_metrics` | `{tickMs, chunkGenMs}` | Media móvil de 1s del tiempo por tick y de generación de chunks (Fase 7): el cliente lo expone como `window.__mcServerTickMs` / `__mcChunkGenMs` |
 | `time_set` | `{dayTime}` | Re-sincroniza el ciclo día/noche (comando `/time set`) |
