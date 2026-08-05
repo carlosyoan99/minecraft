@@ -14,6 +14,7 @@ const {
 	TICK_MS,
 	VIEW_DISTANCE_CHUNKS,
 	DAY_CYCLE_MS,
+	SPAWN_GRACE_MS,
 	SEED,
 	VOID_Y,
 	B,
@@ -191,6 +192,9 @@ function handleConnection(ws, req) {
 		pitch: 0,
 		health: 20,
 		maxHealth: 20,
+		// B2 (Fase 8): gracia inicial al entrar (30s sin daño de mobs; la zona
+		// segura del spawn en mobs.js es la otra mitad del fix).
+		spawnGraceUntil: Date.now() + SPAWN_GRACE_MS,
 		xp: 0,
 		level: 0, // Fase 5: experiencia simple / niveles
 		food: 20,

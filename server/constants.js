@@ -14,6 +14,10 @@ const VIEW_DISTANCE_CHUNKS = 6; // Chunks generados alrededor de cada jugador al
 const UNLOAD_DISTANCE_CHUNKS = 10; // Chunks sin jugadores a menos de esta distancia (en chunks) se descargan
 const UNLOAD_INTERVAL_MS = 10000; // Cada 10s se buscan chunks lejanos que descargar
 const DAY_CYCLE_MS = 1200000; // 20 minutos como Minecraft: ~10 de día, ~10 de noche (atardecer/amanecer suaves en el cliente)
+// Gracia inicial de spawn (Fase 8, B2): tras entrar o reaparecer, N ms sin
+// daño de MOBS (lava/caída/hambre siguen doliendo). Da tiempo a orientarse
+// sin morir en el spawn; la zona segura de spawn es la otra mitad del fix.
+const SPAWN_GRACE_MS = 30000;
 // La semilla se configura con la env var SEED (defecto miSemilla2026).
 // Cambiar la SEED genera un mundo TOTALMENTE nuevo: cada semilla tiene su
 // propio directorio de mundo (world/<semilla>/), así nunca se pisan ni se
@@ -510,6 +514,7 @@ module.exports = {
 	UNLOAD_DISTANCE_CHUNKS,
 	UNLOAD_INTERVAL_MS,
 	DAY_CYCLE_MS,
+	SPAWN_GRACE_MS,
 	SEED,
 	OPS,
 	EYE_HEIGHT,

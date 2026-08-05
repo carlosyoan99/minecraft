@@ -12,6 +12,7 @@ const {
 	I,
 	EYE_HEIGHT,
 	FALL_DAMAGE_FREE_BLOCKS,
+	SPAWN_GRACE_MS,
 	ORE_XP,
 	canHarvest,
 	FOOD_VALUES,
@@ -285,6 +286,8 @@ function respawnPlayer(player) {
 	// La caída en curso no sobrevive al respawn (el daño por caída se reinicia).
 	player.fallFromY = null;
 	player.lastGroundY = null;
+	// B2 (Fase 8): gracia inicial al reaparecer (30s sin daño de mobs).
+	player.spawnGraceUntil = Date.now() + SPAWN_GRACE_MS;
 	// Respawn (la XP y el nivel se conservan; la salud máxima sí aplica).
 	player.health = player.maxHealth || 20;
 	player.food = 20;
@@ -421,6 +424,11 @@ function logDamage(player, source, amount, real, meta = {}) {
 // opts.source/opts.meta alimentan la telemetría logDamage (Fase 8, B2).
 function damagePlayer(player, amount, opts = {}) {
 	if (player.gamemode === "creative") return; // creative (/gamemode): sin daño (mobs, inanición...)
+	// B2 (Fase 8): gracia inicial al entrar/reaparecer — 30s sin daño de MOBS
+	// (la zona segura del spawn en mobs.js es la otra mitad). El jugador
+	// recién llegado puede orientarse; lava/caída/hambre siguen doliendo.
+	if (opts.source === "mob" && Date.now() < (player.spawnGraceUntil || 0))
+		return;
 	let real = amount;
 	const armorApplies = opts.armor !== false;
 	if (armorApplies) {

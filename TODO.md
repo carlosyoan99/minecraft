@@ -974,25 +974,29 @@ fix propio (el diagnóstico debe confirmarlo).
       madera/hojas); piedra/minerales siguen requiriendo pico.
       Regresión: `unit-raycast.js`, `unit-geopool.js`, `unit-mineria.js`,
       `e2e-durabilidad.js`.
-- [~] **B2: pierdes vida constantemente sin causa (mueres en pocos
+- [x] **B2: pierdes vida constantemente sin causa (mueres en pocos
       segundos).** ✅ **Diagnóstico CONFIRMADO (reproducción en vivo con
       la telemetría `damage_debug`)**: la causa son los **mobs hostiles
       cerca del spawn** — no lava, no caída, no hambre (comida llena).
       Evidencia: (1) `tests/diag-b2.js` conectó un cliente AFK al
       servidor vivo: a los ~60s un **zombi** (id 519521) entró en rango
       y atacó **2 HP cada ~1s** (9 golpes / 18 HP en ~15s → muerte en
-      ~10s más) con la comida llena (los valores impares intermedios son
-      la regeneración +1 por comida llena, no otra fuente); (2) escaneo
-      del mundo guardado: **0 lava y 0 agua a ≤10 bloques del spawn**
-      (descartado daño ambiental) y **5 hostiles a <40 bloques del
-      spawn** — `zombie@(0,-3)` (¡a 3 bloques!), `zombie@(14,-3)`,
-      `skeleton@(14,2)`, `creeper@(10,31)`, `skeleton@(25,26)` — de
-      noche además spawnean hostiles a ≥24 bloques que convergen al
-      jugador. En definitiva: **el spawn no tiene zona segura**.
-      **Fix pendiente — decisión de diseño a validar con el usuario**
-      (spec §B2): zona segura de spawn (sin spawn hostil ni aggro cerca
-      de él), periodo de gracia inicial al entrar/reaparecer, o ambos.
-      Herramienta de reproducción: `tests/diag-b2.js` (WS_URL/DURATION).
+      ~10s más) con la comida llena; (2) escaneo del mundo: **0 lava/0
+      agua a ≤10 bloques del spawn** y **5 hostiles a <40 bloques**
+      (zombi a 3 bloques); de noche además spawnean hostiles a ≥24
+      bloques que convergen al jugador. **Fix (validado con el usuario:
+      AMBOS)**: (a) **zona segura de spawn** (`mobs.js`
+      `spawnSafeRadius = 32`, configurable): los hostiles no spawnean
+      dentro del radio y `findNearestPlayer` no targetea a jugadores
+      dentro (al salir del radio vuelven a ser objetivo); (b) **gracia
+      inicial** (`SPAWN_GRACE_MS = 30000` en constants.js): al entrar y
+      al reaparecer, 30s sin daño de MOBS (lava/caída/hambre siguen
+      doliendo). **Verificado en vivo**: diag-b2.js tras el fix → 45s
+      AFK con 0 daños y vida 20 (antes 2 HP/s). Regresión:
+      `unit-mobs-ia.js` (bloque 13: zona segura — no targeteo dentro,
+      spawn hostil rechazado en el radio), `unit-damage.js` (bloque 8:
+      gracia bloquea daño de mob, lava no, expira y aplica), suite
+      completa. Herramienta: `tests/diag-b2.js` (WS_URL/DURATION).
 
 ### Bloque B — Correcciones de mecánica
 

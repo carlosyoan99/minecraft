@@ -15,8 +15,34 @@ const {
 	BREED_FOOD,
 	isSolidBlock,
 	NOT_MINEABLE,
-	WORLD_HEIGHT
+	WORLD_HEIGHT,
+	worldPaths
 } = require("./constants.js");
+
+// ============================================================
+// ZONA SEGURA DEL SPAWN (Fase 8, B2)
+// Radio alrededor del punto de aparición del mundo en el que los hostiles
+// NO spawnean ni targetean a los jugadores: el recién llegado no muere sin
+// defensa (diagnóstico B2: hostiles a <40 bloques del spawn, un zombi a 3).
+// Al salir del radio, el jugador vuelve a ser objetivo normal.
+// 0 desactiva la zona (lo usan los tests de IA pura). El centro es
+// findSpawn(0,0), determinista por semilla: se cachea y se invalida al
+// cambiar de mundo (set_seed cambia worldPaths.currentSeed).
+// ============================================================
+let spawnSafeRadius = 32;
+let safeSpawnCache = { seed: null, x: 0, z: 0 };
+
+function getSafeSpawn() {
+	if (safeSpawnCache.seed !== worldPaths.currentSeed) {
+		const s = world.findSpawn(0, 0);
+		safeSpawnCache = { seed: worldPaths.currentSeed, x: s.x, z: s.z };
+	}
+	return safeSpawnCache;
+}
+
+function setSpawnSafeRadius(r) {
+	spawnSafeRadius = r;
+}
 
 // Salud por tipo (por defecto: hostiles 20, pasivos 10); la araña es frágil
 // pero rápida, el lobo es un hostil más resistente.
@@ -69,7 +95,13 @@ class Mob {
 	findNearestPlayer() {
 		let nearest = null,
 			best = Infinity;
+		const safe = spawnSafeRadius > 0 ? getSafeSpawn() : null;
 		for (const p of players.values()) {
+			// B2: los hostiles no targetean a jugadores dentro de la zona segura
+			// del spawn (el recién llegado se orienta; al salir del radio vuelven
+			// a ser objetivo).
+			if (safe && Math.hypot(p.x - safe.x, p.z - safe.z) < spawnSafeRadius)
+				continue;
 			const d = this.distTo(p);
 			if (d < best) {
 				best = d;
@@ -375,6 +407,12 @@ function spawnMobs(isNight) {
 				for (const p of players.values())
 					minDist = Math.min(minDist, Math.hypot(wx - p.x, wz - p.z));
 				if (minDist < SPAWN_MIN_PLAYER_DIST) continue;
+				// B2: los hostiles tampoco spawnean dentro de la zona segura del
+				// spawn (no aparecen en la cara del recién llegado).
+				if (spawnSafeRadius > 0) {
+					const s = getSafeSpawn();
+					if (Math.hypot(wx - s.x, wz - s.z) < spawnSafeRadius) continue;
+				}
 			}
 			const wy = world.getHeight(Math.floor(wx), Math.floor(wz)) + 1;
 			const mob = new Mob(type, wx, wy, wz);
@@ -500,5 +538,7 @@ module.exports = {
 	restoreMobs,
 	mobDrops,
 	canFeed,
-	applyFeed
+	applyFeed,
+	getSafeSpawn,
+	setSpawnSafeRadius
 };

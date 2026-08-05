@@ -68,6 +68,9 @@ function connect() {
 {
 	state.damageLog.length = 0;
 	const { ws, player } = connect();
+	// B2: sin gracia de spawn para probar el daño de mob puro (connect() la
+	// activa; se desactiva explícitamente, el bloque 8 la prueba).
+	player.spawnGraceUntil = 0;
 	// Daño de mob: los campos del evento y de la entrada del anillo.
 	playerHelpers.damagePlayer(player, 5, {
 		source: "mob",
@@ -159,6 +162,8 @@ function connect() {
 {
 	state.damageLog.length = 0;
 	const { player } = connect();
+	// B2: sin gracia de spawn (mobs.attack debe hacer daño y registrar).
+	player.spawnGraceUntil = 0;
 	const zombie = new mobs.Mob(
 		"zombie",
 		Math.floor(player.x) + 1,
@@ -237,6 +242,37 @@ function connect() {
 function fallDamageExpect(blocks) {
 	const { FALL_DAMAGE_FREE_BLOCKS } = require("../server/constants.js");
 	return Math.max(0, Math.floor(blocks) - FALL_DAMAGE_FREE_BLOCKS);
+}// ============================================================
+// B2 (Fase 8): GRACIA INICIAL DE SPAWN — 30s sin daño de mobs
+// (lava/caída/hambre siguen doliendo; la zona segura de spawn es
+// la otra mitad del fix, probada en unit-mobs-ia)
+// ============================================================
+{
+	state.damageLog.length = 0;
+	const { ws, player } = connect();
+	check(
+		"gracia: connect() activa spawnGraceUntil en el futuro",
+		(player.spawnGraceUntil || 0) > Date.now()
+	);
+	playerHelpers.damagePlayer(player, 5, { source: "mob" });
+	check(
+		"gracia: daño de mob ignorado (salud intacta, sin evento ni anillo)",
+		player.health === 20 &&
+			state.damageLog.length === 0 &&
+			ws.events("damage_debug").length === 0
+	);
+	playerHelpers.damagePlayer(player, 2, { source: "lava" });
+	check(
+		"gracia: lava NO se bloquea (2 de daño aplicado y registrado)",
+		player.health === 18 && state.damageLog.at(-1)?.source === "lava"
+	);
+	player.spawnGraceUntil = Date.now() - 1; // gracia expirada
+	playerHelpers.damagePlayer(player, 3, { source: "mob" });
+	check(
+		"gracia: tras expirar, el daño de mob aplica (3 de daño)",
+		player.health === 15 && state.damageLog.at(-1)?.source === "mob"
+	);
+	state.players.clear();
 }
 
 world.setDiskLoader(null);

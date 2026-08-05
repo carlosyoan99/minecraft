@@ -21,6 +21,10 @@ const {
 // de quema re-mockean getBlock por altura.)
 world.getBlock = () => 3;
 world.isLake = () => false; // sin lagos en los tests de spawn (posición fija)
+// B2 (Fase 8): la zona segura del spawn se DESACTIVA aquí para que los tests
+// de IA pura (jugadores a 1-5 bloques) prueben el comportamiento bruto; el
+// bloque 13 la activa explícitamente y verifica el filtro.
+mobs.setSpawnSafeRadius(0);
 let setBlockCalls = 0;
 world.setBlock = () => {
 	setBlockCalls++;
@@ -500,5 +504,60 @@ check(
 			"rabbit"
 		].every((t) => MOB_XP[t] > 0)
 	);
+}
+
+// --- 13) B2: zona segura del spawn (hostiles no spawnean ni targetean ahí) ---
+{
+	resetPlayers();
+	state.mobs = [];
+	mobs.setSpawnSafeRadius(32);
+	const s = mobs.getSafeSpawn(); // findSpawn(0,0) con isLake=false → (0.5, ·, 0.5)
+
+	// findNearestPlayer: un jugador DENTRO del radio no es objetivo.
+	const pDentro = mkPlayer({ id: "dentro", x: s.x, y: s.y, z: s.z });
+	state.players.set(pDentro.id, pDentro);
+	const z = new mobs.Mob("zombie", s.x + 5, s.y, s.z);
+	const { nearest } = z.findNearestPlayer();
+	check(
+		"zona segura: hostil no targetea a un jugador dentro del radio",
+		nearest === null,
+		`nearest=${nearest?.id}`
+	);
+	// Un jugador FUERA del radio vuelve a ser objetivo.
+	const pFuera = mkPlayer({ id: "fuera", x: s.x + 50, y: s.y, z: s.z });
+	state.players.set(pFuera.id, pFuera);
+	const { nearest: n2 } = z.findNearestPlayer();
+	check(
+		"zona segura: jugador fuera del radio sí es objetivo",
+		n2?.id === "fuera",
+		`nearest=${n2?.id}`
+	);
+
+	// spawnMobs: un hostil que caería a ~31 bloques del spawn (válido por la
+	// regla de ≥24 al jugador) es RECHAZADO por la zona de 32.
+	// Secuencia de Math.random: cx=cz=0.62 → chunk (1,1); wx=wz=0.375 →
+	// posición (22.5, 22.5) a ~31 del spawn; type=0.05 → night[0]=zombie.
+	state.players.clear();
+	state.players.set("sp", mkPlayer({ id: "sp", x: s.x, y: s.y, z: s.z }));
+	world.setDiskLoader(() => null);
+	world.ensureChunksAround(0, 0, 2);
+	const seq = [0.62, 0.62, 0.375, 0.375, 0.05, 0.05, 0.05];
+	let i = 0;
+	const rnd = Math.random;
+	Math.random = () => seq[i++ % seq.length];
+	const created = mobs.spawnMobs(true);
+	Math.random = rnd;
+	check(
+		"zona segura: spawnMobs no coloca hostiles dentro del radio",
+		created
+			.filter((m) => HOSTILE.has(m.type))
+			.every((m) => Math.hypot(m.x - s.x, m.z - s.z) >= 32),
+		created
+			.map((m) => `${m.type}@${Math.hypot(m.x - s.x, m.z - s.z).toFixed(0)}b`)
+			.join(",") || "ninguno"
+	);
+	state.mobs = [];
+	mobs.setSpawnSafeRadius(0); // restaura para el resto del archivo
+	resetPlayers();
 }
 process.exit(fails ? 1 : 0);
