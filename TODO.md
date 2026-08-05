@@ -946,8 +946,13 @@ fix propio (el diagnóstico debe confirmarlo).
       segundos).** El jugador nace con `health 20 / food 20 / saturation
       20` (net.js) → no es hambre; candidatos: mobs hostiles atacando
       cerca del spawn, lava, caída. **Diagnóstico obligatorio antes de
-      corregir**: añadir telemetría de daño por origen (mob/lava/caída/
-      hambre; p. ej. en F3/debug) y confirmar la causa — la hipótesis
+      corregir**: telemetría de daño por origen con evento
+      `damage_debug` (`source` = mob/fall/lava/starve, `amount`/
+      `realAmount`, `healthBefore/After`, posición y meta por origen) —
+      plan completo (campos, call sites a instrumentar y procedimiento)
+      en [`fase8-spec.md`](fase8-spec.md) §B2. Canales: consola del
+      servidor con `DAMAGE_DEBUG=1`, evento WS → `window.__mcLastDamage`
+      en F3, y anillo `state.damageLog` para tests headless. La hipótesis
       principal es indefensión ante mobs (resuelta con B10+B3). Solo si
       el diagnóstico lo confirma, considerar zona segura de spawn o
       periodo de gracia (decisión a validar con el usuario).
