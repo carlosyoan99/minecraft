@@ -362,7 +362,7 @@ function writeChunkFile(key, arr) {
 // Lee y valida un archivo de chunk; devuelve el objeto {cx, cz, data} o null
 // si el archivo no existe como JSON válido (con aviso, nunca silencioso).
 // Acepta tanto JSON plano (formatos v1-v3) como gzip (Fase 7).
-function readChunkFile(file, _origen) {
+function readChunkFile(file, origen) {
 	let parsed;
 	try {
 		const buf = fs.readFileSync(file);
@@ -372,7 +372,11 @@ function readChunkFile(file, _origen) {
 				? zlib.gunzipSync(buf).toString("utf8")
 				: buf.toString("utf8");
 		parsed = JSON.parse(text);
-	} catch (_e) {
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: aviso de chunk ilegible (no silenciar)
+		console.warn(
+			`⚠️  Archivo de chunk ilegible, se ignora: ${origen}: ${e.message}`
+		);
 		return null;
 	}
 	if (
@@ -381,15 +385,25 @@ function readChunkFile(file, _origen) {
 		typeof parsed.cx !== "number" ||
 		typeof parsed.cz !== "number"
 	) {
+		// biome-ignore lint/suspicious/noConsole: aviso de chunk con formato inválido
+		console.warn(`⚠️  Archivo de chunk ignorado (formato inválido): ${origen}`);
 		return null;
 	}
 	if (
 		typeof parsed.schemaVersion === "number" &&
 		parsed.schemaVersion > SCHEMA_VERSION
 	) {
+		// biome-ignore lint/suspicious/noConsole: aviso de chunk de versión futura
+		console.warn(
+			`⚠️  Chunk (${parsed.cx},${parsed.cz}) es de una versión más nueva (v${parsed.schemaVersion}); se ignora (se regenerará y se sobrescribirá al guardar)`
+		);
 		return null;
 	}
 	if (parsed.data.length !== CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE) {
+		// biome-ignore lint/suspicious/noConsole: aviso de chunk con longitud inesperada
+		console.warn(
+			`⚠️  Archivo de chunk ignorado (longitud inesperada): ${origen}`
+		);
 		return null;
 	}
 	return parsed;

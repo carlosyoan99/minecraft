@@ -32,6 +32,8 @@ crafting.watchRecipeFiles((r) => {
 	const msg = r.ok
 		? `♻️ Recetas recargadas (${r.crafting} crafteo, ${r.furnace} horno)`
 		: `⚠️ Recetas NO recargadas: ${r.error} (se mantienen las anteriores)`;
+	// biome-ignore lint/suspicious/noConsole: aviso de hot-reload (recetas)
+	console.log(msg);
 	net.broadcast("chat", { id: "Server", message: msg });
 	if (r.ok) net.broadcast("textures_reload", {});
 });
@@ -47,10 +49,19 @@ try {
 			// Si el archivo está a medio reemplazar (borrado temporal del editor),
 			// no avisar: los clientes importarían un módulo inexistente.
 			if (!fs.existsSync(texturesPath)) return;
+			// biome-ignore lint/suspicious/noConsole: aviso de hot-reload (atlas)
+			console.log(
+				"🎨 Atlas de texturas cambiado: avisando a los clientes (textures_reload)"
+			);
 			net.broadcast("textures_reload", {});
 		}, 200);
 	});
-} catch (_e) {}
+} catch (e) {
+	// biome-ignore lint/suspicious/noConsole: aviso de hot-reload desactivado
+	console.warn(
+		`⚠️  No se pudo vigilar el atlas (hot-reload desactivado): ${e.message}`
+	);
+}
 
 // Layout antiguo (world.json + chunks en la raíz de world/) → directorio de la
 // semilla (world/<semilla>/): cada semilla tiene su propio mundo (bug semilla).
@@ -58,6 +69,10 @@ save.migrateWorldLayout();
 
 const loadResult = save.loadWorld();
 if (loadResult === "rechazo") {
+	// biome-ignore lint/suspicious/noConsole: error fatal de arranque
+	console.error(
+		"❌ Arranque abortado: no se pudo abrir el mundo guardado de forma segura (formato más nuevo o datos ilegibles)."
+	);
 	process.exit(1);
 } else if (!loadResult) {
 	// Sin guardado por chunk: probar la migración del world.dat antiguo (v1 → v2)

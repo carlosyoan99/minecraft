@@ -76,11 +76,15 @@ function reloadRecipes() {
 
 function loadRecipes() {
 	const r = reloadRecipes();
-	if (r.ok)
+	if (r.ok) {
+		// biome-ignore lint/suspicious/noConsole: log de carga de recetas
 		console.log(
 			`📜 ${r.crafting} recetas de crafteo, ${r.furnace} recetas de horno`
 		);
-	else console.error("⚠️  No se pudieron cargar las recetas:", r.error);
+	} else {
+		// biome-ignore lint/suspicious/noConsole: error real de carga de recetas (no silenciar)
+		console.error("⚠️  No se pudieron cargar las recetas:", r.error);
+	}
 }
 
 // Vigila los archivos de recetas y recarga en caliente con un debounce (los
@@ -113,7 +117,12 @@ function watchRecipeFiles(onChange) {
 				if (filename && files.has(filename)) reload();
 			});
 		}
-	} catch (_e) {}
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: aviso de hot-reload desactivado
+		console.warn(
+			`⚠️  No se pudo vigilar las recetas (hot-reload desactivado): ${e.message}`
+		);
+	}
 }
 
 // grid: array de 9 celdas, cada una null o { id, count }

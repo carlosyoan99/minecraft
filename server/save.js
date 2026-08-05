@@ -55,18 +55,24 @@ function saveWorld() {
 
 		// Incremental: solo se reescriben los chunks que cambiaron desde el
 		// último guardado, nunca el mundo entero.
-		let _written = 0;
+		let written = 0;
 		for (const key of dirtyChunks) {
 			const arr = chunks.get(key);
 			if (!arr) continue;
 			world.writeChunkFile(key, arr);
-			_written++;
+			written++;
 		}
 		dirtyChunks.clear();
 
 		world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
+		// biome-ignore lint/suspicious/noConsole: log periódico del guardado automático
+		console.log(
+			`💾 Mundo guardado (${written} chunks escritos, ${chunks.size} en memoria, ${state.mobs.length} mobs)`
+		);
 		return true;
-	} catch (_e) {
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de persistencia (no silenciar, convención del proyecto)
+		console.error("Error guardando mundo:", e.message);
 		return false;
 	}
 }
@@ -94,17 +100,41 @@ function loadWorld() {
 				typeof meta.schemaVersion === "number" &&
 				meta.schemaVersion > SCHEMA_VERSION
 			) {
+				// Mundo más nuevo de lo que este servidor sabe leer: negarse a
+				// cargarlo evita que un guardado posterior lo corrompa.
+				// biome-ignore lint/suspicious/noConsole: error de formato del mundo (no silenciar)
+				console.error(
+					`❌ El mundo guardado usa schemaVersion ${meta.schemaVersion}, pero este servidor soporta hasta v${SCHEMA_VERSION}.`
+				);
+				// biome-ignore lint/suspicious/noConsole: error de formato del mundo (no silenciar)
+				console.error(
+					"   No se cargará. Actualiza el servidor o restaura un backup compatible."
+				);
 				return "rechazo";
 			}
 			if (meta.seed && meta.seed !== P.currentSeed) {
+				// biome-ignore lint/suspicious/noConsole: aviso de semilla discrepante
+				console.warn(
+					`⚠️  La semilla del mundo guardado (${meta.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`
+				);
 			}
 			state.mobs = restoreMobs(meta.mobs);
 			restoreFurnaces(meta.furnaces);
 			restoreChests(meta.chests);
 		} else {
+			// biome-ignore lint/suspicious/noConsole: aviso de mundo sin metadatos
+			console.warn(
+				"⚠️  world.json no encontrado: mobs, hornos y cofres se reinician (chunks intactos)"
+			);
 		}
+		// biome-ignore lint/suspicious/noConsole: log de carga del servidor
+		console.log(
+			`✅ Mundo cargado (${chunks.size} chunks, ${state.mobs.length} mobs)`
+		);
 		return true;
-	} catch (_e) {
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de carga (no silenciar, convención del proyecto)
+		console.error("Error cargando mundo:", e.message);
 		// Si existe el directorio de chunks, hay un mundo real: negarse a
 		// regenerar encima en lugar de arriesgar pérdida de datos.
 		return fs.existsSync(P.chunksDir) ? "rechazo" : false;
@@ -136,6 +166,10 @@ function switchWorld(newSeed) {
 	// abortar el cambio: limpiar el estado en memoria perdería el mundo (la
 	// integridad de datos está por encima de poder cambiar de semilla).
 	if (!saveWorld()) {
+		// biome-ignore lint/suspicious/noConsole: error real de cambio de semilla
+		console.error(
+			"❌ No se pudo cambiar la semilla: falló el guardado del mundo actual."
+		);
 		return "error";
 	}
 	state.chunks.clear();
@@ -149,11 +183,19 @@ function switchWorld(newSeed) {
 
 	const r = loadWorld();
 	if (r === "rechazo") {
+		// biome-ignore lint/suspicious/noConsole: error real de cambio de semilla
+		console.error(
+			`❌ No se puede abrir el mundo de la semilla "${newSeed}" (formato más nuevo o ilegible); se mantiene la semilla actual.`
+		);
 		constants.setWorldSeed(prevSeed);
 		world.reinitNoise(prevSeed);
 		loadWorld();
 		return "rechazo";
 	}
+	// biome-ignore lint/suspicious/noConsole: log de cambio de semilla
+	console.log(
+		`🌱 Semilla activa: ${prevSeed} → ${newSeed} (${state.chunks.size} chunks, ${state.mobs.length} mobs)`
+	);
 	return true;
 }
 
@@ -171,6 +213,10 @@ function migrateWorldLayout() {
 				fs.existsSync(path.join(P.worldRoot, n))
 			);
 			if (orphan.length > 0) {
+				// biome-ignore lint/suspicious/noConsole: aviso de layout antiguo huérfano
+				console.warn(
+					`⚠️  Layout antiguo huérfano en world/ (${orphan.join(", ")}): esta semilla ya tiene mundo, se ignoran esos archivos.`
+				);
 			}
 			return false;
 		}
@@ -182,8 +228,14 @@ function migrateWorldLayout() {
 		for (const n of existing) {
 			fs.renameSync(path.join(P.worldRoot, n), path.join(P.worldDir, n));
 		}
+		// biome-ignore lint/suspicious/noConsole: log de migración del layout
+		console.log(
+			`🔁 Mundo movido al directorio de su semilla (${path.basename(P.worldDir)}): ${existing.join(", ")}`
+		);
 		return true;
-	} catch (_e) {
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de migración
+		console.error("⚠️  No se pudo migrar el layout del mundo:", e.message);
 		return false;
 	}
 }
@@ -197,6 +249,10 @@ function migrateLegacyWorld() {
 			return false;
 		const data = JSON.parse(fs.readFileSync(P.legacyFile, "utf8"));
 		if (data.seed && data.seed !== P.currentSeed) {
+			// biome-ignore lint/suspicious/noConsole: aviso de semilla discrepante
+			console.warn(
+				`⚠️  La semilla del world.dat (${data.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`
+			);
 		}
 		chunks.clear();
 		for (const [k, arr] of data.chunks || [])
@@ -212,8 +268,14 @@ function migrateLegacyWorld() {
 		world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
 
 		fs.renameSync(P.legacyFile, `${P.legacyFile}.legacy`);
+		// biome-ignore lint/suspicious/noConsole: log de migración de world.dat
+		console.log(
+			`🔁 Mundo migrado de world.dat → archivos por chunk (${chunks.size} chunks)`
+		);
 		return true;
-	} catch (_e) {
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de migración
+		console.error("⚠️  No se pudo migrar world.dat:", e.message);
 		return false;
 	}
 }
@@ -252,7 +314,10 @@ function listWorlds() {
 					.readdirSync(chunksDir)
 					.filter((f) => f.endsWith(".json")).length;
 			}
-		} catch (_e) {}
+		} catch (e) {
+			// biome-ignore lint/suspicious/noConsole: aviso de mundo ilegible en el menú
+			console.warn(`⚠️  Mundo ilegible en world/${dir}: ${e.message}`);
+		}
 		out.push({ seed, name, chunkCount, lastSaved });
 	}
 	out.sort((a, b) => (b.lastSaved || "").localeCompare(a.lastSaved || ""));
@@ -299,13 +364,23 @@ function unloadFarChunks() {
 					dirtyChunks.delete(key);
 				}
 			}
-		} catch (_e) {
+		} catch (e) {
+			// Integridad: si no se pudo persistir, no soltar el chunk de memoria
+			// biome-ignore lint/suspicious/noConsole: error real de persistencia (no silenciar)
+			console.error(
+				`⚠️  No se pudo persistir ${key} al descargar; se mantiene en memoria:`,
+				e.message
+			);
 			continue;
 		}
 		chunks.delete(key);
 	}
 
 	if (unloadHandler) unloadHandler(toUnload);
+	// biome-ignore lint/suspicious/noConsole: log de descarga de chunks
+	console.log(
+		`🗑️ Descargados ${toUnload.length} chunks lejanos (${chunks.size} en memoria)`
+	);
 }
 
 module.exports = {
