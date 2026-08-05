@@ -19,7 +19,7 @@ node tests/run.js               # 16 unitarios + 3 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
 PORT=3998 node server.js        # servidor para los E2E, en otra terminal
-node tests/audit-fase3.js       # auditorías por fase (también 4 y 5)
+node tests/audit-fase3.js       # auditorías por fase (también 4, 5, 6 y 7; la 7 usa Chrome headless)
 ```
 
 Verificación mínima antes de entregar (CLAUDE.md §"Cómo trabajar"):

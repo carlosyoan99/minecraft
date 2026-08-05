@@ -872,9 +872,26 @@ errores.*
 ### Caza de errores y auditoría
 - [ ] Playtest (manual + headless): recolectar bugs en "Bugs conocidos"
       y corregirlos (rendimiento, render, guardado, multijugador)
-- [ ] **Auditoría de Fase 7:** métricas de tick del servidor y FPS en
+- [x] **Auditoría de Fase 7:** métricas de tick del servidor y FPS en
       Chrome headless (CDP), integridad del guardado tras varios
-      reinicios, limpieza de código muerto y regresión de fases 0-6
+      reinicios, limpieza de código muerto y regresión de fases 0-6.
+      Implementado en `tests/audit-fase7.js` (herramienta reutilizable):
+      (1) lanza su propio servidor desechable (PORT=3999, SEED=auditFase7,
+      se limpia solo) y su propio Chrome headless con SwiftShader
+      (render por software, flags anti-throttling, viewport pequeño) y
+      lee `window.__mcServerTickMs/__mcChunkGenMs/__mcFps/__mcChunks`
+      durante ~6 s: exige tick medio < 100 ms (≈20 TPS; sano 1-10 ms),
+      generación < 100 ms y bucle de render vivo (los FPS de SwiftShader
+      son conservadores y se imprimen en el informe); (2) integridad del
+      guardado: genera un mundo en directorio temporal, lo persiste
+      completo (25 chunks), simula DOS reinicios (limpiar estado +
+      `loadWorld`) y verifica que los bloques modificados (cofre,
+      antorcha, rotura), el conteo de chunks y los archivos sobreviven
+      byte a byte (re-guardar produce archivos idénticos). Uso:
+      `node tests/audit-fase7.js` (con `--regresion` lanza además la
+      suite unitaria de fases 0-6). Medido el 2026-08-05: tick 1.0 ms ·
+      gen 0.0 ms · 169 chunks · 68 visibles · 108k tris. La limpieza de
+      código muerto se hace en la pasada de caza de errores (playtest)
 - [ ] Actualizar `README.md` (protocolo WS: `set_name`, `settings`,
       `worlds_list`, `player_rename`, `block_break_progress` en
       broadcast, `init` con `name`) y las guías (`CLAUDE.md`/
