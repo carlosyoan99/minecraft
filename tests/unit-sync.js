@@ -12,6 +12,10 @@ const ROOT = path.join(__dirname, "..");
 const server = require(path.join(ROOT, "server", "constants.js"));
 
 const src = fs.readFileSync(path.join(ROOT, "public/constants.js"), "utf8");
+const mobSrc = fs.readFileSync(
+	path.join(ROOT, "public/mobtextures.js"),
+	"utf8"
+);
 
 let fails = 0;
 const check = (_name, ok, _extra = "") => {
@@ -27,7 +31,7 @@ function parseObj(name) {
 	if (!m) return null;
 	const out = {};
 	for (const [, k, v] of m[1].matchAll(
-		/(\d+):\s*(0x[0-9a-fA-F]+|\d+|'[^']*')/g
+		/(\d+):\s*(0x[0-9a-fA-F]+|\d+|'[^']*'|"[^"]*")/g
 	))
 		out[Number(k)] = v;
 	return out;
@@ -40,9 +44,9 @@ function parseSet(name) {
 	if (!m) return null;
 	return new Set([...m[1].matchAll(/\d+/g)].map((x) => Number(x[0])));
 }
-// Parse de un escalar `export const NAME = N;`
+// Parse de un escalar `export const NAME = N;` (entero o decimal, ej. EYE_HEIGHT)
 function parseNum(name) {
-	const m = src.match(new RegExp(`export const ${name} = (\\d+);`));
+	const m = src.match(new RegExp(`export const ${name} = ([\\d.]+);`));
 	return m ? Number(m[1]) : null;
 }
 
@@ -164,6 +168,11 @@ check(
 	parseNum("DAY_CYCLE_MS") === server.DAY_CYCLE_MS,
 	`cliente=${parseNum("DAY_CYCLE_MS")}`
 );
+check(
+	"EYE_HEIGHT cliente (1.6) == servidor",
+	parseNum("EYE_HEIGHT") === server.EYE_HEIGHT,
+	`cliente=${parseNum("EYE_HEIGHT")}`
+);
 
 // --- 8) Los items de crafteo de la Fase 3/5 están todos en ITEM_NAMES ---
 {
@@ -180,6 +189,27 @@ check(
 	check(
 		"hilo (120) y conejo (118/119) tienen nombre",
 		[118, 119, 120].every((id) => id in clientItems)
+	);
+}
+
+// --- 9) Texturas de mobs: MOB_TEXTURES (cliente) cubre TODOS los tipos de ---
+// MOB_COLORS (servidor). Si un mob nuevo se añade en el servidor sin su
+// textura, el render cae a color plano (fallback) y esto falla.
+{
+	const m = mobSrc.match(/const MOB_TEXTURES = \{([\s\S]*?)\n\};/);
+	const clientTypes = m
+		? new Set([...m[1].matchAll(/([a-z]+): \{/g)].map((x) => x[1]))
+		: new Set();
+	const serverTypes = new Set(Object.keys(server.MOB_COLORS));
+	let equal = !!m && clientTypes.size === serverTypes.size;
+	for (const t of serverTypes) if (!clientTypes.has(t)) equal = false;
+	for (const t of clientTypes) if (!serverTypes.has(t)) equal = false;
+	check(
+		"MOB_TEXTURES cliente cubre todos los tipos de MOB_COLORS servidor",
+		equal,
+		equal
+			? ""
+			: `cliente=[${[...clientTypes].join(",")}] servidor=[${[...serverTypes].join(",")}]`
 	);
 }
 process.exit(fails ? 1 : 0);

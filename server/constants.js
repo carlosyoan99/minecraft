@@ -20,6 +20,18 @@ const DAY_CYCLE_MS = 240000; // 4 minutos: 2 de día, 2 de noche
 // mezclan los chunks (bug: antes reutilizaba los guardados con un warn).
 const SEED = process.env.SEED || "miSemilla2026";
 
+// Física del jugador (Fase 7): el cliente envía la posición del OJO en `move`
+// (altura del ojo EYE_HEIGHT sobre los pies) y el servidor la usa para inferir
+// el suelo al calcular el daño por caída. Mantener en sincronía con EYE_HEIGHT
+// de public/constants.js (lo verifica tests/unit-sync.js).
+const EYE_HEIGHT = 1.6;
+// Daño por caída (Fase 7): los primeros bloques de caída no dañan (estilo
+// Minecraft); a partir de ahí, 1 HP por bloque (23 bloques = muerte segura).
+const FALL_DAMAGE_FREE_BLOCKS = 3;
+// Caer del mundo (void, Fase 7): por debajo de este y el jugador muere y
+// reaparece (solo lo necesita el servidor: el respawn envía el teleport).
+const VOID_Y = -8;
+
 // Persistencia (paths y versión del formato de guardado)
 const WORLD_ROOT = path.join(__dirname, "..", "world");
 // Nombre de directorio seguro a partir de una semilla (función pura, testeable)
@@ -479,6 +491,9 @@ module.exports = {
 	UNLOAD_INTERVAL_MS,
 	DAY_CYCLE_MS,
 	SEED,
+	EYE_HEIGHT,
+	FALL_DAMAGE_FREE_BLOCKS,
+	VOID_Y,
 	WORLD_ROOT,
 	seedDir,
 	setWorldSeed,

@@ -2,6 +2,7 @@
 // JUGADORES REMOTOS Y MOBS (meshes en la escena)
 // ============================================================
 import * as THREE from "three";
+import { getMobAtlas, mobFaceRects } from "./mobtextures.js";
 import { scene } from "./scene.js";
 
 const remotePlayers = new Map(); // id -> mesh
@@ -13,6 +14,51 @@ function makeHumanoid(color) {
 		new THREE.MeshLambertMaterial({ color })
 	);
 	mesh.castShadow = true;
+	return mesh;
+}
+
+// ============================================================
+// MESH DE MOB TEXTURIZADO POR CARA (Fase 7)
+// En vez del color plano de MOB_COLORS, cada mob usa su atlas 2x2 de
+// mobtextures.js (frente/lado/arriba/abajo): se reasignan los UV de cada
+// cara del BoxGeometry hacia la tesela correspondiente del atlas.
+// BoxGeometry genera 6 grupos en el orden +X, -X, +Y, -Y, +Z, -Z.
+// ============================================================
+const BOX_FACE_TEX = ["side", "side", "top", "bottom", "front", "side"]; // -Z usa lado
+
+function makeMobMesh(type, fallbackColor = 0x999999) {
+	const atlas = getMobAtlas(type);
+	const geo = new THREE.BoxGeometry(0.6, 1.8, 0.6);
+	const material = atlas
+		? new THREE.MeshLambertMaterial({ map: atlas, color: 0xffffff })
+		: new THREE.MeshLambertMaterial({ color: fallbackColor }); // tipo sin textura
+	if (atlas && geo.groups.length === 6) {
+		// BoxGeometry es indexada: cada grupo cubre 6 índices (2 triángulos)
+		// que referencian 4 vértices de la cara. Se recogen los vértices únicos
+		// del grupo y se remapean sus UV a la tesela de esa cara en el atlas.
+		const rects = mobFaceRects();
+		const uv = geo.attributes.uv;
+		const index = geo.index;
+		geo.groups.forEach((group, g) => {
+			const rect = rects[BOX_FACE_TEX[g]];
+			const [u0, v0, u1, v1] = rect;
+			const seen = new Set();
+			for (let k = 0; k < group.count; k++) {
+				const v = index.getX(group.start + k);
+				if (seen.has(v)) continue;
+				seen.add(v);
+				const ox = uv.getX(v),
+					oy = uv.getY(v);
+				uv.setXY(v, u0 + (u1 - u0) * ox, v0 + (v1 - v0) * oy);
+			}
+		});
+		uv.needsUpdate = true;
+	}
+	const mesh = new THREE.Mesh(geo, material);
+	mesh.castShadow = true;
+	// updateMobs lo usa para el color base (quema solar): con textura el color
+	// del material es multiplicativo (base blanco), sin textura el plano.
+	mesh.userData.textured = !!atlas;
 	return mesh;
 }
 
@@ -97,10 +143,13 @@ export function updateMobs(list) {
 		seen.add(m.id);
 		let mesh = mobMeshes.get(m.id);
 		if (!mesh) {
-			mesh = makeHumanoid(m.color);
+			mesh = makeMobMesh(m.type, m.color);
 			mesh.userData.mobId = m.id;
 			mesh.userData.mobType = m.type;
-			mesh.userData.baseColor = m.color; // color original (el material es por-mob)
+			// Con textura, el color del material es multiplicativo (base blanco);
+			// la quema solar tiñe a naranja fuego. Sin atlas, el base es el color
+			// plano de MOB_COLORS que envía el servidor (fallback).
+			mesh.userData.baseColor = mesh.userData.textured ? 0xffffff : m.color;
 			scene.add(mesh);
 			mobMeshes.set(m.id, mesh);
 		}

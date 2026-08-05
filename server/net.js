@@ -15,6 +15,7 @@ const {
 	VIEW_DISTANCE_CHUNKS,
 	DAY_CYCLE_MS,
 	SEED,
+	VOID_Y,
 	B,
 	NOT_MINEABLE,
 	FUEL_ITEMS,
@@ -162,9 +163,17 @@ function handleConnection(ws, req) {
 		// punto de reaparición fijado al dormir en una cama (no se persisten: el
 		// estado del jugador se reinicia al reconectar, como el inventario).
 		armor: { helmet: null, chestplate: null, leggings: null, boots: null },
-		respawnPoint: null
+		respawnPoint: null,
+		// Fase 7: caída en curso (pico alcanzado y último suelo firme) para el
+		// daño por caída (applyFallDamage en players.js).
+		fallFromY: null,
+		lastGroundY: null
 	};
 	state.players.set(playerId, player);
+	// biome-ignore lint/suspicious/noConsole: log de conexión (operación normal del servidor)
+	console.log(
+		`🟢 Jugador conectado: ${player.name} (${state.players.size} en línea)`
+	);
 
 	sendInit(player);
 
@@ -194,6 +203,14 @@ function handleConnection(ws, req) {
 					typeof z !== "number"
 				)
 					return;
+				// Fase 7: caer del mundo (void). Se comprueba ANTES del anti-cheat de
+				// velocidad: una caída acelerada supera el límite de 1.2 bloques/move y
+				// sus moves se rechazarían (teleport al último punto aceptado), por lo
+				// que el jugador nunca alcanzaría VOID_Y por debajo del mundo.
+				if (y < VOID_Y) {
+					playerHelpers.respawnPlayer(p);
+					return;
+				}
 				const dist = Math.hypot(x - p.x, y - p.y, z - p.z);
 				if (dist > 1.2) {
 					// límite anti-cheat de velocidad
@@ -232,6 +249,10 @@ function handleConnection(ws, req) {
 				p.yaw = yaw || 0;
 				p.pitch = pitch || 0;
 				p.lastMoveTime = Date.now();
+				// Fase 7: daño por caída — el servidor infiere el suelo desde el
+				// mundo y aplica el daño al aterrizar (el agua lo anula; en creative
+				// lo descarta damagePlayer).
+				playerHelpers.applyFallDamage(p);
 				// Generar chunks nuevos bajo demanda al moverse
 				const newChunks = world.ensureChunksAround(x, z, 2);
 				if (newChunks.length) {
@@ -610,6 +631,8 @@ function handleConnection(ws, req) {
 					p.craftingGrid = new Array(9).fill(null);
 					p.openFurnace = null;
 					p.openChest = null;
+					p.fallFromY = null; // la caída no viaja entre mundos
+					p.lastGroundY = null;
 					world.ensureChunksAround(p.x, p.z, p.renderDistance);
 				}
 				sendInit(p); // confirmación: el cliente la usa para cerrar la carga
@@ -791,8 +814,12 @@ function handleConnection(ws, req) {
 	});
 
 	ws.on("close", () => {
-		const _leaver = state.players.get(playerId);
+		const leaver = state.players.get(playerId);
 		state.players.delete(playerId);
+		// biome-ignore lint/suspicious/noConsole: log de desconexión (operación normal del servidor)
+		console.log(
+			`🔴 Jugador desconectado: ${leaver ? leaver.name : playerId} (${state.players.size} en línea)`
+		);
 		broadcast("player_leave", { id: playerId });
 	});
 
@@ -848,7 +875,14 @@ function start() {
 
 	setInterval(mainLoop, TICK_MS);
 
-	server.listen(PORT, () => {});
+	server.listen(PORT, () => {
+		// biome-ignore lint/suspicious/noConsole: banner de arranque del servidor
+		console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
+		// biome-ignore lint/suspicious/noConsole: banner de arranque del servidor
+		console.log(
+			`🌍 Semilla: ${SEED}  |  📦 Chunks: ${state.chunks.size}  |  🧟 Mobs: ${state.mobs.length}`
+		);
+	});
 }
 
 // handleConnection se exporta para tests unitarios (tests/unit-red.js usa un

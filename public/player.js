@@ -4,7 +4,7 @@
 import * as THREE from "three";
 import { playStep, updateAmbient } from "./audio.js";
 import { send } from "./connection.js";
-import { LAVA, TORCH, WATER } from "./constants.js";
+import { EYE_HEIGHT, LAVA, TORCH, WATER } from "./constants.js";
 import { updateDayNight } from "./daynight.js";
 import { camera, controls, renderer, scene } from "./scene.js";
 import { updateCoords } from "./settings.js";
@@ -24,7 +24,6 @@ const WATER_GRAVITY = 6; // gravedad reducida bajo el agua (flotación)
 const SINK_SPEED = 1.4; // velocidad máxima de hundimiento
 const SWIM_UP_SPEED = 4; // nadar hacia arriba con espacio
 const JUMP_SPEED = 7;
-const EYE_HEIGHT = 1.6;
 
 let velocityY = 0;
 let onGround = false;

@@ -125,8 +125,14 @@ socket.addEventListener("message", (e) => {
 			teleport(data.x, data.y, data.z);
 			break;
 		case "player_die":
+			// Fase 7: lostInventory distingue la pérdida según gamemode (survival
+			// pierde el inventario al morir; creative lo conserva).
 			if (data.id === playerId)
-				flashMessage("💀 Has muerto — reapareciendo...");
+				flashMessage(
+					data.lostInventory
+						? "💀 Has muerto — inventario perdido, reapareciendo..."
+						: "💀 Has muerto — reapareciendo..."
+				);
 			break;
 		case "inventory_update":
 			applyInventory(data.inventory);

@@ -10,10 +10,13 @@ const { findSpawn } = world;
 const {
 	B,
 	I,
+	EYE_HEIGHT,
+	FALL_DAMAGE_FREE_BLOCKS,
 	ORE_XP,
 	canHarvest,
 	FOOD_VALUES,
 	isFood,
+	isSolidBlock,
 	TOOL_DURABILITY,
 	isTool,
 	isArmor,
@@ -248,6 +251,128 @@ function setBroadcastHandler(fn) {
 	broadcastHandler = fn;
 }
 
+// ============================================================
+// RESPAWN (Fase 7: según gamemode + caída del mundo)
+// Reaparece al jugador tras morir (lo llama damagePlayer al llegar a 0 de
+// salud y net.js al caer del mundo — void). En SURVIVAL se pierde el
+// inventario, la armadura y lo que haya en la mesa de crafteo (en Minecraft
+// caería al suelo; aquí no hay entidades de item, así que se pierde). En
+// CREATIVE se conserva todo (defensivo: creative no recibe daño, pero el
+// void lo llamaría igualmente y no perdería nada). La XP y el nivel se
+// mantienen siempre. Cierra cofres/hornos abiertos y olvida la caída en
+// curso (el jugador no "cae" al reaparecer).
+// ============================================================
+function respawnPlayer(player) {
+	const keepInventory = player.gamemode === "creative";
+	if (broadcastHandler)
+		broadcastHandler("player_die", {
+			id: player.id,
+			lostInventory: !keepInventory
+		});
+	player.openFurnace = null;
+	player.openChest = null;
+	if (!keepInventory) {
+		player.inventory = new Array(36).fill(null);
+		player.armor = {
+			helmet: null,
+			chestplate: null,
+			leggings: null,
+			boots: null
+		};
+		player.craftingGrid = new Array(9).fill(null);
+		sendInventory(player); // el HUD del cliente se vacía
+	}
+	// La caída en curso no sobrevive al respawn (el daño por caída se reinicia).
+	player.fallFromY = null;
+	player.lastGroundY = null;
+	// Respawn (la XP y el nivel se conservan; la salud máxima sí aplica).
+	player.health = player.maxHealth || 20;
+	player.food = 20;
+	player.saturation = 20;
+	player.foodAccum = 0;
+	player.regenAccum = 0;
+	player.starveAccum = 0;
+	// Si dormiste en una cama (respawnPoint), reapareces en ella; si no, sobre
+	// tierra firme cerca del origen (findSpawn busca la columna firme si hay un
+	// lago, Fase 4). La cama fija el punto al dormir (Fase 7).
+	let spawn;
+	if (player.respawnPoint)
+		// La cama no es sólida: reaparecer ligeramente por encima de ella.
+		spawn = {
+			x: player.respawnPoint.x + 0.5,
+			y: player.respawnPoint.y + 1.0,
+			z: player.respawnPoint.z + 0.5
+		};
+	else spawn = findSpawn(0, 0);
+	player.x = spawn.x;
+	player.y = spawn.y;
+	player.z = spawn.z;
+	sendHealth(player);
+	sendFood(player);
+	if (player.ws.readyState === WebSocket.OPEN) {
+		player.ws.send(
+			JSON.stringify({
+				event: "teleport",
+				data: { x: player.x, y: player.y, z: player.z }
+			})
+		);
+	}
+}
+
+// ============================================================
+// DAÑO POR CAÍDA Y CAÍDA DEL MUNDO (Fase 7)
+// El servidor no simula la física: el cliente manda su posición (`move`) y
+// aquí se infiere el suelo desde el mundo. Mientras el jugador está en el
+// aire se registra el punto más alto alcanzado desde el último suelo firme
+// (caminar por un acantilado cuenta desde el borde; un salto desde el pico);
+// al aterrizar se aplica el daño proporcional a la altura caída. El agua
+// anula el daño, como en Minecraft. Se llama desde net.js en cada move
+// validado; el daño pasa por la armadura (damagePlayer) y en creative se
+// ignora (damagePlayer lo descarta).
+// ============================================================
+
+// Daño en HP para una caída de `fallBlocks` bloques (estilo Minecraft: los
+// primeros FALL_DAMAGE_FREE_BLOCKS no dañan; a partir de ahí, 1 HP por bloque).
+function fallDamage(fallBlocks) {
+	return Math.max(0, Math.floor(fallBlocks) - FALL_DAMAGE_FREE_BLOCKS);
+}
+
+function applyFallDamage(player) {
+	const bx = Math.floor(player.x);
+	const bz = Math.floor(player.z);
+	const feet = player.y - EYE_HEIGHT; // el cliente envía la altura del ojo
+	const feetBlock = world.getBlock(bx, Math.floor(feet), bz);
+	const belowBlock = world.getBlock(bx, Math.floor(feet - 0.1), bz);
+	const inWater = feetBlock === B.WATER || belowBlock === B.WATER;
+	if (isSolidBlock(belowBlock)) {
+		// De pie (o aterrizando): liquidar la caída pendiente. El agua en los
+		// pies anula el daño (caer en un lago no duele, aunque el fondo sea
+		// sólido). Este piso firme queda como referencia para la próxima caída
+		// (solo fuera del agua: el fondo de un lago no es un buen "suelo").
+		if (player.fallFromY != null) {
+			if (!inWater) {
+				const dmg = fallDamage(player.fallFromY - player.y);
+				if (dmg > 0) damagePlayer(player, dmg);
+			}
+			player.fallFromY = null;
+		}
+		if (!inWater) player.lastGroundY = player.y;
+		return;
+	}
+	if (inWater) {
+		// Nadando: no hay daño por caída y se olvida la caída en curso.
+		player.fallFromY = null;
+		return;
+	}
+	// En el aire: el pico de la caída es el punto más alto desde el último
+	// suelo firme (el primer move en caer ya viene algo más abajo del borde).
+	player.fallFromY = Math.max(
+		player.fallFromY ?? player.y,
+		player.lastGroundY ?? player.y,
+		player.y
+	);
+}
+
 // opts.armor=false → el daño ignora la armadura (inanición, como en Minecraft:
 // la armadura solo protege de ataques y explosiones). Con armadura activa se
 // desgasta la durabilidad de las piezas (sendInventory para el HUD del cliente).
@@ -261,41 +386,7 @@ function damagePlayer(player, amount, opts = {}) {
 	}
 	player.health = Math.max(0, player.health - real);
 	sendHealth(player);
-	if (player.health <= 0) {
-		if (broadcastHandler) broadcastHandler("player_die", { id: player.id });
-		// Respawn (la XP y el nivel se conservan; la salud máxima sí aplica).
-		player.health = player.maxHealth || 20;
-		player.food = 20;
-		player.saturation = 20;
-		player.foodAccum = 0;
-		player.regenAccum = 0;
-		player.starveAccum = 0;
-		// Si dormiste en una cama (respawnPoint), reapareces en ella; si no, sobre
-		// tierra firme cerca del origen (findSpawn busca la columna firme si hay un
-		// lago, Fase 4). La cama fija el punto al dormir (Fase 7).
-		let spawn;
-		if (player.respawnPoint)
-			// La cama no es sólida: reaparecer ligeramente por encima de ella.
-			spawn = {
-				x: player.respawnPoint.x + 0.5,
-				y: player.respawnPoint.y + 1.0,
-				z: player.respawnPoint.z + 0.5
-			};
-		else spawn = findSpawn(0, 0);
-		player.x = spawn.x;
-		player.y = spawn.y;
-		player.z = spawn.z;
-		sendHealth(player);
-		sendFood(player);
-		if (player.ws.readyState === WebSocket.OPEN) {
-			player.ws.send(
-				JSON.stringify({
-					event: "teleport",
-					data: { x: player.x, y: player.y, z: player.z }
-				})
-			);
-		}
-	}
+	if (player.health <= 0) respawnPlayer(player);
 }
 
 // ============================================================
@@ -425,5 +516,8 @@ module.exports = {
 	addXp,
 	sendXp,
 	finishMining,
-	setBroadcastHandler
+	setBroadcastHandler,
+	respawnPlayer,
+	fallDamage,
+	applyFallDamage
 };

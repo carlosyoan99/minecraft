@@ -171,6 +171,8 @@ function executeCommand(player, raw, ctx) {
 			player.y = y;
 			player.z = tz;
 			player.lastMoveTime = Date.now();
+			player.fallFromY = null; // teletransportarse no es caerse (Fase 7)
+			player.lastGroundY = null;
 			// Enviar los chunks del nuevo área al teletransportado (como el init) y
 			// avisar al resto de jugadores del salto.
 			const fresh = world.ensureChunksAround(tx, tz, viewDistance);

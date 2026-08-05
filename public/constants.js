@@ -69,6 +69,11 @@ export const CHEST = 22;
 export const TORCH = 23;
 export const BED = 24; // Fase 7: dormir de noche fija el punto de reaparición
 export const LAVA = 25; // Fase 7: pozos decorativos en superficie (no minable)
+// Altura del ojo del jugador (Fase 7): la posición que el cliente envía en
+// `move` es la de la cámara (el ojo); el servidor la usa para el daño por
+// caída. Mantener en sincronía con EYE_HEIGHT de constants.js (servidor) —
+// lo verifica tests/unit-sync.js.
+export const EYE_HEIGHT = 1.6;
 // Durabilidad máxima por herramienta (Fase 5). Mantener en sincronía con
 // TOOL_DURABILITY de constants.js (servidor) — lo verifica tests/audit-fase5.js.
 export const DURABILITY = {

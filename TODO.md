@@ -761,7 +761,7 @@ errores.*
       pendiente de playtest)*
 
 ### Texturas y estética Minecraft
-- [ ] Texturas procedurales pixel-art para **mobs** (pasivos y
+- [x] Texturas procedurales pixel-art para **mobs** (pasivos y
       hostiles) en `public/mobtextures.js` (reemplazan `MOB_COLORS`);
       los meshes se construyen texturizados por cara en `public/mobs.js`
 - [ ] Iconos de **ítems** en el inventario/HUD (comida, lingotes,
@@ -772,12 +772,34 @@ errores.*
       con estilo Minecraft (todo procedural o CSS, sin assets externos)
 
 ### Supervivencia pulida
-- [ ] **Daño por caída** (escala con la altura; el servidor infiere el
-      suelo desde el mundo y aplica el daño al aterrizar)
-- [ ] **Morir al caer del mundo** (void): si `y` cae por debajo del
-      mundo, el jugador muere y reaparece
-- [ ] **Respawn según gamemode**: en survival el inventario se pierde
-      al morir; en creative se conserva (la XP/nivel se mantienen)
+- [x] **Daño por caída** (escala con la altura; el servidor infiere el
+      suelo desde el mundo y aplica el daño al aterrizar). Implementado
+      en `players.js` (`fallDamage`/`applyFallDamage`): en cada `move`
+      validado (net.js) el servidor detecta si el jugador está en el aire
+      (el bloque bajo los pies no es sólido; `EYE_HEIGHT` compartida con
+      el cliente y auditada por `unit-sync.js`) y registra el pico de la
+      caída desde el último suelo firme (caminar por un acantilado cuenta
+      desde el borde); al aterrizar aplica `floor(bloques) − 3` (1 HP por
+      bloque a partir de 3; 23 bloques = muerte), que pasa por la armadura
+      y se ignora en creative. El agua anula el daño. Cubierto por
+      `tests/unit-caida.js`
+- [x] **Morir al caer del mundo** (void): si `y` cae por debajo del
+      mundo, el jugador muere y reaparece. `VOID_Y = -8` (servidor): en
+      el handler de `move`, si `y < VOID_Y` se llama `respawnPlayer`
+      (mismo flujo que la muerte: según gamemode se conserva o pierde el
+      inventario; en creative se conserva para no dejar al jugador cayendo
+      para siempre). El respawn reenvía el teleport al punto de
+      reaparición. Cubierto por `tests/unit-caida.js`
+- [x] **Respawn según gamemode**: en survival el inventario se pierde
+      al morir; en creative se conserva (la XP/nivel se mantienen).
+      Implementado en `damagePlayer` (server/players.js): al morir en
+      survival se vacían inventario, armadura y mesa de crafteo (en
+      Minecraft caerían al suelo; sin entidades de item se pierden), se
+      reenvía `inventory_update` vacío para que el HUD del cliente se
+      vacíe y se cierran cofres/hornos abiertos. La XP/nivel se conservan
+      siempre. `player_die` ahora incluye `lostInventory` para que el
+      cliente matice el aviso. En creative no hay daño: no se pierde
+      nada. Cubierto por `tests/unit-respawn.js`
 
 ### Rendimiento
 - [ ] Métrica de tiempo por tick (server + client) para detectar

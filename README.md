@@ -65,11 +65,12 @@ mi-minecraft/
 │   ├── world.js           Chunks: geometría, UVs del atlas, culling, dispose
 │   ├── player.js          Física del jugador (gravedad, salto, natación)
 │   ├── scene.js           Escena, cámara, renderer y luces
-│   ├── mobs.js            Render de mobs (escala por tipo)
+│   ├── mobs.js            Render de mobs (texturas por cara + escala por tipo)
 │   ├── input.js           Ratón (pointer lock), teclado, clics
 │   ├── ui.js              HUD (salud, hambre, XP, hotbar, durabilidad) + menú con semilla
 │   ├── audio.js           Sonidos procedurales (Web Audio, sin assets)
-│   ├── textures.js        Atlas de texturas procedural (canvas 16x16 px)
+│   ├── textures.js        Atlas de texturas procedural de bloques (canvas 16x16 px)
+│   ├── mobtextures.js     Atlas procedural de texturas de mobs (canvas 16x16 px, reemplaza MOB_COLORS)
 │   ├── lighting.js        Luz de antorcha por bloque (BFS pura, testeable en Node)
 │   ├── daynight.js        Ciclo día/noche visual (cielo, luz, ambiente)
 │   └── estilo.css
@@ -201,8 +202,20 @@ recupera su mundo).
   decorativos de agua/lava en superficie (la lava es un bloque nuevo
   que quema al contacto: 2 HP cada 500 ms) y **guardado comprimido con
   gzip** (los chunks se escriben en disco ~20x más pequeños,
-  retrocompatible con los mundos JSON viejos).
-  Pendientes: texturas de mobs/items, etc.
+  retrocompatible con los mundos JSON viejos). **Respawn según
+  gamemode**: al morir en survival se pierde el inventario, la armadura
+  y la mesa de crafteo (el HUD se vacía con `inventory_update`); en
+  creative no se pierde nada (la XP y el nivel se mantienen siempre).
+  **Daño por caída**: al aterrizar tras una caída de más de 3 bloques
+  pierdes 1 HP por bloque extra (el servidor infiere el suelo desde el
+  mundo; el agua lo anula y la armadura lo reduce). **Caer del mundo
+  (void)**: por debajo de y=-8 mueres y reapareces (en creative conservas
+  el inventario). **Texturas procedurales de mobs**: cada tipo (11 en
+  total) tiene su atlas pixel-art 2x2 (frente/lado/arriba/abajo) generado
+  en `public/mobtextures.js`, que reemplaza los `MOB_COLORS` planos; los
+  meshes se construyen texturizados por cara (UVs remapeadas al atlas) en
+  `public/mobs.js` y la quema solar sigue tiñendo al mob en llamas.
+  Pendientes: iconos de items, estética del cielo/HUD, etc.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -248,7 +261,7 @@ en el servidor y `public/network.js` en el cliente).
 | `time_set` | `{dayTime}` | Re-sincroniza el ciclo día/noche (comando `/time set`) |
 | `textures_reload` | `{}` | Hot-reload del atlas: el cliente re-importa `textures.js` y reconstruye los chunks (Fase 6) |
 | `teleport` | `{x, y, z}` | Corrección anti-cheat |
-| `player_die` | `{id}` | Muerte y reaparición |
+| `player_die` | `{id, lostInventory}` | Muerte y reaparición (`lostInventory`: se perdió el inventario según gamemode) |
 | `inventory_update` | `{inventory}` | Inventario completo (con `durability`) |
 | `health_update` | `{health, maxHealth}` | Salud |
 | `food_update` | `{food, saturation}` | Hambre y saturación |
@@ -295,7 +308,13 @@ en el servidor y `public/network.js` en el cliente).
     y `unit-armadura.js` (reducción de daño por pieza y material, tope
     0.8, desgaste al recibir golpes, armadura ignorada en inanición,
     equipar/des-equipar con swap conservando durabilidad, recetas y
-    cuero como drop de vaca/conejo).
+    cuero como drop de vaca/conejo) y `unit-respawn.js` (respawn según
+    gamemode: en survival al morir se pierden inventario, armadura y
+    mesa de crafteo — `inventory_update` vacío y `player_die` con
+    `lostInventory` —; en creative no hay daño y se conserva todo) y
+    `unit-caida.js` (daño por caída: fórmula estilo Minecraft, caída real
+    vía moves con inferencia del suelo, el agua que lo anula, y void:
+    muerte/reaparición según gamemode).
   - **Fase 6 (terreno):** `unit-terreno.js` (minas abandonadas: túneles
     bajo tierra sin romper la superficie ni el bedrock y cofres de loot
     con su estado; pozos de agua/lava con lecho de arena; gzip del
