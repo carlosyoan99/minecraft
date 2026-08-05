@@ -100,12 +100,20 @@ const ALL_IDS = new Set(Object.values(NAME_TO_ID));
 
 const HELP = [
 	"/help — lista de comandos",
-	"/tp <x> <y> <z> — teletransportarte a unas coordenadas",
-	"/give <item> [cantidad] — añade items al inventario (ID numérico o nombre, ej. 4, diamante, wooden_pickaxe)",
-	"/time set <day|noon|night|midnight|ms> — fija la hora del mundo (0-239999 ms)",
-	"/gamemode <creative|survival> — cambia el modo de juego (creative: sin hambre ni daño)",
-	"/reload — recarga recetas (recetas.json, recetas_horno.json) y el atlas del cliente"
+	"/tp <x> <y> <z> — teletransportarte a unas coordenadas (solo operadores)",
+	"/give <item> [cantidad] — añade items al inventario (ID numérico o nombre, ej. 4, diamante, wooden_pickaxe) (solo operadores)",
+	"/time set <day|noon|night|midnight|ms> — fija la hora del mundo (0-239999 ms) (solo operadores)",
+	"/gamemode <creative|survival> — cambia el modo de juego (creative: sin hambre ni daño) (solo operadores)",
+	"/op <nombre> — otorga permisos de operador a un jugador conectado (solo operadores)",
+	"/reload — recarga recetas (recetas.json, recetas_horno.json) y el atlas del cliente (solo operadores)",
+	"Los comandos con (solo operadores) los ejecuta el host (primer jugador) o la lista OPS (env var OPS)"
 ].join("\n");
+
+// Comandos que mutan el mundo o al jugador: solo para OPERADORES (el primer
+// jugador conectado o la lista OPS, ver net.js). /help y el chat normal
+// siguen abiertos a todos. Fase 7 (auditoría): antes cualquier jugador podía
+// darse todo en creative (/give, /gamemode) y cambiar la hora para todos.
+const OP_ONLY = new Set(["tp", "give", "time", "gamemode", "reload", "op"]);
 
 function systemMessage(player, text) {
 	if (player.ws.readyState === WebSocket.OPEN) {
@@ -136,6 +144,16 @@ function executeCommand(player, raw, ctx) {
 	const parts = raw.slice(1).trim().split(/\s+/);
 	const cmd = parts[0].toLowerCase();
 	const args = parts.slice(1);
+
+	// Permisos: los comandos de operador se rechazan con un aviso de sistema
+	// (el cliente los muestra en el chat) sin tocar nada.
+	if (OP_ONLY.has(cmd) && !player.isOp) {
+		systemMessage(
+			player,
+			"Ese comando es solo para operadores (el host o la lista OPS)"
+		);
+		return true;
+	}
 
 	switch (cmd) {
 		case "help":
@@ -289,6 +307,25 @@ function executeCommand(player, raw, ctx) {
 				player,
 				`Modo de juego: ${player.gamemode} (${player.gamemode === "creative" ? "sin hambre ni daño" : "supervivencia"})`
 			);
+			break;
+		}
+
+		case "op": {
+			// Otorgar permisos de operador a otro jugador CONECTADO (por nombre,
+			// como en Minecraft /op). Solo un operador puede dar permisos.
+			// La búsqueda ignora mayúsculas, igual que la lista OPS (env var).
+			const target = args[0];
+			const t = target
+				? Array.from(state.players.values()).find(
+						(q) => (q.name || "").toLowerCase() === target.toLowerCase()
+					)
+				: null;
+			if (!t) {
+				systemMessage(player, `Uso: /op <nombre> (debe estar conectado)`);
+				break;
+			}
+			t.isOp = true;
+			systemMessage(player, `+ ${t.name} ahora es operador`);
 			break;
 		}
 

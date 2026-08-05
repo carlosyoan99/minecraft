@@ -487,6 +487,19 @@ const HOSTILE = new Set([
 // (se teletransporta al exponerse, out of scope) ni el lobo.
 const BURNS_IN_SUN = new Set(["zombie", "skeleton"]);
 
+// Operadores (Fase 7, auditoría): nombres con permiso para los comandos que
+// mutan el mundo o al jugador (/tp, /give, /time, /gamemode, /reload, /op).
+// Se configuran con la env var OPS (nombres separados por comas, sin
+// distinción de mayúsculas); además, el PRIMER jugador conectado (el host)
+// es operador automáticamente (ver net.js). Fuera de alcance: autenticación
+// real — esto es un control básico para servidores pequeños.
+const OPS = new Set(
+	(process.env.OPS || "")
+		.split(",")
+		.map((s) => s.trim().toLowerCase())
+		.filter(Boolean)
+);
+
 module.exports = {
 	PORT,
 	CHUNK_SIZE,
@@ -498,6 +511,7 @@ module.exports = {
 	UNLOAD_INTERVAL_MS,
 	DAY_CYCLE_MS,
 	SEED,
+	OPS,
 	EYE_HEIGHT,
 	FALL_DAMAGE_FREE_BLOCKS,
 	VOID_Y,

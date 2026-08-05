@@ -166,7 +166,11 @@ volver a una semilla anterior recupera su mundo).
 - **Fase 6** en curso (ver `TODO.md`). Ya hechas: consola de comandos
   (`/help`, `/tp`, `/give`, `/time set`, `/gamemode` — creative con
   **minería instantánea**: romper es inmediato, sin desgaste de
-  herramienta ni drops), frustum culling
+  herramienta ni drops; **comandos de operador**: `/gamemode`,
+  `/give`, `/tp`, `/time` y `/reload` solo los ejecuta un jugador con
+  `isOp` — el primero en conectar, los de la env var `OPS` (nombres
+  separados por comas) o los que otro operador promueva con
+  `/op <nombre>`), frustum culling
   en el cliente (el HUD muestra visibles/totales), pantalla de carga
   estilo Minecraft, **semilla seleccionable desde el menú** (campo
   "Semilla del mundo" → `set_seed`; el servidor cambia el mundo

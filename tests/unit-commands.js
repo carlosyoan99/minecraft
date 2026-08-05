@@ -54,7 +54,11 @@ function makeHarness() {
 		inventory: new Array(36).fill(null),
 		selectedSlot: 0,
 		craftingGrid: new Array(9).fill(null),
-		openFurnace: null
+		openFurnace: null,
+		// Fase 7 (auditoría): el harness es operador por defecto (los tests
+		// existentes ejercitan la lógica de los comandos); el gate se prueba
+		// aparte con isOp: false.
+		isOp: true
 	};
 	const broadcast = (event, data, exceptId) =>
 		broadcasts.push({ event, data, exceptId });
@@ -345,6 +349,78 @@ const systemMsgs = (sent) =>
 		h.player.health === 15,
 		`health=${h.player.health}`
 	);
+}
+
+// --- GATE DE OPERADOR (Fase 7, auditoría): solo ops ejecutan /tp /give /
+// time /gamemode /reload (/op). Un no-operador no muta nada y recibe aviso.
+{
+	const h = makeHarness();
+	h.player.isOp = false;
+	const before = { x: h.player.x, y: h.player.y, z: h.player.z };
+	commands.executeCommand(h.player, "/give diamante 5", h.ctx);
+	check(
+		"no-op /give: rechazado y sin items",
+		h.player.inventory.every((s) => !s)
+	);
+	commands.executeCommand(h.player, "/gamemode creative", h.ctx);
+	check("no-op /gamemode: no cambia el modo", h.player.gamemode !== "creative");
+	commands.executeCommand(h.player, "/time set day", h.ctx);
+	check(
+		"no-op /time: sin broadcast time_set",
+		countEvents(h.broadcasts, "time_set") === 0
+	);
+	commands.executeCommand(h.player, "/tp 10 20 30", h.ctx);
+	check(
+		"no-op /tp: no mueve al jugador",
+		h.player.x === before.x &&
+			h.player.y === before.y &&
+			h.player.z === before.z
+	);
+	commands.executeCommand(h.player, "/op cualquiera", h.ctx);
+	const lastOpMsg = systemMsgs(h.sent).at(-1);
+	check(
+		"no-op /op: rechazado por permisos (no llega al comando)",
+		!!lastOpMsg && lastOpMsg.includes("solo para operadores")
+	);
+	commands.executeCommand(h.player, "/reload", h.ctx);
+	check("no-op /reload: rechazado", h.broadcasts.length === 0);
+	commands.executeCommand(h.player, "/help", h.ctx);
+	check(
+		"no-op /help: sigue disponible para todos",
+		systemMsgs(h.sent).some((m) => m.includes("/tp"))
+	);
+}
+
+// --- /op (solo operador): otorga permisos a otro jugador conectado ---
+{
+	const h = makeHarness();
+	const p2 = { id: "p2", ws: { readyState: 1, send() {} }, name: "Ana" };
+	state.players.clear();
+	state.players.set("p1", h.player);
+	state.players.set("p2", p2);
+	commands.executeCommand(h.player, "/op Ana", h.ctx);
+	check("/op otorga isOp al jugador conectado", p2.isOp === true);
+	p2.isOp = false;
+	commands.executeCommand(h.player, "/op ana", h.ctx);
+	check(
+		"/op es insensible a mayúsculas (mismo jugador por nombre)",
+		p2.isOp === true
+	);
+	commands.executeCommand(h.player, "/op Fantasma", h.ctx);
+	check(
+		"/op a un no conectado: avisa y no rompe nada",
+		systemMsgs(h.sent).some((m) => m.includes("Uso: /op"))
+	);
+	check(
+		"/op confirma con mensaje de sistema",
+		systemMsgs(h.sent).some((m) => m.includes("ahora es operador"))
+	);
+	commands.executeCommand(h.player, "/op Desconocido", h.ctx);
+	check(
+		"/op a un jugador no conectado: muestra uso",
+		systemMsgs(h.sent).some((m) => m.includes("Uso: /op"))
+	);
+	state.players.clear();
 }
 
 // --- comando desconocido y no-comando ---

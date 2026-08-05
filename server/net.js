@@ -88,7 +88,21 @@ function broadcastMining(_player, event, data) {
 // data.seed permite al cliente confirmar que ya tiene el mundo pedido.
 function sendInit(p) {
 	const chunkData = {};
-	for (const [key, data] of state.chunks) chunkData[key] = Array.from(data);
+	// Fase 7 (auditoría): solo los chunks dentro del radio de render del
+	// jugador (Chebyshev en chunks, como el filtro del cliente en world.js).
+	// Antes se enviaba TODO el mundo en cada conexión: con 795 chunks son
+	// ~13 MB de JSON por jugador, y crece con el mundo y con los jugadores.
+	// Los chunks que faltan llegan con chunks_add al moverse (move handler).
+	const pcx = Math.floor(p.x / constants.CHUNK_SIZE),
+		pcz = Math.floor(p.z / constants.CHUNK_SIZE);
+	for (const [key, data] of state.chunks) {
+		const [cx, cz] = key.split(",").map(Number);
+		if (
+			Math.abs(cx - pcx) <= p.renderDistance &&
+			Math.abs(cz - pcz) <= p.renderDistance
+		)
+			chunkData[key] = Array.from(data);
+	}
 	p.ws.send(
 		JSON.stringify({
 			event: "init",
@@ -167,10 +181,16 @@ function handleConnection(ws, req) {
 		spawnZ,
 		VIEW_DISTANCE_CHUNKS
 	);
+	// Fase 7 (auditoría): operador — el PRIMER jugador conectado (host) o
+	// cualquiera en la lista OPS (env var OPS="Nombre1,Nombre2"). Permiso para
+	// /tp /give /time /gamemode /reload /op (ver commands.js).
+	const playerName = nameFromRequest(req) || `Jugador-${playerId.slice(0, 4)}`;
 	const player = {
 		id: playerId,
 		ws,
-		name: nameFromRequest(req) || `Jugador-${playerId.slice(0, 4)}`, // Fase 7: nombre visible
+		name: playerName, // Fase 7: nombre visible
+		isOp:
+			state.players.size === 0 || constants.OPS.has(playerName.toLowerCase()),
 		x: spawnX,
 		y: spawnY,
 		z: spawnZ,
@@ -474,6 +494,9 @@ function handleConnection(ws, req) {
 
 			case "furnace_open": {
 				const key = `${data.x},${data.y},${data.z}`;
+				// Fase 7 (auditoría): validar distancia como chest_open — antes un
+				// jugador podía abrir/operar cualquier horno del mundo desde lejos.
+				if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) return;
 				if (world.getBlock(data.x, data.y, data.z) !== B.FURNACE) return;
 				p.openFurnace = key;
 				const f = crafting.getOrCreateFurnace(key);
@@ -566,6 +589,10 @@ function handleConnection(ws, req) {
 			case "furnace_action": {
 				if (!p.openFurnace) return;
 				const key = p.openFurnace; // capturar antes de que 'close' lo anule
+				// Fase 7 (auditoría): revalidar distancia como chest_action — hay que
+				// seguir cerca del horno para operarlo (como en Minecraft).
+				const [bx, by, bz] = key.split(",").map(Number);
+				if (Math.hypot(bx - p.x, by - p.y, bz - p.z) > 7) return;
 				const f = crafting.getOrCreateFurnace(key);
 				if (data.action === "add_fuel") {
 					const slot = p.inventory[data.invSlot];

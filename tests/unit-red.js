@@ -567,6 +567,39 @@ function connect() {
 		JSON.stringify({ event: "furnace_action", data: { action: "close" } })
 	);
 	check("close: cierra el horno", p.openFurnace === null);
+
+	// Fase 7 (auditoría): distancia del horno, como chests — un horno LEJANO no
+	// se abre, y operar un horno abierto tras alejarse se rechaza por acción.
+	const ffar = { x: Math.floor(p.x) + 10, y: fy, z: fz };
+	world.setBlock(ffar.x, ffar.y, ffar.z, B.FURNACE);
+	ws.sent.length = 0;
+	ws.emit("message", JSON.stringify({ event: "furnace_open", data: ffar }));
+	check(
+		"furnace_open a >7 bloques → rechazado (no abre ni envía estado)",
+		p.openFurnace === null && ws.events("furnace_state").length === 0
+	);
+	world.setBlock(ffar.x, ffar.y, ffar.z, B.AIR);
+
+	// Abrir el horno cercano y alejarse: la siguiente acción se rechaza
+	// (revalidación por acción, como chest_action).
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "furnace_open", data: { x: fx, y: fy, z: fz } })
+	);
+	check("furnace_open cercano → abierto", p.openFurnace === key);
+	const lejos = { x: p.x, y: p.y, z: p.z };
+	p.x += 10;
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "furnace_action", data: { action: "close" } })
+	);
+	check(
+		"furnace_action tras alejarse (>7) → rechazado (sigue abierto)",
+		p.openFurnace === key && ws.events("furnace_state").length === 0
+	);
+	p.x = lejos.x;
+	p.openFurnace = null; // limpiar para el resto de la suite
 }
 
 // ============================================================
@@ -946,6 +979,30 @@ function connect() {
 		!!wl && Array.isArray(wl.data.worlds),
 		wl ? `${wl.data.worlds.length} mundos` : "sin respuesta"
 	);
+}
+
+// ============================================================
+// FASE 7 (AUDITORÍA): EL INIT SOLO ENVÍA LOS CHUNKS DEL RADIO DE RENDER
+// Antes se reenviaba TODO el mundo en cada conexión (init de varios MB con
+// mundos grandes). Ahora solo entran los del radio de render del jugador
+// (Chebyshev en chunks, como el filtro del cliente); el resto llega con
+// chunks_add al moverse.
+// ============================================================
+{
+	state.players.clear();
+	world.generateChunk(50, 0); // chunk MUY lejano del spawn
+	const wsF = new FakeWS();
+	net.handleConnection(wsF);
+	const initF = wsF.events("init")[0];
+	check(
+		"init: no incluye chunks fuera del radio de render (50,0)",
+		!!initF.data.chunkData && !initF.data.chunkData["50,0"]
+	);
+	check(
+		"init: sí incluye chunks del spawn (área de render)",
+		!!initF.data.chunkData && Object.keys(initF.data.chunkData).length > 0
+	);
+	state.players.clear();
 }
 
 world.setDiskLoader(null);

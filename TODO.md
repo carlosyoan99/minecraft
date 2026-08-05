@@ -975,6 +975,35 @@ errores.*
       del `if (message.startsWith("/"))` — solo el chat normal se
       transmite. Sin corrección necesaria; queda documentado para no
       reintroducirlo al tocar `net.js`.
+- [x] **Comandos de operador sin restricción: cualquiera podía usar
+      `/gamemode`, `/give`, `/tp`, `/time` y `/reload`.** En MP eso era
+      trampa y griefing total (darse todo en creative, teletransportar a
+      otros, cambiar la hora del mundo para todos, recargar el servidor).
+      **Corregido**: gate de operador (`OP_ONLY` en `server/commands.js`):
+      solo los jugadores con `isOp` pueden ejecutarlos; el primer jugador
+      en conectar es operador por defecto y el resto se configura con la
+      env var `OPS` (nombres separados por comas) o con el nuevo comando
+      `/op <nombre>` (solo operadores). `net.js` marca `isOp` en el
+      jugador al conectar y el rechazo avisa por chat (`Puede usar
+      /op <nombre>`). Cubierto por `tests/unit-commands.js` (gate,
+      rechazo a no-op, `/op` da y quita permisos solo desde un op).
+- [x] **`furnace_open`/`furnace_action` sin validación de distancia: un
+      jugador podía abrir y operar cualquier horno del mundo desde
+      cualquier distancia** (meter items en hornos lejanos que quedaban
+      atascados y vaciarlos a distancia). `chest_open` sí validaba 7
+      bloques. **Corregido**: mismo check de alcance (7 bloques) en
+      `furnace_open` y `furnace_action` revalida contra el bloque
+      real y el `openFurnace` del jugador. Cubierto por
+      `tests/unit-red.js` (abrir un horno a 20 bloques se rechaza,
+      operar el horno de otro se rechaza).
+- [x] **`sendInit` reenviaba TODOS los chunks del mundo a cada conexión**
+      (~13 MB de JSON con 795 chunks, creciendo con el mundo y con los
+      jugadores; los joins eran lentos). **Corregido**: el `init` solo
+      incluye los chunks dentro del radio de render del jugador
+      (Chebyshev en chunks, como el filtro del cliente); los que faltan
+      llegan con `chunks_add` al moverse (handler `move`). Cubierto por
+      `tests/unit-red.js` (el init de un jugador con renderDistance 2
+      solo trae los chunks del radio 2, no el mundo entero).
 
 ---
 
