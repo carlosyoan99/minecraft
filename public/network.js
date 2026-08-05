@@ -15,6 +15,7 @@ import {
 	updateMobs,
 	updateRemotePlayer
 } from "./mobs.js";
+import { spawnBlockBreak, spawnBlockPlace } from "./particles.js"; // Fase 7: partículas
 import { teleport } from "./player.js";
 import { camera } from "./scene.js";
 import { applyStoredSettings } from "./settings.js";
@@ -95,6 +96,11 @@ socket.addEventListener("message", (e) => {
 			if (prev === TORCH || data.block === TORCH) rebuildAround(data.x, data.z);
 			else rebuildAffectedChunks(data.x, data.z);
 			hideCrackIfAt(data.x, data.y, data.z); // el bloque en mina se rompió
+			// Fase 7: partículas — romper (sólido → aire) o colocar (aire → bloque).
+			if (prev !== 0 && data.block === 0)
+				spawnBlockBreak(data.x, data.y, data.z, prev);
+			else if (prev === 0 && data.block !== 0)
+				spawnBlockPlace(data.x, data.y, data.z, data.block);
 			break;
 		}
 		case "block_break_progress":

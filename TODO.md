@@ -789,9 +789,23 @@ errores.*
       1.5x, paneles 1x); la lógica de dibujo es PURA (grid de celdas,
       sin canvas ni DOM) y la cubre `tests/unit-itemicons.js`
       (cobertura de todos los ids, determinismo y distinguibilidad)
-- [ ] Estética Minecraft: cielo con degradado + sol/luna, niebla por
+- [x] Estética Minecraft: cielo con degradado + sol/luna, niebla por
       hora del día, partículas al romper/colocar bloques y HUD/menús
-      con estilo Minecraft (todo procedural o CSS, sin assets externos)
+      con estilo Minecraft (todo procedural o CSS, sin assets externos).
+      Implementado: `public/skycolors.js` (paleta pura del cielo por
+      hora, testeada en `unit-sky.js`) y `public/sky.js` (dome
+      procedural con ShaderMaterial: degradado cenit→horizonte, banda
+      cálida de amanecer/atardecer, sol/luna opuestos y estrellas de
+      noche; sigue a la cámara y no lo afecta la niebla). `daynight.js`
+      ahora ajusta la niebla por hora (densa y cercana de noche, clara
+      y lejana al mediodía) y actualiza el dome. `public/particles.js`
+      emite cubitos del color del bloque al romper (ráfaga con
+      gravedad) y al colocar (suave), desde `block_update` en
+      `network.js` (cubre jugador local y remoto). `estilo.css` pasa a
+      look Minecraft: botones y paneles grises biselados (claro
+      arriba/izq, oscuro abajo/der), hotbar con slot activo dorado,
+      tipografía monoespaciada con sombras duras, crosshair con
+      contorno y paneles de crafteo/horno/cofre estilo piedra
 
 ### Supervivencia pulida
 - [x] **Daño por caída** (escala con la altura; el servidor infiere el

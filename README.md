@@ -136,6 +136,11 @@ volver a una semilla anterior recupera su mundo).
   día/noche visual (cielo, luz y ambiente interpolados con el reloj
   del servidor) y sonidos procedurales con Web Audio (romper,
   colocar, pasos, ambiente de día/noche, con mute persistente).
+- **Fase 7 — Estética Minecraft:** cielo procedural con degradado,
+  sol/luna y estrellas (`sky.js` + `skycolors.js`), niebla por hora
+  del día, partículas de bloques al romper/colocar (`particles.js`)
+  y HUD/menús con estilo Minecraft (bisel clásico, tipografía con
+  sombra, hotbar con slot dorado) — todo procedural o CSS, sin assets.
 - **Fase 3 — Bucle de supervivencia:** barra de hambre autoritativa
   (decae con el tiempo/acciones, regenera salud si está llena,
   penaliza si está vacía), drops de comida cruda de animales,

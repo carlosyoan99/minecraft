@@ -41,7 +41,8 @@ const UNIT = [
 	"unit-terreno.js",
 	"unit-itemicons.js",
 	"unit-ajustes.js",
-	"unit-metricas.js"
+	"unit-metricas.js",
+	"unit-sky.js"
 ];
 const E2E = [
 	"e2e-comer.js",
