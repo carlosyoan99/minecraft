@@ -20,7 +20,7 @@ import {
 	closePanels,
 	getHeldItem,
 	getSelectedSlot,
-	isChatFocused,
+	isTyping,
 	openCraftingFromBlock,
 	selectSlot,
 	toggleChestUI,
@@ -32,8 +32,11 @@ import { chunkMeshes, getClientBlock, hideCrack, showCrack } from "./world.js";
 // ============================================================
 // TECLADO
 // ============================================================
+// B5 (Fase 8): con un input enfocado (chat, nombre de jugador/mundo, semilla)
+// las teclas de juego se ignoran — antes solo se miraba el chat, así que la E
+// abría el inventario al escribir el nombre.
 document.addEventListener("keydown", (e) => {
-	if (isChatFocused()) return;
+	if (isTyping()) return;
 	switch (e.code) {
 		case "KeyW":
 			move.forward = true;

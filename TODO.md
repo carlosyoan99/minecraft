@@ -1017,12 +1017,15 @@ fix propio (el diagnóstico debe confirmarlo).
       Nota: si se quiere la distribución exacta por ventanas de
       Minecraft (10/1.5/7/1.5 con gate de spawn en la ventana de
       noche), sería un cambio de fase por tramos — no requerido aquí.
-- [ ] **B5: la tecla E siempre abre el inventario.** El keydown solo
-      retorna con `isChatFocused()`; con un input de texto del menú
-      enfocado (nombre del jugador/mundo) la E abre el inventario.
-      **Corregir**: ignorar las teclas de juego (E, WASD, 1-9, F3)
-      cuando `document.activeElement` es un `INPUT`/`TEXTAREA`/campo
-      editable — generalizar la guarda de foco sin romper el chat.
+- [x] **B5: la tecla E siempre abre el inventario.** ✅ `isChatFocused()`
+      (solo miraba el chat) sustituida por `isTyping()` en `ui.js`:
+      devuelve true si `document.activeElement` es `INPUT`/`TEXTAREA`/
+      `SELECT`/contenteditable (cubre chat, nombre de jugador/mundo,
+      semilla). El `keydown` de `input.js` retorna antes de procesar
+      cualquier tecla de juego (E, WASD, 1-9, F3, Espacio) cuando hay
+      un campo editable enfocado. El chat no se rompe (`#chat-input` es
+      un INPUT y conserva su propio handler de Enter en `ui.js`);
+      `isChatFocused` quedó sin usos y se eliminó.
 
 ### Bloque C — Estética y rendimiento
 

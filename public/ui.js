@@ -48,8 +48,20 @@ export function armorSlotName(id) {
 export function getHeldItem() {
 	return inventory[selectedSlot];
 }
-export function isChatFocused() {
-	return document.activeElement === chatInput;
+// ¿Hay un campo editable enfocado? (chat, nombre de jugador/mundo, semilla…).
+// Con un input enfocado, las teclas de juego (E, WASD, 1-9, F3, Espacio) se
+// ignoran en input.js: si no, pulsar "e" al escribir un nombre abriría el
+// inventario (B5) o W/A/S/D moverían al jugador mientras se teclea.
+export function isTyping() {
+	const el = document.activeElement;
+	if (!el) return false;
+	const tag = el.tagName;
+	return (
+		tag === "INPUT" ||
+		tag === "TEXTAREA" ||
+		tag === "SELECT" ||
+		el.isContentEditable
+	);
 }
 
 // Icono procedural del ítem (Fase 7): sprite del atlas recortado por CSS.
