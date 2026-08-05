@@ -13,7 +13,7 @@ const {
 	BURNS_IN_SUN,
 	MOB_XP,
 	TICK_MS,
-	CHUNK_SIZE
+	B
 } = require("../server/constants.js");
 
 // Suelo siempre sólido para no depender del mundo real (como unit-cria).
@@ -151,6 +151,59 @@ check(
 		setBlockCalls > 0,
 		`calls=${setBlockCalls}`
 	);
+	resetPlayers();
+}
+
+// --- 5b) creeper: la explosión respeta bedrock/agua/lava y cofres con
+// contenido (Fase 7, auditoría) — el mundo se mockea por posición ---
+{
+	resetPlayers();
+	const p = mkPlayer({ id: "pc2", x: 0.5, y: 10, z: 0.5 });
+	state.players.set(p.id, p);
+	// Mapa de bloques por posición: todo piedra salvo los protegidos.
+	const blocks = new Map();
+	const KEY = (x, y, z) => `${x},${y},${z}`;
+	blocks.set(KEY(0, 10, 0), B.BEDROCK);
+	blocks.set(KEY(1, 10, 0), B.WATER);
+	blocks.set(KEY(-1, 10, 0), B.LAVA);
+	blocks.set(KEY(2, 10, 0), B.CHEST); // con contenido
+	blocks.set(KEY(-2, 10, 0), B.CHEST); // vacío
+	const realGet = world.getBlock;
+	const realSet = world.setBlock;
+	world.getBlock = (x, y, z) => blocks.get(KEY(x, y, z)) ?? 3;
+	const broken = [];
+	world.setBlock = (x, y, z) => {
+		broken.push(KEY(x, y, z));
+		return true;
+	};
+	// Estado del cofre CON contenido (2,10,0); el vacío (-2,10,0) no tiene
+	// entrada (o solo nulls) y debe romperse limpiando su estado.
+	state.chests.set(KEY(2, 10, 0), [{ id: 100, count: 3 }]);
+	state.chests.set(KEY(-2, 10, 0), new Array(27).fill(null));
+	const rnd = Math.random;
+	Math.random = () => 0; // 0 < 0.4 → intenta romper todos los bloques
+	const c2 = new mobs.Mob("creeper", 0, 10, 0);
+	c2.tick(true);
+	Math.random = rnd;
+	check("explosión NO rompe bedrock", !broken.includes(KEY(0, 10, 0)));
+	check("explosión NO rompe agua", !broken.includes(KEY(1, 10, 0)));
+	check("explosión NO rompe lava", !broken.includes(KEY(-1, 10, 0)));
+	check(
+		"explosión NO rompe cofre CON contenido (estado intacto)",
+		!broken.includes(KEY(2, 10, 0)) && state.chests.has(KEY(2, 10, 0))
+	);
+	check(
+		"explosión SÍ rompe cofre vacío y limpia su estado",
+		broken.includes(KEY(-2, 10, 0)) && !state.chests.has(KEY(-2, 10, 0))
+	);
+	check(
+		"explosión sigue rompiendo bloques normales (piedra)",
+		broken.includes(KEY(0, 11, 0))
+	);
+	world.getBlock = realGet;
+	world.setBlock = realSet;
+	state.chests.delete(KEY(2, 10, 0));
+	state.chests.delete(KEY(-2, 10, 0));
 	resetPlayers();
 }
 

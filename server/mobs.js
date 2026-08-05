@@ -14,6 +14,7 @@ const {
 	TICK_MS,
 	BREED_FOOD,
 	isSolidBlock,
+	NOT_MINEABLE,
 	WORLD_HEIGHT
 } = require("./constants.js");
 
@@ -173,12 +174,23 @@ class Mob {
 			for (let dy = -2; dy <= 2; dy++) {
 				for (let dz = -2; dz <= 2; dz++) {
 					if (Math.random() < 0.4) {
-						world.setBlock(
-							Math.floor(this.x + dx),
-							Math.floor(this.y + dy),
-							Math.floor(this.z + dz),
-							B.AIR
-						);
+						const bx = Math.floor(this.x + dx),
+							by = Math.floor(this.y + dy),
+							bz = Math.floor(this.z + dz);
+						// Fase 7 (auditoría): la explosión NO rompe bloques irrompibles
+						// ni líquidos (NOT_MINEABLE: bedrock, agua, lava) ni cofres
+						// CON contenido (su loot se perdería para siempre: no hay
+						// entidades de item en el suelo — ver finishMining).
+						const block = world.getBlock(bx, by, bz);
+						if (NOT_MINEABLE.has(block)) continue;
+						if (block === B.CHEST) {
+							const slots = state.chests.get(`${bx},${by},${bz}`);
+							if (slots?.some((s) => s)) continue;
+							// Cofre vacío: se rompe igual, pero se limpia su estado
+							// (igual que finishMining) para no dejar entradas huérfanas.
+							state.chests.delete(`${bx},${by},${bz}`);
+						}
+						world.setBlock(bx, by, bz, B.AIR);
 					}
 				}
 			}

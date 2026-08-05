@@ -1004,6 +1004,19 @@ errores.*
       llegan con `chunks_add` al moverse (handler `move`). Cubierto por
       `tests/unit-red.js` (el init de un jugador con renderDistance 2
       solo trae los chunks del radio 2, no el mundo entero).
+- [x] **El creeper destruía bedrock, agua, lava y cofres (con todo su
+      contenido).** La explosión (`explode()` en `server/mobs.js`)
+      convertía a aire cualquier bloque del radio 2 sin excepción:
+      podía borrar la roca madre (irrompible en Minecraft), charcos de
+      agua/lava y cofres — y como no hay entidades de item en el suelo
+      (simplificación documentada), el loot se perdía para siempre.
+      **Corregido**: la explosión respeta `NOT_MINEABLE` (bedrock,
+      agua, lava) y no rompe cofres CON contenido (su estado en
+      `state.chests` se conserva); un cofre vacío sí se rompe y se
+      limpia su estado (mismo patrón que `finishMining`) para no dejar
+      entradas huérfanas en la persistencia. Cubierto por
+      `tests/unit-mobs-ia.js` (sección 5b: bedrock/agua/lava/cofre con
+      contenido intactos, cofre vacío roto con estado limpio).
 
 ---
 
