@@ -57,6 +57,16 @@ export function createGeometryPool({
 				geometry.dispose();
 				return false;
 			}
+			// Fase 8 (B3): al liberar se nullean los bounds cacheados de three
+			// (boundingBox/boundingSphere). El pool reutiliza la geometría y
+			// setOrReuseAttribute muta los arrays de attributes EN SU LUGAR (sin
+			// llamar a setAttribute), así que sin esto los bounds quedarían los
+			// del chunk ANTERIOR: Mesh.raycast rechaza el rayo contra esa esfera
+			// obsoleta (clic que no intersecta → no se puede minar) y
+			// expandByObject del culling usaría la caja vieja. Al nullearlos, el
+			// siguiente acquire los recalcula de forma perezosa con datos nuevos.
+			geometry.boundingBox = null;
+			geometry.boundingSphere = null;
 			pool.push(geometry);
 			return true;
 		},

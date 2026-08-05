@@ -32,6 +32,7 @@ const UNIT = [
 	"unit-mineria.js",
 	"unit-lod.js",
 	"unit-geopool.js",
+	"unit-raycast.js", // Fase 8 (B3): bounds obsoletos en el pool → raycast de minería
 	"unit-cofre.js",
 	"unit-antorchas.js",
 	"unit-cama.js",

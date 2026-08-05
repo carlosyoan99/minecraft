@@ -948,17 +948,32 @@ fix propio (el diagnóstico debe confirmarlo).
       `input.js`: si el rayo golpea terreno pero hay un mob a <1.5
       bloques del impacto, golpea el mob. Regresión ampliada en
       `unit-red.js` (rango 7, `mob_hit`, knockback).
-- [ ] **B3: imposible minar a mano (el clic no inicia la mina).** La
-      mecánica existe y debería funcionar (mano = velocidad 1, lenta):
-      `startMiningAt` → `block_action break` → `tickMining` →
-      `finishMining`. El clic no hace nada → diagnosticar:
-      `controls.isLocked` falso, rayo que no intersecta el terreno,
-      servidor que descarta el evento, o el `pointerlockchange` que
-      cancela la mina. **Corregir**: arreglar el clic **y dar drop a
-      mano de bloques básicos** (tierra, césped, madera, arena, hojas)
-      — `canHarvest` ya dropea eso a mano; piedra/minerales siguen
-      necesitando pico (se rompen lento, sin drop). Regresión:
-      `unit-mineria.js`, `e2e-durabilidad.js`.
+- [x] **B3: imposible minar a mano (el clic no inicia la mina).** ✅
+      **Diagnóstico**: el servidor funcionaba de punta a punta
+      (`e2e-durabilidad.js` rompe 60 bloques vía WS y pasa); el bug era
+      del **cliente**: el geometry pool (`geopool.js`) reutiliza
+      `BufferGeometry` y `setOrReuseAttribute` muta los arrays de
+      attributes EN SU LUGAR (`.set()` + `needsUpdate`, sin llamar a
+      `setAttribute`), así que los `boundingBox`/`boundingSphere`
+      cacheados de three quedaban **obsoletos** (del chunk anterior que
+      usó esa geometría). `Mesh.raycast` de three r160 rechaza el rayo
+      contra esa esfera vieja → `raycastTerrainAndMobs()` devolvía
+      `null` → `if (!hit) return` → el clic no hacía nada (ni minar, ni
+      atacar a mobs de pie en esos chunks). Reproducido con three real
+      (0 hits hacia el bloque; esfera centrada en el chunk anterior).
+      **Fix**: `geopool.js` `release()` nullea `boundingBox`/
+      `boundingSphere` al liberar → el siguiente acquire los recalcula
+      de forma perezosa con datos nuevos (sin coste por build).
+      Además, `computeChunkSphere` (frustum culling) usa la caja
+      cacheada vía `expandByObject`, así que el mismo fix corrige el
+      culling erróneo (relacionado con B6). Regresión nueva
+      `unit-raycast.js` (three real como devDependency, mismo 0.160 del
+      importmap): pool real + raycast acierta tras reutilizar +
+      mecanismo del bug documentado (0 hits sin fix). Drops a mano de
+      bloques básicos: ya los daba `canHarvest` (tierra/césped/arena/
+      madera/hojas); piedra/minerales siguen requiriendo pico.
+      Regresión: `unit-raycast.js`, `unit-geopool.js`, `unit-mineria.js`,
+      `e2e-durabilidad.js`.
 - [ ] **B2: pierdes vida constantemente sin causa (mueres en pocos
       segundos).** El jugador nace con `health 20 / food 20 / saturation
       20` (net.js) → no es hambre; candidatos: mobs hostiles atacando
