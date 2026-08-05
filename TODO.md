@@ -1021,6 +1021,34 @@ errores.*
       entradas huérfanas en la persistencia. Cubierto por
       `tests/unit-mobs-ia.js` (sección 5b: bedrock/agua/lava/cofre con
       contenido intactos, cofre vacío roto con estado limpio).
+- [~] **Limitación conocida del anti-cheat: se puede volar (y caer sin
+      daño) con un cliente modificado.** El handler `move` de `net.js`
+      valida la velocidad (≤1.2 bloques por move, con teleport de
+      vuelta al último punto aceptado), la colisión con sólidos y el
+      void, pero NO valida la física del movimiento: el servidor
+      confía en los `move` que envía el cliente, así que un cliente
+      alterado puede subir `y+1` por move (≈24 bloques/s, muy por
+      encima del salto normal) y "volar", o bajar sin recibir daño de
+      caída (el daño de caída se infiere de los moves recibidos, no de
+      la velocidad real). Es una limitación inherente al diseño
+      cliente-servidor de este juego (sin física simulada en el
+      servidor). **Mitigación actual**: el límite de velocidad limita
+      el daño (no se puede teletransportar, solo "volar" lentamente) y
+      los sólidos bloquean. **Mejora posible** (no planificada):
+      validar el ascenso contra la parábola del salto (gravedad +
+      velocidad inicial) y calcular el daño de caída con la velocidad
+      vertical inferida.
+- [~] **Limitación conocida: el servidor WS no fija `maxPayload`.**
+      `new WebSocket.Server({ server })` en `net.js` no configura el
+      límite de tamaño de mensaje entrante (la librería `ws` aplica su
+      default de ~100 MiB). Los mensajes reales del protocolo son
+      pequeños (moves, chat con máx. 200 chars, `chunkData`), así que
+      un límite explícito de ~1-4 MiB (o menos) bastaría para impedir
+      que un cliente malicioso sature la memoria del servidor con
+      mensajes gigantes. **Mejora posible** (no planificada):
+      `new WebSocket.Server({ server, maxPayload: <n> })` — un tamaño
+      por encima del `init`/`chunks_add` más grande del radio de
+      render.
 
 ---
 
