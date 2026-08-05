@@ -218,7 +218,13 @@ volver a una semilla anterior recupera su mundo).
   en `public/mobtextures.js`, que reemplaza los `MOB_COLORS` planos; los
   meshes se construyen texturizados por cara (UVs remapeadas al atlas) en
   `public/mobs.js` y la quema solar sigue tiñendo al mob en llamas.
-  Pendientes: iconos de items, estética del cielo/HUD, etc.
+  **Iconos procedurales de ítems** (`public/itemicons.js`): atlas de
+  sprites 16x16 pixel-art en canvas — bloques con bisel y motas,
+  comida cruda/cocinada, lingotes, gemas, materiales, las 20
+  herramientas y las 12 piezas de armadura (plantilla por forma +
+  color por material) — que reemplazan el swatch de color y el texto
+  en hotbar, mesa de crafteo, horno, cofre y slots de armadura.
+  Pendientes: estética del cielo/HUD, etc.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -346,6 +352,10 @@ en el servidor y `public/network.js` en el cliente).
     de luz del cliente `public/lighting.js`: atenuación 0.8/paso,
     alcance 7, oclusión con pared completa y antorcha lejana
     ignorada).
+  - **Fase 7 (estética):** `unit-itemicons.js` (iconos procedurales de
+    ítems: todo id conocido tiene icono 16x16 no vacío, el atlas cubre
+    el mismo universo, determinismo y distinguibilidad — lingote
+    hierro vs oro, pico por material, cruda vs cocinada, etc.).
   - **Integridad transversal:** `unit-recetas.js` (todas las recetas de
     crafteo/horno referencian IDs existentes, shapes bien formadas y
     alcanzables desde su grid — habría detectado el bug `hilo_a_lana` de la

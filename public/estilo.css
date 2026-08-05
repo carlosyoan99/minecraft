@@ -585,6 +585,27 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	font-size: 11px;
 	font-weight: bold;
 }
+/* Icono procedural de ítem (Fase 7): sprite del atlas recortado por CSS.
+   image-rendering: pixelated mantiene el look pixel-art al escalar. */
+.item-ico {
+	width: 16px;
+	height: 16px;
+	image-rendering: pixelated;
+	flex-shrink: 0;
+}
+.item-ico-lg {
+	width: 24px;
+	height: 24px;
+}
+/* Fallback de texto si un ítem aún no tiene icono */
+.item-txt {
+	font-size: 9px;
+	color: #ddd;
+	text-align: center;
+	line-height: 1.2;
+	padding: 0 2px;
+	overflow: hidden;
+}
 .hotbar-slot .swatch {
 	width: 24px;
 	height: 24px;

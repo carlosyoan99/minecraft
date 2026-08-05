@@ -770,9 +770,21 @@ errores.*
 - [x] Texturas procedurales pixel-art para **mobs** (pasivos y
       hostiles) en `public/mobtextures.js` (reemplazan `MOB_COLORS`);
       los meshes se construyen texturizados por cara en `public/mobs.js`
-- [ ] Iconos de **ítems** en el inventario/HUD (comida, lingotes,
+- [x] Iconos de **ítems** en el inventario/HUD (comida, lingotes,
       minerales, herramientas) reemplazando el swatch de color y el
-      texto en hotbar/mesa/horno
+      texto en hotbar/mesa/horno. Completado con `public/itemicons.js`
+      (atlas procedural de sprites 16x16 pixel-art en un canvas, misma
+      filosofía que `mobtextures.js`): un icono por ítem — bloques con
+      bisel y motas (especiales: césped, tronco, hojas, tablones,
+      menas, mesa, horno, vidrio, lana, agua, lava, nieve, cofre,
+      antorcha, cama, roca madre), comida cruda/cocinada, lingotes,
+      gemas, trigo/zanahoria/semillas/hilo/cuero, las 20 herramientas
+      y las 12 piezas de armadura (plantillas por forma + color por
+      material). El CSS recorta el sprite por posición y
+      `image-rendering: pixelated` mantiene el look pixel-art (hotbar
+      1.5x, paneles 1x); la lógica de dibujo es PURA (grid de celdas,
+      sin canvas ni DOM) y la cubre `tests/unit-itemicons.js`
+      (cobertura de todos los ids, determinismo y distinguibilidad)
 - [ ] Estética Minecraft: cielo con degradado + sol/luna, niebla por
       hora del día, partículas al romper/colocar bloques y HUD/menús
       con estilo Minecraft (todo procedural o CSS, sin assets externos)

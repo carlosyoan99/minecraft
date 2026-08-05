@@ -8,10 +8,10 @@ import {
 	ARMOR_DURABILITY,
 	ARMOR_SLOT_NAMES,
 	DURABILITY,
-	itemColor,
 	itemLabel,
 	XP_PER_LEVEL
 } from "./constants.js";
+import { itemIconCss } from "./itemicons.js";
 import { finishLoading, showLoading } from "./loading.js";
 import { controls, showBlocker } from "./scene.js";
 import { getSettings, setSetting } from "./settings.js";
@@ -52,6 +52,16 @@ export function isChatFocused() {
 	return document.activeElement === chatInput;
 }
 
+// Icono procedural del ítem (Fase 7): sprite del atlas recortado por CSS.
+// Fallback al texto si el ítem aún no tiene icono (defensivo para ítems
+// futuros). `scale` agranda la tesela (hotbar 1.5x, paneles 1x).
+function itemVisual(id, scale = 1) {
+	const css = itemIconCss(id, scale);
+	return css
+		? `<div class="item-ico${scale > 1 ? " item-ico-lg" : ""}" style="background:${css}"></div>`
+		: `<span class="item-txt">${itemLabel(id)}</span>`;
+}
+
 // ============================================================
 // HOTBAR Y SALUD
 // ============================================================
@@ -63,7 +73,7 @@ function updateHotbarUI() {
 		const slot = document.createElement("div");
 		slot.className = `hotbar-slot${i === selectedSlot ? " selected" : ""}`;
 		if (item) {
-			slot.innerHTML = `<div class="swatch" style="background:#${itemColor(item.id).toString(16).padStart(6, "0")}"></div><span class="count">${item.count}</span>`;
+			slot.innerHTML = `${itemVisual(item.id, 1.5)}<span class="count">${item.count}</span>`;
 			// Fase 5/7: barra de durabilidad bajo la herramienta/armadura (verde→rojo)
 			const maxD = DURABILITY[item.id] || ARMOR_DURABILITY[item.id];
 			if (maxD) {
@@ -444,7 +454,7 @@ function updateArmorUI() {
 			const pct = maxD ? Math.max(0, Math.min(100, (cur / maxD) * 100)) : 100;
 			const color = pct > 50 ? "#5fd34f" : pct > 20 ? "#e8b93f" : "#e8544f";
 			el.innerHTML =
-				`<span>${itemLabel(piece.id)}</span>` +
+				`${itemVisual(piece.id)}` +
 				`<div class="durbar"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></div>`;
 			el.title = `${itemLabel(piece.id)} (${cur}/${maxD}) — clic para quitarla`;
 			el.addEventListener("click", () =>
@@ -464,7 +474,7 @@ function updateCraftGridUI(success) {
 	for (let i = 0; i < 9; i++) {
 		const item = craftingGrid[i];
 		cells[i].innerHTML = item
-			? `<span>${itemLabel(item.id)}</span><span class="count">${item.count}</span>`
+			? `${itemVisual(item.id)}<span class="count">${item.count}</span>`
 			: "";
 	}
 	craftResultEl.style.borderColor = success ? "#8f8" : "#555";
@@ -476,7 +486,7 @@ function updateCraftInventoryUI() {
 		const el = document.createElement("div");
 		el.className = "slot";
 		if (item) {
-			el.innerHTML = `<span>${itemLabel(item.id)}</span><span class="count">${item.count}</span>`;
+			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
 			el.addEventListener("click", () => {
 				const emptyGridSlot = craftingGrid.findIndex((c) => !c);
 				if (emptyGridSlot !== -1)
@@ -533,7 +543,7 @@ function updateFurnaceInventoryUI() {
 		const el = document.createElement("div");
 		el.className = "slot";
 		if (item) {
-			el.innerHTML = `<span>${itemLabel(item.id)}</span><span class="count">${item.count}</span>`;
+			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
 			el.addEventListener("click", () => {
 				send("furnace_action", { action: "add_fuel", invSlot: i });
 				send("furnace_action", { action: "add_input", invSlot: i });
@@ -545,14 +555,23 @@ function updateFurnaceInventoryUI() {
 
 export function applyFurnaceState(data) {
 	openFurnaceKey = data.key;
-	furnaceFuelEl.textContent = data.fuelItem
-		? `${itemLabel(data.fuelItem)} (${data.fuelTicksLeft})`
+	furnaceFuelEl.innerHTML = data.fuelItem
+		? `${itemVisual(data.fuelItem)}<span class="count">${data.fuelTicksLeft}</span>`
 		: "Combustible";
-	furnaceInputEl.textContent = data.inputItem
-		? `${itemLabel(data.inputItem)} x${data.inputCount}`
+	furnaceFuelEl.title = data.fuelItem
+		? itemLabel(data.fuelItem)
+		: "Combustible";
+	furnaceInputEl.innerHTML = data.inputItem
+		? `${itemVisual(data.inputItem)}<span class="count">x${data.inputCount}</span>`
 		: "Material";
-	furnaceOutputEl.textContent = data.outputItem
-		? `${itemLabel(data.outputItem)} x${data.outputCount}`
+	furnaceInputEl.title = data.inputItem
+		? itemLabel(data.inputItem)
+		: "Material";
+	furnaceOutputEl.innerHTML = data.outputItem
+		? `${itemVisual(data.outputItem)}<span class="count">x${data.outputCount}</span>`
+		: "Salida";
+	furnaceOutputEl.title = data.outputItem
+		? itemLabel(data.outputItem)
 		: "Salida";
 	const pct = data.requiredTicks
 		? Math.round((data.progress / data.requiredTicks) * 100)
@@ -592,7 +611,7 @@ function updateChestSlotsUI() {
 		const el = document.createElement("div");
 		el.className = "slot";
 		if (item) {
-			el.innerHTML = `<span>${itemLabel(item.id)}</span><span class="count">${item.count}</span>`;
+			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
 			el.title = itemLabel(item.id);
 			el.addEventListener("click", () =>
 				send("chest_action", { action: "take", chestSlot: i })
@@ -608,7 +627,7 @@ function updateChestInventoryUI() {
 		const el = document.createElement("div");
 		el.className = "slot";
 		if (item) {
-			el.innerHTML = `<span>${itemLabel(item.id)}</span><span class="count">${item.count}</span>`;
+			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
 			el.title = itemLabel(item.id);
 			el.addEventListener("click", () =>
 				send("chest_action", { action: "put", invSlot: i })
