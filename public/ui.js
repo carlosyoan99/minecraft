@@ -166,6 +166,8 @@ const nameInput = document.getElementById("name-input");
 const rdSlider = document.getElementById("rd-slider");
 const rdValue = document.getElementById("rd-value");
 const coordsToggle = document.getElementById("coords-toggle");
+// B1 (Fase 8): invertir el eje lateral A/D (persistido en mc_settings)
+const invertToggle = document.getElementById("invert-toggle");
 // Fase 7: FOV, sensibilidad, volumen por categoría y calidad gráfica
 const fovSlider = document.getElementById("fov-slider");
 const fovValue = document.getElementById("fov-value");
@@ -212,6 +214,7 @@ settingsBtn.addEventListener("click", () => {
 	rdSlider.value = s.renderDistance;
 	rdValue.textContent = s.renderDistance;
 	coordsToggle.checked = s.showCoords;
+	invertToggle.checked = s.invertControls;
 	// Fase 7: rellenar los nuevos controles con los valores guardados
 	fovSlider.value = s.fov;
 	fovValue.textContent = `${s.fov}°`;
@@ -258,6 +261,9 @@ qualitySelect.addEventListener("change", () =>
 );
 coordsToggle.addEventListener("change", () =>
 	setSetting("showCoords", coordsToggle.checked)
+);
+invertToggle.addEventListener("change", () =>
+	setSetting("invertControls", invertToggle.checked)
 );
 
 // Entrar al juego con una semilla: si difiere de la activa (o llega un nombre

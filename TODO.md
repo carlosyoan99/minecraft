@@ -976,13 +976,18 @@ fix propio (el diagnóstico debe confirmarlo).
 
 ### Bloque B — Correcciones de mecánica
 
-- [ ] **B1: controles izquierda/derecha invertidos + opción "Controles
-      invertidos".** Diagnosticar la inversión real (probablemente en
-      `public/player.js`, cómo `move.left`/`move.right` desplazan la
-      cámara) y corregirla; **además** añadir el ajuste
-      `invertControls` (default `false`) en `public/settings.js` +
-      control en el menú de Ajustes (`index.html`), persistido en
-      `localStorage` y aplicado en tiempo real.
+- [x] **B1: controles izquierda/derecha invertidos + opción "Controles
+      invertidos".** ✅ **Causa**: en `public/player.js` el vector lateral
+      se calculaba como `crossVectors(forward, up).negate()` — pero en
+      Three.js (mano derecha, Y arriba) `cross(forward, up)` ya apunta a
+      la derecha, así que el `.negate()` invertía el eje y A/D quedaban
+      intercambiados. **Fix**: se eliminó el `.negate()` (A → izquierda,
+      D → derecha) y se añadió el ajuste `invertControls` (default
+      `false`) en `public/settings.js` + toggle "Controles invertidos
+      (A/D)" en el menú de Ajustes (`index.html`/`ui.js`), persistido en
+      `localStorage` y aplicado en tiempo real (player.js lo lee cada
+      frame con `getSetting`). Con la opción activa, A↔D se invierten
+      para quien lo prefiera.
 - [ ] **B4: ciclo día/noche a 20 minutos (como Minecraft).** Cambiar
       `DAY_CYCLE_MS` de `240000` (4 min) a `1200000` (20 min) en AMBOS
       `constants.js` (servidor y cliente, los audita `unit-sync.js`);

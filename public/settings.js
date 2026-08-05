@@ -22,6 +22,10 @@ const STORAGE_KEY = "mc_settings";
 const DEFAULTS = {
 	renderDistance: 6,
 	showCoords: false,
+	// B1 (Fase 8): invierte el eje lateral (A↔D). Lo lee player.js en el
+	// bucle de animación; el bug base de los controles invertidos ya está
+	// corregido (player.js), esta opción es para quien lo prefiera.
+	invertControls: false,
 	fov: 75,
 	sensitivity: 1, // multiplicador de pointerSpeed (1 = por defecto)
 	// Volumen maestro por defecto 0.8: coincide con la base histórica de
@@ -77,6 +81,8 @@ export function setSetting(key, value) {
 		settings.renderDistance = rd;
 		setRenderDistance(rd);
 		send("settings", { renderDistance: rd });
+	} else if (key === "invertControls") {
+		settings.invertControls = !!value;
 	} else if (key === "showCoords") {
 		settings.showCoords = !!value;
 		updateCoordsHudVisibility();

@@ -7,7 +7,7 @@ import { send } from "./connection.js";
 import { EYE_HEIGHT, LAVA, TORCH, WATER } from "./constants.js";
 import { updateDayNight } from "./daynight.js";
 import { camera, controls, renderer, scene } from "./scene.js";
-import { updateCoords } from "./settings.js";
+import { getSetting, updateCoords } from "./settings.js";
 import {
 	applyFrustumCulling,
 	chunkMeshes,
@@ -128,7 +128,14 @@ function animate() {
 		camera.getWorldDirection(forward);
 		forward.y = 0;
 		forward.normalize();
-		const right = new THREE.Vector3().crossVectors(forward, camera.up).negate();
+		// B1 (Fase 8): `right` = perpendicular a la vista en el plano XZ. En
+		// Three.js crossVectors(forward, up) YA apunta a la derecha (con Y
+		// arriba y mirando a -Z, +X es derecha): el .negate() previo invertía
+		// el eje y hacía que A moviera a la derecha y D a la izquierda.
+		const right = new THREE.Vector3().crossVectors(forward, camera.up);
+		// B1: opción "controles invertidos" (Ajustes): invierte el eje lateral
+		// (A↔D) para quien lo prefiera (persistida en mc_settings, settings.js).
+		const lateral = getSetting("invertControls") ? -1 : 1;
 
 		const feet = camera.position.y - EYE_HEIGHT;
 		// ¿Jugador en el agua? (cuerpo a la altura del pecho/cabeza)
@@ -147,12 +154,12 @@ function animate() {
 			dz -= forward.z;
 		}
 		if (move.left) {
-			dx -= right.x;
-			dz -= right.z;
+			dx -= lateral * right.x;
+			dz -= lateral * right.z;
 		}
 		if (move.right) {
-			dx += right.x;
-			dz += right.z;
+			dx += lateral * right.x;
+			dz += lateral * right.z;
 		}
 		const len = Math.hypot(dx, dz);
 		// En el agua se nada más lento (resistencia del medio)
