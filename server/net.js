@@ -830,13 +830,25 @@ function handleConnection(ws, req) {
 			case "attack_mob": {
 				const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
 				if (!mob) return;
-				if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > 4) return;
+				// Fase 8 (B10): rango de ataque 7 bloques, alineado con el rayo del
+				// cliente (raycaster.far = 7 en input.js). Antes era 4: los clics a
+				// 5-7 bloques se descartaban en silencio (el mob no reaccionaba).
+				if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > 7) return;
 				const tool = p.inventory[p.selectedSlot]
 					? p.inventory[p.selectedSlot].id
 					: 0;
 				// Fase 5: daño de espada por material (sin espada, 2)
 				const dmg = SWORD_DAMAGE[tool] || 2;
 				mob.health -= dmg;
+				// Fase 8 (B10): feedback del golpe para TODOS los que ven el mob —
+				// flash de daño y sonido en el cliente (mob_hit). Antes el golpe no
+				// producía ninguna reacción visible: el jugador creía que no servía.
+				broadcast("mob_hit", { id: mob.id, dmg, health: mob.health });
+				// Fase 8 (B10): knockback — el mob retrocede un poco en la dirección
+				// contraria al atacante (se replica con el próximo mobs_update).
+				const dist = Math.max(0.1, Math.hypot(mob.x - p.x, mob.z - p.z));
+				mob.x += ((mob.x - p.x) / dist) * 0.6;
+				mob.z += ((mob.z - p.z) / dist) * 0.6;
 				// Fase 5: las espadas se desgastan al golpear (se rompen al llegar a 0)
 				const broke = playerHelpers.applyToolWear(p, true);
 				const isSword = !!SWORD_DAMAGE[tool];

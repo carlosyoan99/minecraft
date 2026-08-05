@@ -182,6 +182,38 @@ export function removeMob(id) {
 }
 
 // ============================================================
+// FLASH DE DAÑO (Fase 8, B10): feedback visual al golpear un mob.
+// Tiñe el mob de rojo durante ~120ms (mob_hit del servidor) y lo
+// restaura a su color base (con textura: blanco multiplicativo; sin
+// textura: el color plano de MOB_COLORS). Se guarda el timeout por
+// mob para no pisar el color base con flashes consecutivos.
+// ============================================================
+const hitFlashTimeouts = new Map();
+// Color base capturado UNA vez por mob (primer golpe). Sin esto, dos golpes
+// seguidos capturarían el rojo como "base" y el mob quedaría rojo para siempre.
+const hitFlashBase = new Map();
+const HIT_FLASH_MS = 120;
+export function flashMob(id) {
+	const mesh = mobMeshes.get(id);
+	if (!mesh) return;
+	const prev = hitFlashTimeouts.get(id);
+	if (prev) clearTimeout(prev);
+	// Captura la base solo en el primer golpe de la ráfaga (respeta la quema
+	// solar que pueda estar activa en el mob).
+	if (!hitFlashBase.has(id)) hitFlashBase.set(id, mesh.material.color.getHex());
+	mesh.material.color.setHex(0xff4444); // rojo de daño
+	const base = hitFlashBase.get(id);
+	hitFlashTimeouts.set(
+		id,
+		setTimeout(() => {
+			mesh.material.color.setHex(base);
+			hitFlashTimeouts.delete(id);
+			hitFlashBase.delete(id);
+		}, HIT_FLASH_MS)
+	);
+}
+
+// ============================================================
 // CORAZONES DE CRÍA (partículas simples que suben flotando)
 // ============================================================
 let heartTexture = null;

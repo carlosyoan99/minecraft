@@ -789,6 +789,27 @@ function connect() {
 		p.inventory[0].durability === 250,
 		`dur=${p.inventory[0].durability}`
 	);
+	// Fase 8 (B10): feedback del golpe — mob_hit broadcast con daño y salud.
+	const hitEvt = ws.events("mob_hit").at(-1);
+	check(
+		"attack_mob: broadcast mob_hit (feedback de daño)",
+		!!hitEvt && hitEvt.data.id === zombie.id && hitEvt.data.dmg === 5,
+		JSON.stringify(hitEvt?.data)
+	);
+	// Fase 8 (B10): knockback — el mob retrocede en la dirección contraria al
+	// atacante. Se compara la distancia horizontal al jugador antes/después
+	// (robusto ante coordenadas fraccionarias del spawn).
+	const dAntes = Math.hypot(zombie.x - p.x, zombie.z - p.z);
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "attack_mob", data: { mobId: zombie.id } })
+	);
+	const dDespues = Math.hypot(zombie.x - p.x, zombie.z - p.z);
+	check(
+		"attack_mob: knockback aleja al mob del atacante",
+		dDespues > dAntes + 0.3,
+		`d=${dDespues.toFixed(2)} (antes ${dAntes.toFixed(2)})`
+	);
 
 	// Matar el mob → drops + XP + mob_death
 	zombie.health = 1;
@@ -805,7 +826,27 @@ function connect() {
 	check("attack_mob: broadcast mob_death", ws.events("mob_death").length === 1);
 	check("attack_mob: XP por matar zombie (MOB_XP)", p.xp === 5, `xp=${p.xp}`);
 
-	// Mob fuera de rango (>4) → rechazado
+	// Fase 8 (B10): rango ampliado a 7 bloques (alineado con el rayo del
+	// cliente) — un mob a 6 bloques SÍ se golpea (antes se rechazaba a >4).
+	const medio = new mobs.Mob(
+		"cow",
+		Math.floor(p.x) + 6,
+		Math.floor(p.y),
+		Math.floor(p.z)
+	);
+	state.mobs.push(medio);
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "attack_mob", data: { mobId: medio.id } })
+	);
+	// El jugador lleva la espada de hierro seleccionada (dmg 5): cow 10 → 5.
+	check(
+		"attack_mob: a 6 bloques (rango 7) sí golpea",
+		medio.health === 5,
+		`health=${medio.health}`
+	);
+
+	// Mob fuera de rango (>7) → rechazado
 	const lejos = new mobs.Mob(
 		"cow",
 		Math.floor(p.x) + 10,
@@ -819,10 +860,12 @@ function connect() {
 		JSON.stringify({ event: "attack_mob", data: { mobId: lejos.id } })
 	);
 	check(
-		"attack_mob: fuera de alcance no daña",
+		"attack_mob: fuera de alcance (>7) no daña",
 		lejos.health === 10 && p.xp === 0
 	);
-	state.mobs = state.mobs.filter((m) => m !== zombie && m !== lejos);
+	state.mobs = state.mobs.filter(
+		(m) => m !== zombie && m !== lejos && m !== medio
+	);
 }
 
 // ============================================================

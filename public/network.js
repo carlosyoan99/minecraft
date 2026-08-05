@@ -2,11 +2,12 @@
 // RED: MANEJO DE MENSAJES DEL SERVIDOR
 // ============================================================
 
-import { playCrack } from "./audio.js";
+import { playCrack, playHit } from "./audio.js";
 import { setStoredName, socket } from "./connection.js";
 import { TORCH } from "./constants.js";
 import { initDayNight } from "./daynight.js";
 import {
+	flashMob,
 	removeMob,
 	removeRemotePlayer,
 	renameRemotePlayer,
@@ -129,6 +130,11 @@ socket.addEventListener("message", (e) => {
 			break;
 		case "mob_death":
 			removeMob(data.id);
+			break;
+		case "mob_hit":
+			// Fase 8 (B10): feedback del golpe — flash de daño + sonido.
+			flashMob(data.id);
+			playHit();
 			break;
 		case "mob_breed":
 			spawnHearts(data.x, data.y, data.z);

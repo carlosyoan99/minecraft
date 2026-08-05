@@ -919,18 +919,24 @@ fix propio (el diagnóstico debe confirmarlo).
 
 ### Bloque A — Bugs bloqueantes (hacen el juego injugable)
 
-- [ ] **B10: imposible luchar contra los mobs hostiles (no se puede ni
-      apuntar).** El raycast de mobs (`raycastTerrainAndMobs` en
-      `public/input.js`, rango 7) o el rango del servidor (4 en
-      `attack_mob`) fallan: el rayo puede no intersectar el mob, o el
-      ataque se descarta en silencio (rango cliente 7 > rango servidor
-      4). **Corregir**: diagnosticar y arreglar el raycast/apuntado;
-      alinear rangos (o ampliar el del servidor a 7); confirmar que la
-      mano hace daño base 2 (ya previsto, `SWORD_DAMAGE[tool] || 2`);
-      añadir **knockback** (retroceso del mob, replicado vía
-      `mobs_update`) y **feedback de daño** (flash/parpadeo o
-      partículas). Regresión: `unit-mobs-ia.js`, `unit-red.js`,
-      `unit-metricas.js`.
+- [x] **B10: imposible luchar contra los mobs hostiles (no se puede ni
+      apuntar).** ✅ **Diagnóstico**: el servidor funcionaba (unit-red lo
+      verificaba), el problema era cliente+protocolo: (1) **rango
+      descartado en silencio** — el rayo del cliente llegaba a 7 bloques
+      (`raycaster.far = 7` en `input.js`) pero `attack_mob` rechazaba a
+      >4 sin respuesta; (2) **cero feedback de daño** — no existía
+      `mob_hit`, ni flash, ni sonido, ni knockback (con la mano, 2 HP
+      vs zombie 20 HP = 10 golpes sin reacción); (3) **apuntado
+      estricto** — si el rayo rozaba el terreno, el bloque ganaba al
+      mob. **Fix**: `attack_mob` acepta hasta 7 bloques y hace
+      `broadcast("mob_hit", { id, dmg, health })` + knockback del mob
+      (0.6 bloques en dirección contraria, replicado vía `mobs_update`)
+      (`server/net.js`); `playHit()` (audio.js); `flashMob(id)` — tinte
+      rojo breve que restaura el color previo (mobs.js); `case
+      "mob_hit"` → flash+sonido (network.js); tolerancia de apuntado en
+      `input.js`: si el rayo golpea terreno pero hay un mob a <1.5
+      bloques del impacto, golpea el mob. Regresión ampliada en
+      `unit-red.js` (rango 7, `mob_hit`, knockback).
 - [ ] **B3: imposible minar a mano (el clic no inicia la mina).** La
       mecánica existe y debería funcionar (mano = velocidad 1, lenta):
       `startMiningAt` → `block_action break` → `tickMining` →

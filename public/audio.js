@@ -199,6 +199,18 @@ export function playCrack() {
 }
 
 // ============================================================
+// GOLPE DE COMBATE (Fase 8, B10): ruido seco + golpe grave corto.
+// Feedback auditivo al golpear un mob (mob_hit) — antes el golpe era
+// silencioso y el jugador no sabía si había acertado.
+// ============================================================
+export function playHit() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	noiseBurst({ t, freq: 1800, q: 1, vol: 0.45, dur: 0.06, type: "bandpass" });
+	thud({ t: t + 0.01, freq: 110, vol: 0.5, dur: 0.1 });
+}
+
+// ============================================================
 // COMER (mordisco corto)
 // ============================================================
 export function playEat() {

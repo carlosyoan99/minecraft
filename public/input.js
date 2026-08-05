@@ -152,26 +152,65 @@ function raycastTerrainAndMobs() {
 	return hits[0] || null;
 }
 
+// Fase 8 (B10): mob más cercano a lo LARGO del rayo (proyección) que quede
+// DELANTE del bloque apuntado (t < distTerreno) y con poca desviación lateral
+// (<= 0.75 bloques). Así el clic golpea al mob solo cuando tapa al bloque —
+// nunca al lado/detrás, lo que preserva la minería y evita golpear a través
+// de paredes. Antes se buscaba por distancia euclidiana al punto de impacto
+// (1.5 bloques): un mob junto al bloque que minabas te robaba el clic.
+function nearestMobOnRay(ray, distTerreno) {
+	const origin = ray.origin;
+	const dir = ray.direction;
+	let best = null,
+		bestT = Infinity;
+	for (const mesh of mobMeshes.values()) {
+		const m = mesh.position;
+		const t =
+			(m.x - origin.x) * dir.x +
+			(m.y - origin.y) * dir.y +
+			(m.z - origin.z) * dir.z;
+		if (t < 0 || t > distTerreno || t > raycaster.far) continue;
+		const px = origin.x + dir.x * t;
+		const py = origin.y + dir.y * t;
+		const pz = origin.z + dir.z * t;
+		const lateral = Math.hypot(m.x - px, m.y - py, m.z - pz);
+		if (lateral <= 0.75 && t < bestT) {
+			bestT = t;
+			best = mesh.userData;
+		}
+	}
+	return best && best.mobId ? { id: best.mobId, type: best.mobType } : null;
+}
+
 renderer.domElement.addEventListener("mousedown", (e) => {
 	if (!controls.isLocked) return;
 
 	const held = getHeldItem();
 	const hit = raycastTerrainAndMobs();
 
+	// Fase 8 (B10): tolerancia de apuntado — si el rayo golpea el terreno (o el
+	// vacío) pero hay un mob DELANTE (proyección sobre el rayo, desviación
+	// lateral <= 0.75) en vez de caer exactamente dentro de su caja, el clic
+	// golpea al mob (antes solo acertaba si el rayo tocaba la caja; con el mob
+	// de pie junto a un bloque o moviéndose, el terreno ganaba).
+	const hitMob =
+		hit?.object.userData.mobId ||
+		nearestMobOnRay(raycaster.ray, hit ? hit.distance : raycaster.far);
+
 	// Alimentar animales: clic derecho sobre un animal pasivo con su comida de
 	// cría (trigo → vaca/oveja, zanahoria → cerdo, semillas → pollo); izquierdo ataca.
-	if (hit?.object.userData.mobId) {
+	if (hitMob) {
 		stopMining(); // clicar un mob cancela cualquier mina en curso
 		if (e.button === 0) {
-			send("attack_mob", { mobId: hit.object.userData.mobId });
+			send("attack_mob", { mobId: hitMob.id });
 		} else if (
 			e.button === 2 &&
 			held &&
 			BREED_FOOD.has(held.id) &&
-			PASSIVE_MOBS.has(hit.object.userData.mobType)
+			PASSIVE_MOBS.has(hitMob.type)
 		) {
 			playFeed();
-			send("feed_mob", { mobId: hit.object.userData.mobId });
+			send("feed_mob", { mobId: hitMob.id });
 		}
 		return;
 	}
