@@ -87,7 +87,9 @@ const timer = setTimeout(() => {
 	);
 	for (const r of results) console.error(`  ${r.ok ? "OK" : "FAIL"} ${r.name}`);
 	finish(1);
-}, 120000); // 60 minas × ~0.9 s + holgura (Fase 6: minería con progreso)
+}, 180000); // 60 minas × ~0.9 s + crafteo/desplazamiento: la secuencia completa
+// tarda ~130 s, así que 120 s era un margen demasiado justo y el timer
+// disparaba finish(1) aunque los 122 checks pasaran (flakiness de tiempo).
 
 // ============================================================
 // HELPERS SOBRE EL CHUNKDATA (mismo idx que world.js: (y*16+z)*16+x)

@@ -16,6 +16,12 @@ export const DAY_CYCLE_MS = 1200000;
 // verifica tests/unit-sync.js.
 export const MOON_DAYS = 8;
 export const MOON_CYCLE_MS = DAY_CYCLE_MS * MOON_DAYS;
+// Física del movimiento (Fase 8, mejora anti-cheat): paridad con server-side
+// constants.js — el servidor valida el ascenso contra la parábola del salto
+// (JUMP_SPEED·dt − GRAVITY·dt²/2) y calcula daño de caída por velocidad
+// vertical inferida (h = v²/(2·GRAVITY)). Lo verifica tests/unit-sync.js.
+export const JUMP_SPEED = 7; // bloques/s de velocidad vertical inicial del salto
+export const GRAVITY = 18; // bloques/s² de gravedad (caída libre)
 
 export const BLOCK_COLORS = {
 	1: 0x8b5a2b,

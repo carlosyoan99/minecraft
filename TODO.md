@@ -1372,34 +1372,22 @@ fix propio (el diagnóstico debe confirmarlo).
       lateral ≤0.75) para golpear al mob aunque el terreno gane el
       rayo; (3) la mano hace 2 de daño (ya lo hacía), con flash de
       daño (`mob_hit`) y sonido como feedback.
-- [~] **Limitación conocida del anti-cheat: se puede volar (y caer sin
-      daño) con un cliente modificado.** El handler `move` de `net.js`
-      valida la velocidad (≤1.2 bloques por move, con teleport de
-      vuelta al último punto aceptado), la colisión con sólidos y el
-      void, pero NO valida la física del movimiento: el servidor
-      confía en los `move` que envía el cliente, así que un cliente
-      alterado puede subir `y+1` por move (≈24 bloques/s, muy por
-      encima del salto normal) y "volar", o bajar sin recibir daño de
-      caída (el daño de caída se infiere de los moves recibidos, no de
-      la velocidad real). Es una limitación inherente al diseño
-      cliente-servidor de este juego (sin física simulada en el
-      servidor). **Mitigación actual**: el límite de velocidad limita
-      el daño (no se puede teletransportar, solo "volar" lentamente) y
-      los sólidos bloquean. **Mejora posible** (no planificada):
-      validar el ascenso contra la parábola del salto (gravedad +
-      velocidad inicial) y calcular el daño de caída con la velocidad
-      vertical inferida.
-- [~] **Limitación conocida: el servidor WS no fija `maxPayload`.**
-      `new WebSocket.Server({ server })` en `net.js` no configura el
-      límite de tamaño de mensaje entrante (la librería `ws` aplica su
-      default de ~100 MiB). Los mensajes reales del protocolo son
-      pequeños (moves, chat con máx. 200 chars, `chunkData`), así que
-      un límite explícito de ~1-4 MiB (o menos) bastaría para impedir
-      que un cliente malicioso sature la memoria del servidor con
-      mensajes gigantes. **Mejora posible** (no planificada):
-      `new WebSocket.Server({ server, maxPayload: <n> })` — un tamaño
-      por encima del `init`/`chunks_add` más grande del radio de
-      render.
+- [x] **Anti-cheat de vuelo (implementado en el cierre de Fase 8).** El
+      handler `move` de `net.js` ahora valida el ASCENSO contra la
+      parábola del salto (`vy = JUMP_SPEED − GRAVITY·t`, con
+      `JUMP_SPEED=7` y `GRAVITY=18` en ambos `constants.js`): subir más
+      rápido que 1.5×JUMP_SPEED (≈10.5 bloques/s) o subir durante >1s
+      seguido en el aire (`airTimeMs`, dt mínimo de 50ms) se rechaza con
+      teleport al último punto aceptado. El daño de caída usa además la
+      velocidad vertical observada (`fallVy`, `h = v²/(2·GRAVITY)`) para
+      detectar descensos acelerados que la posición no reflejaría.
+      Cubierto por `tests/unit-anticheat.js` y `tests/unit-caida.js`.
+- [x] **maxPayload del WebSocket (implementado en el cierre de Fase 8).**
+      `new WebSocket.Server({ server, maxPayload: WS_MAX_PAYLOAD })` en
+      `net.js` con `WS_MAX_PAYLOAD = 1 MiB` (1·1024·1024): los mensajes
+      reales del protocolo son pequeños, así que 1 MiB impide que un
+      cliente malicioso sature la memoria (ws cierra la conexión con
+      1009). Verificado por `tests/unit-anticheat.js` (valor + cableado).
 
 ---
 

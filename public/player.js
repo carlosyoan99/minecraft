@@ -4,7 +4,14 @@
 import * as THREE from "three";
 import { playStep, updateAmbient } from "./audio.js";
 import { send } from "./connection.js";
-import { EYE_HEIGHT, LAVA, TORCH, WATER } from "./constants.js";
+import {
+	EYE_HEIGHT,
+	GRAVITY,
+	JUMP_SPEED,
+	LAVA,
+	TORCH,
+	WATER
+} from "./constants.js";
 import { updateDayNight } from "./daynight.js";
 import { camera, controls, renderer, scene } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
@@ -19,11 +26,11 @@ import {
 
 const PLAYER_SPEED = 4.3; // bloques/segundo (en tierra)
 const SWIM_SPEED = 2.6; // bloques/segundo (en agua)
-const GRAVITY = 18;
+// GRAVITY y JUMP_SPEED vienen de constants.js (paridad con el servidor para
+// el anti-cheat de vuelo y el daño de caída por velocidad vertical).
 const WATER_GRAVITY = 6; // gravedad reducida bajo el agua (flotación)
 const SINK_SPEED = 1.4; // velocidad máxima de hundimiento
 const SWIM_UP_SPEED = 4; // nadar hacia arriba con espacio
-const JUMP_SPEED = 7;
 
 let velocityY = 0;
 let onGround = false;

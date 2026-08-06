@@ -191,6 +191,21 @@ check(
 	parseNum("EYE_HEIGHT") === server.EYE_HEIGHT,
 	`cliente=${parseNum("EYE_HEIGHT")}`
 );
+// Fase 8 (mejora anti-cheat): la física del salto/gravedad debe ser idéntica
+// en ambos lados — el servidor valida el ascenso contra la parábola del salto
+// (JUMP_SPEED − GRAVITY·t) y calcula el daño de caída por velocidad vertical
+// (h = v²/(2·GRAVITY)) con estos valores; si el cliente saltara con otra
+// física, los movimientos legítimos se rechazarían como vuelo.
+check(
+	"JUMP_SPEED cliente (7) == servidor",
+	parseNum("JUMP_SPEED") === server.JUMP_SPEED,
+	`cliente=${parseNum("JUMP_SPEED")} servidor=${server.JUMP_SPEED}`
+);
+check(
+	"GRAVITY cliente (18) == servidor",
+	parseNum("GRAVITY") === server.GRAVITY,
+	`cliente=${parseNum("GRAVITY")} servidor=${server.GRAVITY}`
+);
 
 // --- 8) Los items de crafteo de la Fase 3/5 están todos en ITEM_NAMES ---
 {

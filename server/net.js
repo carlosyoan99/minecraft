@@ -17,6 +17,8 @@ const {
 	SPAWN_GRACE_MS,
 	SEED,
 	VOID_Y,
+	JUMP_SPEED,
+	WS_MAX_PAYLOAD,
 	B,
 	NOT_MINEABLE,
 	FUEL_ITEMS,
@@ -71,17 +73,25 @@ function broadcastNear(x, y, z, event, data, maxDist = CRACK_VIEW_DISTANCE) {
 // sendFn de minería (mining.js lo llama como (player, event, data)): en vez
 // de enviar solo al minero, hace broadcast de las grietas a todos los que
 // vean el bloque (el parámetro player se ignora: el propio minero también
-// queda dentro del radio). Cualquier otro evento de mining.js (por ahora
-// ninguno) no se reenvía.
-function broadcastMining(_player, event, data) {
-	if (event !== "block_break_progress") return;
-	if (
-		typeof data?.x !== "number" ||
-		typeof data?.y !== "number" ||
-		typeof data?.z !== "number"
-	)
+// queda dentro del radio). tool_broke es específico del minero (slot de su
+// inventario): se envía SOLO a él. Fix de regresión (Fase 7, animación de
+// rotura): antes este sendFn descartaba todo lo que no fuera
+// block_break_progress y el jugador nunca recibía tool_broke (ni el
+// feedback de rotura en el cliente ni el e2e-durabilidad).
+function broadcastMining(player, event, data) {
+	if (event === "block_break_progress") {
+		if (
+			typeof data?.x !== "number" ||
+			typeof data?.y !== "number" ||
+			typeof data?.z !== "number"
+		)
+			return;
+		broadcastNear(data.x, data.y, data.z, event, data);
 		return;
-	broadcastNear(data.x, data.y, data.z, event, data);
+	}
+	if (event === "tool_broke" && player?.ws?.readyState === 1) {
+		player.ws.send(JSON.stringify({ event, data }));
+	}
 }
 
 // Estado inicial completo para un jugador (init). Se reenvía tras un cambio
@@ -221,7 +231,15 @@ function handleConnection(ws, req) {
 		// Fase 7: caída en curso (pico alcanzado y último suelo firme) para el
 		// daño por caída (applyFallDamage en players.js).
 		fallFromY: null,
-		lastGroundY: null
+		lastGroundY: null,
+		// Fase 8 (mejora anti-cheat): velocidad vertical observada en el último
+		// move (dy/dt con dt mínimo de 50ms), tiempo acumulado en el aire y
+		// velocidad de descenso más rápida de la caída en curso (fallVy). El
+		// anti-cheat de vuelo valida el ascenso contra la parábola del salto y
+		// el daño de caída por velocidad usa fallVy.
+		vyObs: 0, // diagnóstico (última velocidad vertical observada, no se consume)
+		airTimeMs: 0,
+		fallVy: 0
 	};
 	state.players.set(playerId, player);
 	// biome-ignore lint/suspicious/noConsole: log de conexión (operación normal del servidor)
@@ -297,16 +315,59 @@ function handleConnection(ws, req) {
 					);
 					return;
 				}
+				// Fase 8 (mejora documentada): anti-cheat de vuelo — validar el
+				// ASCENSO contra la parábola del salto. Un salto legítimo parte de
+				// JUMP_SPEED bloques/s (máx ~0.35 bloques en un move de 50ms) y la
+				// gravedad lo frena; subir más rápido (o subir durante >1s seguido
+				// sin tocar suelo) es físicamente imposible aquí y denota un cliente
+				// alterado "volando" (el límite de velocidad solo limitaba el daño,
+				// no el ascenso sostenido). El dt se mide con mínimo de 50ms (el
+				// intervalo de envío del cliente) para no falsear la velocidad con
+				// ráfagas de red. En el agua no aplica (nadar hacia arriba es
+				// legítimo, SWIM_UP_SPEED).
+				const nowMs = Date.now();
+				const dtSec = Math.max(
+					0.05,
+					(nowMs - (p.lastMoveTime || nowMs - 50)) / 1000
+				);
+				const vyObs = (y - p.y) / dtSec; // bloques/s (negativo = cae)
+				p.vyObs = vyObs;
+				const feetBlock = world.getBlock(
+					Math.floor(x),
+					Math.floor(y - constants.EYE_HEIGHT - 0.1),
+					Math.floor(z)
+				);
+				const inWater = feetBlock === B.WATER;
+				const inAir = !isSolidBlock(feetBlock) && !inWater;
+				p.airTimeMs = inAir ? (p.airTimeMs || 0) + dtSec * 1000 : 0;
+				if (inAir && y - p.y > 0) {
+					// Parábola del salto: vy = JUMP_SPEED − GRAVITY·t (máx al iniciar
+					// el salto). Margen 1.5× por latencia/jitter; además ningún salto
+					// legítimo sube más de ~0.4s seguido (tras >1s en el aire, subir
+					// es volar).
+					if (vyObs > JUMP_SPEED * 1.5 || p.airTimeMs > 1000) {
+						ws.send(
+							JSON.stringify({
+								event: "teleport",
+								data: { x: p.x, y: p.y, z: p.z }
+							})
+						);
+						return;
+					}
+				}
 				p.x = x;
 				p.y = y;
 				p.z = z;
 				p.yaw = yaw || 0;
 				p.pitch = pitch || 0;
-				p.lastMoveTime = Date.now();
+				p.lastMoveTime = nowMs;
 				// Fase 7: daño por caída — el servidor infiere el suelo desde el
 				// mundo y aplica el daño al aterrizar (el agua lo anula; en creative
-				// lo descarta damagePlayer).
-				playerHelpers.applyFallDamage(p);
+				// lo descarta damagePlayer). Fase 8: además usa la velocidad vertical
+				// observada (vyObs) para detectar descensos acelerados que la
+				// trayectoria posicional no reflejaría (un cliente que baja "sin
+				// daño" reportando alturas falsas).
+				playerHelpers.applyFallDamage(p, vyObs);
 				// Generar chunks nuevos bajo demanda al moverse
 				const newChunks = world.ensureChunksAround(x, z, 2);
 				if (newChunks.length) {
@@ -696,6 +757,9 @@ function handleConnection(ws, req) {
 					p.openChest = null;
 					p.fallFromY = null; // la caída no viaja entre mundos
 					p.lastGroundY = null;
+					p.fallVy = 0;
+					p.vyObs = 0;
+					p.airTimeMs = 0;
 					world.ensureChunksAround(p.x, p.z, p.renderDistance);
 				}
 				sendInit(p); // confirmación: el cliente la usa para cerrar la carga
@@ -996,7 +1060,12 @@ function getServerMetrics() {
 
 function start() {
 	const server = http.createServer(app);
-	const wss = new WebSocket.Server({ server });
+	// Fase 8 (mejora documentada): límite explícito de tamaño de mensaje
+	// entrante (la librería ws usa ~100 MiB por defecto). Los mensajes del
+	// protocolo son pequeños (moves, chat ≤200 chars, block_action), así que
+	// 1 MiB basta para impedir que un cliente malicioso sature la memoria
+	// del servidor con payloads gigantes (ws cierra la conexión con 1009).
+	const wss = new WebSocket.Server({ server, maxPayload: WS_MAX_PAYLOAD });
 	wss.on("connection", handleConnection);
 
 	setInterval(mainLoop, TICK_MS);

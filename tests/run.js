@@ -40,6 +40,7 @@ const UNIT = [
 	"unit-armadura.js",
 	"unit-respawn.js",
 	"unit-caida.js",
+	"unit-anticheat.js", // Mejoras documentadas: maxPayload WS + anti-cheat de vuelo
 	"unit-crack.js",
 	"unit-terreno.js",
 	"unit-itemicons.js",

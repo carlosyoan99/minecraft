@@ -49,6 +49,25 @@ const FALL_DAMAGE_FREE_BLOCKS = 3;
 // reaparece (solo lo necesita el servidor: el respawn envía el teleport).
 const VOID_Y = -8;
 
+// Física del movimiento (Fase 8, mejora anti-cheat): paridad con el cliente
+// (public/player.js, JUMP_SPEED=7/GRAVITY=18). El servidor usa estos valores
+// para validar el ascenso contra la parábola del salto (vy = JUMP_SPEED -
+// GRAVITY·t, distancia subida = JUMP_SPEED·dt - GRAVITY·dt²/2) y para
+// inferir la altura de una caída desde la velocidad vertical observada
+// (h = v²/(2·GRAVITY)) cuando el jugador aterriza más rápido de lo que su
+// trayectoria posicional sugiere. Mantener en sincronía con public/player.js
+// (lo verifica tests/unit-sync.js).
+const JUMP_SPEED = 7; // bloques/s de velocidad vertical inicial del salto
+const GRAVITY = 18; // bloques/s² de gravedad (caída libre)
+
+// Límite de tamaño de mensaje WS entrante (Fase 8, mejora documentada): la
+// librería `ws` aplica su default de ~100 MiB por mensaje; los mensajes
+// reales del protocolo son pequeños (moves, chat ≤200 chars, block_action),
+// así que 1 MiB basta para impedir que un cliente malicioso sature la
+// memoria del servidor con payloads gigantes. Por encima de esto `ws`
+// cierra la conexión (1009).
+const WS_MAX_PAYLOAD = 1 * 1024 * 1024;
+
 // Persistencia (paths y versión del formato de guardado)
 const WORLD_ROOT = path.join(__dirname, "..", "world");
 // Nombre de directorio seguro a partir de una semilla (función pura, testeable)
@@ -536,6 +555,9 @@ module.exports = {
 	EYE_HEIGHT,
 	FALL_DAMAGE_FREE_BLOCKS,
 	VOID_Y,
+	JUMP_SPEED,
+	GRAVITY,
+	WS_MAX_PAYLOAD,
 	WORLD_ROOT,
 	seedDir,
 	setWorldSeed,

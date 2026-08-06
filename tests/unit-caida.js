@@ -18,7 +18,8 @@ const {
 	EYE_HEIGHT,
 	FALL_DAMAGE_FREE_BLOCKS,
 	VOID_Y,
-	ARMOR_DURABILITY
+	ARMOR_DURABILITY,
+	GRAVITY
 } = require("../server/constants.js");
 
 world.setDiskLoader(() => null); // sin I/O de disco en los tests
@@ -83,6 +84,10 @@ check("nunca negativo", playerHelpers.fallDamage(1) === 0);
 
 // ============================================================
 // CAÍDA REAL VÍA MOVES: el servidor infiere el suelo y aplica el daño
+// (Fase 8, anti-cheat: los moves de ascenso/descenso se miden con la física
+// real — un move de 1 bloque en 50ms sería "volar", ya no es legítimo, así
+// que la caída se simula en pasos de 0.5 bloques con el pico configurado
+// como hacen los tests de armadura/agua).
 // ============================================================
 {
 	const { ws, player: p } = connect();
@@ -105,11 +110,16 @@ check("nunca negativo", playerHelpers.fallDamage(1) === 0);
 	// De pie sobre el piso (registra el suelo firme)…
 	p.y = landing;
 	move(landing);
-	// …subir 11 bloques (pico de la caída, como al subir una colina)…
-	for (let i = 1; i <= 11; i++) move(landing + i);
-	// …y caer de vuelta al piso: 11 bloques → 8 de daño (health 20 → 12).
+	// …el pico de la caída (subir una colina de 11 bloques saltando; el pico
+	// queda en fallFromY como en el test de armadura)…
+	p.fallFromY = landing + 11;
+	p.lastGroundY = landing;
+	p.y = landing + 11;
+	// …y caer de vuelta al piso en pasos de 0.5 bloques (física plausible: el
+	// ascenso de 1 bloque por move ya no es legítimo con el anti-cheat): 11
+	// bloques → 8 de daño (health 20 → 12).
 	ws.sent.length = 0;
-	for (let i = 1; i <= 11; i++) move(landing + 11 - i);
+	for (let i = 1; i <= 22; i++) move(landing + 11 - i * 0.5);
 	check(
 		"caída de 11 bloques → 8 de daño",
 		p.health === 12,
@@ -123,13 +133,72 @@ check("nunca negativo", playerHelpers.fallDamage(1) === 0);
 			return hs.length > 0 && hs[hs.length - 1].data.health === 12;
 		})()
 	);
-	// Saltos cortos no dañan: subir 2 y bajar → sin pérdida de salud.
+	// Saltos cortos no dañan: caer 2 bloques en pasos de 0.5 → sin pérdida.
 	p.health = 20;
-	for (let i = 1; i <= 2; i++) move(landing + i);
-	for (let i = 1; i <= 2; i++) move(landing + 2 - i);
+	p.fallFromY = landing + 2;
+	p.lastGroundY = landing;
+	p.y = landing + 2;
+	for (let i = 1; i <= 4; i++) move(landing + 2 - i * 0.5);
 	check(
 		"caída de 2 bloques (salto) → sin daño",
 		p.health === 20,
+		`health=${p.health}`
+	);
+}
+
+// ============================================================
+// DAÑO POR VELOCIDAD VERTICAL INFERIDA (Fase 8, mejora anti-cheat)
+// El daño por caída usa también la velocidad de descenso observada
+// (h = v²/(2·GRAVITY)): si el jugador aterriza con una velocidad que
+// corresponde a una caída mayor que la altura posicional, se aplica la
+// mayor. Un descenso a 20 bloques/s equivale a una caída de ~11 bloques.
+// ============================================================
+{
+	const { player: p } = connect();
+	// Piso de piedra en (6,5) y columna limpia arriba.
+	world.setBlock(6, 5, 6, B.STONE);
+	for (let y = 6; y <= 20; y++) world.setBlock(6, y, 6, B.AIR);
+	p.x = 6.5;
+	p.z = 6.5;
+	const landing = 5 + EYE_HEIGHT + 1;
+	// El jugador "cae" con la posición casi quieta (altura posicional 0) pero
+	// con una velocidad de descenso alta: la velocidad revela la caída real.
+	p.fallFromY = landing;
+	p.lastGroundY = landing;
+	p.y = landing;
+	p.fallVy = -20; // v = 20 bloques/s de descenso → h = v²/(2·g) ≈ 11.1 bloques
+	p.health = 20;
+	playerHelpers.applyFallDamage(p);
+	check(
+		"velocidad de descenso alta → daño por velocidad inferida",
+		p.health <= 20 - (11 - FALL_DAMAGE_FREE_BLOCKS),
+		`health=${p.health}`
+	);
+	check("fallVy se liquida al aterrizar", p.fallVy === 0);
+}
+
+// ============================================================
+// CAÍDA LENTA: la velocidad de descenso legítima NO añade daño extra
+// (en caídas reales la velocidad coincide con la altura posicional).
+// ============================================================
+{
+	const { player: p } = connect();
+	world.setBlock(7, 5, 7, B.STONE);
+	for (let y = 6; y <= 20; y++) world.setBlock(7, y, 7, B.AIR);
+	p.x = 7.5;
+	p.z = 7.5;
+	const landing = 5 + EYE_HEIGHT + 1;
+	p.fallFromY = landing + 10;
+	p.lastGroundY = landing;
+	p.y = landing;
+	// Velocidad de descenso consistente con 10 bloques: v = sqrt(2·g·10) ≈ 19.
+	// h = v²/(2·g) = 10 → no supera la altura posicional (mismo daño: 7).
+	p.fallVy = -Math.sqrt(2 * GRAVITY * 10);
+	p.health = 20;
+	playerHelpers.applyFallDamage(p);
+	check(
+		"velocidad legítima → el daño es el posicional (10 bloques → 7)",
+		p.health === 20 - (10 - FALL_DAMAGE_FREE_BLOCKS),
 		`health=${p.health}`
 	);
 }

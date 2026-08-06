@@ -13,6 +13,7 @@ const {
 	EYE_HEIGHT,
 	FALL_DAMAGE_FREE_BLOCKS,
 	SPAWN_GRACE_MS,
+	GRAVITY,
 	ORE_XP,
 	canHarvest,
 	FOOD_VALUES,
@@ -286,6 +287,12 @@ function respawnPlayer(player) {
 	// La caída en curso no sobrevive al respawn (el daño por caída se reinicia).
 	player.fallFromY = null;
 	player.lastGroundY = null;
+	// Fase 8 (mejora anti-cheat): la velocidad de descenso observada y el
+	// reloj del aire tampoco viajan al respawn (el jugador no "cae" al
+	// reaparecer, igual que fallFromY).
+	player.fallVy = 0;
+	player.vyObs = 0;
+	player.airTimeMs = 0;
 	// B2 (Fase 8): gracia inicial al reaparecer (30s sin daño de mobs).
 	player.spawnGraceUntil = Date.now() + SPAWN_GRACE_MS;
 	// Respawn (la XP y el nivel se conservan; la salud máxima sí aplica).
@@ -340,7 +347,14 @@ function fallDamage(fallBlocks) {
 	return Math.max(0, Math.floor(fallBlocks) - FALL_DAMAGE_FREE_BLOCKS);
 }
 
-function applyFallDamage(player) {
+// vyObs = velocidad vertical observada en el move actual (bloques/s, negativa
+// al caer; la pasa net.js). Durante la caída se acumula el descenso MÁS rápido
+// observado (fallVy) y al aterrizar se usa para inferir la altura equivalente
+// h = v²/(2·GRAVITY): un cliente que baja "sin daño" reportando trayectorias
+// falsas (o descensos acelerados que la posición no refleja) sí recibe el daño
+// de su velocidad real. En caídas legítimas la velocidad coincide con la
+// altura posicional (conservación de energía), así que no cambia el daño.
+function applyFallDamage(player, vyObs = 0) {
 	const bx = Math.floor(player.x);
 	const bz = Math.floor(player.z);
 	const feet = player.y - EYE_HEIGHT; // el cliente envía la altura del ojo
@@ -354,14 +368,27 @@ function applyFallDamage(player) {
 		// (solo fuera del agua: el fondo de un lago no es un buen "suelo").
 		if (player.fallFromY != null) {
 			if (!inWater) {
-				const dmg = fallDamage(player.fallFromY - player.y);
+				const hPos = player.fallFromY - player.y;
+				// Altura inferida por la velocidad de descenso (h = v²/(2·g)): se
+				// usa el MÁXIMO de ambas (en caídas reales coinciden).
+				let blocks = hPos;
+				const fallVy = player.fallVy ?? 0;
+				if (fallVy < 0) {
+					const hVy = (fallVy * fallVy) / (2 * GRAVITY);
+					if (hVy > blocks) blocks = hVy;
+				}
+				const dmg = fallDamage(blocks);
 				if (dmg > 0)
 					damagePlayer(player, dmg, {
 						source: "fall",
-						meta: { fallBlocks: player.fallFromY - player.y }
+						meta: {
+							fallBlocks: hPos,
+							hFromVy: fallVy < 0 ? (fallVy * fallVy) / (2 * GRAVITY) : 0
+						}
 					});
 			}
 			player.fallFromY = null;
+			player.fallVy = 0;
 		}
 		if (!inWater) player.lastGroundY = player.y;
 		return;
@@ -369,6 +396,7 @@ function applyFallDamage(player) {
 	if (inWater) {
 		// Nadando: no hay daño por caída y se olvida la caída en curso.
 		player.fallFromY = null;
+		player.fallVy = 0;
 		return;
 	}
 	// En el aire: el pico de la caída es el punto más alto desde el último
@@ -378,6 +406,9 @@ function applyFallDamage(player) {
 		player.lastGroundY ?? player.y,
 		player.y
 	);
+	// Velocidad de descenso más rápida observada en esta caída (el move del
+	// aterrizaje ya tiene dy≈0, así que se captura aquí, en el aire).
+	if (vyObs < (player.fallVy ?? 0)) player.fallVy = vyObs;
 }
 
 // ============================================================
