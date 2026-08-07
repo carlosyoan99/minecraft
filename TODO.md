@@ -1633,6 +1633,66 @@ independientes entre sí.*
 
 ---
 
+## Fase 9.5 — Mejoras de skills, documentación técnica y .gitignore
+*Objetivo: aplicar una selección de mejoras recomendadas por las skills de
+desarrollo de juegos instaladas en `.agents/skills/` (physics-tuning,
+camera-systems, save-systems, audio-design), documentar la arquitectura y
+las mecánicas del proyecto en `docs/server/` y `docs/public/` (cómo
+funciona + por qué), y configurar el `.gitignore` correctamente. Fase
+pequeña, cerrada en un commit.*
+
+### Mejoras de las skills (verificadas contra el código)
+- [x] **A — Colisión de flechas con bloques** (`physics-tuning`,
+      anti-tunneling): `tickArrows` en `server/mobs.js` barre el segmento
+      del tick en pasos de ~0.25 bloques contra `isSolidBlock(world.getBlock)`;
+      la flecha muere al chocar con cualquier bloque sólido (ya no atraviesa
+      paredes a 14 bloques/s). La colisión con jugadores se comprueba ANTES
+      que la de bloques (el jugador al que apunta el esqueleto siempre recibe
+      el golpe aunque esté pegado a una pared — no "arreglar" ese orden).
+      Test de regresión en `tests/unit-mobs-ia.js` (bloque 6b)
+- [x] **B — Clamp de pitch de cámara** (`camera-systems`): `public/scene.js`
+      limita `camera.rotation.x` a ±(π/2 − 0.1) (~84°) con el evento
+      `change` de PointerLockControls; la cámara ya no se voltea sobre la
+      cabeza ni provoca mareos
+- [x] **C — Backup `.bak` del guardado** (`save-systems`): `server/save.js`
+      copia `world.json` a `world.json.bak` antes de sobrescribir;
+      `loadWorld` restaura desde `.bak` si el principal es ilegible y, si
+      ambos fallan, no se pisa nada (rechazo). Test en
+      `tests/unit-persistencia.js` (bloque 5b)
+- [x] **D — Variación de pitch en audio** (`audio-design`): helper
+      `pitchVar()` ±6% aplicado a pasos, roturas, colocaciones, golpes y
+      grietas en `public/audio.js` — el sonido repetitivo deja de ser
+      robótico en sesiones largas
+
+### Documentación técnica (docs/server y docs/public)
+- [x] `docs/server/README.md` — arquitectura del servidor (autoridad,
+      hooks de broadcast, bucle 20 Hz, persistencia, mundos por semilla,
+      protocolo WS)
+- [x] `docs/server/mecanicas.md` — 9 mecánicas con "cómo funciona + por qué"
+- [x] `docs/public/README.md` — arquitectura del cliente (sin build step,
+      módulos puros vs impuros, bucle de render, verificación CDP)
+- [x] `docs/public/mecanicas.md` — 12 mecánicas del cliente con "cómo + por
+      qué" (chunks/culling, geopool, LOD, luz, atlas, mobs multibloque,
+      predicción, cielo, input, audio, UI, rendimiento)
+- [x] `docs/README.md` actualizado (índice con la documentación técnica
+      nueva y el estado de fases al día)
+
+### Infraestructura
+- [x] `.gitignore` configurado: `node_modules/`, `world/`, `tmp-*`,
+      `.agents/`, `.DS_Store`/`Thumbs.db`/`*.swp`, `.vscode/`/`.idea/`,
+      `*.log`, `.env`/secretos con `!.env.example`
+
+### Verificación final de Fase 9.5
+- [x] Suite unitaria EXIT=0 (con los 2 tests de regresión nuevos) + E2E
+      EXIT=0 + auditoría CDP de Fase 7 OK (169 chunks, 0 excepciones) tras
+      el cambio de cliente (clamp de cámara en `scene.js`)
+- [x] `biome check` 0 errores en lo tocado y `node --check` en todo
+- [x] Revisión del code-reviewer aplicada (fix de `let meta;` fusionada en
+      un comentario por el formatter de biome — mismo patrón que el bug de
+      `food` de la Fase 9)
+
+---
+
 ## Fase 10 — Notas del usuario, correcciones pendientes y paridad avanzada
 *Objetivo: cerrar los bugs de `Notas del usuario.md` que la Fase 9 NO
 cubre (son bugs de mundo/física, no de minería/menú/IA), sumar las
@@ -1644,7 +1704,7 @@ no. **No se repite aquí nada que ya sea Bloque F de la Fase 9**
 si al llegar a esta fase esos puntos siguen pendientes es porque la Fase
 9 se quedó corta, y se retoman ahí, no aquí — ver "Errores encontrados"
 más abajo.*
-Especificación: [`docs/fase10-spec.md`](docs/fase10-spec.md) (prospectiva, pendiente de ejecución).
+Especificación: [`docs/fase10-spec.md`](docs/fase10-spec.md) (prospectiva, en ejecución por bloques).
 
 ### Bloque A — Bugs de `Notas del usuario.md` (prioridad alta, no cubiertos por Fase 9)
 - [ ] Salir del agua: corregir la flotación para no quedarse atascado
@@ -1665,6 +1725,8 @@ Especificación: [`docs/fase10-spec.md`](docs/fase10-spec.md) (prospectiva, pend
 - [ ] Selector de tamaño de mundo al crear (debug 64×64 solo interno,
       no visible al jugador / pequeño 256×256 / medio 512×512 / grande
       1024×1024) / infinito (8192x8192)
+- [ ] Mundo de 128 bloques de altura, terreno a 0 bloques, +64 para
+      superficie y el cielo y -64 para cuevas
 - [ ] Pantalla de muerte que refleje la causa (mob, caída, lava,
       ahogamiento, inanición...)
 - [ ] Comando `/kill [nombre]` (solo operadores; sin nombre, se aplica a

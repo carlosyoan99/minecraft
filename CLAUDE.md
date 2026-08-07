@@ -138,7 +138,7 @@ mantiene sincronizado manualmente (o lo verifica un test):
   (fundición). Son del servidor; el cliente solo envía el grid.
   Lo valida `tests/unit-recetas.js` (IDs existentes, shapes bien
   formadas y alcanzables — habría detectado el bug `hilo_a_lana`).
-- **Formato de guardado:** `SCHEMA_VERSION` (actual 2), `WORLD_DIR`
+- **Formato de guardado:** `SCHEMA_VERSION` (actual 3), `WORLD_DIR`
   (por semilla: `world/<semilla>/`), `CHUNKS_DIR`, `META_FILE`,
   `LEGACY_FILE` en `constants.js`. La semilla se configura con la
   env var `SEED` (defecto `miSemilla2026`); cada semilla tiene su
@@ -215,5 +215,5 @@ lados y añade la receta si aplica; el CI de tests lo audita.
   ni clima — están explícitamente fuera de alcance (ver "Won't" en
   `TODO.md`).
 - No optimizar prematuramente (greedy meshing, workers, frustum
-  culling, etc.) antes de que el `TODO.md` lo indique — la Fase 6
+  culling, etc.) antes de que el `TODO.md` lo indique — la Fase 10
   tiene su momento para eso, cada fase tiene su momento.

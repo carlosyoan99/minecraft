@@ -104,12 +104,24 @@ function tickArrows(dtMs) {
 	for (const a of state.arrows) {
 		a.life -= dtMs;
 		if (a.life <= 0) continue;
+		// Posición previa: necesaria para el barrido anti-tunneling (la flecha a
+		// 14 bloques/s avanza 0.7 bloques por tick — podría saltarse una pared de
+		// 1 bloque si solo se comprobara el punto final).
+		const px = a.x,
+			py = a.y,
+			pz = a.z;
 		// Gravedad: la flecha cae (la Y de los ojos es la de los pies + 1.4).
 		a.vy -= ARROW_GRAVITY * dt;
 		a.x += a.vx * dt;
 		a.y += a.vy * dt;
 		a.z += a.vz * dt;
-		// Colisión con un jugador (distancia simple, sin raycast exacto).
+		// Colisión con un jugador (distancia simple, sin raycast exacto). Se
+		// comprueba ANTES que los bloques A PROPÓSITO: un impacto válido a 0.7
+		// bloques gana a la pared en la que el jugador está de pie, y el test 6
+		// de unit-mobs-ia depende de este orden (flecha estática sobre el
+		// jugador con mock de bloques sólidos). Caso borde aceptado: un jugador
+		// pegado a una pared y a <0.7 de la flecha podría recibir daño a través
+		// de ella.
 		let hit = false;
 		for (const p of players.values()) {
 			if (Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) < ARROW_HIT_DIST) {
@@ -119,6 +131,26 @@ function tickArrows(dtMs) {
 				});
 				hit = true;
 				break;
+			}
+		}
+		// Colisión con bloques sólidos: barrido del segmento recorrido este tick
+		// en pasos de ~0.25 bloques. Una pared de 1 bloque detiene la flecha
+		// (antes la atravesaba y golpeaba a quien estuviera detrás).
+		if (!hit) {
+			const dx = a.x - px,
+				dy = a.y - py,
+				dz = a.z - pz;
+			const dist = Math.hypot(dx, dy, dz) || 0.0001;
+			const steps = Math.max(1, Math.ceil(dist / 0.25));
+			for (let s = 1; s <= steps; s++) {
+				const t = s / steps;
+				const bx = Math.floor(px + dx * t);
+				const by = Math.floor(py + dy * t);
+				const bz = Math.floor(pz + dz * t);
+				if (isSolidBlock(world.getBlock(bx, by, bz))) {
+					hit = true;
+					break;
+				}
 			}
 		}
 		if (!hit) alive.push(a);
@@ -517,7 +549,7 @@ class Mob {
 	// natural (con pausas y pastar), volver al rebaño (homeX/homeZ) y dormir
 	// de noche (se agrupan y se quedan quietos — estético).
 	// ============================================================
-	tickPassive(isNight, nearest, dist) {
+	tickPassive(isNight, _nearest, _dist) {
 		// Dormir de noche: se agrupan en el punto medio del rebaño y se quedan
 		// quietos (estado 'sleep'); de día vuelven a su vida normal.
 		if (isNight) {

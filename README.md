@@ -69,10 +69,17 @@ mi-minecraft/
 │   ├── input.js           Ratón (pointer lock), teclado, clics
 │   ├── ui.js              HUD (salud, hambre, XP, hotbar, durabilidad) + menú con semilla
 │   ├── audio.js           Sonidos procedurales (Web Audio, sin assets)
+│   ├── particles.js       Partículas de bloques al romper/colocar (pool con física)
 │   ├── textures.js        Atlas de texturas procedural de bloques (canvas 16x16 px)
 │   ├── mobtextures.js     Atlas procedural de texturas de mobs (canvas 16x16 px, reemplaza MOB_COLORS)
+│   ├── itemicons.js       Iconos procedurales de ítems para inventario/hotbar/recetas
 │   ├── lighting.js        Luz de antorcha por bloque (BFS pura, testeable en Node)
 │   ├── daynight.js        Ciclo día/noche visual (cielo, luz, ambiente)
+│   ├── sky.js             Cielo procedural: degradado, sol/luna con fases, estrellas
+│   ├── skycolors.js       Paletas de color del cielo por hora del día
+│   ├── settings.js        Ajustes del menú persistidos en localStorage
+│   ├── quality.js         Calidad gráfica (renderDistance, LOD, luces)
+│   ├── recipeCategories.js Categorías del libro de recetas (módulo puro, testeable)
 │   └── estilo.css
 ├── CLAUDE.md              Guía para IA que trabaje en el repo (convenciones)
 ├── CONTRIBUTING.md        Guía para contribuir (tests, commits, flujo)
@@ -119,7 +126,7 @@ volver a una semilla anterior recupera su mundo).
 
 ## Estado actual
 
-### ✅ Implementado (Fases 0 a 7 completadas)
+### ✅ Implementado (Fases 0 a 9.5 completadas)
 
 > Especificaciones por fase (diseño, decisiones y estado):
 > [`docs/README.md`](docs/README.md).
@@ -183,19 +190,34 @@ volver a una semilla anterior recupera su mundo).
   seguridad (gate de operador, distancias, `init` limitado al radio
   de render) y limpieza de código muerto — todo procedural o CSS,
   sin assets externos.
+- **Fase 8 — Caza de bugs:** corrección de los 10 bugs del playtest
+  (B1-B10): combate y raycast de mobs (rango 7, feedback `mob_hit`,
+  knockback), minería a mano, pérdida de vida con telemetría
+  `damage_debug` + zona segura de spawn, controles A/D con opción
+  invertida, ciclo día/noche a 20 min, tecla E, LOD, estrellas solo
+  de noche, sol amarillo + fases lunares de 8 días, mobs multibloque
+  con atlas por partes.
+- **Fase 9 — Mejoras de paridad, IA, mundo y menú:** minería
+  funcional (causa raíz del `mcChunks: 0` corregida), modo de juego
+  por mundo persistido + borrado de mundos, curva de XP estilo
+  Minecraft, azadas/cultivos, dormir salta la noche, IA por especie
+  (esqueleto con flechas, fuse de creeper, quema solar, araña que
+  escala, huida de pasivos, rebaño), minerales por altura y playas,
+  libro de recetas por categorías (tecla B).
+- **Fase 9.5 — Mejoras de skills, documentación y `.gitignore`:**
+  colisión de flechas con bloques (anti-tunneling), clamp de pitch
+  de cámara, backup `.bak` del guardado, variación de pitch en audio,
+  documentación técnica en `docs/server/` y `docs/public/`, y
+  `.gitignore` completo.
 
 ### 🚧 En desarrollo
 
-- **Fase 8 — Caza de bugs** (ver `TODO.md` y `docs/fase8-spec.md`):
-  corrección de los errores del playtest de Fase 7. Priorizados:
-  combate y raycast de mobs (B10 — hecho: rango 7, feedback
-  `mob_hit`, knockback, tolerancia de apuntado), minería a mano (B3),
-  pérdida de vida sin causa con telemetría de daño por origen
-  (B2 — telemetría `damage_debug` implementada, diagnóstico en
-  curso), controles A/D + opción "controles invertidos" (B1), ciclo
-  día/noche a 20 min (B4), tecla E solo abre inventario en juego
-  (B5), estrellas solo de noche (B7), sol amarillo + fases lunares
-  (B8), mobs multibloque (B9) y fix del LOD (B6).
+- **Fase 10 — Notas del usuario y paridad avanzada** (ver `TODO.md` y
+  `docs/fase10-spec.md`): bugs de las notas (salir del agua, lava,
+  hitbox, `/tp`, biomas de hielo, agua profunda, hostiles por luz),
+  tamaño de mundo, pantalla de muerte, `/kill`, `test.log`, caída de
+  arena/grava, TNT, sprint, picker creativo, pick-block, agacharse,
+  visuales (AO, agua, niebla, nubes) y audio.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -251,7 +273,7 @@ en el servidor y `public/network.js` en el cliente).
 | `inventory_update` | `{inventory}` | Inventario completo (con `durability`) |
 | `health_update` | `{health, maxHealth}` | Salud |
 | `food_update` | `{food, saturation}` | Hambre y saturación |
-| `xp_update` / `level_up` | `{xp, level}` | Experiencia |
+| `xp_update` / `level_up` | `{xp, level, xpInto, xpToNext}` | Experiencia (curva no lineal estilo MC) |
 | `tool_broke` | `{slot}` | Herramienta rota (sonido + aviso) |
 | `eat_rejected` | `{}` | "No tienes hambre" |
 | `crafting_grid_update` | `{grid, success}` | Resultado del crafteo |

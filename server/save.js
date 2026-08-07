@@ -82,6 +82,21 @@ function saveWorld() {
 		}
 		dirtyChunks.clear();
 
+		// Copia de seguridad del último world.json válido (Fase 10, skill
+		// save-systems): si el principal se corrompe (corte de luz, disco
+		// defectuoso), loadWorld puede restaurar el .bak en vez de perder el
+		// mundo. Se copia el archivo ANTERIOR (antes de sobrescribir), así el
+		// .bak siempre es el último guardado completo.
+		if (fs.existsSync(P.metaFile)) {
+			try {
+				fs.copyFileSync(P.metaFile, `${P.metaFile}.bak`);
+			} catch (e) {
+				// biome-ignore lint/suspicious/noConsole: error real de backup (no silenciar)
+				console.warn(
+					`⚠️  No se pudo crear el backup de world.json: ${e.message}`
+				);
+			}
+		}
 		world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
 		// biome-ignore lint/suspicious/noConsole: log periódico del guardado automático
 		console.log(
@@ -113,7 +128,25 @@ function loadWorld() {
 		}
 
 		if (fs.existsSync(P.metaFile)) {
-			const meta = JSON.parse(fs.readFileSync(P.metaFile, "utf8"));
+			// Leer el meta de forma defensiva: si el principal está corrupto,
+			// restaurar desde el .bak (el último guardado completo). Solo si el
+			// backup tampoco es legible se propaga el error (el catch exterior
+			// devuelve 'rechazo' y no toca nada).
+			let meta;
+			try {
+				meta = JSON.parse(fs.readFileSync(P.metaFile, "utf8"));
+			} catch (e) {
+				const bak = `${P.metaFile}.bak`;
+				if (fs.existsSync(bak)) {
+					// biome-ignore lint/suspicious/noConsole: aviso de restauración
+					console.warn(
+						"⚠️  world.json ilegible; restaurando el backup (.bak)"
+					);
+					meta = JSON.parse(fs.readFileSync(bak, "utf8"));
+				} else {
+					throw e;
+				}
+			}
 			if (
 				typeof meta.schemaVersion === "number" &&
 				meta.schemaVersion > SCHEMA_VERSION

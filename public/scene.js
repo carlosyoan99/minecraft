@@ -58,6 +58,17 @@ scene.add(sun);
 applyQuality(QUALITY_DEFAULT);
 
 export const controls = new PointerLockControls(camera, document.body);
+
+// Clamp de pitch (Fase 10, skill camera-systems): sin él la cámara puede
+// voltearse sobre la cabeza al mirar demasiado arriba/abajo (desorientación).
+// PointerLockControls no clampea la rotación vertical por defecto; se corrige
+// en cada 'change' (cada mousemove) antes del render, como en cualquier FPS.
+const PITCH_LIMIT = Math.PI / 2 - 0.1; // ~84°: no mirar más allá de vertical
+controls.addEventListener("change", () => {
+	if (camera.rotation.x > PITCH_LIMIT) camera.rotation.x = PITCH_LIMIT;
+	else if (camera.rotation.x < -PITCH_LIMIT) camera.rotation.x = -PITCH_LIMIT;
+});
+
 const blocker = document.getElementById("blocker");
 const craftingUI = document.getElementById("crafting-ui");
 const furnaceUI = document.getElementById("furnace-ui");

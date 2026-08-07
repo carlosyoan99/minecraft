@@ -1,2 +1,39 @@
-node_modules
-world
+# ============================================================
+# .gitignore del proyecto (clon de Minecraft)
+# Convención: node_modules/ y world/ (datos de mundo generados)
+# nunca se versionan; tampoco los temporales de auditoría (tmp-*),
+# ver CONTRIBUTING.md §Commits.
+# ============================================================
+
+# --- Node.js ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# --- Datos de mundo generados (por semilla, se regeneran) ---
+world/
+
+# --- Temporales de auditoría y diagnóstico ---
+tmp-*
+/tmp/
+
+# --- Entorno de agentes (skills de tooling, no parte del juego) ---
+.agents/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# --- Editores / IDEs ---
+.vscode/
+.idea/
+*.code-workspace
+
+# --- Secretos y configuración local ---
+.env
+.env.*
+!.env.example

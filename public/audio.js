@@ -101,6 +101,13 @@ function materialFor(blockId) {
 // SÍNTESIS BÁSICA
 // ============================================================
 
+// Variación de tono ±6% (Fase 10, skill audio-design: SFX variation): los
+// sonidos repetidos (pasos, roturas, golpes) no suenan a "ametralladora"
+// robótica. Se aplica multiplicando la frecuencia base de cada evento.
+function pitchVar() {
+	return 0.94 + Math.random() * 0.12;
+}
+
 // Ráfaga de ruido filtrado con envolvente rápida (ataque/decaimiento)
 function noiseBurst({ t, freq, q, vol, dur, type = "bandpass" }) {
 	const src = ctx.createBufferSource();
@@ -176,16 +183,22 @@ export function playBreak(blockId) {
 	if (!ensureCtx()) return;
 	const m = materialFor(blockId);
 	const t = ctx.currentTime + 0.001;
-	noiseBurst({ t, freq: m.hit, q: 1.2, vol: 0.5, dur: 0.12 });
-	thud({ t, freq: m.thud, vol: 0.45, dur: 0.12 });
+	noiseBurst({ t, freq: m.hit * pitchVar(), q: 1.2, vol: 0.5, dur: 0.12 });
+	thud({ t, freq: m.thud * pitchVar(), vol: 0.45, dur: 0.12 });
 }
 
 export function playPlace(blockId) {
 	if (!ensureCtx()) return;
 	const m = materialFor(blockId);
 	const t = ctx.currentTime + 0.001;
-	noiseBurst({ t, freq: m.hit * 0.7, q: 1.6, vol: 0.3, dur: 0.07 });
-	thud({ t, freq: m.thud, vol: 0.3, dur: 0.07 });
+	noiseBurst({
+		t,
+		freq: m.hit * 0.7 * pitchVar(),
+		q: 1.6,
+		vol: 0.3,
+		dur: 0.07
+	});
+	thud({ t, freq: m.thud * pitchVar(), vol: 0.3, dur: 0.07 });
 }
 
 // ============================================================
@@ -194,8 +207,15 @@ export function playPlace(blockId) {
 export function playCrack() {
 	if (!ensureCtx()) return;
 	const t = ctx.currentTime + 0.001;
-	noiseBurst({ t, freq: 2600, q: 0.8, vol: 0.5, dur: 0.09, type: "highpass" });
-	thud({ t: t + 0.02, freq: 60, vol: 0.35, dur: 0.1 });
+	noiseBurst({
+		t,
+		freq: 2600 * pitchVar(),
+		q: 0.8,
+		vol: 0.5,
+		dur: 0.09,
+		type: "highpass"
+	});
+	thud({ t: t + 0.02, freq: 60 * pitchVar(), vol: 0.35, dur: 0.1 });
 }
 
 // ============================================================
@@ -206,8 +226,15 @@ export function playCrack() {
 export function playHit() {
 	if (!ensureCtx()) return;
 	const t = ctx.currentTime + 0.001;
-	noiseBurst({ t, freq: 1800, q: 1, vol: 0.45, dur: 0.06, type: "bandpass" });
-	thud({ t: t + 0.01, freq: 110, vol: 0.5, dur: 0.1 });
+	noiseBurst({
+		t,
+		freq: 1800 * pitchVar(),
+		q: 1,
+		vol: 0.45,
+		dur: 0.06,
+		type: "bandpass"
+	});
+	thud({ t: t + 0.01, freq: 110 * pitchVar(), vol: 0.5, dur: 0.1 });
 }
 
 // ============================================================
@@ -268,7 +295,7 @@ export function playStep(blockId) {
 	stepAlt = !stepAlt;
 	noiseBurst({
 		t,
-		freq: m.hit * (stepAlt ? 0.9 : 1.1),
+		freq: m.hit * (stepAlt ? 0.9 : 1.1) * pitchVar(),
 		q: 1.4,
 		vol: 0.12,
 		dur: 0.055,

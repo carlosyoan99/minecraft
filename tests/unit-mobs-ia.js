@@ -309,6 +309,52 @@ check(
 	resetPlayers();
 }
 
+// --- 6b) las flechas chocan con bloques sólidos (Fase 10, skill
+//      physics-tuning: anti-tunneling) ---
+// Antes la flecha solo comprobaba distancia a jugadores: atravesaba paredes
+// y golpeaba a quien estuviera detrás. Ahora se barre el segmento recorrido
+// por tick en pasos de ~0.25 bloques y se clava en la primera pared.
+{
+	resetPlayers();
+	state.arrows = [];
+	// Jugador DETRÁS de una pared en x=3 (el mock: aire salvo x>=3 → piedra).
+	// Nota: x=10 cae en la región "piedra" del mock, pero la colisión con
+	// jugador es por DISTANCIA (no mira bloques), así que el jugador está
+	// intacto; la pared es lo que detiene la flecha.
+	const p = mkPlayer({ id: "pb2", x: 10, y: 10, z: 0 });
+	state.players.set(p.id, p);
+	const origGet = world.getBlock;
+	// Pared vertical completa en x>=3 (todos los y): la flecha vuela a ~y=10 y
+	// la gravedad la hace caer durante el tick; la pared debe cubrir toda la
+	// columna para que el barrido la detenga aunque la flecha baje.
+	world.getBlock = (x, _y, _z) => (x >= 3 ? 3 : 0);
+	// Flecha volando hacia la pared: de x=2.5 a x=3.2 en un tick (0.7 bloques),
+	// el barrido encuentra la piedra en x=3 y la detiene.
+	state.arrows.push({
+		x: 2.5,
+		y: 10,
+		z: 0,
+		vx: 14,
+		vy: 0,
+		vz: 0,
+		life: 2500
+	});
+	const alive = mobs.tickArrows(50);
+	world.getBlock = origGet;
+	check(
+		"la flecha se clava en una pared de piedra (no la atraviesa)",
+		alive.length === 0,
+		`alive=${alive.length}`
+	);
+	check(
+		"el jugador tras la pared NO recibe daño (combate a cubierto viable)",
+		p.health === 20,
+		`health=${p.health}`
+	);
+	state.arrows = [];
+	resetPlayers();
+}
+
 // --- 7) enderman: teletransporta cerca del jugador ---
 {
 	resetPlayers();

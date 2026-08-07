@@ -215,6 +215,67 @@ function resetWorld() {
 	check("loadWorld restaura hornos", state.furnaces.has("k1"));
 }
 
+// --- 5b) Backup .bak del world.json (Fase 10, skill save-systems): el
+// último guardado completo se copia a .bak; si el principal se corrompe,
+// loadWorld restaura desde el backup en vez de perder el mundo ---
+{
+	resetWorld();
+	state.chunks.clear();
+	state.dirtyChunks.clear();
+	state.mobs = [
+		{
+			id: "mBak",
+			type: "pig",
+			x: 4,
+			y: 5,
+			z: 6,
+			health: 10,
+			isBaby: false,
+			age: 0,
+			alive: true
+		}
+	];
+	state.furnaces.clear();
+	// Primer guardado: no hay world.json previo → aún no existe .bak.
+	save.saveWorld();
+	check(
+		"primer saveWorld: sin .bak (no había world.json previo)",
+		!fs.existsSync(`${constants.worldPaths.metaFile}.bak`)
+	);
+	// Segundo guardado: copia el world.json ANTERIOR (el del mob) a .bak
+	// antes de sobrescribir con el nuevo.
+	save.saveWorld();
+	check(
+		"segundo saveWorld crea el .bak del world.json anterior",
+		fs.existsSync(`${constants.worldPaths.metaFile}.bak`)
+	);
+	// Corromper el principal (como un corte de luz a mitad de escritura) y
+	// vaciar el estado en memoria: loadWorld debe restaurar desde el .bak.
+	fs.writeFileSync(constants.worldPaths.metaFile, "{no-es-json");
+	state.mobs = [];
+	const r = save.loadWorld();
+	check(
+		"loadWorld con world.json corrupto restaura desde .bak (true)",
+		r === true,
+		`r=${r}`
+	);
+	check(
+		"el mob del .bak se restaura (el mundo no se pierde)",
+		state.mobs.some((m) => m.type === "pig"),
+		JSON.stringify(state.mobs.map((m) => m.type))
+	);
+	// El backup también corrupto → no puede restaurar (el catch exterior
+	// devuelve 'rechazo' y no toca nada).
+	fs.writeFileSync(`${constants.worldPaths.metaFile}.bak`, "{no-es-json");
+	const r2 = save.loadWorld();
+	check(
+		"sin .bak legible → rechazo (no pisa el mundo)",
+		r2 === "rechazo",
+		`r=${r2}`
+	);
+	state.mobs = [];
+}
+
 // --- 6) loadWorld se niega a abrir un mundo más nuevo (integridad) ---
 {
 	resetWorld();
