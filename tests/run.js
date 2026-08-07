@@ -25,6 +25,7 @@ const UNIT = [
 	"unit-mobs-ia.js",
 	"unit-red.js",
 	"unit-recetas.js",
+	"unit-recipecats.js", // Fase 9 (F): categorías del libro de recetas (regresión: armadura en su pestaña)
 	"unit-sync.js",
 	"unit-commands.js",
 	"unit-arboles.js",
@@ -34,6 +35,8 @@ const UNIT = [
 	"unit-geopool.js",
 	"unit-raycast.js", // Fase 8 (B3): bounds obsoletos en el pool → raycast de minería
 	"unit-mobray.js", // Fase 8 (B9): raycast de mobs multibloque (grupo de partes)
+	"unit-mining-click.js", // Fase 9 (A): decisión de clic — mob delante/detrás y fix de matrixWorld obsoleto
+	"unit-fase9.js", // Fase 9 (B/C/F): gamemode por mundo, world_delete, cultivos, creative_pick/fly, libro
 	"unit-cofre.js",
 	"unit-antorchas.js",
 	"unit-cama.js",

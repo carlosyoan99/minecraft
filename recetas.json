@@ -124,6 +124,76 @@
 		"ingredients": { "#": 6 },
 		"result": { "id": 17, "count": 1 }
 	},
+	"planks_birch": {
+		"shape": ["#"],
+		"ingredients": { "#": 28 },
+		"result": { "id": 7, "count": 4 }
+	},
+	"planks_spruce": {
+		"shape": ["#"],
+		"ingredients": { "#": 30 },
+		"result": { "id": 7, "count": 4 }
+	},
+	"wooden_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": { "#": 7, "I": 100 },
+		"result": { "id": 240, "count": 1 }
+	},
+	"stone_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": { "#": 8, "I": 100 },
+		"result": { "id": 241, "count": 1 }
+	},
+	"iron_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": { "#": 102, "I": 100 },
+		"result": { "id": 242, "count": 1 }
+	},
+	"golden_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": { "#": 103, "I": 100 },
+		"result": { "id": 243, "count": 1 }
+	},
+	"diamond_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": { "#": 104, "I": 100 },
+		"result": { "id": 244, "count": 1 }
+	},
+	"bread": {
+		"shape": ["###"],
+		"ingredients": { "#": 115 },
+		"result": { "id": 133, "count": 1 }
+	},
+	"bone_meal": {
+		"shape": ["#"],
+		"ingredients": { "#": 136 },
+		"result": { "id": 139, "count": 3 }
+	},
+	"red_dye": {
+		"shape": ["#"],
+		"ingredients": { "#": 34 },
+		"result": { "id": 137, "count": 1 }
+	},
+	"yellow_dye": {
+		"shape": ["#"],
+		"ingredients": { "#": 35 },
+		"result": { "id": 138, "count": 1 }
+	},
+	"red_wool": {
+		"shape": ["#X"],
+		"ingredients": { "#": 18, "X": 137 },
+		"result": { "id": 36, "count": 1 }
+	},
+	"yellow_wool": {
+		"shape": ["#X"],
+		"ingredients": { "#": 18, "X": 138 },
+		"result": { "id": 37, "count": 1 }
+	},
+	"white_wool": {
+		"shape": ["#X"],
+		"ingredients": { "#": 18, "X": 139 },
+		"result": { "id": 38, "count": 1 }
+	},
 	"hilo_a_lana": {
 		"shape": ["##", "##"],
 		"ingredients": { "#": 120 },

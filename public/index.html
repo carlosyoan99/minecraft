@@ -57,6 +57,15 @@
             <button type="button" id="random-seed-btn" class="seed-random" title="Semilla aleatoria (crea un mundo nuevo al instante)">🎲</button>
           </span>
         </label>
+        <!-- Fase 9 (Bloque B): modo de juego del mundo NUEVO (no afecta a los existentes) -->
+        <label class="menu-field">Modo de juego
+          <span class="rd-row">
+            <select id="gamemode-select" class="quality-select">
+              <option value="survival" selected>Supervivencia</option>
+              <option value="creative">Creativo</option>
+            </select>
+          </span>
+        </label>
         <button type="button" id="seed-create-btn">Crear / Ir a esta semilla</button>
         <button type="button" id="worlds-back-btn" class="menu-secondary">Volver</button>
       </div>
@@ -132,6 +141,14 @@
   <div id="debug-hud" class="hidden"></div>
 
   <div id="hotbar"></div>
+
+  <!-- Fase 9 (Bloque F): libro de recetas por categorías (tecla B) -->
+  <div id="recipe-book" class="panel hidden">
+    <h3>📖 Libro de recetas</h3>
+    <div class="recipe-tabs" id="recipe-tabs"></div>
+    <div id="recipe-list" class="recipe-list"></div>
+    <p class="hint">Tecla B: abrir/cerrar · Recetas de crafteo y horno, todas visibles.</p>
+  </div>
 
   <div id="crafting-ui" class="panel hidden">
     <h3>Mesa de crafteo</h3>

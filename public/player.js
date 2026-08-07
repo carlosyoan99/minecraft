@@ -2,13 +2,14 @@
 // FÍSICA Y MOVIMIENTO DEL JUGADOR LOCAL
 // ============================================================
 import * as THREE from "three";
-import { playStep, updateAmbient } from "./audio.js";
+import { playSplash, playStep, updateAmbient } from "./audio.js";
 import { send } from "./connection.js";
 import {
 	EYE_HEIGHT,
 	GRAVITY,
 	JUMP_SPEED,
 	LAVA,
+	NON_SOLID_PLANTS,
 	TORCH,
 	WATER
 } from "./constants.js";
@@ -21,6 +22,7 @@ import {
 	geoPoolStats,
 	getClientBlock,
 	lodMeshes,
+	updateLiquidAnimation,
 	updateLod
 } from "./world.js";
 
@@ -39,8 +41,30 @@ export const move = {
 	back: false,
 	left: false,
 	right: false,
-	jump: false
+	jump: false,
+	sneak: false // Fase 9 (C): Shift — bajar en el vuelo creativo
 };
+
+// ============================================================
+// VUELO CREATIVO (Fase 9, Bloque C)
+// Doble espacio alterna el vuelo (solo en creative); mientras vuela, el
+// jugador se mueve en 3D: espacio sube, Shift baja, sin gravedad. Es solo
+// visual/local — el servidor lo sabe (creative_fly) para saltarse el
+// anti-cheat de ascenso y para el F3.
+// ============================================================
+let flying = false;
+const flySpeed = 9; // bloques/s en vuelo (más rápido que caminar)
+export function isFlying() {
+	return flying;
+}
+export function setFlying(on) {
+	flying = !!on;
+	if (flying) velocityY = 0;
+	send("creative_fly", { enabled: flying });
+}
+export function toggleFly() {
+	setFlying(!flying);
+}
 
 export function teleport(x, y, z) {
 	camera.position.set(x, y, z);
@@ -49,9 +73,16 @@ export function teleport(x, y, z) {
 
 function solidAt(x, y, z) {
 	const b = getClientBlock(Math.floor(x), Math.floor(y), Math.floor(z));
-	// El agua, la lava y la antorcha no son sólidas: se puede nadar/atravesar
-	// (la lava daña al jugador — lo gestiona el servidor).
-	return b !== 0 && b !== -1 && b !== WATER && b !== LAVA && b !== TORCH;
+	// El agua, la lava, la antorcha y las plantas (hierba/flores/trigo) no son
+	// sólidas: se pueden atravesar (la lava daña — lo gestiona el servidor).
+	return (
+		b !== 0 &&
+		b !== -1 &&
+		b !== WATER &&
+		b !== LAVA &&
+		b !== TORCH &&
+		!NON_SOLID_PLANTS.has(b)
+	);
 }
 
 function isWaterAt(x, y, z) {
@@ -83,6 +114,7 @@ const clock = new THREE.Clock();
 let netTimer = 0;
 let lodTimer = 0; // throttle del cambio de tier LOD (Fase 6)
 let stepDist = 0; // distancia recorrida acumulada para el sonido de pasos
+let wasInWater = false; // Fase 9 (E): estado previo para el splash de entrada
 const STEP_SPACING = 0.72; // bloques entre pasos
 
 // ============================================================
@@ -150,6 +182,10 @@ function animate() {
 		const inWater =
 			isWaterAt(camera.position.x, feet + 0.8, camera.position.z) ||
 			isWaterAt(camera.position.x, feet + 1.4, camera.position.z);
+		// Fase 9 (E): splash al ENTRAR en el agua (transición aire→agua) —
+		// feedback auditivo de la inmersión, como en Minecraft.
+		if (inWater && !wasInWater) playSplash();
+		wasInWater = inWater;
 
 		let dx = 0,
 			dz = 0;
@@ -178,52 +214,60 @@ function animate() {
 		}
 		tryMove(dx, dz);
 
-		// Gravedad, salto y natación
-		onGround = solidAt(camera.position.x, feet - 0.05, camera.position.z);
-		if (inWater) {
-			// Flotación: gravedad reducida, hundimiento lento y límite de caída;
-			// espacio nada hacia arriba (permite salir a la superficie). Al tocar
-			// el fondo (onGround) se reposa sin jitter.
-			if (onGround) velocityY = 0;
-			else velocityY -= WATER_GRAVITY * dt;
-			velocityY = Math.max(velocityY, -SINK_SPEED);
-			if (move.jump) velocityY = SWIM_UP_SPEED;
-		} else if (onGround) {
+		// Vuelo creativo: movimiento 3D sin gravedad (espacio sube, Shift baja).
+		if (flying) {
+			const vert = (move.jump ? 1 : 0) - (move.sneak ? 1 : 0);
+			camera.position.y += vert * flySpeed * dt;
 			velocityY = 0;
-			if (move.jump) velocityY = JUMP_SPEED;
+			onGround = false;
 		} else {
-			velocityY -= GRAVITY * dt;
-		}
-		let newY = camera.position.y + velocityY * dt;
-		const newFeet = newY - EYE_HEIGHT;
-		if (
-			velocityY < 0 &&
-			solidAt(camera.position.x, newFeet, camera.position.z)
-		) {
-			velocityY = 0;
-			newY = Math.ceil(newFeet) + EYE_HEIGHT;
-		} else if (
-			velocityY > 0 &&
-			solidAt(camera.position.x, newY - EYE_HEIGHT + 1.7, camera.position.z)
-		) {
-			velocityY = 0;
-		}
-		camera.position.y = newY;
-
-		// Pasos: suenan al caminar por el suelo, cada ~0.72 bloques
-		if (onGround && len > 0) {
-			stepDist += Math.hypot(dx, dz);
-			if (stepDist >= STEP_SPACING) {
-				stepDist = 0;
-				const under = getClientBlock(
-					Math.floor(camera.position.x),
-					Math.floor(feet - 0.1),
-					Math.floor(camera.position.z)
-				);
-				playStep(under);
+			// Gravedad, salto y natación
+			onGround = solidAt(camera.position.x, feet - 0.05, camera.position.z);
+			if (inWater) {
+				// Flotación: gravedad reducida, hundimiento lento y límite de caída;
+				// espacio nada hacia arriba (permite salir a la superficie). Al tocar
+				// el fondo (onGround) se reposa sin jitter.
+				if (onGround) velocityY = 0;
+				else velocityY -= WATER_GRAVITY * dt;
+				velocityY = Math.max(velocityY, -SINK_SPEED);
+				if (move.jump) velocityY = SWIM_UP_SPEED;
+			} else if (onGround) {
+				velocityY = 0;
+				if (move.jump) velocityY = JUMP_SPEED;
+			} else {
+				velocityY -= GRAVITY * dt;
 			}
-		} else {
-			stepDist = 0;
+			let newY = camera.position.y + velocityY * dt;
+			const newFeet = newY - EYE_HEIGHT;
+			if (
+				velocityY < 0 &&
+				solidAt(camera.position.x, newFeet, camera.position.z)
+			) {
+				velocityY = 0;
+				newY = Math.ceil(newFeet) + EYE_HEIGHT;
+			} else if (
+				velocityY > 0 &&
+				solidAt(camera.position.x, newY - EYE_HEIGHT + 1.7, camera.position.z)
+			) {
+				velocityY = 0;
+			}
+			camera.position.y = newY;
+
+			// Pasos: suenan al caminar por el suelo, cada ~0.72 bloques
+			if (onGround && len > 0) {
+				stepDist += Math.hypot(dx, dz);
+				if (stepDist >= STEP_SPACING) {
+					stepDist = 0;
+					const under = getClientBlock(
+						Math.floor(camera.position.x),
+						Math.floor(feet - 0.1),
+						Math.floor(camera.position.z)
+					);
+					playStep(under);
+				}
+			} else {
+				stepDist = 0;
+			}
 		}
 
 		netTimer += dt;
@@ -241,6 +285,7 @@ function animate() {
 
 	const frameT0 = performance.now();
 	updateDayNight();
+	updateLiquidAnimation(); // Fase 9 (E): pulso suave del agua/lava
 	const ambientT0 = performance.now();
 	updateAmbient();
 	const ambientMs = performance.now() - ambientT0;

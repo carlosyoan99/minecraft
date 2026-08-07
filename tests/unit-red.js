@@ -348,7 +348,10 @@ function connect() {
 	);
 	check("creative: sin XP de mineral", p.xp === 0, `xp=${p.xp}`);
 
-	// 3) NOT_MINEABLE sigue protegido (agua) aunque sea creative
+	// 3) Fase 9 (Bloque C): en creative el AGUA/LAVA colocadas desde el
+	// inventario creativo SÍ se rompen (para poder limpiarlas), mientras que
+	// en survival siguen siendo irrompibles sin cubo. El survival se prueba
+	// en la sección BLOCK_ACTION: BREAK ("el agua no inicia sesión").
 	const wx2 = bx + 1,
 		wz2 = bz;
 	world.setBlock(wx2, by, wz2, B.WATER);
@@ -361,9 +364,26 @@ function connect() {
 		})
 	);
 	check(
-		"creative: el agua sigue sin poder romperse (NOT_MINEABLE)",
-		world.getBlock(wx2, by, wz2) === B.WATER
+		"creative: el agua colocada sí se rompe (inventario creativo)",
+		world.getBlock(wx2, by, wz2) === B.AIR
 	);
+	// Y colocar agua en creative es legal (el survival la rechaza: sin cubo).
+	const wx3 = bx + 1,
+		wz3 = bz + 1;
+	world.setBlock(wx3, by, wz3, B.AIR);
+	p.inventory[0] = { id: B.WATER, count: 1 };
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "block_action",
+			data: { action: "place", x: wx3, y: by, z: wz3, itemId: B.WATER }
+		})
+	);
+	check(
+		"creative: colocar agua es legal (inventario creativo)",
+		world.getBlock(wx3, by, wz3) === B.WATER
+	);
+	world.setBlock(wx3, by, wz3, B.AIR);
 
 	// 4) Con una sesión activa (simulada), el creative la cancela y rompe al momento
 	world.setBlock(bx + 2, by, bz, B.STONE);

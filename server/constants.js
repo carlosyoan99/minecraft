@@ -92,6 +92,10 @@ const worldPaths = {
 	// La semilla es la identidad; el nombre es solo cosmético y viaja con
 	// set_seed. Por defecto, la semilla (buildMeta/loadWorld lo mantienen).
 	worldName: SEED,
+	// Fase 9 (Bloque B): modo de juego FIJO por mundo (survival/creative). Se
+	// persiste en world.json (buildMeta/loadWorld) y aplica a TODOS los
+	// jugadores que entran: el modo es propiedad del mundo, no del jugador.
+	worldGamemode: "survival",
 	worldDir: null,
 	chunksDir: null,
 	legacyFile: null,
@@ -109,16 +113,30 @@ worldPaths.metaFile = path.join(worldPaths.worldDir, "world.json");
 // eso lo hace save.switchWorld() (persistir → limpiar → re-seedar).
 // `name` (opcional) fija el nombre mostrado del mundo nuevo; si no llega, se
 // conserva el actual (loadWorld restaura el del disco al cargar).
-function setWorldSeed(seed, name) {
+// `gamemode` (opcional, Fase 9) fija el modo de juego del mundo nuevo
+// (survival/creative); si no llega se conserva el actual. El mundo EXISTENTE
+// gana: loadWorld restaura el modo persistido en su world.json.
+function setWorldSeed(seed, name, gamemode) {
 	worldPaths.currentSeed = seed;
 	worldPaths.worldDir = path.join(worldPaths.worldRoot, seedDir(seed));
 	worldPaths.chunksDir = path.join(worldPaths.worldDir, "chunks");
 	worldPaths.legacyFile = path.join(worldPaths.worldDir, "world.dat");
 	worldPaths.metaFile = path.join(worldPaths.worldDir, "world.json");
 	if (name !== undefined) worldPaths.worldName = name;
+	if (gamemode !== undefined && GAMEMODES.has(gamemode))
+		worldPaths.worldGamemode = gamemode;
 }
 
-const SCHEMA_VERSION = 2; // versión actual del formato de guardado
+// Modos de juego válidos (Fase 9, Bloque B): fijo por mundo.
+const GAMEMODES = new Set(["survival", "creative"]);
+// Sanea un modo de juego desde el wire o desde world.json (lectura defensiva):
+// cualquier otro valor cae a survival (decisión del usuario: los mundos
+// existentes sin el campo abren como survival).
+function sanitizeGamemode(raw) {
+	return GAMEMODES.has(raw) ? raw : "survival";
+}
+
+const SCHEMA_VERSION = 3; // versión actual del formato de guardado
 // Layout antiguo (v2 pre-semilla, todo en la raíz de world/) que se migra al
 // directorio de la semilla al arrancar (save.migrateWorldLayout()).
 const LEGACY_ROOT_FILES = [
@@ -131,6 +149,9 @@ const LEGACY_ROOT_FILES = [
 //   v1 — world/world.dat (un solo JSON: seed, chunks, mobs, furnaces)
 //   v2 — world/chunks/*.json + world/world.json (incremental por chunk)
 //   v3 — world/<semilla>/chunks + world/<semilla>/world.json (un mundo por semilla)
+//   v4 — v3 + world.json con `gamemode` (Fase 9, Bloque B): los mundos v3 sin
+//        el campo abren como survival (migración retrocompatible, sin pasos
+//        extra: loadWorld lo lee de forma defensiva).
 // Migraciones: v1 → v2 migrateLegacyWorld() · layout raíz → por semilla migrateWorldLayout()
 
 // ============================================================
@@ -162,7 +183,26 @@ const B = {
 	CHEST: 22, // bloque de almacenamiento con inventario propio (27 slots, Fase 6)
 	TORCH: 23, // no sólido: se atraviesa; iluminación dinámica por bloque (Fase 6)
 	BED: 24, // no sólido: se atraviesa; clic derecho de noche para dormir (Fase 7)
-	LAVA: 25 // no sólido como el agua: pozos de lava decorativos en superficie (Fase 7)
+	LAVA: 25, // no sólido como el agua: pozos de lava decorativos en superficie (Fase 7)
+	// Fase 9 (Bloque C/F): cultivos y materiales nuevos
+	FARMLAND: 26, // tierra arada con azada (no se coloca a mano)
+	WHEAT: 27, // cultivo de trigo (no sólido; crece por estado en state.crops)
+	// Fase 9 (Bloque F): variedad de árboles (abedul y pino)
+	BIRCH_LOG: 28,
+	BIRCH_LEAVES: 29,
+	SPRUCE_LOG: 30,
+	SPRUCE_LEAVES: 31,
+	// Fase 9 (Bloque F): estructuras y decoración
+	MOSSY_COBBLESTONE: 32, // piedra de musgo (estructuras decorativas)
+	TALL_GRASS: 33, // hierba alta (no sólida, decorativa)
+	POPPY: 34, // amapola (no sólida; drop de tinte rojo)
+	DANDELION: 35, // diente de león (no sólido; drop de tinte amarillo)
+	// Fase 9 (Bloque F): lana tintada (ítems tintables con los tintes
+	// disponibles: rojo de la amapola, amarillo del diente de león, blanco de
+	// la harina de hueso — verde/azul quedan fuera por no tener fuente de tinte).
+	RED_WOOL: 36,
+	YELLOW_WOOL: 37,
+	WHITE_WOOL: 38
 };
 const I = {
 	STICK: 100,
@@ -187,6 +227,15 @@ const I = {
 	COOKED_RABBIT: 119, // conejo crudo (Fase 5: nuevo pasivo) y asado
 	STRING: 120, // hilo: drop de la araña (Fase 5)
 	LEATHER: 132, // cuero: drop de la vaca y el conejo, material de la armadura de cuero (Fase 7)
+	// Fase 9 (Bloque F): comida y materiales nuevos
+	BREAD: 133, // pan: 3 trigo → 1 pan
+	COD: 134, // pescado crudo (drop del pescado/cofre de loot)
+	COOKED_COD: 135, // pescado cocinado (horno)
+	BONE: 136, // hueso: drop del esqueleto (→ harina de hueso)
+	RED_DYE: 137, // tinte rojo (de la amapola)
+	YELLOW_DYE: 138, // tinte amarillo (del diente de león)
+	BONE_MEAL: 139, // harina de hueso (de hueso) — tinte blanco
+	HONEY: 140, // miel: botín de cofres de loot (versión simplificada de las abejas)
 	// Armadura (Fase 7): casco, pechera, pantalones y botas × 3 materiales
 	LEATHER_HELMET: 220,
 	LEATHER_CHESTPLATE: 221,
@@ -219,17 +268,28 @@ const I = {
 	STONE_SWORD: 216,
 	IRON_SWORD: 217,
 	GOLDEN_SWORD: 218,
-	DIAMOND_SWORD: 219
+	DIAMOND_SWORD: 219,
+	// Fase 9 (Bloque C): azadas (240-244) — convierten tierra/césped en tierra
+	// arada para plantar cultivos. Misma durabilidad que el resto por material.
+	WOODEN_HOE: 240,
+	STONE_HOE: 241,
+	IRON_HOE: 242,
+	GOLDEN_HOE: 243,
+	DIAMOND_HOE: 244
 };
 const NOT_MINEABLE = new Set([B.AIR, B.BEDROCK, B.WATER, B.LAVA]); // agua/lava no se pueden romper a mano (sin cubo)
-// Sólido para física/validación: el agua no es sólida (se nada en ella) y la
-// antorcha tampoco (es un bloque pequeño que se atraviesa).
+// Bloques NO sólidos (Fase 9): cultivos, hierba alta y flores se atraviesan
+// y se rompen al instante (como plantas).
+const NON_SOLID_PLANTS = new Set([B.WHEAT, B.TALL_GRASS, B.POPPY, B.DANDELION]);
+// Sólido para física/validación: el agua no es sólida (se nada en ella), la
+// antorcha/cama tampoco (se atraviesan) y las plantas (Fase 9) tampoco.
 const isSolidBlock = (id) =>
 	id !== B.AIR &&
 	id !== B.WATER &&
 	id !== B.LAVA &&
 	id !== B.TORCH &&
-	id !== B.BED;
+	id !== B.BED &&
+	!NON_SOLID_PLANTS.has(id);
 const FUEL_ITEMS = new Set([B.OAK_LOG, B.PLANKS, I.STICK]);
 
 // ============================================================
@@ -246,12 +306,18 @@ const FOOD_VALUES = {
 	[I.COOKED_CHICKEN]: { food: 6, saturation: 7.2 },
 	[I.COOKED_MUTTON]: { food: 6, saturation: 9.6 },
 	[I.RABBIT]: { food: 3, saturation: 1.8 },
-	[I.COOKED_RABBIT]: { food: 8, saturation: 12.8 }
+	[I.COOKED_RABBIT]: { food: 8, saturation: 12.8 },
+	// Fase 9 (Bloque F): pan y pescado (crudo/cocinado), valores estilo MC
+	[I.BREAD]: { food: 5, saturation: 6 },
+	[I.COD]: { food: 2, saturation: 0.4 },
+	[I.COOKED_COD]: { food: 5, saturation: 6 }
 };
 const isFood = (id) => !!FOOD_VALUES[id];
 const isPickaxe = (id) => id >= 200 && id <= 204;
 const isAxe = (id) => id >= 205 && id <= 209;
 const isShovel = (id) => id >= 210 && id <= 214;
+const isSword = (id) => id >= 215 && id <= 219;
+const isHoe = (id) => id >= 240 && id <= 244;
 
 // ============================================================
 // MINERÍA FINA (Fase 6): dureza por bloque y velocidad según
@@ -262,29 +328,44 @@ const isShovel = (id) => id >= 210 && id <= 214;
 // el cliente solo pinta las grietas (block_break_progress).
 // ============================================================
 // Dureza en SEGUNDOS rompiendo a mano.
+// Durezas estilo Minecraft (segundos a mano; Fase 9, Bloque C: ajustadas a MC
+// — la espada NO mina y cada categoría usa su herramienta).
 const BLOCK_HARDNESS = {
-	[B.OAK_LEAVES]: 0.3,
-	[B.GLASS]: 0.4,
-	[B.SNOW]: 0.5,
-	[B.WOOL]: 0.5,
+	[B.WHEAT]: 0.05, // los cultivos se rompen al instante
+	[B.TALL_GRASS]: 0.05,
+	[B.POPPY]: 0.05,
+	[B.DANDELION]: 0.05,
+	[B.TORCH]: 0.1,
+	[B.BED]: 0.2,
+	[B.OAK_LEAVES]: 0.2,
+	[B.BIRCH_LEAVES]: 0.2,
+	[B.SPRUCE_LEAVES]: 0.2,
+	[B.GLASS]: 0.3,
+	[B.SNOW]: 0.2,
+	[B.SAND]: 0.5,
 	[B.GRASS]: 0.6,
-	[B.DIRT]: 0.6,
-	[B.SAND]: 0.6,
-	[B.PLANKS]: 1.0,
-	[B.OAK_LOG]: 1.5,
-	[B.CRAFTING_TABLE]: 1.5,
-	[B.CHEST]: 1.5,
-	[B.BED]: 0.2, // la cama se rompe casi al instante (como en Minecraft)
-	[B.FURNACE]: 2.0,
-	[B.TORCH]: 0.1, // cofre como la mesa; la antorcha se rompe al instante
-	[B.STONE]: 1.8,
-	[B.COBBLESTONE]: 1.8,
+	[B.DIRT]: 0.75,
+	[B.FARMLAND]: 0.6,
+	[B.WOOL]: 0.8,
+	[B.RED_WOOL]: 0.8,
+	[B.YELLOW_WOOL]: 0.8,
+	[B.WHITE_WOOL]: 0.8,
+	[B.PLANKS]: 2.0,
+	[B.OAK_LOG]: 2.0,
+	[B.BIRCH_LOG]: 2.0,
+	[B.SPRUCE_LOG]: 2.0,
+	[B.CRAFTING_TABLE]: 2.5,
+	[B.CHEST]: 2.5,
+	[B.FURNACE]: 3.5,
+	[B.STONE]: 1.5,
+	[B.COBBLESTONE]: 2.0,
+	[B.MOSSY_COBBLESTONE]: 2.0,
 	[B.COAL_ORE]: 3.0,
-	[B.IRON_ORE]: 3.5,
-	[B.GOLD_ORE]: 3.5,
-	[B.REDSTONE_ORE]: 3.5,
-	[B.EMERALD_ORE]: 4.0,
-	[B.DIAMOND_ORE]: 4.5
+	[B.IRON_ORE]: 3.0,
+	[B.GOLD_ORE]: 3.0,
+	[B.REDSTONE_ORE]: 3.0,
+	[B.EMERALD_ORE]: 3.0,
+	[B.DIAMOND_ORE]: 3.0
 };
 // Velocidad por material (multiplicador sobre la dureza): madera 2x,
 // piedra 4x, hierro 6x, oro 12x (rápida pero frágil), diamante 8x.
@@ -305,6 +386,8 @@ const TOOL_TIER_SPEED = {
 	[I.GOLDEN_SHOVEL]: 12,
 	[I.DIAMOND_SHOVEL]: 8
 };
+// La espada NO mina (Fase 9, Bloque C): no tiene tier en TOOL_TIER_SPEED y
+// miningSpeed le devuelve 1; además no cosecha nada (canHarvest false).
 // Herramienta correcta por categoría de bloque.
 const CATEGORY_TOOL = {
 	stone: "pickaxe",
@@ -317,6 +400,7 @@ const CATEGORY_TOOL = {
 const BLOCK_CATEGORY = {
 	[B.STONE]: "stone",
 	[B.COBBLESTONE]: "stone",
+	[B.MOSSY_COBBLESTONE]: "stone",
 	[B.COAL_ORE]: "ore",
 	[B.IRON_ORE]: "ore",
 	[B.GOLD_ORE]: "ore",
@@ -324,8 +408,11 @@ const BLOCK_CATEGORY = {
 	[B.REDSTONE_ORE]: "ore",
 	[B.EMERALD_ORE]: "ore",
 	[B.OAK_LOG]: "wood",
+	[B.BIRCH_LOG]: "wood",
+	[B.SPRUCE_LOG]: "wood",
 	[B.GRASS]: "dirt",
 	[B.DIRT]: "dirt",
+	[B.FARMLAND]: "dirt",
 	[B.SAND]: "sand",
 	[B.SNOW]: "snow"
 };
@@ -350,9 +437,18 @@ function breakSeconds(tool, block) {
 	return (BLOCK_HARDNESS[block] ?? 0.6) / miningSpeed(tool, block);
 }
 // ¿Suelta drop con la herramienta/mano actual? (piedra/minerales: solo pico)
+// Fase 9 (Bloque C): la ESPADA no cosecha NADA (en Minecraft rompe bloques
+// pero no sueltan item) — el resto de herramientas cosechan lo suyo.
 function canHarvest(tool, block) {
-	if (block === B.STONE || block === B.COBBLESTONE) return isPickaxe(tool);
+	if (isSword(tool)) return false;
+	if (
+		block === B.STONE ||
+		block === B.COBBLESTONE ||
+		block === B.MOSSY_COBBLESTONE
+	)
+		return isPickaxe(tool);
 	if (block >= B.COAL_ORE && block <= B.EMERALD_ORE) return isPickaxe(tool);
+	if (block === B.GLASS) return false; // el vidrio no suelta item sin Silk Touch (simplificado)
 	return true;
 }
 
@@ -382,9 +478,17 @@ const TOOL_DURABILITY = {
 	[I.STONE_SWORD]: 132,
 	[I.IRON_SWORD]: 251,
 	[I.GOLDEN_SWORD]: 33,
-	[I.DIAMOND_SWORD]: 1562
+	[I.DIAMOND_SWORD]: 1562,
+	// Fase 9 (Bloque C): azadas (misma durabilidad que la herramienta de su material)
+	[I.WOODEN_HOE]: 60,
+	[I.STONE_HOE]: 132,
+	[I.IRON_HOE]: 251,
+	[I.GOLDEN_HOE]: 33,
+	[I.DIAMOND_HOE]: 1562
 };
-const isTool = (id) => !!TOOL_DURABILITY[id];
+// Alias de durabilidad de azadas (para addToInventory/applyToolWear).
+const HOE_DURABILITY = TOOL_DURABILITY;
+const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id);
 
 // ============================================================
 // ARMADURA (Fase 7): reducción de daño por pieza y material.
@@ -452,13 +556,40 @@ const SWORD_DAMAGE = {
 	[I.GOLDEN_SWORD]: 4,
 	[I.DIAMOND_SWORD]: 6
 };
+// Las azadas no hacen daño extra (en Minecraft tampoco; sirven para arar).
 
 // ============================================================
-// EXPERIENCIA Y NIVELES SIMPLES (Fase 5, opcional)
+// EXPERIENCIA Y NIVELES (Fase 5 simple + Fase 9 curva MC)
 // XP por matar mobs y por minar minerales. Cada nivel suma +1 de
 // salud máxima (máx +10). La XP se conserva al morir (simplificado).
+// Fase 9 (Bloque C): curva de coste por nivel NO lineal estilo Minecraft
+// (xpToNext(0)=7, y +3.5 por nivel redondeado — aproximación de la curva
+// real de MC: 7, 10, 14, 17, 21...). XP_PER_LEVEL se mantiene exportado
+// por compatibilidad con tests/audit-fase5 (paridad con el cliente) aunque
+// la lógica de niveles ya no lo use.
 // ============================================================
-const XP_PER_LEVEL = 100;
+const XP_PER_LEVEL = 100; // retrocompat: paridad auditada, sin uso en la lógica actual
+// XP necesaria para pasar del nivel `level` al siguiente (curva MC).
+function xpToNext(level) {
+	return 7 + Math.floor(level * 3.5);
+}
+// Nivel alcanzado con `xp` total acumulada (recorre la curva; barato: niveles
+// pequeños en la práctica).
+function levelFromXp(xp) {
+	let level = 0;
+	let rest = Math.max(0, xp | 0);
+	while (rest >= xpToNext(level)) {
+		rest -= xpToNext(level);
+		level++;
+	}
+	return level;
+}
+// XP acumulada dentro del nivel actual (para la barra de progreso del HUD).
+function xpIntoLevel(xp, level) {
+	let rest = Math.max(0, xp | 0);
+	for (let l = 0; l < level; l++) rest -= xpToNext(l);
+	return Math.max(0, rest);
+}
 const MAX_LEVEL_HEALTH_BONUS = 10;
 const MOB_XP = {
 	zombie: 5,
@@ -471,7 +602,8 @@ const MOB_XP = {
 	pig: 3,
 	chicken: 2,
 	sheep: 3,
-	rabbit: 2
+	rabbit: 2,
+	bee: 1 // Fase 9 (Bloque F): pasivo volador (versión simplificada)
 };
 const ORE_XP = {
 	[B.COAL_ORE]: 1,
@@ -492,6 +624,61 @@ const BREED_FOOD = {
 	chicken: I.SEEDS,
 	rabbit: I.CARROT
 };
+
+// ============================================================
+// INVENTARIO CREATIVO (Fase 9, Bloque C): lista completa de bloques e
+// ítems seleccionables en un mundo creativo. No se persiste: al entrar a un
+// mundo creativo el inventario se resetea y se entrega esta lista (36 slots:
+// bloques y materiales básicos); el resto se coge con el picker
+// (creative_pick → slot seleccionado). Fuente de verdad para validar
+// creative_pick en net.js.
+// ============================================================
+const CREATIVE_ITEMS = [
+	// Bloques colocables
+	B.GRASS,
+	B.DIRT,
+	B.STONE,
+	B.COBBLESTONE,
+	B.SAND,
+	B.PLANKS,
+	B.OAK_LOG,
+	B.OAK_LEAVES,
+	B.SNOW,
+	B.WOOL,
+	B.GLASS,
+	B.CRAFTING_TABLE,
+	B.FURNACE,
+	B.CHEST,
+	B.TORCH,
+	B.BED,
+	B.WATER,
+	B.LAVA,
+	// Minerales y materiales
+	B.COAL_ORE,
+	B.IRON_ORE,
+	B.GOLD_ORE,
+	B.DIAMOND_ORE,
+	B.REDSTONE_ORE,
+	B.EMERALD_ORE,
+	I.COAL,
+	I.IRON_INGOT,
+	I.GOLD_INGOT,
+	I.DIAMOND,
+	I.REDSTONE,
+	I.EMERALD,
+	// Materiales de crafteo
+	I.STICK,
+	I.STRING,
+	I.LEATHER,
+	I.WHEAT,
+	I.CARROT,
+	I.SEEDS
+];
+// Todos los ítems/armas/herramientas del juego (para el picker creativo).
+const ALL_TOOLS_AND_ARMOR = [
+	...Object.values(I).filter((v) => v >= 200 && v <= 231),
+	...Object.values(I).filter((v) => v >= 240 && v <= 244) // azadas (Fase 9, Bloque C)
+];
 
 // ============================================================
 // MOBS
@@ -519,9 +706,11 @@ const HOSTILE = new Set([
 ]);
 // Mobs que se queman con el sol de día (Fase 6: IA hostil más fiel): solo
 // los no-muertos clásicos arden al exponerse a la luz del día sin techo
-// encima. El creeper no arde en Minecraft — tampoco la araña, el enderman
-// (se teletransporta al exponerse, out of scope) ni el lobo.
-const BURNS_IN_SUN = new Set(["zombie", "skeleton"]);
+// encima. Fase 9 (Bloque D): como en Minecraft, SOLO el zombi arde — el
+// esqueleto no (mantiene distancia y dispara flechas). El creeper tampoco
+// arde, ni la araña, el enderman (se teletransporta al exponerse, out of
+// scope) ni el lobo.
+const BURNS_IN_SUN = new Set(["zombie"]);
 
 // Operadores (Fase 7, auditoría): nombres con permiso para los comandos que
 // mutan el mundo o al jugador (/tp, /give, /time, /gamemode, /reload, /op).
@@ -562,6 +751,17 @@ module.exports = {
 	seedDir,
 	setWorldSeed,
 	worldPaths,
+	GAMEMODES,
+	sanitizeGamemode,
+	CREATIVE_ITEMS,
+	ALL_TOOLS_AND_ARMOR,
+	xpToNext,
+	levelFromXp,
+	xpIntoLevel,
+	NON_SOLID_PLANTS,
+	isSword,
+	isHoe,
+	HOE_DURABILITY,
 	// Aliases de compatibilidad (snapshot inicial; la fuente de verdad es worldPaths)
 	WORLD_DIR: worldPaths.worldDir,
 	CHUNKS_DIR: worldPaths.chunksDir,

@@ -52,13 +52,84 @@ const MOB_HEALTH = {
 	zombie: 20,
 	creeper: 20,
 	skeleton: 20,
-	enderman: 20
+	enderman: 20,
+	bee: 5 // Fase 9 (Bloque F): pasivo volador frágil (versión simplificada)
 };
 const state = require("./state.js");
 const world = require("./world.js");
 const { damagePlayer } = require("./players.js");
 
 const { players } = state;
+
+// ============================================================
+// FLECHAS DEL ESQUELETO (Fase 9, Bloque D)
+// Primera entidad proyectil del juego: física simple de gravedad y vida
+// limitada (~2.5s). El esqueleto dispara si el jugador está a 6-16 bloques
+// (con cooldown); la flecha viaja hacia donde estaba el jugador con una
+// parábola de tiro y hace daño al acercarse a un jugador. Se replica por
+// `arrows_update` (broadcast del bucle principal).
+// ============================================================
+const ARROW_LIFE_MS = 2500;
+const ARROW_SPEED = 14; // bloques/s
+const ARROW_GRAVITY = 16; // bloques/s² (como la gravedad del jugador)
+const ARROW_DAMAGE = 3;
+const ARROW_HIT_DIST = 0.7;
+
+function shootArrow(shooter, target) {
+	const dx = target.x - shooter.x,
+		dz = target.z - shooter.z;
+	const dist = Math.max(1, Math.hypot(dx, dz));
+	const vx = (dx / dist) * ARROW_SPEED;
+	const vz = (dz / dist) * ARROW_SPEED;
+	// Parábola de tiro: apuntar un poco alto según la distancia para que el
+	// arco caiga sobre el objetivo (física simple, sin solución exacta).
+	const vy = 3.5 + (dist / ARROW_SPEED) * (ARROW_GRAVITY / 2);
+	state.arrows.push({
+		x: shooter.x,
+		y: shooter.y + 1.4,
+		z: shooter.z,
+		vx,
+		vy,
+		vz,
+		life: ARROW_LIFE_MS,
+		from: shooter.id
+	});
+}
+
+// Avanza las flechas (dtMs) y aplica daño al primer jugador que intersecten.
+// Devuelve las flechas vivas para el broadcast (arrows_update).
+function tickArrows(dtMs) {
+	const dt = dtMs / 1000;
+	const alive = [];
+	for (const a of state.arrows) {
+		a.life -= dtMs;
+		if (a.life <= 0) continue;
+		// Gravedad: la flecha cae (la Y de los ojos es la de los pies + 1.4).
+		a.vy -= ARROW_GRAVITY * dt;
+		a.x += a.vx * dt;
+		a.y += a.vy * dt;
+		a.z += a.vz * dt;
+		// Colisión con un jugador (distancia simple, sin raycast exacto).
+		let hit = false;
+		for (const p of players.values()) {
+			if (Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) < ARROW_HIT_DIST) {
+				damagePlayer(p, ARROW_DAMAGE, {
+					source: "mob",
+					meta: { mobType: "skeleton", projectile: true }
+				});
+				hit = true;
+				break;
+			}
+		}
+		if (!hit) alive.push(a);
+	}
+	state.arrows = alive;
+	return alive;
+}
+
+function arrowSnapshot(a) {
+	return { x: a.x, y: a.y, z: a.z, vx: a.vx, vy: a.vy, vz: a.vz };
+}
 
 class Mob {
 	constructor(type, x, y, z) {
@@ -84,6 +155,15 @@ class Mob {
 		// expuesto al cielo. burning se replica al cliente (tintado en llamas).
 		this.burning = false;
 		this.burnAccum = 0; // ms acumulados ardiendo (para el daño periódico)
+		// Fase 9 (Bloque D): IA por especie —
+		this.fleeUntil = 0; // pasivos: huir del último atacante hasta esta hora
+		this.fleeFrom = null; // { x, z } dirección opuesta al atacante
+		this.wanderPauseUntil = 0; // pasivos: pausa aleatoria al deambular
+		this.homeX = x; // punto de origen (rebaño): vuelven si se alejan
+		this.homeZ = z;
+		this.fuseStart = null; // creeper: inicio del fuse (explosión tras ~1.5s)
+		this.stuckTicks = 0; // hostiles: contador de persecución bloqueada
+		this.shootCooldown = 0; // esqueleto: milisegundos entre disparos
 	}
 
 	distTo(p) {
@@ -133,6 +213,55 @@ class Mob {
 		if (len > 0.4) {
 			this.x += (dx / len) * speed;
 			this.z += (dz / len) * speed;
+		}
+		this.settleOnGround();
+	}
+
+	// Persecución mejorada (Fase 9, Bloque D): no quedarse atascado contra el
+	// terreno. Si la celda de destino está bloqueada (sólido a la altura de los
+	// pies), se intenta saltar/hopear 1 bloque; si lleva N ticks pegado al mismo
+	// sitio, se prueba un desvío lateral aleatorio (evita esquinas/abismos).
+	chase(player, speed) {
+		const dx = player.x - this.x,
+			dz = player.z - this.z;
+		const len = Math.hypot(dx, dz);
+		if (len > 0.4) {
+			const nx = this.x + (dx / len) * speed;
+			const nz = this.z + (dz / len) * speed;
+			const feet = world.getBlock(
+				Math.floor(nx),
+				Math.floor(this.y - 0.1),
+				Math.floor(nz)
+			);
+			const mid = world.getBlock(
+				Math.floor(nx),
+				Math.floor(this.y + 0.7),
+				Math.floor(nz)
+			);
+			if (isSolidBlock(mid) && !isSolidBlock(feet)) {
+				// Bloqueado por un escalón de 1 bloque: saltar por encima.
+				this.y += 0.12;
+			}
+			this.x = nx;
+			this.z = nz;
+		}
+		// ¿Atascado? (no avanza pese a perseguir) → desvío lateral aleatorio.
+		if (
+			Math.hypot(
+				this.x - (this.lastX ?? this.x),
+				this.z - (this.lastZ ?? this.z)
+			) <
+			speed * 0.3
+		)
+			this.stuckTicks += 50;
+		else this.stuckTicks = 0;
+		this.lastX = this.x;
+		this.lastZ = this.z;
+		if (this.stuckTicks > 400) {
+			this.stuckTicks = 0;
+			const angle = Math.random() * Math.PI * 2;
+			this.x += Math.cos(angle) * 1.5;
+			this.z += Math.sin(angle) * 1.5;
 		}
 		this.settleOnGround();
 	}
@@ -256,21 +385,47 @@ class Mob {
 		this.tickSunBurn(isNight);
 		if (!this.alive) return; // murió por el sol: no actúa este tick
 		const { nearest, dist } = this.findNearestPlayer();
+		const hostiles = HOSTILE.has(this.type);
+		if (!hostiles) {
+			// Fase 9 (Bloque F): la abeja tiene su propio movimiento volador 3D
+			// (no usa el suelo); el resto de pasivos usan tickPassive.
+			if (this.type === "bee") tickBee(this);
+			else this.tickPassive(isNight, nearest, dist);
+			return;
+		}
 		switch (this.type) {
 			case "zombie":
 				if (nearest && (isNight || dist < 6)) {
 					this.state = "chase";
-					this.moveToward(nearest, 0.035);
+					this.chase(nearest, 0.035);
 					if (dist < 1.6) this.attack(nearest, 2, 1000);
 				} else {
 					this.state = "idle";
 					this.wander();
 				}
 				break;
-			case "spider": // Fase 5: hostil rápido y frágil
+			case "spider": // Fase 5: hostil rápido y frágil; Fase 9: escala y salta
 				if (nearest && (isNight || dist < 8)) {
 					this.state = "chase";
-					this.moveToward(nearest, 0.055);
+					this.chase(nearest, 0.055);
+					// Escalar: si el camino está bloqueado por un sólido y hay hueco
+					// arriba, sube (simplificación: las arañas trepan muros de 1).
+					const front = world.getBlock(
+						Math.floor(this.x + (nearest.x - this.x) * 0.2),
+						Math.floor(this.y + 0.7),
+						Math.floor(this.z + (nearest.z - this.z) * 0.2)
+					);
+					if (isSolidBlock(front)) {
+						const up = world.getBlock(
+							Math.floor(this.x),
+							Math.floor(this.y + 1.8),
+							Math.floor(this.z)
+						);
+						if (!isSolidBlock(up)) this.y += 0.08; // trepa el muro
+					}
+					// Salto de ataque: cerca del objetivo, salta sobre él.
+					if (dist < 3 && Math.floor(this.y) === Math.floor(nearest.y))
+						this.y += 0.45;
 					if (dist < 1.7) this.attack(nearest, 2, 900);
 				} else {
 					this.state = "idle";
@@ -280,38 +435,59 @@ class Mob {
 			case "wolf": // Fase 5: hostil resistente de la noche
 				if (nearest && (isNight || dist < 8)) {
 					this.state = "chase";
-					this.moveToward(nearest, 0.04);
+					this.chase(nearest, 0.04);
 					if (dist < 1.8) this.attack(nearest, 3, 1200);
 				} else {
 					this.state = "idle";
 					this.wander();
 				}
 				break;
-			case "creeper":
+			case "creeper": {
+				// Fase 9 (Bloque D): fuse fiel — se detiene, "silba" (~1.5s) y
+				// explota si el jugador sigue cerca; si se aleja, cancela.
 				if (nearest && dist < 10) {
-					this.state = "chase";
-					this.moveToward(nearest, 0.045);
-					if (dist < 2.5) this.explode();
+					if (dist < 3) {
+						this.state = "fuse";
+						if (!this.fuseStart) this.fuseStart = Date.now();
+						if (Date.now() - this.fuseStart >= 1500) {
+							this.fuseStart = null;
+							this.explode();
+						}
+					} else {
+						this.fuseStart = null;
+						this.state = "chase";
+						this.chase(nearest, 0.045);
+					}
 				} else {
+					this.fuseStart = null;
 					this.state = "idle";
 					this.wander();
 				}
 				break;
-			case "skeleton":
+			}
+			case "skeleton": {
+				// Fase 9 (Bloque D): el esqueleto mantiene la distancia y dispara
+				// flechas (proyectil con gravedad). No arde (en Minecraft el
+				// esqueleto tampoco arde — solo el zombi); por eso se excluye de
+				// BURNS_IN_SUN en la Fase 9.
 				if (nearest && (isNight || dist < 8)) {
 					this.state = "chase";
-					if (dist < 4)
-						this.moveToward(
+					if (dist < 6)
+						this.chase(
 							{ x: 2 * this.x - nearest.x, z: 2 * this.z - nearest.z },
 							0.03
 						);
-					else if (dist > 8) this.moveToward(nearest, 0.03);
-					if (dist < 15) this.attack(nearest, 2, 1500);
+					else if (dist > 12) this.chase(nearest, 0.03);
+					if (dist < 18 && Date.now() > this.shootCooldown) {
+						shootArrow(this, nearest);
+						this.shootCooldown = Date.now() + 2500;
+					}
 				} else {
 					this.state = "idle";
 					this.wander();
 				}
 				break;
+			}
 			case "enderman":
 				if (
 					nearest &&
@@ -333,18 +509,87 @@ class Mob {
 					this.wander();
 				}
 				break;
-			default: // pasivos
-				if (nearest && dist < 4) {
-					this.state = "flee";
-					this.moveToward(
-						{ x: 2 * this.x - nearest.x, z: 2 * this.z - nearest.z },
-						0.03
-					);
-				} else {
-					this.state = "idle";
-					this.wander();
-				}
 		}
+	}
+
+	// ============================================================
+	// PASAVOS (Fase 9, Bloque D): huir al ser golpeados, deambular más
+	// natural (con pausas y pastar), volver al rebaño (homeX/homeZ) y dormir
+	// de noche (se agrupan y se quedan quietos — estético).
+	// ============================================================
+	tickPassive(isNight, nearest, dist) {
+		// Dormir de noche: se agrupan en el punto medio del rebaño y se quedan
+		// quietos (estado 'sleep'); de día vuelven a su vida normal.
+		if (isNight) {
+			if (this.state !== "sleep") {
+				// Grupo: media de las posiciones de los pasivos cercanos (rebaño).
+				let gx = this.homeX,
+					gz = this.homeZ,
+					n = 1;
+				for (const m of state.mobs) {
+					if (m.alive && !HOSTILE.has(m.type) && m.id !== this.id) {
+						if (Math.hypot(m.x - this.x, m.z - this.z) < 12) {
+							gx += m.x;
+							gz += m.z;
+							n++;
+						}
+					}
+				}
+				this.sleepTarget = { x: gx / n, z: gz / n };
+				this.state = "sleep";
+			}
+			// Acercarse lentamente al grupo y quedarse quieto al llegar.
+			const t = this.sleepTarget || { x: this.homeX, z: this.homeZ };
+			if (Math.hypot(t.x - this.x, t.z - this.z) > 1.2) {
+				this.moveToward(t, 0.02);
+			} else {
+				this.settleOnGround();
+			}
+			return;
+		}
+		this.sleepTarget = null;
+		// Huir al ser golpeado (mobHit lo activa): correr en dirección contraria.
+		if (Date.now() < this.fleeUntil && this.fleeFrom) {
+			this.state = "flee";
+			this.moveToward(
+				{ x: this.fleeFrom.x, z: this.fleeFrom.z },
+				0.045 // más rápido que deambular (como en Minecraft)
+			);
+			return;
+		}
+		// Volver al rebaño si se alejaron demasiado del punto de origen.
+		const homeDist = Math.hypot(this.x - this.homeX, this.z - this.homeZ);
+		if (homeDist > 24) {
+			this.state = "home";
+			this.moveToward({ x: this.homeX, z: this.homeZ }, 0.03);
+			return;
+		}
+		// Deambular natural: pausas aleatorias y pastar de vez en cuando.
+		if (Date.now() < this.wanderPauseUntil) {
+			this.state = "graze";
+			this.settleOnGround();
+			return;
+		}
+		if (Math.random() < 0.008) {
+			// Pausa de 0.5-2s o pastar (1-2s).
+			this.wanderPauseUntil = Date.now() + 500 + Math.random() * 1500;
+			this.state = Math.random() < 0.5 ? "graze" : "idle";
+		} else {
+			this.state = "idle";
+			this.wander();
+		}
+	}
+
+	// Al ser golpeado por un jugador (attack_mob): los pasivos huyen durante
+	// ~4s en dirección contraria al atacante (Fase 9, Bloque D).
+	mobHit(attacker) {
+		if (HOSTILE.has(this.type)) return;
+		this.fleeUntil = Date.now() + 4000;
+		this.fleeFrom = {
+			x: 2 * this.x - attacker.x,
+			z: 2 * this.z - attacker.z
+		};
+		this.wanderPauseUntil = 0; // el susto interrumpe la pausa
 	}
 }
 
@@ -362,7 +607,7 @@ class Mob {
 // ============================================================
 const SPAWN_MIN_PLAYER_DIST = 24; // bloques: hostiles nunca a menos de esto
 const SPAWN_TYPES = {
-	day: ["cow", "pig", "chicken", "sheep", "rabbit"],
+	day: ["cow", "pig", "chicken", "sheep", "rabbit", "bee"],
 	night: [
 		"zombie",
 		"creeper",
@@ -373,7 +618,8 @@ const SPAWN_TYPES = {
 		"pig",
 		"chicken",
 		"sheep",
-		"rabbit"
+		"rabbit",
+		"bee"
 	]
 };
 
@@ -416,6 +662,11 @@ function spawnMobs(isNight) {
 			}
 			const wy = world.getHeight(Math.floor(wx), Math.floor(wz)) + 1;
 			const mob = new Mob(type, wx, wy, wz);
+			// Fase 9 (Bloque D): el punto de origen es el rebaño del pasivo (vuelven a
+			// él si se alejan). Las abejas vuelan alrededor de su panal (el origen).
+			mob.homeX = wx;
+			mob.homeZ = wz;
+			if (type === "bee") mob.homeY = wy + 2;
 			state.mobs.push(mob);
 			created.push(mob);
 			placed = mob;
@@ -434,7 +685,10 @@ function mobSnapshot(m) {
 		color: m.color,
 		state: m.state,
 		isBaby: m.isBaby,
-		burning: m.burning
+		burning: m.burning,
+		// Fase 9 (Bloque D): creeper en fuse (silbando antes de explotar) — el
+		// cliente escala el mob para la animación.
+		fuse: m.state === "fuse" ? 1 : 0
 	};
 }
 
@@ -452,10 +706,12 @@ const FOOD_DROPS = {
 };
 // Drops no comestibles (Fase 5): la araña suelta hilo (para lana); la vaca y
 // el conejo sueltan cuero (material de la armadura de cuero, Fase 7).
+// Fase 9 (Bloque D/F): el esqueleto suelta huesos (→ harina de hueso).
 const OTHER_DROPS = {
 	spider: { id: I.STRING, min: 0, max: 2 },
 	cow: { id: I.LEATHER, min: 0, max: 2 },
-	rabbit: { id: I.LEATHER, min: 0, max: 1 }
+	rabbit: { id: I.LEATHER, min: 0, max: 1 },
+	skeleton: { id: I.BONE, min: 0, max: 2 }
 };
 
 // Devuelve [{ id, count }] para el tipo o null si no dropea nada. Un mob
@@ -531,6 +787,27 @@ function restoreMobs(list) {
 	});
 }
 
+// ============================================================
+// ABEJAS (Fase 9, Bloque F — versión simplificada)
+// Pasivo volador pequeño: deambula en 3D alrededor de su origen (homeY en
+// el aire) con oscilación suave, como una abeja posándose. No se cría ni
+// suelta miel al morir (la miel llega como botín de cofres — simplificación
+// documentada en fase9-spec.md §F1).
+// ============================================================
+const BEE_HEALTH = 5;
+function tickBee(mob) {
+	// Órbita sencilla alrededor del origen (en el aire), con rebote suave.
+	const angle = (Date.now() / 1200 + mob.id.length) % (Math.PI * 2);
+	const radius = 3 + Math.sin(angle * 0.7) * 2;
+	const tx = mob.homeX + Math.cos(angle) * radius;
+	const tz = mob.homeZ + Math.sin(angle) * radius;
+	const ty = (mob.homeY ?? mob.y) + Math.sin(angle * 2) * 1.5;
+	mob.x += (tx - mob.x) * 0.01;
+	mob.z += (tz - mob.z) * 0.01;
+	mob.y += (ty - mob.y) * 0.01;
+	mob.state = "fly";
+}
+
 module.exports = {
 	Mob,
 	spawnMobs,
@@ -540,5 +817,8 @@ module.exports = {
 	canFeed,
 	applyFeed,
 	getSafeSpawn,
-	setSpawnSafeRadius
+	setSpawnSafeRadius,
+	tickArrows,
+	arrowSnapshot,
+	BEE_HEALTH
 };

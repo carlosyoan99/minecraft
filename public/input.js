@@ -8,14 +8,16 @@ import {
 	ARMOR_ITEMS,
 	BED,
 	BREED_FOOD,
+	FARMLAND,
 	FOOD_ITEMS,
+	HOES,
 	PLACEABLE_BLOCKS,
 	WATER
 } from "./constants.js";
 import { toggleDebug } from "./debug.js";
 import { mobMeshes } from "./mobs.js";
-import { move } from "./player.js";
-import { camera, controls, renderer } from "./scene.js";
+import { isFlying, move, setFlying } from "./player.js";
+import { camera, controls, renderer, scene } from "./scene.js";
 import {
 	closePanels,
 	getHeldItem,
@@ -25,9 +27,17 @@ import {
 	selectSlot,
 	toggleChestUI,
 	toggleFurnaceUI,
-	toggleInventory
+	toggleInventory,
+	toggleRecipeBook,
+	getGamemode as uiGamemode
 } from "./ui.js";
-import { chunkMeshes, getClientBlock, hideCrack, showCrack } from "./world.js";
+import {
+	chunkMeshes,
+	getClientBlock,
+	hideCrack,
+	lodMeshes,
+	showCrack
+} from "./world.js";
 
 // ============================================================
 // TECLADO
@@ -53,6 +63,11 @@ document.addEventListener("keydown", (e) => {
 		case "Space":
 			move.jump = true;
 			break;
+		case "ShiftLeft":
+		case "ShiftRight":
+			// Fase 9 (Bloque C): en el vuelo creativo, Shift baja (como en MC).
+			move.sneak = true;
+			break;
 		case "Digit1":
 		case "Digit2":
 		case "Digit3":
@@ -68,6 +83,10 @@ document.addEventListener("keydown", (e) => {
 		}
 		case "KeyE":
 			toggleInventory();
+			break;
+		case "KeyB":
+			// Fase 9 (Bloque F): libro de recetas (todas visibles por categorías)
+			toggleRecipeBook();
 			break;
 		case "Escape":
 			closePanels();
@@ -96,6 +115,10 @@ document.addEventListener("keyup", (e) => {
 		case "Space":
 			move.jump = false;
 			break;
+		case "ShiftLeft":
+		case "ShiftRight":
+			move.sneak = false;
+			break;
 	}
 });
 
@@ -121,12 +144,17 @@ function startMiningAt(x, y, z) {
 		target === 22 ||
 		target === WATER ||
 		target === -1
-	)
+	) {
+		const last = miningTrace[miningTrace.length - 1];
+		if (last) Object.assign(last, { target, refused: true });
 		return false;
+	}
 	miningTarget = { x, y, z };
 	playBreak(target);
 	showCrack(x, y, z);
 	send("block_action", { action: "break", x, y, z });
+	const last = miningTrace[miningTrace.length - 1];
+	if (last) Object.assign(last, { target, sent: true });
 	return true;
 }
 
@@ -140,24 +168,128 @@ function stopMining() {
 // conejo también come zanahorias (Fase 5)
 const PASSIVE_MOBS = new Set(["cow", "pig", "chicken", "sheep", "rabbit"]);
 
+// ============================================================
+// FASE 9 (Bloque C): AZADA, PLANTAR, PICKER CREATIVO Y VUELO
+// ============================================================
+// Clic derecho con una azada sobre tierra/césped → arar (till). Con
+// semillas sobre tierra arada → plantar (plant). El servidor valida todo.
+const DIRT_BLOCK = 1;
+const GRASS_BLOCK = 2;
+
+function isCreative() {
+	return uiGamemode() === "creative";
+}
+
+// Clic medio (picker creativo): en un mundo creative, coge el bloque al que
+// se apunta y lo coloca en el slot seleccionado (como el pick-block de MC).
+renderer.domElement.addEventListener("mousedown", (e) => {
+	if (e.button !== 1 || !controls.isLocked || !isCreative()) return;
+	e.preventDefault(); // evitar el autoscroll del navegador
+	const hit = raycastTerrainAndMobs();
+	if (!hit || hit.object.userData.mobId) return;
+	const point = hit.point.clone().addScaledVector(hit.face.normal, -0.5);
+	const x = Math.floor(point.x),
+		y = Math.floor(point.y),
+		z = Math.floor(point.z);
+	const target = getClientBlock(x, y, z);
+	if (target > 0) send("creative_pick", { itemId: target });
+});
+
+// Doble espacio: activar/desactivar el vuelo (solo en creative). El primer
+// espacio salta (o sube si ya vuela); un segundo dentro de 260 ms alterna.
+let lastSpaceAt = 0;
+let spacePending = false;
+document.addEventListener("keydown", (e) => {
+	if (e.code !== "Space" || isTyping() || !isCreative()) return;
+	const now = performance.now();
+	if (spacePending && now - lastSpaceAt < 260) {
+		spacePending = false;
+		setFlying(!isFlying());
+		return;
+	}
+	spacePending = true;
+	lastSpaceAt = now;
+	setTimeout(() => {
+		spacePending = false;
+	}, 300);
+});
+
 // Fase 8 (B9): los mobs son GRUPOS de partes (MOB_PARTS) — el rayo intersecta
 // los HIJOS (las cajas) con recursión y luego se sube por el árbol hasta el
 // grupo raíz que tiene userData.mobId/mobType. El terreno son meshes simples
 // (hijos de chunkMeshes); intersectar con recursive=true también los cubre.
 function raycastTerrainAndMobs() {
+	// Fase 9 (Bloque A): refrescar matrixWorld ANTES de intersectar. El render
+	// loop lo hace cada frame, pero un mob/chunk recién creado o movido puede
+	// tener matrixWorld obsoleto en el instante del mousedown (entre frames):
+	// el rayo intersectaría el objeto en su posición ANTERIOR o en el origen
+	// si nunca se renderizó → el clic golpearía el aire o el mob equivocado
+	// y "no haría nada" pese a apuntar a un bloque visible.
+	scene.updateMatrixWorld();
 	raycaster.setFromCamera({ x: 0, y: 0 }, camera);
 	const terrainMeshes = [];
-	for (const group of chunkMeshes.values())
+	// Detalle completo + LOD: sin los LOD, el terreno lejano (visible) no es
+	// clicable — el rayo lo atraviesa y el clic "no hace nada" en esas zonas
+	// (p. ej. un chunk que se quedara en tier LOD por un fallo de transición).
+	for (const group of [...chunkMeshes.values(), ...lodMeshes.values()])
 		group.children.forEach((m) => {
 			terrainMeshes.push(m);
 		});
 	const mobList = Array.from(mobMeshes.values());
+	const all = [...terrainMeshes, ...mobList];
+	raycastStats.candidates = all.length;
 	const hits = raycaster.intersectObjects(
-		[...terrainMeshes, ...mobList],
+		all,
 		true // Fase 8 (B9): recursivo para llegar a las partes de los mobs
 	);
+	raycastStats.hits = hits.length;
+	raycastStats.mobHits = hits.filter((h) => mobRootData(h)).length;
+	raycastStats.terrainHits = hits.length - raycastStats.mobHits;
+	if (hits.length === 0) raycastStats.emptyHits++;
 	return hits[0] || null;
 }
+
+// ============================================================
+// FASE 9 (Bloque A): TELEMETRÍA DE MINERÍA PARA DIAGNÓSTICO
+// Expuesta en window para diagnosticar "el clic no hace nada" desde la
+// consola: cada mousedown deja un registro en __mcMiningTrace y el raycast
+// acumula __mcRaycastStats. __mcDebugMining() fuerza un raycast AHORA y
+// muestra el detalle (sin esperar a un clic).
+// ============================================================
+const miningTrace = [];
+const raycastStats = {
+	candidates: 0,
+	hits: 0,
+	terrainHits: 0,
+	mobHits: 0,
+	emptyHits: 0
+};
+window.__mcMiningTrace = miningTrace;
+window.__mcRaycastStats = raycastStats;
+// biome-ignore lint/suspicious/noConsole: helper de diagnóstico (consola)
+window.__mcDebugMining = () => {
+	const hit = raycastTerrainAndMobs();
+	const root = mobRootData(hit);
+	const detail = {
+		locked: controls.isLocked,
+		stats: { ...raycastStats },
+		firstHit: hit
+			? {
+					dist: +hit.distance.toFixed(2),
+					isMob: !!root?.mobId,
+					type: root?.mobType || null,
+					blockAtPoint: getClientBlock(
+						Math.floor(hit.point.x),
+						Math.floor(hit.point.y),
+						Math.floor(hit.point.z)
+					)
+				}
+			: null
+	};
+	// biome-ignore lint/suspicious/noConsole: helper de diagnóstico (consola)
+	console.log("[mine]", detail);
+	return detail;
+};
 
 // Sube desde el mesh golpeado (puede ser una parte del grupo) hasta el grupo
 // raíz del mob y devuelve su userData, o null si no era un mob. Sin esto, con
@@ -217,6 +349,25 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	// el hit puede ser una PARTE del grupo multibloque → se sube al raíz con
 	// mobRootData() para leer mobId/mobType.
 	const rootData = mobRootData(hit);
+	// Fase 9 (Bloque A): registro de telemetría (anillo de ~40) para
+	// diagnosticar "el clic no hace nada" — ver window.__mcMiningTrace.
+	const traceEntry = {
+		time: performance.now(),
+		locked: controls.isLocked,
+		button: e.button,
+		hit: hit
+			? {
+					isMob: !!rootData?.mobId,
+					type: rootData?.mobType || null,
+					x: Math.floor(hit.point.x),
+					y: Math.floor(hit.point.y),
+					z: Math.floor(hit.point.z),
+					dist: +hit.distance.toFixed(2)
+				}
+			: null
+	};
+	miningTrace.push(traceEntry);
+	if (miningTrace.length > 40) miningTrace.shift();
 	const hitMob =
 		(rootData?.mobId && { id: rootData.mobId, type: rootData.mobType }) ||
 		nearestMobOnRay(raycaster.ray, hit ? hit.distance : raycaster.far);
@@ -260,6 +411,25 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	const x = Math.floor(point.x),
 		y = Math.floor(point.y),
 		z = Math.floor(point.z);
+
+	// Fase 9 (Bloque C): clic derecho con azada sobre tierra/césped → arar;
+	// con semillas sobre tierra arada → plantar. Antes de intentar colocar.
+	if (e.button === 2 && held) {
+		const targetBlock = getClientBlock(x, y, z);
+		if (
+			HOES.has(held.id) &&
+			(targetBlock === DIRT_BLOCK || targetBlock === GRASS_BLOCK)
+		) {
+			playBreak(targetBlock);
+			send("till", { x, y, z });
+			return;
+		}
+		if (held.id === 117 && targetBlock === FARMLAND) {
+			// semillas → plantar (el servidor valida que sea tierra arada)
+			send("plant", { x, y, z });
+			return;
+		}
+	}
 
 	if (e.button === 0) {
 		const target = getClientBlock(x, y, z);

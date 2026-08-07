@@ -75,6 +75,18 @@ function isLake(wx, wz) {
 	return noise2D_lake(wx * LAKE_FREQ, wz * LAKE_FREQ) > LAKE_THRESHOLD;
 }
 
+// Playas costeras (Fase 9, Bloque F): una columna es "costa" si hay un lago a
+// ≤2 bloques (transición suave agua → arena → tierra, sin cortes). Las costas
+// llevan arena en la superficie, como en Minecraft.
+function nearLake(wx, wz) {
+	for (let dx = -2; dx <= 2; dx++) {
+		for (let dz = -2; dz <= 2; dz++) {
+			if (isLake(wx + dx, wz + dz)) return true;
+		}
+	}
+	return false;
+}
+
 // Umbral de temperatura para tundra: por debajo hace tanto frío que nieva.
 const SNOW_TEMP = -0.3;
 // Umbral del ruido de montaña: por encima el terreno se eleva en cordilleras.
@@ -479,7 +491,11 @@ function generateChunk(cx, cz) {
 			const biome = biomeFrom(temp, mnt);
 			const surfaceBlock = lake
 				? B.AIR
-				: surfaceBlockFor(wx, wz, height, temp, mnt);
+				: // Fase 9 (Bloque F): playa — la costa de un lago se cubre de arena
+					// (transición suave agua → arena → tierra).
+					nearLake(wx, wz)
+					? B.SAND
+					: surfaceBlockFor(wx, wz, height, temp, mnt);
 			// Boca de cueva: pico de ruido extremo justo en el bloque de superficie,
 			// y solo si la capa inferior ya fue excavada (entrada real conectada al
 			// túnel, no un hoyo aislado de 1 bloque). ≈1-2% de columnas.
@@ -509,14 +525,21 @@ function generateChunk(cx, cz) {
 					} else {
 						block = B.STONE;
 						if (y > 4) {
+							// Fase 9 (Bloque F): minerales por altura estilo Minecraft —
+							// carbón abundante en profundidad media-alta, hierro medio-
+							// bajo, oro bajo, diamante/redstone solo en lo profundo.
+							// Segunda octava de ruido para vetas más orgánicas.
 							const oreRoll =
 								(noise2D_ore(wx * 0.3 + y * 7.1, wz * 0.3) + 1) / 2;
-							if (y < 16 && oreRoll > 0.985) block = B.DIAMOND_ORE;
-							else if (y < 20 && oreRoll > 0.975) block = B.REDSTONE_ORE;
-							else if (y < 30 && oreRoll > 0.965) block = B.EMERALD_ORE;
-							else if (y < 30 && oreRoll > 0.95) block = B.GOLD_ORE;
-							else if (y < 40 && oreRoll > 0.93) block = B.IRON_ORE;
-							else if (y < 50 && oreRoll > 0.9) block = B.COAL_ORE;
+							const oreFine =
+								(noise2D_detail(wx * 0.15 + y * 3.7, wz * 0.15) + 1) / 2;
+							const roll = oreRoll * 0.7 + oreFine * 0.3;
+							if (y < 14 && roll > 0.978) block = B.DIAMOND_ORE;
+							else if (y < 18 && roll > 0.968) block = B.REDSTONE_ORE;
+							else if (y < 32 && roll > 0.955) block = B.EMERALD_ORE;
+							else if (y < 32 && roll > 0.945) block = B.GOLD_ORE;
+							else if (y < 48 && roll > 0.9) block = B.IRON_ORE;
+							else if (y < 56 && roll > 0.86) block = B.COAL_ORE;
 						}
 					}
 				} else if (y === height - 1) {
@@ -579,23 +602,26 @@ function generateChunk(cx, cz) {
 			// flotando un bloque por encima del terreno (ver tests/unit-arboles.js).
 			// Solo sobre césped firme (ni boca de cueva, ni charco, ni estribación
 			// rocosa, ni arena del borde del desierto) y nunca dentro de un lago.
+			// Fase 9 (Bloque F): variedad — abedul en el bosque (tronco claro,
+			// copa normal) y pino cónico en tundra/montaña (tronco de abeto).
+			const canGrowTree =
+				!lake && !mouth && !pond && !lavaPond && surfaceBlock === B.GRASS;
+			const treeRoll = Math.random();
 			if (
-				!lake &&
-				!mouth &&
-				!pond &&
-				!lavaPond &&
-				surfaceBlock === B.GRASS &&
+				canGrowTree &&
 				(biome === "forest" || biome === "plains") &&
-				Math.random() < (biome === "forest" ? 0.04 : 0.01)
+				treeRoll < (biome === "forest" ? 0.05 : 0.012)
 			) {
+				// Roble (bosque/llanura) o abedul (bosque, ~1/3): misma forma,
+				// madera distinta (tronco claro).
+				const birch = biome === "forest" && Math.random() < 0.33;
+				const log = birch ? B.BIRCH_LOG : B.OAK_LOG;
+				const leaves = birch ? B.BIRCH_LEAVES : B.OAK_LEAVES;
 				const treeHeight = 4 + Math.floor(Math.random() * 3);
 				for (let i = 0; i < treeHeight; i++) {
 					const y = height + i;
-					if (y < WORLD_HEIGHT) data[idx(x, y, z)] = B.OAK_LOG;
+					if (y < WORLD_HEIGHT) data[idx(x, y, z)] = log;
 				}
-				// Hojas alrededor de la copa: una capa bajo el tope, la del tope y la
-				// superior (esquinas redondeadas en la superior). Con el tronco una
-				// unidad más abajo que antes, las hojas bajan una unidad también.
 				for (let dx = -2; dx <= 2; dx++) {
 					for (let dz = -2; dz <= 2; dz++) {
 						for (let dy = treeHeight - 2; dy <= treeHeight; dy++) {
@@ -605,11 +631,80 @@ function generateChunk(cx, cz) {
 								lz = z + dz;
 							if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE)
 								continue;
+							// Fase 9 (fix): las copas de los árboles NO caen sobre los
+							// charcos decorativos de agua/lava de la Fase 7 (los taparían
+							// y el charco dejaría de ser visible). La densidad mayor de
+							// árboles de la Fase 9 (abedul/pino) hacía esto probable.
+							const leafWx = cx * CHUNK_SIZE + lx,
+								leafWz = cz * CHUNK_SIZE + lz;
+							if (isPondAt(leafWx, leafWz) || isLavaPondAt(leafWx, leafWz))
+								continue;
 							const y = height + dy;
 							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR)
-								data[idx(lx, y, lz)] = B.OAK_LEAVES;
+								data[idx(lx, y, lz)] = leaves;
 						}
 					}
+				}
+			} else if (
+				canGrowTree &&
+				(biome === "snow" || biome === "mountain") &&
+				treeRoll < 0.02
+			) {
+				// Pino cónico (abeto) en frío: tronco alto y estrecho con copa cónica.
+				const treeHeight = 5 + Math.floor(Math.random() * 4);
+				for (let i = 0; i < treeHeight; i++) {
+					const y = height + i;
+					if (y < WORLD_HEIGHT) data[idx(x, y, z)] = B.SPRUCE_LOG;
+				}
+				for (let dy = 0; dy < treeHeight - 1; dy++) {
+					const radius = dy < 2 ? 1 : 2;
+					for (let dx = -radius; dx <= radius; dx++) {
+						for (let dz = -radius; dz <= radius; dz++) {
+							if (
+								Math.abs(dx) === radius &&
+								Math.abs(dz) === radius &&
+								Math.random() < 0.5
+							)
+								continue;
+							const lx = x + dx,
+								lz = z + dz;
+							if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE)
+								continue;
+							// Fase 9 (fix): la copa cónica del pino tampoco tapa los
+							// charcos decorativos (mismo criterio que las hojas de roble).
+							const leafWx = cx * CHUNK_SIZE + lx,
+								leafWz = cz * CHUNK_SIZE + lz;
+							if (isPondAt(leafWx, leafWz) || isLavaPondAt(leafWx, leafWz))
+								continue;
+							const y = height + dy;
+							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR)
+								data[idx(lx, y, lz)] = B.SPRUCE_LEAVES;
+						}
+					}
+				}
+			}
+
+			// Fase 9 (Bloque F): estructuras y vegetación sobre césped firme —
+			// hierba alta, flores (amapola/diente de león) y, raramente, un pilar
+			// de piedra con piedra de musgo (estructura decorativa).
+			if (canGrowTree && data[idx(x, height, z)] === B.AIR) {
+				const veg = Math.random();
+				if (veg < 0.1) data[idx(x, height, z)] = B.TALL_GRASS;
+				else if (veg < 0.12) data[idx(x, height, z)] = B.POPPY;
+				else if (veg < 0.14) data[idx(x, height, z)] = B.DANDELION;
+			}
+			if (
+				canGrowTree &&
+				(biome === "plains" || biome === "forest") &&
+				Math.random() < 0.004
+			) {
+				// Pilar de piedra: columna de 1-3 bloques con la cima de musgo.
+				const h = 1 + Math.floor(Math.random() * 3);
+				for (let i = 0; i < h; i++) {
+					const y = height + i;
+					if (y < WORLD_HEIGHT && data[idx(x, y, z)] === B.AIR)
+						data[idx(x, y, z)] =
+							i === h - 1 ? B.MOSSY_COBBLESTONE : B.COBBLESTONE;
 				}
 			}
 		}

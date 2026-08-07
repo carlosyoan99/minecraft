@@ -195,6 +195,23 @@ export function updateMobs(list) {
 			mesh.userData.burning = burning;
 			material.color.setHex(burning ? 0xff7710 : mesh.userData.baseColor);
 		}
+		// Fase 9 (Bloque D): creeper en fuse — el servidor manda `fuse: 1`
+		// mientras silba antes de explotar; el cliente agranda y aclara el mob
+		// para que "se hinche" como en Minecraft (adelanto de la explosión).
+		const fusing = !!m.fuse;
+		if (fusing && !mesh.userData.fusing) {
+			mesh.userData.fusing = true;
+			mesh.scale.set(s * 1.25, s * 1.25, s * 1.25);
+			if (material) material.color.setHex(0xffffff);
+		} else if (!fusing && mesh.userData.fusing) {
+			mesh.userData.fusing = false;
+			mesh.scale.set(s, s, s);
+			if (material) {
+				material.color.setHex(
+					mesh.userData.burning ? 0xff7710 : mesh.userData.baseColor
+				);
+			}
+		}
 	}
 	for (const [id, mesh] of mobMeshes) {
 		if (!seen.has(id)) {
@@ -209,6 +226,72 @@ export function removeMob(id) {
 	if (mesh) {
 		scene.remove(mesh);
 		mobMeshes.delete(id);
+	}
+}
+
+// ============================================================
+// FLECHAS DEL ESQUELETO (Fase 9, Bloque D)
+// Primera entidad proyectil: el servidor hace broadcast de las flechas
+// vivas (arrows_update) con posición y velocidad; el cliente mantiene un
+// pool de meshes de flecha (cilindro delgado + punta) que coloca según
+// las snapshots. No hay física local: el servidor la integra y manda el
+// resultado cada tick.
+// ============================================================
+const arrowMeshes = new Map(); // id -> { mesh, cone }
+let arrowGeo = null;
+let arrowConeGeo = null;
+const arrowMaterial = new THREE.MeshLambertMaterial({ color: 0x8f6b3e });
+const arrowTipMaterial = new THREE.MeshLambertMaterial({ color: 0xd8d8d8 });
+const ARROW_LIFE_MS = 4000; // los meshes huérfanos se limpian a los 4s
+const arrowLastSeen = new Map(); // id -> performance.now()
+
+function arrowId(a) {
+	return `${a.x.toFixed(2)},${a.y.toFixed(2)},${a.z.toFixed(2)}`;
+}
+
+function makeArrowMesh(id) {
+	if (!arrowGeo) {
+		arrowGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.55, 6);
+		arrowConeGeo = new THREE.ConeGeometry(0.06, 0.14, 6);
+	}
+	const shaft = new THREE.Mesh(arrowGeo, arrowMaterial);
+	const tip = new THREE.Mesh(arrowConeGeo, arrowTipMaterial);
+	tip.position.y = 0.34;
+	const group = new THREE.Group();
+	group.add(shaft);
+	group.add(tip);
+	scene.add(group);
+	arrowMeshes.set(id, { shaft, tip, group });
+	return group;
+}
+
+// Reemplaza el conjunto de flechas vivas por las del broadcast. Las nuevas
+// se orientan por su velocidad (apuntando a donde viajan).
+export function updateArrows(arrows) {
+	const now = performance.now();
+	const seen = new Set();
+	for (const a of arrows) {
+		const id = arrowId(a);
+		seen.add(id);
+		let mesh = arrowMeshes.get(id);
+		if (!mesh) mesh = makeArrowMesh(id);
+		mesh.group.position.set(a.x, a.y, a.z);
+		// Orientar por velocidad: forward = v, up = Y (normalizar, defensivo).
+		const speed = Math.hypot(a.vx, a.vy, a.vz) || 1;
+		mesh.group.lookAt(
+			a.x + a.vx / speed,
+			a.y + a.vy / speed,
+			a.z + a.vz / speed
+		);
+		arrowLastSeen.set(id, now);
+	}
+	// Limpiar flechas que ya no están en el broadcast (impactaron o expiraron).
+	for (const [id, m] of arrowMeshes) {
+		if (!seen.has(id) && now - (arrowLastSeen.get(id) || 0) > ARROW_LIFE_MS) {
+			scene.remove(m.group);
+			arrowMeshes.delete(id);
+			arrowLastSeen.delete(id);
+		}
 	}
 }
 

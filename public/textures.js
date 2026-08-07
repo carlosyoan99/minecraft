@@ -35,6 +35,12 @@ function rect(ctx, x, y, w, h, color) {
 	ctx.fillStyle = color;
 	ctx.fillRect(x, y, w, h);
 }
+// Línea vertical de 1 píxel de ancho (de y0 a y1 inclusive): tallos de las
+// plantas y trigo (Fase 9, F). x e y en píxeles de la tesela 16×16.
+function vline(ctx, x, y0, y1, color) {
+	ctx.fillStyle = color;
+	ctx.fillRect(x, y0, 1, y1 - y0 + 1);
+}
 function speckle(ctx, rng, color, density) {
 	ctx.fillStyle = color;
 	for (let y = 0; y < TILE; y++) {
@@ -351,6 +357,114 @@ function drawTorch(ctx, _rng) {
 	px(ctx, 8, 3, PAL.flameDark);
 }
 
+// ============================================================
+// FASE 9 (Bloque F): BLOQUES NUEVOS — abedul, pino, musgo, hierba/flores,
+// lanas tintadas, tierra arada y cultivo de trigo.
+// ============================================================
+function drawBirchLogSide(ctx, rng) {
+	fill(ctx, "#d9cfbe");
+	for (let x = 0; x < TILE; x += 4) rect(ctx, x, 0, 1, TILE, "#b8ac96");
+	speckle(ctx, rng, "#8a7f68", 0.04);
+	rect(ctx, 5, 0, 3, TILE, "#e8e0d0"); // veta clara
+}
+function drawBirchLogTop(ctx, _rng) {
+	fill(ctx, "#d9cfbe");
+	rect(ctx, 2, 2, 12, 12, "#eee8dc");
+	rect(ctx, 4, 4, 8, 8, "#f5f0e6");
+	rect(ctx, 6, 6, 4, 4, "#e0d8c8");
+	rect(ctx, 1, 1, 14, 1, "#b8ac96");
+	rect(ctx, 1, 14, 14, 1, "#b8ac96");
+}
+function drawBirchLeaves(ctx, rng) {
+	fill(ctx, "#7fd04f");
+	speckle(ctx, rng, "#5a9a3a", 0.2);
+	speckle(ctx, rng, "#a8e87f", 0.12);
+}
+function drawSpruceLogSide(ctx, rng) {
+	fill(ctx, "#4a3320");
+	for (let x = 0; x < TILE; x += 3) rect(ctx, x, 0, 1, TILE, "#35240f");
+	speckle(ctx, rng, "#5a4028", 0.05);
+}
+function drawSpruceLogTop(ctx, _rng) {
+	fill(ctx, "#4a3320");
+	rect(ctx, 2, 2, 12, 12, "#8a6a44");
+	rect(ctx, 4, 4, 8, 8, "#6f5230");
+	rect(ctx, 6, 6, 4, 4, "#5a4028");
+	rect(ctx, 2, 2, 12, 1, "#35240f");
+	rect(ctx, 2, 13, 12, 1, "#35240f");
+}
+function drawSpruceLeaves(ctx, rng) {
+	fill(ctx, "#2f5d2a");
+	speckle(ctx, rng, "#1f4a1c", 0.2);
+	speckle(ctx, rng, "#4a8a40", 0.1);
+}
+function drawMossyCobble(ctx, rng) {
+	drawCobble(ctx, rng);
+	// musgo en las grietas (píxeles verdes sobre las piedras)
+	for (let i = 0; i < 14; i++) {
+		const x = Math.floor(rng() * TILE);
+		const y = Math.floor(rng() * TILE);
+		const c = rng() < 0.5 ? "#4a7a2e" : "#5a8a3a";
+		rect(ctx, x, y, 1 + Math.floor(rng() * 2), 1, c);
+	}
+}
+// Planta/arbusto (hierba alta, flores, trigo): silueta de tallo + copa con
+// fondo transparente (el canvas no se rellena) — la geometría cruzada de
+// world.js la muestra como planta, no como caja.
+function drawTallGrass(ctx, rng) {
+	vline(ctx, 8, 8, 15, "#4a9e2f");
+	for (let i = 0; i < 7; i++) {
+		const y = 4 + Math.floor(rng() * 8);
+		rect(ctx, 3 + Math.floor(rng() * 10), y, 2, 1, "#5aae3f");
+	}
+	rect(ctx, 7, 2, 3, 6, "#6fbf4f");
+	rect(ctx, 6, 4, 1, 3, "#3a8a2a");
+	rect(ctx, 9, 5, 1, 2, "#3a8a2a");
+}
+function drawPoppy(ctx, _rng) {
+	vline(ctx, 8, 8, 15, "#3a8a2a");
+	rect(ctx, 7, 3, 3, 1, "#b01a1a");
+	rect(ctx, 6, 2, 5, 3, "#d92626");
+	rect(ctx, 5, 3, 2, 1, "#e84a4a");
+	rect(ctx, 10, 3, 2, 1, "#8f1010");
+	px(ctx, 7, 2, "#8f1010");
+	px(ctx, 10, 2, "#8f1010");
+	px(ctx, 8, 4, "#f5f5f0");
+	px(ctx, 8, 5, "#f5f5f0");
+}
+function drawDandelion(ctx, _rng) {
+	vline(ctx, 8, 8, 15, "#3a8a2a");
+	rect(ctx, 6, 2, 5, 5, "#e8d21a");
+	rect(ctx, 6, 2, 5, 1, "#f5e84a");
+	rect(ctx, 5, 3, 2, 2, "#f0dc30");
+	rect(ctx, 10, 3, 2, 2, "#d4b810");
+	px(ctx, 8, 2, "#f5e84a");
+	px(ctx, 8, 6, "#c9a40f");
+}
+// Trigo joven (tallos verdes) — el bloque 27 es el cultivo en crecimiento.
+function drawWheatPlant(ctx, rng) {
+	for (let i = 0; i < 5; i++) {
+		const x = 4 + Math.floor(rng() * 9);
+		vline(ctx, x, 6, 15, i % 2 ? "#6fbf3a" : "#5aa32e");
+		rect(ctx, x - 1, 7 + Math.floor(rng() * 4), 3, 1, "#7fd04f");
+	}
+}
+// Tierra arada (surcos): tierra con franjas oscuras horizontales.
+function drawFarmland(ctx, rng) {
+	fill(ctx, "#6f4a22");
+	for (let y = 0; y < TILE; y += 4) rect(ctx, 0, y, TILE, 1, "#5a3a18");
+	speckle(ctx, rng, "#8a5a2b", 0.1);
+	speckle(ctx, rng, "#4a3014", 0.06);
+}
+// Lanas tintadas: base del color con vellón (motas claras/oscuras).
+function makeWool(color, light, dark) {
+	return (ctx, rng) => {
+		fill(ctx, color);
+		speckle(ctx, rng, dark, 0.15);
+		speckle(ctx, rng, light, 0.08);
+	};
+}
+
 // Cama (Fase 7): marco de madera + manta con almohada (manta roja clásica).
 function drawBedTop(ctx, rng) {
 	fill(ctx, PAL.bedLight);
@@ -415,7 +529,22 @@ const TILES = [
 	drawBedTop, // 30 cama (arriba)
 	drawBedSide, // 31 cama (lado)
 	drawBedFront, // 32 cama (frente)
-	drawLava // 33 lava
+	drawLava, // 33 lava
+	drawBirchLogSide, // 34 abedul (lado)
+	drawBirchLogTop, // 35 abedul (arriba/abajo)
+	drawBirchLeaves, // 36 hojas de abedul
+	drawSpruceLogSide, // 37 pino (lado)
+	drawSpruceLogTop, // 38 pino (arriba/abajo)
+	drawSpruceLeaves, // 39 hojas de pino
+	drawMossyCobble, // 40 piedra de musgo
+	drawTallGrass, // 41 hierba alta (cross)
+	drawPoppy, // 42 amapola (cross)
+	drawDandelion, // 43 diente de león (cross)
+	drawWheatPlant, // 44 trigo en crecimiento (cross)
+	drawFarmland, // 45 tierra arada
+	makeWool("#c0392b", "#e06050", "#8f2a1e"), // 46 lana roja
+	makeWool("#e8c547", "#f5e07a", "#b8860b"), // 47 lana amarilla
+	makeWool("#f5f5f0", "#ffffff", "#d9d9d2") // 48 lana blanca
 ];
 
 // Tesela por bloque y cara. Orden de FACES (ver world.js):
@@ -445,7 +574,20 @@ const BLOCK_TEX = {
 	22: { top: 26, bottom: 8, side: 27, fronts: 28 }, // cofre (cerradura en ±Z)
 	23: { all: 29 }, // antorcha (tesela cruzada)
 	24: { top: 30, bottom: 8, side: 31, fronts: 32 }, // cama (Fase 7)
-	25: { all: 33 } // lava
+	25: { all: 33 }, // lava
+	26: { all: 45 }, // tierra arada (Fase 9, C)
+	27: { all: 44 }, // trigo en crecimiento (Fase 9, C)
+	28: { top: 35, bottom: 35, side: 34 }, // tronco de abedul (Fase 9, F)
+	29: { all: 36 }, // hojas de abedul
+	30: { top: 38, bottom: 38, side: 37 }, // tronco de pino
+	31: { all: 39 }, // hojas de pino
+	32: { all: 40 }, // piedra de musgo
+	33: { all: 41 }, // hierba alta (cross)
+	34: { all: 42 }, // amapola (cross)
+	35: { all: 43 }, // diente de león (cross)
+	36: { all: 46 }, // lana roja
+	37: { all: 47 }, // lana amarilla
+	38: { all: 48 } // lana blanca
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

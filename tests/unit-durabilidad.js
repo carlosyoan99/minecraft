@@ -172,24 +172,33 @@ check(
 	SWORD_DAMAGE[218] < SWORD_DAMAGE[217]
 );
 
-// 7) addXp acumula y sube de nivel cada XP_PER_LEVEL, subiendo maxHealth
+// 7) addXp acumula y sube de nivel con la CURVA MC (Fase 9, Bloque C):
+//    el coste del nivel n→n+1 es xpToNext(n) = 7 + floor(n*3.5) (7, 10, 14,
+//    17, 21...), no lineal como el XP_PER_LEVEL=100 antiguo. Cada nivel sube
+//    maxHealth +1 (tope +10).
 {
 	const p = mkPlayer();
-	playersMod.addXp(p, 150);
-	check("150 XP → nivel 1", p.level === 1, `level=${p.level}`);
+	playersMod.addXp(p, 7); // coste del nivel 0→1 = 7
+	check("7 XP → nivel 1", p.level === 1, `level=${p.level}`);
 	check("maxHealth 20 + 1", p.maxHealth === 21, `max=${p.maxHealth}`);
-	playersMod.addXp(p, 49);
-	check("199 XP → sigue nivel 1 (aún no 2)", p.level === 1, `level=${p.level}`);
-	playersMod.addXp(p, 1);
-	check("200 XP → nivel 2", p.level === 2, `level=${p.level}`);
+	playersMod.addXp(p, 9); // 16 XP total: aún no llega a 7+10=17
+	check("16 XP → sigue nivel 1 (aún no 2)", p.level === 1, `level=${p.level}`);
+	playersMod.addXp(p, 1); // 17 XP total → nivel 2
+	check("17 XP → nivel 2", p.level === 2, `level=${p.level}`);
 	check("maxHealth 20 + 2", p.maxHealth === 22);
 }
 
-// 8) Tope de salud máxima: +10 como mucho (nivel 10+)
+// 8) Tope de salud máxima: +10 como mucho (nivel 10+). Con la curva MC,
+//    2500 XP equivalen a un nivel MUY superior a 25 (los niveles pequeños
+//    cuestan menos), así que el tope de maxHealth se alcanza antes.
 {
 	const p = mkPlayer();
 	playersMod.addXp(p, 100 * 25);
-	check("nivel 25 (sin tope de nivel)", p.level === 25);
+	check(
+		"2500 XP → nivel alto con la curva MC (no lineal)",
+		p.level >= 25,
+		`level=${p.level}`
+	);
 	check(
 		"maxHealth tope en 30 (+10)",
 		p.maxHealth === 20 + MAX_LEVEL_HEALTH_BONUS,
@@ -197,14 +206,28 @@ check(
 	);
 }
 
-// 9) La XP se conserva al morir y el respawn usa maxHealth
-//    (addXp recalcula maxHealth = 20 + nivel, así que partimos de nivel 0)
+// 9) La XP se conserva al morir y el respawn usa maxHealth. Con la curva MC,
+//    300 XP son nivel 11 (suma 7+10+14+17+21+24+28+31+35+38+42 = 267 ≤ 300 <
+//    267+46), así que maxHealth alcanza el tope de +10 (30).
 {
 	const p = mkPlayer({ health: 3 });
-	playersMod.addXp(p, 300); // nivel 3 → maxHealth 23
+	playersMod.addXp(p, 300);
+	const expectedLevel = 11;
+	check(
+		"300 XP → nivel 11 (curva MC)",
+		p.level === expectedLevel,
+		`level=${p.level}`
+	);
 	playersMod.damagePlayer(p, 999); // daño masivo → respawn interno
-	check("respawn con maxHealth (23)", p.health === 23, `health=${p.health}`);
-	check("la XP se conserva al morir", p.xp === 300 && p.level === 3);
+	check(
+		"respawn con maxHealth (30, tope +10)",
+		p.health === 20 + MAX_LEVEL_HEALTH_BONUS,
+		`health=${p.health}`
+	);
+	check(
+		"la XP se conserva al morir",
+		p.xp === 300 && p.level === expectedLevel
+	);
 }
 
 // 10) ORE_XP y MOB_XP mapean (fuente de verdad para break/attack)

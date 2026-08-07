@@ -13,6 +13,7 @@ import {
 	renameRemotePlayer,
 	spawnHearts,
 	spawnRemotePlayer,
+	updateArrows,
 	updateMobs,
 	updateRemotePlayer
 } from "./mobs.js";
@@ -27,12 +28,15 @@ import {
 	applyCraftingGrid,
 	applyFood,
 	applyFurnaceState,
+	applyGamemode,
 	applyHealth,
 	applyInventory,
 	applyXp,
 	flashMessage,
 	onSeedRejected,
+	onWorldDeleted,
 	onWorldLoaded,
+	renderRecipeBook,
 	renderWorldsList
 } from "./ui.js";
 import {
@@ -65,9 +69,13 @@ socket.addEventListener("message", (e) => {
 			applyInventory(data.inventory);
 			applyArmor(data.armor); // Fase 7: armadura equipada
 			applyHealth(data.health, data.maxHealth);
-			applyXp(data.xp || 0, data.level || 0);
+			applyXp(data.xp || 0, data.level || 0, data.xpInto, data.xpToNext); // Fase 9 (C): barra con la curva MC
 			applyFood(data.food, data.saturation);
 			updateMobs(data.mobs);
+			updateArrows(data.arrows || []); // Fase 9 (D): flechas vivas del esqueleto
+			// Fase 9 (Bloque B): modo de juego del mundo (survival/creative) — lo
+			// refleja el HUD y habilita el vuelo/creativo.
+			applyGamemode(data.gamemode);
 			initDayNight(data.dayTime, data.moonTime); // Fase 8 (B8): + fase lunar
 			for (const p of data.otherPlayers)
 				spawnRemotePlayer(p.id, p.x, p.y, p.z, p.name);
@@ -88,6 +96,15 @@ socket.addEventListener("message", (e) => {
 		case "worlds_list":
 			renderWorldsList(data.worlds || []);
 			break; // Fase 7: menú de mundos
+		case "world_delete_result":
+			// Fase 9 (Bloque B): resultado del borrado de un mundo (ok + lista nueva).
+			if (data.worlds) renderWorldsList(data.worlds);
+			onWorldDeleted(data.ok, data.reason);
+			break;
+		case "recipe_book":
+			// Fase 9 (Bloque F): tablas de recetas para el libro (crafteo + horno).
+			renderRecipeBook(data);
+			break;
 		case "block_update": {
 			// Una antorcha colocada/rota cambia la luz de un radio 7: el radio cruza
 			// las fronteras de chunk, así que hay que re-hornear el vecindario 3x3
@@ -121,6 +138,11 @@ socket.addEventListener("message", (e) => {
 			break;
 		case "mobs_update":
 			updateMobs(data);
+			break;
+		case "arrows_update":
+			// Fase 9 (Bloque D): flechas del esqueleto — el servidor hace broadcast
+			// de las flechas vivas; el cliente reemplaza las suyas por las nuevas.
+			updateArrows(data || []);
 			break;
 		case "server_metrics":
 			// Fase 7: métricas del tick del servidor (media de 1s) para la
@@ -176,7 +198,9 @@ socket.addEventListener("message", (e) => {
 			applyHealth(data.health, data.maxHealth);
 			break;
 		case "xp_update":
-			applyXp(data.xp, data.level);
+			// Fase 9 (Bloque C): xpInto/xpToNext llegan del servidor (curva MC
+			// no lineal) — la barra pinta el progreso real dentro del nivel.
+			applyXp(data.xp, data.level, data.xpInto, data.xpToNext);
 			break;
 		case "level_up":
 			flashMessage(`⬆️ ¡Subiste al nivel ${data.level}!`);

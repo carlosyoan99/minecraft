@@ -121,6 +121,9 @@ volver a una semilla anterior recupera su mundo).
 
 ### ✅ Implementado (Fases 0 a 7 completadas)
 
+> Especificaciones por fase (diseño, decisiones y estado):
+> [`docs/README.md`](docs/README.md).
+
 - **Fase 0 — Base:** servidor autoritativo con validación de
   movimiento/acciones, generación por biomas (llanura, bosque,
   desierto) con `simplex-noise` y semilla fija, IA de mobs por
@@ -183,7 +186,7 @@ volver a una semilla anterior recupera su mundo).
 
 ### 🚧 En desarrollo
 
-- **Fase 8 — Caza de bugs** (ver `TODO.md` y `fase8-spec.md`):
+- **Fase 8 — Caza de bugs** (ver `TODO.md` y `docs/fase8-spec.md`):
   corrección de los errores del playtest de Fase 7. Priorizados:
   combate y raycast de mobs (B10 — hecho: rango 7, feedback
   `mob_hit`, knockback, tolerancia de apuntado), minería a mano (B3),

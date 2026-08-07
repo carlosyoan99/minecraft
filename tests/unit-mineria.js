@@ -48,14 +48,19 @@ const _noopSend = () => [];
 const sendFnCollect = (arr) => (_pl, ev, data) => arr.push({ ev, data });
 
 // --- 1) breakSeconds: dureza y velocidad por herramienta ---
+// Fase 9 (Bloque C): durezas estilo Minecraft (piedra 1.5, tronco 2, tierra
+// 0.75, diamante 3) y velocidad = dureza / tier de la herramienta CORRECTA.
 check(
-	"mano sobre piedra = dureza (1.8s)",
+	"mano sobre piedra = dureza (1.5s)",
 	Math.abs(breakSeconds(0, B.STONE) - BLOCK_HARDNESS[B.STONE]) < 1e-9,
 	`${breakSeconds(0, B.STONE)}s`
 );
 check(
 	"pico de madera sobre piedra = dureza/2",
-	Math.abs(breakSeconds(I.WOODEN_PICKAXE, B.STONE) - 1.8 / 2) < 1e-9
+	Math.abs(
+		breakSeconds(I.WOODEN_PICKAXE, B.STONE) -
+			BLOCK_HARDNESS[B.STONE] / TOOL_TIER_SPEED[I.WOODEN_PICKAXE]
+	) < 1e-9
 );
 check(
 	"pico de hierro más rápido que el de madera",
@@ -65,21 +70,36 @@ check(
 check(
 	"oro es el más rápido (12x) aunque frágil",
 	breakSeconds(I.GOLDEN_PICKAXE, B.STONE) ===
-		1.8 / TOOL_TIER_SPEED[I.GOLDEN_PICKAXE]
+		BLOCK_HARDNESS[B.STONE] / TOOL_TIER_SPEED[I.GOLDEN_PICKAXE]
 );
 check(
 	"hacha en piedra: herramienta equivocada → x1 (lento)",
 	Math.abs(breakSeconds(I.WOODEN_AXE, B.STONE) - BLOCK_HARDNESS[B.STONE]) < 1e-9
 );
 check(
-	"hacha en tronco acelera (1.5/2)",
-	Math.abs(breakSeconds(I.WOODEN_AXE, B.OAK_LOG) - 1.5 / 2) < 1e-9
+	"hacha en tronco acelera (dureza/2)",
+	Math.abs(
+		breakSeconds(I.WOODEN_AXE, B.OAK_LOG) -
+			BLOCK_HARDNESS[B.OAK_LOG] / TOOL_TIER_SPEED[I.WOODEN_AXE]
+	) < 1e-9
 );
 check(
 	"pala en tierra acelera",
-	breakSeconds(I.WOODEN_SHOVEL, B.DIRT) === 0.6 / 2
+	breakSeconds(I.WOODEN_SHOVEL, B.DIRT) ===
+		BLOCK_HARDNESS[B.DIRT] / TOOL_TIER_SPEED[I.WOODEN_SHOVEL]
 );
-check("mineral de diamante: el más duro", BLOCK_HARDNESS[B.DIAMOND_ORE] >= 4);
+check(
+	"mineral de diamante: el más duro (3.0)",
+	BLOCK_HARDNESS[B.DIAMOND_ORE] >= 3
+);
+check(
+	"la espada NO mina: velocidad x1 sobre cualquier bloque (Fase 9)",
+	Math.abs(breakSeconds(I.WOODEN_SWORD, B.STONE) - BLOCK_HARDNESS[B.STONE]) <
+		1e-9 &&
+		Math.abs(
+			breakSeconds(I.WOODEN_SWORD, B.OAK_LOG) - BLOCK_HARDNESS[B.OAK_LOG]
+		) < 1e-9
+);
 check(
 	"todos los bloques rompibles tienen dureza",
 	[

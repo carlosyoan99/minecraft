@@ -48,7 +48,20 @@ export const BLOCK_COLORS = {
 	22: 0xc9a46b,
 	23: 0xffb347,
 	24: 0xc0392b, // cama (Fase 7)
-	25: 0xe25822 // lava (Fase 7)
+	25: 0xe25822, // lava (Fase 7)
+	26: 0x8a5a2b, // tierra arada (Fase 9, C)
+	27: 0x6fbf3a, // trigo (Fase 9, C)
+	28: 0xd9c9a0, // tronco de abedul (Fase 9, F)
+	29: 0x9fd44f, // hojas de abedul (Fase 9, F)
+	30: 0x4a3320, // tronco de pino (Fase 9, F)
+	31: 0x2f5d2a, // hojas de pino (Fase 9, F)
+	32: 0x5a6f4a, // piedra de musgo (Fase 9, F)
+	33: 0x4a9e2f, // hierba alta (Fase 9, F)
+	34: 0xd92626, // amapola (Fase 9, F)
+	35: 0xe8d21a, // diente de león (Fase 9, F)
+	36: 0xc0392b, // lana roja (Fase 9, F)
+	37: 0xe8c547, // lana amarilla (Fase 9, F)
+	38: 0xf5f5f0 // lana blanca (Fase 9, F)
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -75,7 +88,20 @@ export const BLOCK_NAMES = {
 	22: "Cofre",
 	23: "Antorcha",
 	24: "Cama", // Fase 7
-	25: "Lava" // Fase 7
+	25: "Lava", // Fase 7
+	26: "Tierra arada", // Fase 9 (C)
+	27: "Trigo", // Fase 9 (C)
+	28: "Tronco de abedul", // Fase 9 (F)
+	29: "Hojas de abedul", // Fase 9 (F)
+	30: "Tronco de pino", // Fase 9 (F)
+	31: "Hojas de pino", // Fase 9 (F)
+	32: "Piedra de musgo", // Fase 9 (F)
+	33: "Hierba alta", // Fase 9 (F)
+	34: "Amapola", // Fase 9 (F)
+	35: "Diente de león", // Fase 9 (F)
+	36: "Lana roja", // Fase 9 (F)
+	37: "Lana amarilla", // Fase 9 (F)
+	38: "Lana blanca" // Fase 9 (F)
 };
 export const WATER = 20;
 export const SNOW = 21;
@@ -83,6 +109,19 @@ export const CHEST = 22;
 export const TORCH = 23;
 export const BED = 24; // Fase 7: dormir de noche fija el punto de reaparición
 export const LAVA = 25; // Fase 7: pozos decorativos en superficie (no minable)
+export const FARMLAND = 26; // Fase 9 (C): tierra arada
+export const WHEAT = 27; // Fase 9 (C): cultivo de trigo (no sólido)
+export const BIRCH_LOG = 28; // Fase 9 (F)
+export const BIRCH_LEAVES = 29;
+export const SPRUCE_LOG = 30;
+export const SPRUCE_LEAVES = 31;
+export const MOSSY_COBBLESTONE = 32; // Fase 9 (F)
+export const TALL_GRASS = 33;
+export const POPPY = 34;
+export const DANDELION = 35;
+export const RED_WOOL = 36; // Fase 9 (F): lana tintada (ítems tintables)
+export const YELLOW_WOOL = 37;
+export const WHITE_WOOL = 38;
 // Altura del ojo del jugador (Fase 7): la posición que el cliente envía en
 // `move` es la de la cámara (el ojo); el servidor la usa para el daño por
 // caída. Mantener en sincronía con EYE_HEIGHT de constants.js (servidor) —
@@ -110,9 +149,20 @@ export const DURABILITY = {
 	216: 132,
 	217: 251,
 	218: 33,
-	219: 1562
+	219: 1562,
+	240: 60, // azadas (Fase 9, C): misma durabilidad que la herramienta del material
+	241: 132,
+	242: 251,
+	243: 33,
+	244: 1562
 };
-export const XP_PER_LEVEL = 100; // nivel = floor(xp / 100), igual que el servidor
+export const XP_PER_LEVEL = 100; // retrocompat: paridad auditada (unit-sync); la curva real usa xpToNext
+// Curva de XP estilo Minecraft (Fase 9, C): coste del nivel `level` al
+// siguiente (7, 10, 14, 17, 21...). PARIDAD con server-side constants.js —
+// lo verifica tests/unit-sync.js.
+export function xpToNext(level) {
+	return 7 + Math.floor(level * 3.5);
+}
 export const ITEM_NAMES = {
 	100: "Palo",
 	101: "Carbón",
@@ -136,6 +186,14 @@ export const ITEM_NAMES = {
 	119: "Conejo asado", // Fase 5: nuevo pasivo y su cocinado
 	120: "Hilo", // Fase 5: drop de la araña (4 hilos → lana)
 	132: "Cuero", // Fase 7: drop de la vaca/conejo, material de la armadura de cuero
+	133: "Pan", // Fase 9 (F)
+	134: "Pescado crudo", // Fase 9 (F)
+	135: "Pescado cocinado", // Fase 9 (F)
+	136: "Hueso", // Fase 9 (F): drop del esqueleto
+	137: "Tinte rojo", // Fase 9 (F): de la amapola
+	138: "Tinte amarillo", // Fase 9 (F): del diente de león
+	139: "Harina de hueso", // Fase 9 (F): de hueso (tinte blanco)
+	140: "Miel", // Fase 9 (F): botín de cofres
 	220: "Casco de cuero",
 	221: "Pechera de cuero",
 	222: "Pantalones de cuero",
@@ -167,15 +225,24 @@ export const ITEM_NAMES = {
 	216: "Espada de piedra",
 	217: "Espada de hierro",
 	218: "Espada de oro",
-	219: "Espada de diamante"
+	219: "Espada de diamante",
+	240: "Azada de madera", // Fase 9 (C)
+	241: "Azada de piedra",
+	242: "Azada de hierro",
+	243: "Azada de oro",
+	244: "Azada de diamante"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
 }
 
 export const PLACEABLE_BLOCKS = new Set([
-	1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18, 21, 22, 23, 24
+	1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18, 21, 22, 23, 24,
+	// Fase 9 (F): bloques nuevos colocables
+	28, 29, 30, 31, 32, 36, 37, 38
 ]);
+// Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
+export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35]);
 // Armadura equipable (Fase 7): clic derecho con la pieza en mano la equipa.
 // No se apilan (cada pieza con su durabilidad, como las herramientas).
 export const ARMOR_ITEMS = new Set([
@@ -200,9 +267,12 @@ export const ARMOR_DURABILITY = {
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)
+// Fase 9 (F): pan y pescado (crudo/cocinado).
 export const FOOD_ITEMS = new Set([
-	107, 108, 109, 110, 111, 112, 113, 114, 118, 119
+	107, 108, 109, 110, 111, 112, 113, 114, 118, 119, 133, 134, 135
 ]);
+// Azadas (Fase 9, C): convierten tierra/césped en tierra arada (clic derecho).
+export const HOES = new Set([240, 241, 242, 243, 244]);
 // Ítems de cría de animales: clic derecho sobre un animal con estos en mano
 // (trigo → vaca/oveja, zanahoria → cerdo, semillas → pollo)
 export const BREED_FOOD = new Set([115, 116, 117]);

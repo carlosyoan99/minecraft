@@ -234,6 +234,17 @@ function restoreFurnaces(entries) {
 	for (const [k, v] of entries || []) furnaces.set(k, v);
 }
 
+// ============================================================
+// LIBRO DE RECETAS (Fase 9, Bloque F)
+// ============================================================
+// Devuelve las tablas de recetas para el cliente (libro de recetas). Cada
+// receta se envía con su shape, ingredients (id → itemId) y result; el
+// horno con input (id → itemId), result y time. El cliente las agrupa por
+// categoría para mostrarlas todas sin desbloqueo progresivo.
+function getRecipeTables() {
+	return { crafting: recipes, furnace: furnaceRecipes };
+}
+
 module.exports = {
 	loadRecipes,
 	reloadRecipes,
@@ -244,5 +255,6 @@ module.exports = {
 	furnaceSnapshot,
 	tickFurnaces,
 	restoreFurnaces,
-	isCookable
+	isCookable,
+	getRecipeTables
 };

@@ -8,11 +8,11 @@ import {
 	ARMOR_DURABILITY,
 	ARMOR_SLOT_NAMES,
 	DURABILITY,
-	itemLabel,
-	XP_PER_LEVEL
+	itemLabel
 } from "./constants.js";
 import { itemIconCss } from "./itemicons.js";
 import { finishLoading, showLoading } from "./loading.js";
+import { recipeCategory } from "./recipeCategories.js"; // Fase 9 (F): pestañas del libro
 import { controls, showBlocker } from "./scene.js";
 import { getSettings, setSetting, settingUiValue } from "./settings.js";
 
@@ -25,8 +25,12 @@ let health = 20;
 let maxHealth = 20; // Fase 5: sube con el nivel (máx +10)
 let food = 20;
 let saturation = 20; // barra dorada sobre la comida (como en Minecraft)
-let xp = 0;
 let level = 0; // Fase 5: niveles simples
+// Fase 9 (Bloque C): progreso DENTRO del nivel actual para la barra de XP
+// (curva MC no lineal). El servidor los manda en cada xp_update (sendXp);
+// por defecto 0/100 para no romper la barra antes del primer update.
+let xpInto = 0;
+let xpToNext = 100;
 let inventoryOpen = false;
 let openChestKey = null; // Fase 6: cofre abierto ("x,y,z")
 let chestSlots = new Array(27).fill(null);
@@ -113,9 +117,11 @@ function updateHealthUI() {
 }
 function updateXpUI() {
 	const fill = document.getElementById("xp-fill");
-	fill.style.width =
-		Math.max(0, Math.min(100, ((xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100)) +
-		"%";
+	// Fase 9 (Bloque C): la curva de niveles ya no es lineal — el servidor
+	// manda xpInto (XP dentro del nivel) y xpToNext (XP para el siguiente) en
+	// cada xp_update, y la barra pinta el progreso real de la curva MC.
+	const pct = xpToNext > 0 ? (xpInto / xpToNext) * 100 : 0;
+	fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
 	document.getElementById("level").textContent = level;
 }
 
@@ -174,6 +180,8 @@ const worldNameInput = document.getElementById("world-name-input");
 const seedInput = document.getElementById("seed-input");
 const seedCreateBtn = document.getElementById("seed-create-btn");
 const randomSeedBtn = document.getElementById("random-seed-btn");
+// Fase 9 (Bloque B): selector de modo al crear un mundo NUEVO.
+const gamemodeSelect = document.getElementById("gamemode-select");
 const nameInput = document.getElementById("name-input");
 const rdSlider = document.getElementById("rd-slider");
 const rdValue = document.getElementById("rd-value");
@@ -194,6 +202,35 @@ const volAmbientValue = document.getElementById("vol-ambient-value");
 const qualitySelect = document.getElementById("quality-select");
 let currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
+// Fase 9 (Bloque B): modo de juego del mundo activo (survival/creative). El
+// servidor es la fuente de verdad (init.gamemode); el cliente lo refleja en
+// el HUD (badge) y lo usa para avisos de vuelo/creativo.
+let gamemode = "survival";
+export function getGamemode() {
+	return gamemode;
+}
+
+export function applyGamemode(mode) {
+	gamemode = mode === "creative" ? "creative" : "survival";
+	updateGamemodeBadge();
+}
+
+// Badge del modo en el HUD (esquina superior izquierda, sobre la salud): en
+// creative se ve el modo y un aviso de doble-espacio para volar.
+const gamemodeEl = document.createElement("div");
+gamemodeEl.id = "gamemode-badge";
+gamemodeEl.className = "hidden";
+document.body.insertBefore(gamemodeEl, document.getElementById("info"));
+function updateGamemodeBadge() {
+	gamemodeEl.classList.toggle("hidden", !controls.isLocked);
+	if (gamemode === "creative") {
+		gamemodeEl.innerHTML = "✦ CREATIVO <small>— doble Espacio vuela</small>";
+		gamemodeEl.className = "creative";
+	} else {
+		gamemodeEl.innerHTML = "✦ Supervivencia";
+		gamemodeEl.className = "";
+	}
+}
 
 function showMenuScreen(which) {
 	menuMain.classList.toggle("hidden", which !== menuMain);
@@ -283,17 +320,21 @@ invertToggle.addEventListener("change", () =>
 // (set_seed) y se espera el init que lo confirma (onWorldLoaded). Con semilla
 // vacía se juega el mundo activo tal cual, salvo que llegue un nombre: en ese
 // caso se renombra el mundo activo (el campo `name` nunca se ignora).
-function startWithSeed(seed, worldName) {
+// Fase 9 (Bloque B): `mode` (survival/creative) fija el modo del mundo NUEVO;
+// un mundo existente conserva el suyo (el servidor ignora el modo si la
+// semilla ya existía).
+function startWithSeed(seed, worldName, mode) {
 	seed = (seed || "").trim();
 	const name = (worldName || "").trim();
+	const gamemodeReq = mode ? { gamemode: mode } : {};
 	if (seed && (seed !== currentSeed || name)) {
 		seedPending = seed;
 		showLoading(`Generando el mundo «${seed}»...`);
-		send("set_seed", { seed, name });
+		send("set_seed", { seed, name, ...gamemodeReq });
 	} else if (name && currentSeed) {
 		seedPending = currentSeed;
 		showLoading(`Renombrando el mundo «${currentSeed}»...`);
-		send("set_seed", { seed: currentSeed, name });
+		send("set_seed", { seed: currentSeed, name, ...gamemodeReq });
 	}
 	controls.lock(); // el lock en el gesto es fiable; la carga cubre el cambio
 }
@@ -308,7 +349,7 @@ startBtn.addEventListener("click", () => {
 });
 
 seedCreateBtn.addEventListener("click", () =>
-	startWithSeed(seedInput.value, worldNameInput.value)
+	startWithSeed(seedInput.value, worldNameInput.value, gamemodeSelect.value)
 );
 seedInput.addEventListener("keydown", (e) => {
 	if (e.key === "Enter") seedCreateBtn.click();
@@ -342,10 +383,13 @@ function randomSeed() {
 }
 randomSeedBtn.addEventListener("click", () => {
 	seedInput.value = randomSeed();
-	startWithSeed(seedInput.value, worldNameInput.value);
+	startWithSeed(seedInput.value, worldNameInput.value, gamemodeSelect.value);
 });
 
 // Lista de mundos guardados (evento worlds_list del servidor, Fase 7)
+// Fase 9 (Bloque B): cada mundo muestra un badge de modo (Supervivencia/
+// Creativo) y un botón 🗑️ para borrarlo (world_delete; el activo no se puede
+// borrar — el servidor lo rechaza).
 export function renderWorldsList(worlds) {
 	worldsListEl.innerHTML = "";
 	if (!worlds.length) {
@@ -358,15 +402,53 @@ export function renderWorldsList(worlds) {
 	for (const w of worlds) {
 		const item = document.createElement("div");
 		item.className = "world-item";
+		const mode = w.gamemode === "creative" ? "creative" : "survival";
 		const meta =
 			`${w.chunkCount} chunks` +
 			(w.lastSaved ? ` · ${w.lastSaved.slice(0, 19).replace("T", " ")}` : "");
+		const badge = `<span class="mode-badge ${mode}">${mode === "creative" ? "✦" : "⛏"} ${mode === "creative" ? "Creativo" : "Supervivencia"}</span>`;
+		const delBtn = `<button type="button" class="world-delete" title="Borrar este mundo (no se puede deshacer)" data-seed="${escapeHtml(w.seed)}" data-name="${escapeHtml(w.name)}">🗑️</button>`;
 		item.innerHTML =
-			`<span class="wi-left"><span class="wi-name">${escapeHtml(w.name)}</span><span class="wi-seed">semilla: ${escapeHtml(w.seed)}</span></span>` +
-			`<span class="wi-meta">${escapeHtml(meta)}</span>`;
+			`<span class="wi-left"><span class="wi-name">${escapeHtml(w.name)}</span>${badge}<span class="wi-seed">semilla: ${escapeHtml(w.seed)}</span></span>` +
+			`<span class="wi-meta">${escapeHtml(meta)}</span>` +
+			delBtn;
 		item.title = `Abrir el mundo «${w.name}» (semilla: ${w.seed})`;
-		item.addEventListener("click", () => startWithSeed(w.seed));
+		item.addEventListener("click", () => startWithSeed(w.seed, "", w.gamemode));
+		item.querySelector(".world-delete").addEventListener("click", (e) => {
+			e.stopPropagation(); // no abrir el mundo al borrarlo
+			const seed = item.querySelector(".world-delete").dataset.seed;
+			const name = item.querySelector(".world-delete").dataset.name;
+			if (w.active) {
+				flashMessage(
+					"🌍 No se puede borrar el mundo activo: entra a otro y vuelve."
+				);
+				return;
+			}
+			if (
+				confirm(
+					`¿Borrar el mundo «${name}» (semilla ${seed})? No se puede deshacer.`
+				)
+			) {
+				send("world_delete", { seed });
+			}
+		});
 		worldsListEl.appendChild(item);
+	}
+}
+
+// Resultado de un borrado de mundo (world_delete_result del servidor). El
+// servidor ya reenvía la lista nueva (data.worlds) en el mismo evento.
+export function onWorldDeleted(ok, reason) {
+	if (ok) {
+		flashMessage("🗑️ Mundo borrado.");
+	} else if (reason === "active") {
+		flashMessage(
+			"🌍 No se puede borrar el mundo activo: entra a otro y vuelve."
+		);
+	} else if (reason === "invalid") {
+		flashMessage("🌍 Semilla no válida: no se borró nada.");
+	} else {
+		flashMessage("🌍 No se pudo borrar el mundo (¿está en uso?).");
 	}
 }
 
@@ -420,6 +502,130 @@ export function applyInventory(inv) {
 	// patrón del horno, pero sin reconstruir 36 divs en cada update si no).
 	if (!chestUI.classList.contains("hidden")) updateChestInventoryUI();
 }
+
+// ============================================================
+// LIBRO DE RECETAS (Fase 9, Bloque F)
+// Todas las recetas visibles, agrupadas por categoría del resultado
+// (bloques, herramientas, armadura, comida, materiales). Se abre con B
+// (input.js) y pide las tablas al servidor (recipe_book). Sin desbloqueo
+// progresivo: el libro enseña TODO desde el principio.
+// ============================================================
+const recipeBook = document.getElementById("recipe-book");
+const recipeTabs = document.getElementById("recipe-tabs");
+const recipeList = document.getElementById("recipe-list");
+let recipeData = { crafting: {}, furnace: {} };
+let recipeTab = "bloques";
+
+const RECIPE_CATEGORIES = [
+	["bloques", "🧱 Bloques"],
+	["herramientas", "🛠️ Herramientas"],
+	["armadura", "🛡️ Armadura"],
+	["comida", "🍗 Comida"],
+	["materiales", "📦 Materiales"]
+];
+
+// Icono pequeño (escala 0.9) del ítem para las listas del libro.
+function recipeIcon(id) {
+	return itemVisual(id, 0.9);
+}
+
+// Pinta el resultado del crafteo como fila de iconos del shape 3x3.
+function shapeRow(shape, ingredients) {
+	let html = '<div class="recipe-shape">';
+	for (let r = 0; r < 3; r++) {
+		for (let c = 0; c < 3; c++) {
+			const ch = shape[r]?.[c] || " ";
+			const id = ingredients[ch];
+			html +=
+				id !== undefined
+					? `<span class="recipe-cell" title="${itemLabel(id)}">${recipeIcon(id)}</span>`
+					: '<span class="recipe-cell empty"></span>';
+		}
+	}
+	return `${html}</div>`;
+}
+
+export function renderRecipeBook(data) {
+	recipeData = {
+		crafting: data?.crafting || {},
+		furnace: data?.furnace || {}
+	};
+	buildRecipeTabs();
+	if (!recipeBook.classList.contains("hidden")) renderRecipeTab();
+}
+
+function buildRecipeTabs() {
+	recipeTabs.innerHTML = "";
+	for (const [key, label] of RECIPE_CATEGORIES) {
+		const btn = document.createElement("button");
+		btn.type = "button";
+		btn.className = `recipe-tab${recipeTab === key ? " active" : ""}`;
+		btn.textContent = label;
+		btn.addEventListener("click", () => {
+			recipeTab = key;
+			buildRecipeTabs();
+			renderRecipeTab();
+		});
+		recipeTabs.appendChild(btn);
+	}
+}
+
+function renderRecipeTab() {
+	recipeList.innerHTML = "";
+	const items = [];
+	// Crafteo: cada receta agrupada por el resultado (puede haber varias con
+	// el mismo resultado → distintas formas: tablones, escaleras...).
+	for (const [name, r] of Object.entries(recipeData.crafting)) {
+		const resultId = r.result?.id;
+		if (recipeCategory(resultId) !== recipeTab) continue;
+		items.push({ name, r });
+	}
+	// Horno: fundición (resultado de horno en la categoría correspondiente).
+	for (const [name, r] of Object.entries(recipeData.furnace)) {
+		const resultId = r.result?.id;
+		if (recipeCategory(resultId) !== recipeTab) continue;
+		items.push({ name, r, furnace: true });
+	}
+	if (!items.length) {
+		const empty = document.createElement("div");
+		empty.className = "recipe-item empty";
+		empty.textContent = "No hay recetas en esta categoría.";
+		recipeList.appendChild(empty);
+		return;
+	}
+	for (const { name, r, furnace } of items) {
+		const el = document.createElement("div");
+		el.className = "recipe-item";
+		const result = r.result;
+		// Horno: la clave de la receta ES el id del ítem de entrada
+		// (recetas_horno.json: "107" → carne cruda → cocinada). El campo `time`
+		// es solo duración; no se busca dentro del objeto.
+		const inputId = furnace ? parseInt(name, 10) : null;
+		el.innerHTML = `
+			<span class="recipe-result" title="${itemLabel(result.id)}">${recipeIcon(result.id)}</span>
+			<span class="recipe-info">
+				<b>${itemLabel(result.id)}</b>${result.count > 1 ? ` ×${result.count}` : ""}
+				<small>${furnace ? `Horno · ${itemLabel(inputId)}` : "Crafteo"}</small>
+			</span>
+			${furnace ? `<span class="recipe-time">⏱ ${r.time / 10}s</span>` : shapeRow(r.shape, r.ingredients)}
+		`;
+		recipeList.appendChild(el);
+	}
+}
+
+// Abre/cierra el libro (tecla B). Al abrirlo pide las recetas si no las
+// tiene aún (recipe_book del servidor); el pointer se libera para clicar.
+export function toggleRecipeBook() {
+	const open = recipeBook.classList.toggle("hidden");
+	if (open) {
+		send("recipe_book");
+		showBlocker(false);
+		controls.unlock();
+	} else {
+		controls.lock();
+	}
+	return !open;
+}
 export function applyArmor(a) {
 	armor =
 		a && typeof a === "object"
@@ -432,9 +638,13 @@ export function applyHealth(hp, maxHp) {
 	if (typeof maxHp === "number") maxHealth = maxHp;
 	updateHealthUI();
 }
-export function applyXp(x, lvl) {
-	xp = x;
+export function applyXp(_xp, lvl, into, toNext) {
+	// _xp: XP total (sin uso visual directo; la barra usa xpInto/xpToNext).
 	if (typeof lvl === "number") level = lvl;
+	// Fase 9 (Bloque C): el servidor envía xpInto/xpToNext de la curva MC
+	// (players.js sendXp); el init también los incluye desde la Fase 9.
+	if (typeof into === "number") xpInto = into;
+	if (typeof toNext === "number" && toNext > 0) xpToNext = toNext;
 	updateXpUI();
 }
 export function applyFood(f, s) {
@@ -737,10 +947,14 @@ export function toggleInventory() {
 }
 export function closePanels() {
 	const hadPanel =
-		inventoryOpen || openFurnaceKey !== null || openChestKey !== null;
+		inventoryOpen ||
+		openFurnaceKey !== null ||
+		openChestKey !== null ||
+		!recipeBook.classList.contains("hidden");
 	toggleCraftingUI(false);
 	toggleFurnaceUI(false);
 	toggleChestUI(false);
 	inventoryOpen = false;
+	if (!recipeBook.classList.contains("hidden")) toggleRecipeBook();
 	if (hadPanel) controls.lock(); // Escape cierra el panel y reanuda el juego
 }

@@ -11,7 +11,7 @@ const net = require("../server/net.js");
 const state = require("../server/state.js");
 const world = require("../server/world.js");
 const playerHelpers = require("../server/players.js");
-const { I, ARMOR_SLOTS, XP_PER_LEVEL } = require("../server/constants.js");
+const { I, ARMOR_SLOTS, xpToNext } = require("../server/constants.js");
 
 world.setDiskLoader(() => null); // sin I/O de disco en los tests
 
@@ -72,7 +72,9 @@ function connect() {
 	);
 	p.craftingGrid[0] = { id: I.STICK, count: 1 };
 	p.openChest = "1,2,3";
-	playerHelpers.addXp(p, XP_PER_LEVEL * 2); // nivel 2 → maxHealth 22
+	// Fase 9 (Bloque C): la curva de XP es no lineal (xpToNext: 7, 10, 14...)
+	// — el nivel 2 cuesta xpToNext(0)+xpToNext(1) = 17 XP → maxHealth 22.
+	playerHelpers.addXp(p, xpToNext(0) + xpToNext(1)); // nivel 2 → maxHealth 22
 	p.health = 3;
 	ws.sent.length = 0;
 	broadcasts.length = 0;
@@ -100,7 +102,7 @@ function connect() {
 	);
 	check(
 		"survival: la XP y el nivel se conservan",
-		p.xp === XP_PER_LEVEL * 2 && p.level === 2,
+		p.xp === xpToNext(0) + xpToNext(1) && p.level === 2,
 		`xp=${p.xp} level=${p.level}`
 	);
 	check(

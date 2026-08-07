@@ -229,6 +229,17 @@ export function playEat() {
 }
 
 // ============================================================
+// SPLASH DE AGUA (Fase 9, Bloque E): al entrar/salir del agua — ráfaga de
+// ruido con filtro de paso alto que cae de tono (chapoteo corto).
+// ============================================================
+export function playSplash() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	noiseBurst({ t, freq: 900, q: 0.6, vol: 0.4, dur: 0.28, type: "bandpass" });
+	thud({ t: t + 0.03, freq: 220, vol: 0.22, dur: 0.2 });
+}
+
+// ============================================================
 // ALIMENTAR ANIMALES (mordisco alegre que sube de tono)
 // ============================================================
 export function playFeed() {

@@ -24,13 +24,18 @@ const CHEST_SLOTS = 27; // 3 filas de 9, como el cofre pequeño de Minecraft
 // generation (world.js) para que la persistencia del meta lo conserve.
 // ============================================================
 // [id, min, max] — el diamante es raro (solo en el 8% de los cofres).
+// Fase 9 (Bloque F): miel y pan como botín (las abejas, versión simplificada,
+// no sueltan miel al morir — llega por los cofres; ver fase9-spec.md §F1).
 const LOOT_TABLE = [
 	[I.COAL, 1, 4],
 	[I.IRON_INGOT, 1, 3],
 	[I.GOLD_INGOT, 1, 2],
 	[I.REDSTONE, 1, 4],
 	[I.STICK, 1, 3],
-	[I.DIAMOND, 1, 1]
+	[I.DIAMOND, 1, 1],
+	[I.BREAD, 1, 2],
+	[I.COD, 1, 2],
+	[I.HONEY, 1, 1]
 ];
 
 // Devuelve un array de CHEST_SLOTS slots con loot aleatorio (1-3 stacks).

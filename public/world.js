@@ -6,6 +6,7 @@ import {
 	BLOCK_COLORS,
 	CHUNK_SIZE,
 	LAVA,
+	NON_SOLID_PLANTS,
 	TORCH,
 	WATER,
 	WORLD_HEIGHT
@@ -191,6 +192,23 @@ export function geoPoolStats() {
 	return geometryPool.stats();
 }
 
+// ============================================================
+// AGUA/LAVA ANIMADOS (Fase 9, Bloque E)
+// Barato: pulso suave de la opacidad del agua y del brillo de la lava con
+// una onda seno del reloj global. Sin shaders ni reconstrucción de
+// geometría — el efecto se nota en superficie (brillo cambiante) y apenas
+// cuesta nada por frame. Se llama desde el bucle de animación (player.js).
+// ============================================================
+let liquidTime = 0;
+export function updateLiquidAnimation() {
+	liquidTime += 0.016; // ~60 fps
+	const wave = Math.sin(liquidTime * 2.2) * 0.5 + 0.5; // 0..1
+	// Opacidad del agua: 0.58..0.72 (la superficie "respira"); la lava brilla
+	// y oscila su incandescencia (emissiveIntensity 0.35..0.6).
+	waterMaterial.opacity = 0.58 + wave * 0.14;
+	lavaMaterial.emissiveIntensity = 0.35 + wave * 0.25;
+}
+
 // Geometrías de una única cara (evita crear cubos completos por cara expuesta).
 // `uvs` mapea cada esquina a la tesela del atlas (v arriba = textura vertical correcta).
 const FACES = [
@@ -355,8 +373,12 @@ function buildChunkGeometry(cx, cz) {
 	// bloques con la tesela 29 (palo + llama, fondo transparente). Se dibujan
 	// SIEMPRE (DoubleSide): son diminutas y no ocluyen; la luz horneada en su
 	// propio color las hace brillar de noche (su celda está a luz 1).
+	// Fase 9 (F): las plantas (hierba alta, flores, trigo) usan el MISMO
+	// sistema de planos cruzados con su tesela (fondo transparente).
 	const TORCH_W = 0.25,
 		TORCH_H = 0.6;
+	const PLANT_W = 0.32,
+		PLANT_H = 0.8;
 	const torchLight = 1 + TORCH_LIGHT_GAIN;
 	const [tu0, tv0, tu1, tv1] = tex.tileRect(tex.tileForFace(TORCH, 0));
 	const QUAD_UVS = [
@@ -365,29 +387,34 @@ function buildChunkGeometry(cx, cz) {
 		[1, 1],
 		[0, 1]
 	];
-	const pushTorchQuad = (
+	// Planos cruzados de una tesela (antorcha o planta). Los 4 vértices del
+	// quad (a,b,c,d) se dan explícitos; los UVs fijos (0,0)-(1,0)-(1,1)-(0,1)
+	// se mapean al rect `uv` [u0,v0,u1,v1] de la tesela en el atlas.
+	const pushCrossQuad = (
 		ax,
 		ay,
 		az,
 		bx,
 		by,
 		bz,
-		c2x,
-		c2y,
-		c2z,
+		cx2,
+		cy,
+		cz2,
 		dx,
 		dy,
 		dz,
 		nx,
 		ny,
-		nz
+		nz,
+		uv
 	) => {
 		const verts = [
 			[ax, ay, az],
 			[bx, by, bz],
-			[c2x, c2y, c2z],
+			[cx2, cy, cz2],
 			[dx, dy, dz]
 		];
+		const [e0, f0, e1, f1] = uv;
 		for (const [i, j, k] of [
 			[0, 1, 2],
 			[0, 2, 3]
@@ -396,14 +423,15 @@ function buildChunkGeometry(cx, cz) {
 				torchPositions.push(...verts[idx]);
 				torchNormals.push(nx, ny, nz);
 				const [uu, vv] = QUAD_UVS[idx];
-				torchUvs.push(tu0 + uu * (tu1 - tu0), tv0 + vv * (tv1 - tv0));
+				torchUvs.push(e0 + uu * (e1 - e0), f0 + vv * (f1 - f0));
 				torchColors.push(torchLight, torchLight, torchLight);
 			}
 		}
 	};
 	const pushTorch = (wx, wy, wz) => {
+		const uv = [tu0, tv0, tu1, tv1];
 		// Plano 1: diagonal x=z (normal (-.707, 0, .707))
-		pushTorchQuad(
+		pushCrossQuad(
 			wx - TORCH_W,
 			wy,
 			wz - TORCH_W,
@@ -418,10 +446,11 @@ function buildChunkGeometry(cx, cz) {
 			wz - TORCH_W,
 			-Math.SQRT1_2,
 			0,
-			Math.SQRT1_2
+			Math.SQRT1_2,
+			uv
 		);
 		// Plano 2: diagonal x=-z (normal (-.707, 0, -.707))
-		pushTorchQuad(
+		pushCrossQuad(
 			wx + TORCH_W,
 			wy,
 			wz - TORCH_W,
@@ -436,7 +465,49 @@ function buildChunkGeometry(cx, cz) {
 			wz - TORCH_W,
 			-Math.SQRT1_2,
 			0,
-			-Math.SQRT1_2
+			-Math.SQRT1_2,
+			uv
+		);
+	};
+	// Planta (Fase 9, F): dos planos cruzados más anchos y altos que la
+	// antorcha, con la tesela de la planta (hierba/flor/trigo).
+	const pushPlant = (wx, wy, wz, block) => {
+		const uv = tex.tileRect(tex.tileForFace(block, 0));
+		pushCrossQuad(
+			wx - PLANT_W,
+			wy,
+			wz - PLANT_W,
+			wx + PLANT_W,
+			wy,
+			wz + PLANT_W,
+			wx + PLANT_W,
+			wy + PLANT_H,
+			wz + PLANT_W,
+			wx - PLANT_W,
+			wy + PLANT_H,
+			wz - PLANT_W,
+			-Math.SQRT1_2,
+			0,
+			Math.SQRT1_2,
+			uv
+		);
+		pushCrossQuad(
+			wx + PLANT_W,
+			wy,
+			wz - PLANT_W,
+			wx - PLANT_W,
+			wy,
+			wz + PLANT_W,
+			wx - PLANT_W,
+			wy + PLANT_H,
+			wz + PLANT_W,
+			wx + PLANT_W,
+			wy + PLANT_H,
+			wz - PLANT_W,
+			-Math.SQRT1_2,
+			0,
+			-Math.SQRT1_2,
+			uv
 		);
 	};
 
@@ -455,6 +526,12 @@ function buildChunkGeometry(cx, cz) {
 					pushTorch(wx, wy, wz);
 					continue;
 				}
+				// Plantas (hierba alta, flores, trigo): planos cruzados; no
+				// ocluyen al vecino (los bloques de debajo siguen visibles).
+				if (NON_SOLID_PLANTS.has(block)) {
+					pushPlant(wx, wy, wz, block);
+					continue;
+				}
 				for (let fi = 0; fi < FACES.length; fi++) {
 					const face = FACES[fi];
 					const nx = wx + face.dir[0],
@@ -464,11 +541,20 @@ function buildChunkGeometry(cx, cz) {
 					// Agua/lava: solo caras contra aire confirmado (superficie/orilla).
 					// Sólido: caras contra aire O agua (el lecho del lago se ve bajo la
 					// superficie; la lava es opaca, pero el culling compartido evita que
-					// las caras enterradas del charco generen geometría invisible).
+					// las caras enterradas del charco generen geometría invisible) O
+					// plantas no sólidas (Fase 9: hierba alta/flores/trigo se dibujan
+					// como planos cruzados translúcidos, así que el bloque de debajo
+					// debe seguir viéndose — sin esto el suelo bajo cada planta queda
+					// con huecos).
 					if (isWater || isLava) {
 						if (neighbor !== 0) continue;
 					} else {
-						if (neighbor !== 0 && neighbor !== WATER) continue;
+						if (
+							neighbor !== 0 &&
+							neighbor !== WATER &&
+							!NON_SOLID_PLANTS.has(neighbor)
+						)
+							continue;
 					}
 					const target = isWater
 						? {
@@ -764,7 +850,10 @@ function columnSurface(chunk, x, z, wx, wz) {
 			x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE
 				? chunk[cIdx(x, y, z)]
 				: getClientBlock(wx, y, wz);
-		if (b !== 0 && b !== -1) return { y, block: b };
+		// Fase 9 (F): las plantas (hierba/flores/trigo) no cuentan como
+		// superficie — el LOD dibuja la lámina sobre el terreno real, no sobre
+		// el bulto de la planta (evita láminas flotantes de 1 bloque).
+		if (b !== 0 && b !== -1 && !NON_SOLID_PLANTS.has(b)) return { y, block: b };
 	}
 	return { y: -1, block: 0 };
 }

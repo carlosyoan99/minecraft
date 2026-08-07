@@ -38,6 +38,9 @@ function buildMeta() {
 		schemaVersion: SCHEMA_VERSION,
 		seed: P.currentSeed,
 		name: P.worldName || P.currentSeed, // Fase 7: nombre mostrado en el menú de mundos (por defecto, la semilla)
+		// Fase 9 (Bloque B): modo de juego FIJO por mundo. buildMeta lo persiste
+		// en world.json; loadWorld lo restaura (mundos v3 sin el campo → survival).
+		gamemode: P.worldGamemode,
 		lastSaved: new Date().toISOString(),
 		mobs: state.mobs
 			.filter((m) => m.alive)
@@ -52,7 +55,9 @@ function buildMeta() {
 				age: m.age
 			})),
 		furnaces: Array.from(furnaces.entries()),
-		chests: Array.from(chests.entries())
+		chests: Array.from(chests.entries()),
+		// Fase 9 (Bloque C): estado de crecimiento de los cultivos ("x,y,z" → stage).
+		crops: Array.from(state.crops.entries())
 	};
 }
 
@@ -135,9 +140,15 @@ function loadWorld() {
 			// world.json antiguos no lo traen y usan la semilla como nombre, y un
 			// world.json manipulado se sanea igual que el del menú).
 			P.worldName = sanitizeWorldName(meta.name) || P.currentSeed;
+			// Fase 9 (Bloque B): restaurar el modo de juego del mundo (los mundos
+			// v3 sin el campo abren como survival — decisión del usuario).
+			P.worldGamemode = constants.sanitizeGamemode(meta.gamemode);
 			state.mobs = restoreMobs(meta.mobs);
 			restoreFurnaces(meta.furnaces);
 			restoreChests(meta.chests);
+			// Fase 9 (Bloque C): cultivos (los mundos v3 sin el campo → sin cultivos).
+			state.crops.clear();
+			for (const [k, v] of meta.crops || []) state.crops.set(k, v);
 		} else {
 			// biome-ignore lint/suspicious/noConsole: aviso de mundo sin metadatos
 			console.warn(
@@ -171,7 +182,10 @@ function loadWorld() {
 // cambia rutas y re-seeda el ruido → carga (o deja listo para generar) el
 // mundo de la nueva semilla. El jugador que la pidió genera/recibe los chunks
 // del spawn en net.js (set_seed → ensureChunksAround + init).
-function switchWorld(newSeed, newName) {
+// Fase 9 (Bloque B): `newGamemode` (opcional) fija el modo del mundo NUEVO
+// (world.json lo persiste en el primer guardado); un mundo EXISTENTE conserva
+// el suyo (loadWorld restaura el de su world.json).
+function switchWorld(newSeed, newName, newGamemode) {
 	const prevSeed = P.currentSeed;
 	if (constants.seedDir(newSeed) === constants.seedDir(prevSeed)) {
 		// Misma semilla: solo normalizar la semilla activa (si difiere en formato)
@@ -203,8 +217,13 @@ function switchWorld(newSeed, newName) {
 	state.mobs = [];
 	state.furnaces.clear();
 	state.chests.clear();
+	state.crops.clear(); // Fase 9 (Bloque C): los cultivos no viajan entre mundos
 
-	constants.setWorldSeed(newSeed, sanitizeWorldName(newName) || newSeed);
+	constants.setWorldSeed(
+		newSeed,
+		sanitizeWorldName(newName) || newSeed,
+		newGamemode
+	);
 	world.reinitNoise(newSeed);
 
 	const r = loadWorld();
@@ -326,7 +345,8 @@ function listWorlds() {
 		let seed = dir,
 			name = dir,
 			lastSaved = null,
-			chunkCount = 0;
+			chunkCount = 0,
+			gamemode = "survival";
 		try {
 			const metaFile = path.join(dirPath, "world.json");
 			if (fs.existsSync(metaFile)) {
@@ -334,6 +354,9 @@ function listWorlds() {
 				if (typeof meta.seed === "string" && meta.seed) seed = meta.seed;
 				if (typeof meta.name === "string" && meta.name) name = meta.name;
 				if (typeof meta.lastSaved === "string") lastSaved = meta.lastSaved;
+				// Fase 9 (Bloque B): modo de juego del mundo para el badge del menú
+				// (los mundos v3 sin el campo → survival).
+				gamemode = constants.sanitizeGamemode(meta.gamemode);
 			}
 			const chunksDir = path.join(dirPath, "chunks");
 			if (fs.existsSync(chunksDir)) {
@@ -344,15 +367,19 @@ function listWorlds() {
 			// Fase 7: el mundo ACTIVO muestra su nombre en memoria (puede ser más
 			// reciente que world.json — mundo recién creado o renombrado en esta
 			// sesión, antes de que el autosave haya vuelto a escribir el archivo).
+			// Fase 9 (Bloque B): `active: true` marca el mundo en uso — el menú no
+			// permite borrarlo (el servidor también lo rechaza en deleteWorld).
 			if (constants.seedDir(seed) === constants.seedDir(P.currentSeed)) {
 				activeFound = true;
 				if (P.worldName) name = P.worldName;
+				out.push({ seed, name, chunkCount, lastSaved, gamemode, active: true });
+				continue;
 			}
 		} catch (e) {
 			// biome-ignore lint/suspicious/noConsole: aviso de mundo ilegible en el menú
 			console.warn(`⚠️  Mundo ilegible en world/${dir}: ${e.message}`);
 		}
-		out.push({ seed, name, chunkCount, lastSaved });
+		out.push({ seed, name, chunkCount, lastSaved, gamemode });
 	}
 	// El mundo activo recién creado aún no tiene directorio (los chunks se
 	// escriben en el primer autosave): incluirlo igualmente para que el menú lo
@@ -362,7 +389,9 @@ function listWorlds() {
 			seed: P.currentSeed,
 			name: P.worldName || P.currentSeed,
 			chunkCount: 0,
-			lastSaved: null
+			lastSaved: null,
+			gamemode: P.worldGamemode,
+			active: true
 		});
 	}
 	out.sort((a, b) => (b.lastSaved || "").localeCompare(a.lastSaved || ""));
@@ -428,6 +457,49 @@ function unloadFarChunks() {
 	);
 }
 
+// ============================================================
+// ELIMINAR MUNDOS (Fase 9, Bloque B)
+// Borra el directorio completo de una semilla (world/<semilla>/) del menú.
+// Devuelve { ok: true } o { ok: false, reason }: 'active' (es el mundo en
+// uso — no se puede borrar), 'invalid' (nombre de directorio no validado) o
+// 'error'. Seguridad: solo se borra un directorio bajo world/ cuyo nombre
+// coincide EXACTAMENTE con seedDir(semilla) validado — nunca rutas arbitrarias
+// ni la raíz de world/.
+// ============================================================
+function deleteWorld(seed) {
+	if (typeof seed !== "string" || !seed.trim())
+		return { ok: false, reason: "invalid" };
+	const dirName = constants.seedDir(seed);
+	// El mundo activo no se puede borrar (se perdería el estado en memoria y
+	// el jugador jugaría sobre un mundo sin directorio).
+	if (dirName === constants.seedDir(P.currentSeed))
+		return { ok: false, reason: "active" };
+	const target = path.join(P.worldRoot, dirName);
+	// Defensa: el destino debe estar DENTRO de world/ y su nombre debe ser el
+	// del directorio derivado de la semilla (nunca .., vacío o la raíz).
+	const resolved = path.resolve(target);
+	const root = path.resolve(P.worldRoot);
+	if (
+		dirName.length === 0 ||
+		resolved === root ||
+		!resolved.startsWith(root + path.sep)
+	)
+		return { ok: false, reason: "invalid" };
+	if (!fs.existsSync(resolved)) return { ok: true }; // ya no existe
+	const stat = fs.statSync(resolved);
+	if (!stat.isDirectory()) return { ok: false, reason: "invalid" };
+	try {
+		fs.rmSync(resolved, { recursive: true, force: true });
+		// biome-ignore lint/suspicious/noConsole: log de borrado de mundo
+		console.log(`🗑️ Mundo eliminado: ${dirName}`);
+		return { ok: true };
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de borrado
+		console.error("⚠️  No se pudo borrar el mundo:", e.message);
+		return { ok: false, reason: "error" };
+	}
+}
+
 module.exports = {
 	saveWorld,
 	loadWorld,
@@ -436,5 +508,6 @@ module.exports = {
 	switchWorld,
 	unloadFarChunks,
 	setUnloadHandler,
-	listWorlds
+	listWorlds,
+	deleteWorld
 };

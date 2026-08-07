@@ -502,6 +502,180 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	font-size: 11px;
 	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
 }
+/* Fase 9 (Bloque B): badge del modo de juego en la lista de mundos */
+.mode-badge {
+	display: inline-block;
+	align-self: flex-start;
+	font-size: 10px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	padding: 1px 7px;
+	border-radius: 8px;
+	color: #fff;
+	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+	border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.mode-badge.survival {
+	background: #4a8a2e;
+}
+.mode-badge.creative {
+	background: #8a5ac0;
+}
+/* Botón 🗑️ de borrar mundo (no abre el mundo al pulsarlo) */
+.world-delete {
+	background: rgba(0, 0, 0, 0.35);
+	border: 2px solid;
+	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-radius: 4px;
+	font-size: 14px;
+	line-height: 1;
+	padding: 3px 6px;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition:
+		background 0.12s,
+		transform 0.12s;
+}
+.world-delete:hover {
+	background: #c0392b;
+	transform: scale(1.12);
+}
+.world-delete:active {
+	transform: scale(0.92);
+}
+/* Fase 9 (Bloque B): badge del modo en el HUD (visible durante el juego) */
+#gamemode-badge {
+	position: absolute;
+	top: 150px;
+	left: 16px;
+	z-index: 90;
+	color: #fff;
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	padding: 3px 10px;
+	border-radius: 6px;
+	pointer-events: none;
+	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
+	border: 1px solid rgba(255, 255, 255, 0.3);
+}
+#gamemode-badge.hidden {
+	display: none;
+}
+#gamemode-badge.creative {
+	background: rgba(138, 90, 192, 0.75);
+}
+#gamemode-badge:not(.creative) {
+	background: rgba(74, 138, 46, 0.75);
+}
+#gamemode-badge small {
+	font-weight: normal;
+	opacity: 0.85;
+}
+/* ============================================================
+LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
+============================================================ */
+#recipe-book {
+	width: 520px;
+	max-width: 94vw;
+	max-height: 80vh;
+	overflow-y: auto;
+}
+.recipe-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 12px;
+}
+.recipe-tab {
+	padding: 6px 12px;
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	cursor: pointer;
+	background: #7d7d7d;
+	background-image: linear-gradient(
+		rgba(255, 255, 255, 0.22),
+		rgba(0, 0, 0, 0.15)
+	);
+	color: #fff;
+	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+	border: 2px solid;
+	border-color: #fff #3d3d3d #3d3d3d #fff;
+	transition: filter 0.1s;
+}
+.recipe-tab:hover {
+	filter: brightness(1.18);
+}
+.recipe-tab.active {
+	background: #4caf50;
+	border-color: #dfffdf #2a5a2a #2a5a2a #dfffdf;
+}
+.recipe-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.recipe-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 10px;
+	background: rgba(0, 0, 0, 0.12);
+	border: 1px solid #888;
+	border-radius: 4px;
+}
+.recipe-item.empty {
+	justify-content: center;
+	color: #555;
+	font-style: italic;
+}
+.recipe-result {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	background: #8f8f8f;
+	border: 2px solid;
+	border-color: #fff #3a3a3a #3a3a3a #fff;
+}
+.recipe-info {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	gap: 2px;
+	font-size: 12px;
+}
+.recipe-info small {
+	color: #666;
+}
+.recipe-shape {
+	display: grid;
+	grid-template-columns: repeat(3, 20px);
+	gap: 2px;
+	flex-shrink: 0;
+}
+.recipe-cell {
+	width: 20px;
+	height: 20px;
+	background: #8f8f8f;
+	border: 1px solid;
+	border-color: #fff #3a3a3a #3a3a3a #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.recipe-cell.empty {
+	background: rgba(0, 0, 0, 0.15);
+	border-color: #666;
+}
+.recipe-time {
+	font-size: 11px;
+	color: #8a5a00;
+	flex-shrink: 0;
+}
 
 #crosshair {
 	position: absolute;

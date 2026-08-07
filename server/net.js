@@ -20,6 +20,7 @@ const {
 	JUMP_SPEED,
 	WS_MAX_PAYLOAD,
 	B,
+	I,
 	NOT_MINEABLE,
 	FUEL_ITEMS,
 	isSolidBlock,
@@ -28,7 +29,9 @@ const {
 	ARMOR_SLOTS,
 	ARMOR_DURABILITY,
 	SWORD_DAMAGE,
-	MOB_XP
+	MOB_XP,
+	xpToNext,
+	xpIntoLevel
 } = constants;
 const state = require("./state.js");
 const world = require("./world.js");
@@ -129,15 +132,26 @@ function sendInit(p) {
 				// semilla ya aplicado — el cliente lo extrapola igual que el día.
 				moonTime: commands.moonTime(state),
 				mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
+				// Fase 9 (Bloque D): flechas vivas del esqueleto (para que el cliente
+				// las dibuje desde el primer frame, no solo tras el primer broadcast).
+				arrows: state.arrows.map(mobs.arrowSnapshot),
 				inventory: p.inventory,
 				armor: p.armor, // Fase 7: 4 slots (casco, pechera, pantalones, botas)
 				health: p.health,
 				maxHealth: p.maxHealth,
 				xp: p.xp,
 				level: p.level, // Fase 5
+				// Fase 9 (Bloque C): progreso DENTRO del nivel (curva MC no
+				// lineal) para la barra de XP del HUD — el cliente la pinta con
+				// xpInto/xpToNext en vez de la curva lineal antigua.
+				xpInto: xpIntoLevel(p.xp, p.level || 0),
+				xpToNext: xpToNext(p.level || 0),
 				food: p.food,
 				saturation: p.saturation,
 				seed: constants.worldPaths.currentSeed, // Fase 6: semilla activa del mundo
+				// Fase 9 (Bloque B): modo de juego del MUNDO (fijo por mundo). El
+				// cliente lo usa para el HUD, el inventario creativo y el vuelo.
+				gamemode: p.gamemode,
 				otherPlayers: Array.from(state.players.values())
 					.filter((q) => q.id !== p.id)
 					.map((q) => ({ id: q.id, name: q.name, x: q.x, y: q.y, z: q.z }))
@@ -210,6 +224,13 @@ function handleConnection(ws, req) {
 		spawnGraceUntil: Date.now() + SPAWN_GRACE_MS,
 		xp: 0,
 		level: 0, // Fase 5: experiencia simple / niveles
+		// Fase 9 (Bloque B): modo de juego FIJO por mundo — el jugador entra con
+		// el modo del mundo activo (survival/creative). /gamemode solo lo cambia
+		// en runtime (sin persistir): al reconectar vuelve el modo del mundo.
+		gamemode: constants.worldPaths.worldGamemode,
+		// Fase 9 (Bloque C): vuelo creativo (doble espacio). Solo se usa en
+		// creative; el servidor lo conoce para no penalizar el ascenso sostenido.
+		flying: false,
 		food: 20,
 		saturation: 20,
 		foodAccum: 0,
@@ -242,6 +263,15 @@ function handleConnection(ws, req) {
 		fallVy: 0
 	};
 	state.players.set(playerId, player);
+	// Fase 9 (Bloque C): en un mundo CREATIVO el inventario no se persiste — se
+	// resetea al entrar y se entrega el inventario creativo completo (decisión
+	// del usuario). El survival restaura el inventario guardado como siempre.
+	if (player.gamemode === "creative") {
+		player.inventory = new Array(36).fill(null).map((_, i) => ({
+			id: constants.CREATIVE_ITEMS[i % constants.CREATIVE_ITEMS.length],
+			count: 64
+		}));
+	}
 	// biome-ignore lint/suspicious/noConsole: log de conexión (operación normal del servidor)
 	console.log(
 		`🟢 Jugador conectado: ${player.name} (${state.players.size} en línea)`
@@ -340,7 +370,12 @@ function handleConnection(ws, req) {
 				const inWater = feetBlock === B.WATER;
 				const inAir = !isSolidBlock(feetBlock) && !inWater;
 				p.airTimeMs = inAir ? (p.airTimeMs || 0) + dtSec * 1000 : 0;
-				if (inAir && y - p.y > 0) {
+				// Fase 9 (Bloque C): en CREATIVE el ascenso sostenido es VUELO
+				// legítimo (doble espacio), no un cheat: se salta la validación de la
+				// parábola del salto. El límite de velocidad y los sólidos siguen
+				// aplicando (el cliente colisiona; el servidor corrige si entra en un
+				// bloque).
+				if (inAir && y - p.y > 0 && p.gamemode !== "creative") {
 					// Parábola del salto: vy = JUMP_SPEED − GRAVITY·t (máx al iniciar
 					// el salto). Margen 1.5× por latencia/jitter; además ningún salto
 					// legítimo sube más de ~0.4s seguido (tras >1s en el aire, subir
@@ -438,7 +473,10 @@ function handleConnection(ws, req) {
 				if (Math.hypot(x - p.x, y - p.y, z - p.z) > 7) return;
 				if (action === "break") {
 					const block = world.getBlock(x, y, z);
-					if (NOT_MINEABLE.has(block)) return;
+					// Fase 9 (Bloque C): en creative se pueden romper también el agua y
+					// la lava (colocadas desde el inventario creativo); en survival siguen
+					// siendo irrompibles sin cubo.
+					if (NOT_MINEABLE.has(block) && p.gamemode !== "creative") return;
 					// Creative (/gamemode creative): minería INSTANTÁNEA como en
 					// Minecraft — el bloque se rompe al momento, sin sesión de
 					// progreso ni grietas, y sin desgaste de herramienta ni drops
@@ -468,6 +506,13 @@ function handleConnection(ws, req) {
 					if (world.getBlock(x, y, z) !== B.AIR) return;
 					const slot = p.inventory[p.selectedSlot];
 					if (!slot || slot.id !== itemId || slot.count < 1) return;
+					// Fase 9 (Bloque C): el agua y la lava solo se colocan en creative
+					// (en survival no hay cubo; el /give las rechaza igualmente).
+					if (
+						(itemId === B.WATER || itemId === B.LAVA) &&
+						p.gamemode !== "creative"
+					)
+						return;
 					// Antorchas: necesitan un bloque sólido adyacente (soporte), como en
 					// Minecraft — no se pueden colocar flotando en el aire. El agua y
 					// otra antorcha no dan soporte (isSolidBlock las excluye).
@@ -712,6 +757,19 @@ function handleConnection(ws, req) {
 				break;
 			}
 
+			case "recipe_book": {
+				// Fase 9 (Bloque F): el libro de recetas pide TODAS las recetas
+				// (crafteo + horno) para mostrarlas por categorías, sin desbloqueo
+				// progresivo. Se responde al MISMO socket (es info de inventario/UI).
+				ws.send(
+					JSON.stringify({
+						event: "recipe_book",
+						data: crafting.getRecipeTables()
+					})
+				);
+				break;
+			}
+
 			case "set_seed": {
 				// Fase 6: campo de semilla del menú del cliente. El servidor es la
 				// fuente de verdad: cambia el mundo activo (persistiendo el actual) y
@@ -731,7 +789,10 @@ function handleConnection(ws, req) {
 				const seed = data.seed.trim();
 				// Fase 7: `name` (opcional) da nombre al mundo nuevo (world.json); si la
 				// semilla ya existe, el nombre guardado en disco gana (loadWorld).
-				const r = save.switchWorld(seed, data.name);
+				// Fase 9 (Bloque B): `gamemode` (opcional) fija el modo del mundo NUEVO
+				// (survival/creative); un mundo existente conserva el suyo.
+				const mode = constants.sanitizeGamemode(data.gamemode);
+				const r = save.switchWorld(seed, data.name, mode);
 				if (r === "rechazo" || r === "error") {
 					p.ws.send(
 						JSON.stringify({ event: "seed_rejected", data: { reason: r } })
@@ -751,7 +812,21 @@ function handleConnection(ws, req) {
 					p.level = 0;
 					p.food = 20;
 					p.saturation = 20;
-					p.inventory = new Array(36).fill(null);
+					// Fase 9 (Bloque B/C): el modo del mundo nuevo aplica al jugador. En
+					// creative el inventario se resetea y se entrega el inventario
+					// creativo completo (no se persiste); en survival, vacío.
+					p.gamemode = constants.worldPaths.worldGamemode;
+					p.flying = false;
+					p.inventory = new Array(36).fill(null).map((_, i) =>
+						p.gamemode === "creative"
+							? {
+									id: constants.CREATIVE_ITEMS[
+										i % constants.CREATIVE_ITEMS.length
+									],
+									count: 64
+								}
+							: null
+					);
 					p.craftingGrid = new Array(9).fill(null);
 					p.openFurnace = null;
 					p.openChest = null;
@@ -769,6 +844,104 @@ function handleConnection(ws, req) {
 			case "inventory_select": {
 				if (typeof data.slot === "number" && data.slot >= 0 && data.slot < 9)
 					p.selectedSlot = data.slot;
+				break;
+			}
+
+			case "till": {
+				// Fase 9 (Bloque C): arar la tierra con una azada — clic derecho con
+				// azada en la mano sobre tierra/césped la convierte en tierra arada
+				// (soporte para plantar semillas). La azada se desgasta (1 uso).
+				const block = world.getBlock(data.x, data.y, data.z);
+				if (block !== B.DIRT && block !== B.GRASS) break;
+				if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) break;
+				const held = p.inventory[p.selectedSlot];
+				if (!held || !constants.isHoe(held.id)) break;
+				world.setBlock(data.x, data.y, data.z, B.FARMLAND);
+				const broke = playerHelpers.applyToolWear(p);
+				playerHelpers.sendInventory(p);
+				if (broke)
+					p.ws.send(
+						JSON.stringify({
+							event: "tool_broke",
+							data: { slot: p.selectedSlot }
+						})
+					);
+				break;
+			}
+
+			case "plant": {
+				// Fase 9 (Bloque C): plantar semillas en tierra arada — clic derecho
+				// con semillas sobre farmland coloca un cultivo de trigo (crece por
+				// etapas en el bucle principal y se cosecha al madurar).
+				if (world.getBlock(data.x, data.y, data.z) !== B.FARMLAND) break;
+				if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) break;
+				const held = p.inventory[p.selectedSlot];
+				if (!held || held.id !== I.SEEDS) break;
+				if (!playerHelpers.removeFromInventory(p, I.SEEDS, 1)) break;
+				world.setBlock(data.x, data.y, data.z, B.WHEAT);
+				state.crops.set(`${data.x},${data.y},${data.z}`, {
+					stage: 0,
+					plantedAt: Date.now()
+				});
+				playerHelpers.sendInventory(p);
+				break;
+			}
+
+			case "creative_pick": {
+				// Fase 9 (Bloque C): picker creativo — el jugador coge un ítem del
+				// catálogo completo (bloques, ítems, herramientas, armadura) y se
+				// coloca en el slot seleccionado. Solo en un mundo creative; los ítems
+				// deben estar en el catálogo (nunca IDs arbitrarios del wire).
+				if (p.gamemode !== "creative") break;
+				const id = data.itemId;
+				if (typeof id !== "number") break;
+				const isToolOrArmor =
+					constants.isTool(id) || constants.isArmor(id) || constants.isHoe(id);
+				if (
+					!(
+						constants.CREATIVE_ITEMS.includes(id) ||
+						constants.ALL_TOOLS_AND_ARMOR.includes(id)
+					)
+				)
+					break;
+				p.inventory[p.selectedSlot] = {
+					id,
+					count: isToolOrArmor ? 1 : 64,
+					durability: isToolOrArmor
+						? (constants.TOOL_DURABILITY[id] ??
+							constants.ARMOR_DURABILITY[id] ??
+							constants.HOE_DURABILITY[id])
+						: undefined
+				};
+				playerHelpers.sendInventory(p);
+				break;
+			}
+
+			case "creative_fly": {
+				// Fase 9 (Bloque C): el cliente avisa del estado de vuelo (doble
+				// espacio). Solo en creative; es informativo para el servidor (el
+				// anti-cheat de ascenso ya se salta en creative) y para el F3.
+				if (p.gamemode !== "creative") break;
+				p.flying = !!data.enabled;
+				break;
+			}
+
+			case "world_delete": {
+				// Fase 9 (Bloque B): borrar un mundo desde el menú. El servidor es la
+				// fuente de verdad: rechaza el mundo ACTIVO y valida el nombre del
+				// directorio (deleteWorld) antes de tocar el disco. Al terminar se
+				// reenvía la lista de mundos al mismo socket.
+				const r = save.deleteWorld(data?.seed);
+				ws.send(
+					JSON.stringify({
+						event: "world_delete_result",
+						data: {
+							ok: r.ok,
+							reason: r.ok ? null : r.reason,
+							worlds: save.listWorlds()
+						}
+					})
+				);
 				break;
 			}
 
@@ -926,6 +1099,9 @@ function handleConnection(ws, req) {
 				// Fase 5: las espadas se desgastan al golpear (se rompen al llegar a 0)
 				const broke = playerHelpers.applyToolWear(p, true);
 				const isSword = !!SWORD_DAMAGE[tool];
+				// Fase 9 (Bloque D): al golpear, los PASAVOS huyen del atacante
+				// (~4s, dirección contraria) — ver mobs.js mobHit().
+				mobs.Mob.prototype.mobHit.call(mob, p);
 				if (mob.health <= 0) {
 					mob.alive = false;
 					broadcast("mob_death", { id: mob.id });
@@ -998,6 +1174,27 @@ function mainLoop() {
 	for (const m of state.mobs) if (m.alive) m.tick(isNight);
 	state.mobs = state.mobs.filter((m) => m.alive);
 	broadcast("mobs_update", state.mobs.map(mobs.mobSnapshot));
+
+	// Fase 9 (Bloque D): proyectiles del esqueleto — avanzar física y enviar.
+	const arrows = mobs.tickArrows(TICK_MS);
+	if (arrows.length) broadcast("arrows_update", arrows.map(mobs.arrowSnapshot));
+
+	// Fase 9 (Bloque C): crecimiento de cultivos — cada ~1s los cultivos
+	// sembrados avanzan de estado (hasta madurar, stage 7). Probabilidad por
+	// tick para que el ritmo sea orgánico y no todos maduren a la vez.
+	state.cropAccum = (state.cropAccum || 0) + TICK_MS;
+	if (state.cropAccum >= 1000) {
+		state.cropAccum = 0;
+		for (const [key, c] of state.crops) {
+			if (c.stage >= 7) continue;
+			if (Math.random() < 0.5) {
+				c.stage++;
+				state.dirtyChunks.add(
+					`${Math.floor(key.split(",")[0] / 16)},${Math.floor(key.split(",")[2] / 16)}`
+				);
+			}
+		}
+	}
 
 	// Hambre: decae con el tiempo/actividad, regenera o inanición
 	// (en modo creative no se aplica: /gamemode creative)

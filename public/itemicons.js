@@ -373,6 +373,15 @@ function drawBedrock(g, rng) {
 	rect(g, 2, 13, 12, 1, "#0d0d0d");
 }
 
+// Lana tintada: base del color con vellón (como drawWool, parametrizada).
+function drawWoolColor(g, rng, base, dark) {
+	rect(g, 2, 2, 12, 12, base);
+	for (let i = 0; i < 10; i++)
+		set(g, 3 + Math.floor(rng() * 10), 3 + Math.floor(rng() * 10), dark);
+	rect(g, 2, 2, 12, 1, shade(base, 0.25));
+	rect(g, 2, 13, 12, 1, dark);
+}
+
 function drawBlockIcon(id, g, rng) {
 	switch (id) {
 		case 2:
@@ -422,6 +431,52 @@ function drawBlockIcon(id, g, rng) {
 			break;
 		case 25:
 			drawLava(g, rng);
+			break;
+		// Fase 9 (C/F): tierra arada (surcos), plantas (cross) y lanas tintadas
+		case 26: {
+			const hex = "#6f4a22";
+			rect(g, 2, 2, 12, 12, hex);
+			hline(g, 2, 13, 5, "#5a3a18");
+			hline(g, 2, 13, 9, "#5a3a18");
+			hline(g, 2, 13, 13, "#5a3a18");
+			rect(g, 2, 2, 12, 1, shade(hex, 0.2));
+			rect(g, 2, 13, 12, 1, "#4a3014");
+			break;
+		}
+		case 27:
+			// trigo en crecimiento (tallos verdes)
+			vline(g, 6, 6, 13, "#5aa32e");
+			vline(g, 9, 6, 13, "#6fbf3a");
+			vline(g, 8, 3, 13, "#5aa32e");
+			hline(g, 5, 7, 9, "#7fd04f");
+			hline(g, 8, 10, 7, "#7fd04f");
+			break;
+		case 33:
+			vline(g, 8, 5, 13, "#4a9e2f");
+			hline(g, 5, 7, 8, "#5aae3f");
+			hline(g, 9, 12, 10, "#5aae3f");
+			hline(g, 6, 10, 6, "#6fbf4f");
+			break;
+		case 34:
+			vline(g, 8, 8, 13, "#3a8a2a");
+			rect(g, 6, 3, 5, 4, "#d92626");
+			set(g, 7, 4, "#8f1010");
+			set(g, 10, 4, "#8f1010");
+			set(g, 8, 5, "#f5f5f0");
+			break;
+		case 35:
+			vline(g, 8, 8, 13, "#3a8a2a");
+			rect(g, 6, 3, 5, 4, "#e8d21a");
+			set(g, 7, 4, "#f5e84a");
+			break;
+		case 36:
+			drawWoolColor(g, rng, "#c0392b", "#8f2a1e");
+			break;
+		case 37:
+			drawWoolColor(g, rng, "#e8c547", "#b8860b");
+			break;
+		case 38:
+			drawWoolColor(g, rng, "#f5f5f0", "#d9d9d2");
 			break;
 		default:
 			if (id >= 9 && id <= 14) drawOre(g, rng, ORE_COLORS[id]);
@@ -640,6 +695,85 @@ function drawRabbit(g, cooked) {
 }
 
 // ============================================================
+// ÍTEMS DE LA FASE 9 (Bloque F): pan, pescado, hueso, tintes, miel
+// ============================================================
+function drawBread(g) {
+	const crust = "#b07a3e",
+		dark = "#8a5a2a",
+		crumb = "#e8c98a",
+		crumbDark = "#d4b06a";
+	for (let y = 3; y <= 12; y++) {
+		const w = y <= 7 ? 5 : y <= 11 ? 4 : 3;
+		for (let x = 8 - w; x <= 8 + w; x++) {
+			set(g, x, y, y === 3 || y === 12 ? crust : crumb);
+		}
+	}
+	rect(g, 3, 4, 2, 1, crust);
+	rect(g, 11, 4, 2, 1, crust);
+	rect(g, 4, 8, 3, 1, crumbDark);
+	set(g, 8, 9, crumbDark);
+	set(g, 10, 11, crumbDark);
+}
+function drawFish(g, cooked) {
+	const base = cooked ? "#b08a4a" : "#7a9ab0";
+	const dark = cooked ? "#8a6a34" : "#5a7a90";
+	const light = cooked ? "#d4b070" : "#a8c8d8";
+	// cuerpo elíptico horizontal
+	for (let y = 4; y <= 11; y++) {
+		const t = Math.abs(y - 7.5) / 3.5;
+		const w = Math.max(1, Math.round(5 * (1 - t)));
+		for (let x = 8 - w; x <= 8 + w; x++) set(g, x, y, base);
+	}
+	// cola
+	rect(g, 1, 6, 4, 2, base);
+	rect(g, 1, 8, 3, 1, dark);
+	rect(g, 1, 5, 2, 1, dark);
+	// ojo
+	set(g, 12, 6, "#1a1a1a");
+	set(g, 13, 6, "#ffffff");
+	// línea de la espina
+	line(g, 4, 8, 13, 7, light);
+}
+function drawBone(g) {
+	const bone = "#f0ebe0",
+		dark = "#d8cfae";
+	line(g, 3, 13, 13, 3, dark); // sombra
+	line(g, 2, 13, 12, 3, bone); // cuerpo
+	// nudos (bolas en los extremos)
+	rect(g, 1, 11, 3, 3, bone);
+	rect(g, 12, 2, 3, 3, bone);
+	rect(g, 2, 11, 1, 1, dark);
+	rect(g, 13, 2, 1, 1, dark);
+}
+// Tinte: bolsa/cubo de pigmento (rojo amapola, amarillo diente de león,
+// blanco harina de hueso).
+function drawDye(g, base, dark, light) {
+	rect(g, 4, 3, 8, 10, base);
+	rect(g, 4, 3, 8, 1, light);
+	rect(g, 4, 12, 8, 1, dark);
+	rect(g, 4, 3, 1, 10, light);
+	rect(g, 11, 3, 1, 10, dark);
+	rect(g, 5, 1, 6, 2, base);
+	rect(g, 5, 1, 1, 2, light);
+	set(g, 7, 5, dark);
+	set(g, 8, 8, dark);
+	set(g, 6, 10, light);
+}
+function drawHoney(g) {
+	const jar = "#e8d9a8",
+		honey = "#e8a520",
+		dark = "#b87a10";
+	rect(g, 5, 3, 6, 8, jar); // bote
+	rect(g, 5, 3, 6, 1, "#ffffff");
+	rect(g, 4, 3, 1, 8, dark);
+	rect(g, 11, 3, 1, 8, dark);
+	rect(g, 4, 11, 8, 2, honey); // miel en el fondo
+	rect(g, 6, 1, 4, 2, "#b87a10"); // tapa
+	set(g, 8, 8, honey);
+	set(g, 7, 9, honey);
+}
+
+// ============================================================
 // HERRAMIENTAS Y ARMADURA (plantillas por forma + color por material)
 // Cada forma es un mapa 16x16: 'm' material, 'h' mango, 'd' sombra.
 // ============================================================
@@ -696,6 +830,24 @@ const SHOVEL = [
 	".....h...........",
 	"......h..........",
 	"......h.........."
+];
+const HOE = [
+	".........mmm.....",
+	"........mmmm.....",
+	"........mmm......",
+	".......mmm.......",
+	".......mmm.......",
+	"h.....mmm........",
+	"hh...mmm.........",
+	"hhh.mmm..........",
+	"hhhh.m...........",
+	"hhhhh............",
+	".hhhh............",
+	"..hhh............",
+	"...hh............",
+	"...hh............",
+	"....h............",
+	"....h............"
 ];
 const SWORD = [
 	"mm...............",
@@ -781,7 +933,8 @@ function drawToolFromMap(g, shape, pal) {
 function makeToolIcon(kind, mat) {
 	return (g) => drawToolFromMap(g, TOOL_SHAPES[kind], TOOL_PALS[mat]);
 }
-const TOOL_SHAPES = [PICKAXE, AXE, SHOVEL, SWORD];
+// Fase 9 (C): la azada es el 5º tipo de herramienta (ids 240-244).
+const TOOL_SHAPES = [PICKAXE, AXE, SHOVEL, SWORD, HOE];
 const TOOL_PALS = [C.wood, C.stone, C.iron, C.gold, C.diamond];
 
 function makeArmorIcon(slot, mat) {
@@ -794,8 +947,9 @@ const ARMOR_PALS = [C.leather, C.iron, C.diamond];
 // REGISTRO: id → función de dibujo (g, rng)
 // ============================================================
 const ICONS = {};
-// Bloques 1..25
-for (let id = 1; id <= 25; id++)
+// Bloques 1..38 (Fase 9, F: tierra arada, trigo, abedul, pino, musgo,
+// hierba, flores y lanas tintadas — todos con BLOCK_COLORS en constants).
+for (let id = 1; id <= 38; id++)
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Ítems
 ICONS[100] = drawStick;
@@ -820,9 +974,22 @@ ICONS[118] = (g) => drawRabbit(g, false);
 ICONS[119] = (g) => drawRabbit(g, true);
 ICONS[120] = drawString;
 ICONS[132] = drawLeather;
+// Fase 9 (F): pan, pescado (crudo/cocinado), hueso, tintes, harina de hueso, miel
+ICONS[133] = drawBread;
+ICONS[134] = (g) => drawFish(g, false);
+ICONS[135] = (g) => drawFish(g, true);
+ICONS[136] = drawBone;
+ICONS[137] = (g) => drawDye(g, "#d92626", "#8f1010", "#f05a5a");
+ICONS[138] = (g) => drawDye(g, "#e8c547", "#b8860b", "#f5e07a");
+ICONS[139] = (g) => drawDye(g, "#f5f5f0", "#c9c9c0", "#ffffff");
+ICONS[140] = drawHoney;
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);
+}
+// Fase 9 (C): azadas 240-244 — tipo 4 de TOOL_SHAPES, mismo material.
+for (let id = 240; id <= 244; id++) {
+	ICONS[id] = makeToolIcon(4, (id - 240) % 5);
 }
 // Armadura 220..231: (id-220)%4 = slot, (id-220)/4 = material
 for (let id = 220; id <= 231; id++) {

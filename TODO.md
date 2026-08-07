@@ -25,6 +25,7 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 
 ## Fase 1 — Cimientos técnicos
 *Objetivo: que la base escale antes de seguir sumando features.*
+Especificación: [`docs/fase1-spec.md`](docs/fase1-spec.md) (retrospectiva, fase completada y auditada).
 
 - [x] Guardado incremental por chunk (reemplazar `world.dat` único
       por un archivo/entrada por chunk, o por región)
@@ -60,6 +61,7 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 
 ## Fase 2 — Identidad sensorial
 *Objetivo: que el juego se vea y suene reconociblemente Minecraft.*
+Especificación: [`docs/fase2-spec.md`](docs/fase2-spec.md) (retrospectiva, fase completada y auditada).
 
 - [x] Atlas de texturas simple (16x16 px por cara, estilo
       pixel-art) reemplazando los colores planos por bloque.
@@ -103,6 +105,7 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 
 ## Fase 3 — Bucle de supervivencia
 *Objetivo: cerrar el loop minar → craftear → sobrevivir.*
+Especificación: [`docs/fase3-spec.md`](docs/fase3-spec.md) (retrospectiva, fase completada y auditada).
 
 - [x] Barra de hambre: decae con el tiempo/acciones, regenera
       salud cuando está llena, penaliza cuando está vacía.
@@ -164,6 +167,7 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 
 ## Fase 4 — Profundidad de terreno
 *Objetivo: que el mundo deje de sentirse macizo y plano.*
+Especificación: [`docs/fase4-spec.md`](docs/fase4-spec.md) (retrospectiva, fase completada y auditada).
 
 - [x] Cuevas: ruido 3D restando de la generación de piedra en
       `generateChunk`. Dos octavas 3D sembradas con la misma semilla
@@ -265,6 +269,7 @@ Leyenda: `[ ]` pendiente · `[x]` hecho
 
 ## Fase 5 — Progresión y combate
 *Objetivo: dar sentido a subir de nivel de herramienta.*
+Especificación: [`docs/fase5-spec.md`](docs/fase5-spec.md) (retrospectiva, fase completada y auditada).
 
 - [x] Durabilidad real de herramientas (que se rompan tras N usos):
       `TOOL_DURABILITY` en `constants.js` (madera 60, piedra 132,
@@ -334,6 +339,7 @@ fiel a Minecraft. Este bloque prioriza el **feedback del usuario**
 conocidos" al final. El pulido que sobrecargaba esta fase (texturas,
 rendimiento, supervivencia, multijugador visible y audio) se movió a
 la **Fase 7**.*
+Especificación: [`docs/fase6-spec.md`](docs/fase6-spec.md) (retrospectiva, fase completada y auditada).
 
 ### Minería y herramientas
 - [x] Afinar la minería: dureza por bloque y velocidad de rotura
@@ -720,6 +726,7 @@ pantalla), cerrar el pulido que sobrecargaba la Fase 6 (texturas,
 rendimiento, supervivencia, multijugador visible y audio), subir la
 estética hacia un look Minecraft y hacer una pasada de caza de
 errores.*
+Especificación: [`docs/fase7-spec.md`](docs/fase7-spec.md) (retrospectiva, fase completada y auditada).
 
 ### Menú principal: nombre, ajustes y mundos
 - [x] **Nombre de jugador**: campo en el menú persistido en
@@ -918,7 +925,7 @@ errores.*
 
 Fase centrada en **identificar y corregir los errores reportados** por el
 usuario (playtest). La especificación completa vive en
-[`fase8-spec.md`](fase8-spec.md) (diagnóstico por bug, archivos implicados y
+[`docs/fase8-spec.md`](docs/fase8-spec.md) (diagnóstico por bug, archivos implicados y
 criterios de aceptación). Resumen de la priorización:
 
 **Hallazgo transversal:** los bugs bloqueantes están encadenados — el
@@ -1055,7 +1062,7 @@ fix propio (el diagnóstico debe confirmarlo).
       la luna es siempre disco lleno. **Corregir**: sol más amarillo
       (subir R/G, bajar B; también `DAY_SUN` en `daynight.js`), luna
       más blanca/azulada y con **fases**: diseño completo en
-      [`fase8-spec.md`](fase8-spec.md) §B8 — derivación determinista
+      [`docs/fase8-spec.md`](docs/fase8-spec.md) §B8 — derivación determinista
       desde la semilla (`seedMoonOffsetMs` + `moonPhase(state)` sobre el
       reloj `worldTime()` de commands.js, offset de semilla persistente),
       ciclo de **8 días de juego** (`MOON_CYCLE_MS = DAY_CYCLE_MS * 8`),
@@ -1087,7 +1094,7 @@ fix propio (el diagnóstico debe confirmarlo).
       esqueleto humanoide, enderman alto, creeper con patas, araña con
       8 patas, conejo con orejas, cuadrúpedos, pollo) y atlas por parte
       (una tesela 16×16 por parte en vez del atlas 2x2 de una tesela) —
-      diseño completo en [`fase8-spec.md`](fase8-spec.md) §B9. Mantener:
+      diseño completo en [`docs/fase8-spec.md`](docs/fase8-spec.md) §B9. Mantener:
       quema solar (un material compartido), escala por tipo, `isBaby` a
       media escala, raycast de ataque (CRÍTICO: con grupo de partes hay
       que intersectar los hijos y subir al raíz por `userData.mobId`),
@@ -1159,6 +1166,80 @@ fix propio (el diagnóstico debe confirmarlo).
 ---
 
 ## Bugs conocidos (pendientes de corrección)
+
+- [x] **Fase 9: el juego no renderizaba nada en el navegador
+      (`mcChunks: 0`) — el clic "no hacía nada" porque no había
+      mundo que minar.** Causa raíz (confirmada con la auditoría CDP
+      de fase 7): los bloques de Fase 9 F (hierba alta, flores,
+      trigo) llaman a los helpers `vline`/`set` en `public/textures.js`,
+      que **nunca se definieron** → `ReferenceError` al construir el
+      atlas (`buildTerrainAtlas` lanza en `drawTallGrass`) → la
+      `CanvasTexture` no se crea → `buildChunkGeometry` devuelve
+      `null` para todos los chunks → 0 meshes. La auditoría fase 7
+      (CDP) fallaba en "el cliente cargó el mundo" y el diagnóstico
+      con Chrome headless capturó la excepción exacta. **Corregido**:
+      se definió `vline(ctx, x, y0, y1, color)` (línea vertical de 1 px)
+      junto a los helpers existentes y se reemplazaron los 4 usos de
+      `set(...)` (inexistente) por `px(...)` (misma firma: ctx, x, y,
+      color). Verificado: CDP fase 7 OK con 169 chunks, tick ~1 ms y 0
+      excepciones. Nota de proceso: los tests de servidor no ejercitan
+      el render y `node --check` no detecta helpers indefinidos — solo
+      la verificación en navegador lo destapa (patrón de la Fase 4).
+- [x] **Fase 9: huecos en el terreno bajo las plantas no sólidas
+      (trigo, hierba alta, amapola, diente de león).** El culling del
+      cliente (`public/world.js`) solo dibujaba caras contra aire o
+      agua; los bloques nuevos de Fase 9 se dibujan como cross-quads
+      translúcidos, así que el bloque de debajo quedaba sin cara
+      superior → 284 caras visibles sin dibujar (detectado por
+      `audit-fase4`). **Corregido**: el culling de sólidos también
+      dibuja contra `NON_SOLID_PLANTS` (misma regla que el agua) y la
+      auditoría replica la regla exacta. El LOD ya ignoraba las plantas
+      como superficie.
+- [x] **Fase 9: las copas de los árboles nuevos (abedul/pino, más
+      densos) caían sobre los charcos decorativos de agua/lava y los
+      tapaban** → el test de charcos (`unit-terreno`) dejó de ver agua
+      en superficie (no determinista). **Corregido** en `server/world.js`:
+      las hojas no se colocan sobre columnas con charco (la superficie
+      del charco se respeta como borde de copa).
+- [x] **Fase 9: el handler `plant` usaba `I.SEEDS` sin importar `I`
+      en `server/net.js`** → `ReferenceError` al plantar semillas
+      (cultivos rotos en juego). **Corregido**: se importa `I` de
+      constants.
+- [x] **Fase 9: tests y auditorías desactualizados tras los cambios
+      de comportamiento** (la suite daba exit 1 en silencio):
+      `unit-durabilidad.js` y `audit-fase5.js` esperaban la curva de XP
+      lineal (340 XP → nivel 3) y ahora la curva MC no lineal da nivel
+      12; `unit-mobs-ia.js` esperaba la IA genérica (creeper explota al
+      primer tick, esqueleto cuerpo a cuerpo, pasivos huyen por
+      proximidad) y ahora hay IA por especie (fuse 1.5s, flechas,
+      dormir de noche); `unit-red.js` esperaba que el agua nunca se
+      rompiera y en creative sí se rompe la colocada. **Corregidos** a
+      los comportamientos nuevos + nuevo `tests/unit-fase9.js`
+      (gamemode por mundo, world_delete, cultivos, creative_pick/fly,
+      libro de recetas) registrado en `run.js`.
+- [x] **Fase 9 (revisión): el libro de recetas (tecla B) tenía la
+      pestaña "🛡️ Armadura" vacía y las recetas de armadura
+      aparecían en "Herramientas".** Causa: `recipeCategory` en
+      `public/ui.js` comprobaba el rango genérico 200-244 (que
+      incluye las azadas 240-244) ANTES que la rama de armadura
+      (220-231), así que ninguna receta llegaba a su pestaña.
+      **Corregido**: la lógica de categorías se extrae a un módulo
+      puro `public/recipeCategories.js` (armadura 220-231 y azadas
+      ítem 240-244 antes del rango de herramientas) con test de
+      regresión `tests/unit-recipecats.js` registrado en `run.js`
+      (verifica pestañas no vacías para bloques, herramientas,
+      armadura, comida, materiales y fundición).
+- [x] **Fase 9 (revisión): la barra de XP del HUD mostraba el
+      progreso con la curva lineal antigua aunque la Fase 9
+      implementó la curva MC no lineal.** Causa: `updateXpUI` en
+      `public/ui.js` calculaba `(xp % 100) / 100` (nivel = xp/100,
+      `XP_PER_LEVEL`), ignorando que el servidor ya manda
+      `xpInto`/`xpToNext` de `constants.js` (`xpToNext(level) =
+      7 + floor(level·3.5)`). **Corregido**: el HUD usa los campos
+      del servidor con fallback a la curva local, el `init` de
+      `server/net.js` los incluye y `public/network.js` los pasa.
+      El ancho de la barra refleja `xpInto/xpToNext` en vez de un
+      módulo de 100.
 
 - [x] **Inventario: el mouse sigue bloqueado y no se puede
       craftear/mover items.** Causa real: el bloqueador del menú
@@ -1388,6 +1469,238 @@ fix propio (el diagnóstico debe confirmarlo).
       reales del protocolo son pequeños, así que 1 MiB impide que un
       cliente malicioso sature la memoria (ws cierra la conexión con
       1009). Verificado por `tests/unit-anticheat.js` (valor + cableado).
+
+---
+
+## Fase 9 — Mejoras de paridad, IA, mundo y menú
+*Objetivo: acercar la experiencia a Minecraft en mecánicas e IA, cerrar
+los huecos de menú (modo de juego por mundo, borrado de mundos) y
+arreglar de verdad la minería, que el clic sigue sin responder según el
+usuario. Especificación completa y fuente de verdad de las decisiones de
+diseño: `docs/fase9-spec.md`. Se ejecutó por bloques A→G; los bloques son
+independientes entre sí.*
+
+### Bloque A — Minería funcional (crítico)
+- [x] Telemetría en vivo (`window.__mcMiningTrace` / `__mcRaycastStats` /
+      `__mcDebugMining`) del flujo clic → mina en `public/input.js`:
+      cada `mousedown` deja `{time, locked, hit, target, sentBreak}` y el
+      raycast acumula candidatos/hits/primer hit; `__mcDebugMining()`
+      fuerza un raycast ahora
+- [x] Diagnóstico del flujo completo (mousedown → raycast → send →
+      servidor → tick → drop). Causa raíz CONFIRMADA y corregida: los
+      helpers `vline`/`set` de las plantas (Fase 9 F) no estaban
+      definidos en `public/textures.js` → **excepción al construir el
+      atlas → `mcChunks: 0` → el mundo no se renderizaba** (el clic "no
+      hacía nada" porque no había nada que minar). La auditoría CDP de
+      fase 7 lo destapó; ver "Bugs conocidos"
+- [x] Fix + test de regresión con three real (`tests/unit-mining-click.js`
+      registrado en `run.js`: decisión de clic mob delante/detrás y fix de
+      matrixWorld obsoleto) + verificación E2E en navegador
+      (`tests/audit-fase7.js` CDP: 169 chunks, tick ~1 ms, 0 excepciones)
+- [x] Documentar la causa raíz en este archivo (sección "Bugs conocidos")
+
+### Bloque B — Modo de juego por mundo + eliminar mundos
+- [x] `worldGamemode` persistido en `world.json` (`server/constants.js`
+      + `save.js` `buildMeta`/`loadWorld`/`switchWorld`/`listWorlds`);
+      `SCHEMA_VERSION` → 3 con migración retrocompatible (mundos sin el
+      campo abren como survival) + test en `tests/unit-fase9.js` y
+      `unit-persistencia`
+- [x] `init` incluye `gamemode` del mundo (`net.js`); HUD con badge
+      `#gamemode-badge` ("✦ CREATIVO — doble Espacio vuela" / "✦
+      Supervivencia") y el F3 lo refleja
+- [x] Inventario creativo: se resetea al entrar a un mundo creativo y se
+      entrega el inventario creativo completo (`CREATIVE_ITEMS`, no se
+      persiste); survival restaura lo guardado
+- [x] Selector de modo (`#gamemode-select` en el menú de mundos) +
+      botón Crear; `set_seed {seed, name, gamemode?}` persiste el modo
+      del mundo nuevo; los mundos existentes conservan el suyo
+- [x] `world_delete`: botón 🗑️ con confirmación simple; el mundo activo
+      no se puede borrar; `save.deleteWorld` solo borra directorios bajo
+      `world/` con nombre de semilla validado (`fs.rmSync` sobre la ruta
+      resuelta) + test en `tests/unit-fase9.js` (path-traversal rechazado)
+- [x] Badge de modo (⛏ Supervivencia / ✦ Creativo) en la lista de mundos
+      del menú (`renderWorldsList`)
+
+### Bloque C — Paridad de mecánicas
+- [x] Hambre/regeneración: revisada contra MC — la curva de Fase 3 ya es
+      fiel (saturación se consume primero, decaimiento más rápido en
+      movimiento, regeneración solo con comida ≥ 18); sin cambios
+      necesarios
+- [x] Herramientas correctas + durezas estilo MC: `miningSpeed` devuelve
+      1 con la herramienta equivocada o a mano (la espada NO mina:
+      `canHarvest` la excluye de todo drop) y `BLOCK_HARDNESS`/tiers
+      revisados
+- [x] Recetas más fieles a Minecraft: pan (3 trigo), harina de hueso
+      (hueso → 3), lanas tintadas, azadas (240-244), pescado crudo →
+      cocinado en el horno (`recetas.json`/`recetas_horno.json`)
+- [x] XP/niveles con curva no lineal estilo MC: `xpToNext(level) =
+      7 + floor(level·3.5)` (7, 10, 14, 17...), `levelFromXp`/`xpIntoLevel`
+      exportados, `XP_PER_LEVEL` se mantiene solo por retrocompat; HUD
+      con barra de XP. Tests y auditoría fase 5 actualizados a la curva
+- [x] Creativo: inventario completo (`CREATIVE_ITEMS` vía `creative_pick`)
+      + vuelo (`creative_fly`, doble Espacio, Shift baja, anti-cheat de
+      ascenso saltado solo en creative; la rotura instantánea ya existía
+      y en creative el agua/lava colocada SÍ se rompe para poder
+      limpiarlas)
+- [x] Supervivencia: azadas (240-244) aradan tierra (`till` → FARMLAND),
+      semillas plantadas (`plant` → estado de cultivo 0-7 en `state.crops`,
+      crecen por tick y maduran → trigo + semillas), cocinar más (pescado),
+      dormir de noche salta directo a la mañana (`sleep` → `time_set` al
+      amanecer, rechazo de día)
+
+### Bloque D — IA de mobs por especie
+- [x] Esqueleto dispara flechas: primera entidad proyectil
+      (`state.arrows` + `mobs.tickArrows`, física de gravedad/colisión por
+      distancia, vida limitada, daño 2; broadcast `arrows_update` con
+      `arrowSnapshot`); mantiene distancia (8-16) y no arde de día (MC
+      real: solo el zombi arde)
+- [x] Creeper: fuse fiel — se detiene a ≤3 bloques, "silba" ~1.5s
+      (`fuseStart`, escala creciente al cliente) y explota por distancia;
+      cancela el fuse si el jugador se aleja · Zombi: arde de día
+      (`BURNS_IN_SUN` con sombra de techos/árboles y agua)
+- [x] Araña: escala muros de 1 bloque y salta al acercarse
+- [x] Persecución mejorada para todos los hostiles: `chase` con
+      `stuckTicks` (si no avanza pese a perseguir → desvío lateral
+      aleatorio) y límite de rango con vuelta a wander
+- [x] Pacíficos: huyen al ser golpeados (`fleeUntil`/`fleeFrom`),
+      deambulan con pausas y pastan (`graze`), vuelven al rebaño
+      (`homeX/homeZ` si se alejan >24), duermen de noche (estado `sleep`
+      agrupados, estético)
+
+### Bloque E — Estética
+- [x] Texturas de bloques por cara más fieles + bloques nuevos: atlas
+      procedural con teselas por cara (césped, tronco con anillos, horno
+      con boca, cofre con cerradura, cama, vidrio translúcido) y nuevas
+      teselas de Fase 9 (abedul, pino, musgo, hierba alta/flores/trigo
+      como cross-quads transparentes, tierra arada, lanas tintadas)
+- [x] Agua animada: pulso de opacidad del agua y brillo de la lava por
+      onda seno (`updateLiquidAnimation`, barato, sin shaders)
+- [x] Más partículas y efectos: `public/particles.js` (pool de cubitos
+      con física) al romper/colocar con color por bloque; corazones de
+      cría
+- [x] Sonido ambiental más rico: `public/audio.js` con sonidos por
+      material (pasos), eventos de crafteo/rotura y ambiente por
+      día/noche
+
+### Bloque F — Mundo, ítems y libro de recetas
+- [x] Minerales por altura estilo MC (`noise2D_ore` con el `y` en la
+      coordenada: umbrales por profundidad, diamante solo abajo), playas
+      y arena costera (`nearLake` → transición suave agua→arena→tierra),
+      más variedad de árboles (abedul claro y pino cónico con bloques
+      propios 28-31), estructuras (piedra de musgo 32, hierba alta 33,
+      amapola 34, diente de león 35 no sólidos con drop de tinte) y
+      abejas (mob pasivo volador `bee` + miel de cofres de loot)
+- [x] Bloques/ítems nuevos: cristal (17, translúcido) + tintes
+      (ROJO/AMARILLO de flores, harina de hueso 139) con ítems tintables
+      (lanas 36-38), azadas (240-244 con durabilidad y recetas), pan
+      (133), pescado crudo/cocinado (134/135), hueso (136); todo
+      sincronizado servidor↔cliente (`unit-sync`) con receta
+- [x] Iconos de ítems más detallados (`public/itemicons.js`) + tooltip
+      con información: `title` en hotbar con nombre y durabilidad
+      restante, en recetas con nombre de ingrediente/resultado, y en
+      cofres/horno
+- [x] Libro de recetas por categorías (tecla B): todas las recetas
+      visibles sin desbloqueo — pestañas Bloques/Herramientas/Armadura/
+      Comida/Materiales + Fundición, con shape 3×3 e iconos
+      (`recipe_book` → `renderRecipeBook`); `tests/unit-recetas.js`
+      valida la integridad del JSON y `tests/unit-recipecats.js` las
+      categorías (regresión de revisión: armadura 220-231 en su pestaña)
+
+> **Acotación del Bloque F2 (decisión de revisión):** el spec pedía
+> también escaleras, losas, vallas, puertas, cristal tintado, bloques de
+> mineral/lingote y tintes verde/azul/negro/blanco (con hitboxes no-caja).
+> Se acota a lo implementado (cristal, tintes rojo/amarillo + harina de
+> hueso, lanas tintadas, azadas, pan/pescado/hueso, miel) y se pospone el
+> resto a la Fase 10 (§D jugabilidad / §E visuales), donde la paridad
+> avanzada ya los contempla — no reabrir esta fase por ellos.
+
+### Bloque G — Verificación final de Fase 9
+- [x] Suite unitaria completa (9 grupos, exit 0) + E2E contra servidor
+      vivo (exit 0) + auditorías de fases anteriores (3-7, exit 0)
+- [x] `biome check` 0 errores (server + public + tests) y `node --check`
+      en todo lo tocado
+- [x] Documentar Fase 9 cerrada en este archivo (+ "Bugs conocidos")
+- [x] **Auditoría de Fase 9:** criterios de aceptación de
+      `docs/fase9-spec.md` §10 verificados — minería jugable en navegador
+      (CDP fase 7 en verde tras el fix del atlas), gamemode por mundo
+      consistente y persistido, borrado de mundos seguro (solo semillas
+      validadas), paridad de mecánicas (espada no mina, curva XP no
+      lineal, azadas/cultivos, dormir salta la noche), IA por especie
+      (flechas/fuse/quema/escalada/huida/rebaño), estética sin degradar
+      el LOD (fase 6 intacta), generación con tests, ítems/libro
+      completos. Nuevo `tests/unit-fase9.js` cubre gamemode por mundo,
+      world_delete, cultivos, creative_pick/fly y libro de recetas
+
+---
+
+## Fase 10 — Notas del usuario, correcciones pendientes y paridad avanzada
+*Objetivo: cerrar los bugs de `Notas del usuario.md` que la Fase 9 NO
+cubre (son bugs de mundo/física, no de minería/menú/IA), sumar las
+"nuevas características" y la tarea de debug pendientes de esas mismas
+notas — que el análisis comparativo no había recogido — e incorporar
+mecánicas de paridad que otros clones de Three.js tienen y este proyecto
+no. **No se repite aquí nada que ya sea Bloque F de la Fase 9**
+(minerales por altura, playas, árboles variados, hierba/flores/abejas):
+si al llegar a esta fase esos puntos siguen pendientes es porque la Fase
+9 se quedó corta, y se retoman ahí, no aquí — ver "Errores encontrados"
+más abajo.*
+Especificación: [`docs/fase10-spec.md`](docs/fase10-spec.md) (prospectiva, pendiente de ejecución).
+
+### Bloque A — Bugs de `Notas del usuario.md` (prioridad alta, no cubiertos por Fase 9)
+- [ ] Salir del agua: corregir la flotación para no quedarse atascado
+- [ ] Lava: daño por quemadura que se extingue con agua o con el tiempo
+- [ ] Verificar en juego la altura real del jugador (1.8 bloques, cámara
+      a 1.6 ya en `constants.js`): confirmar que el hitbox de colisión
+      coincide y que se puede pasar por huecos de 2 bloques de alto
+- [ ] `/tp` a un lugar lejano: asegurar que la generación/carga de
+      chunks se dispara tras el teletransporte y el mundo sigue cargando
+- [ ] Biomas de hielo: no generar lava
+- [ ] Agua de varios bloques de profundidad, cuevas acuáticas, mejores
+      lagos y ríos pequeños
+- [ ] Mobs hostiles también en zonas oscuras (cuevas) de día, no solo de
+      noche — hoy el spawn depende solo de la hora (`SPAWN_TYPES` en
+      `server/mobs.js`), sin nivel de luz
+
+### Bloque B — Nuevas características de las notas (omitidas por el análisis previo)
+- [ ] Selector de tamaño de mundo al crear (debug 64×64 solo interno,
+      no visible al jugador / pequeño 256×256 / medio 512×512 / grande
+      1024×1024) / infinito (8192x8192)
+- [ ] Pantalla de muerte que refleje la causa (mob, caída, lava,
+      ahogamiento, inanición...)
+- [ ] Comando `/kill [nombre]` (solo operadores; sin nombre, se aplica a
+      quien lo lanza)
+
+### Bloque C — Debug (de las notas, también omitido por el análisis)
+- [ ] `test.log`: registrar el resultado de la última ejecución de
+      tests, para saber qué falló sin tener que re-ejecutar la suite
+
+### Bloque D — Jugabilidad: paridad con otros clones
+- [ ] Caída de arena/grava (bloques con gravedad)
+- [ ] TNT: explosión con cráter, knockback y reacciones en cadena
+- [ ] Sprint (correr) con efecto de FOV
+- [ ] Selector de bloques creativo (tecla E abre picker con todos los
+      tipos de bloque)
+- [ ] Pick-block (clic medio selecciona el bloque al que se apunta)
+- [ ] Agacharse (Shift) con protección de bordes (no caerse)
+
+### Bloque E — Visuales
+- [ ] Oclusión ambiental por vértice (sombreado suave en esquinas)
+- [ ] Agua mejorada: superficie más baja, textura animada, reflejos
+- [ ] Niebla bajo el agua
+- [ ] Nubes que se desplazan
+- [ ] Plantas como cross-meshes (hierba/flores con 2 planos cruzados)
+
+### Bloque F — Audio
+- [ ] Música ambiental generativa
+- [ ] Más sonidos por material (vidrio, salpicaduras, TNT)
+
+### Bloque G — Verificación final de Fase 10
+- [ ] Suite unitaria + E2E + `biome check` en verde
+- [ ] Confirmar en vivo cada bug de `Notas del usuario.md` marcado como
+      corregido (jugando, no solo con tests automatizados)
+- [ ] **Auditoría de Fase 10:** rendimiento con TNT, gravedad de bloques
+      y partículas nuevas activos a la vez; confirmar que ningún fix de
+      esta fase reabre un bug ya cerrado en la Fase 8 (ver lista B1-B10)
 
 ---
 

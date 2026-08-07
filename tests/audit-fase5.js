@@ -187,29 +187,41 @@ function mkPlayer(over = {}) {
 	);
 }
 {
+	// Fase 9 (Bloque C4): la curva de niveles ya no es lineal (XP_PER_LEVEL*3
+	// ya no da nivel 3). La curva MC sube ~7 + 3.5·nivel por tramo: 340 XP
+	// acumulada = niveles 7+10+14+17+21+24+28+31+35+38+42+45 = 312 → nivel 12.
 	const p = mkPlayer();
-	playersMod.addXp(p, XP_PER_LEVEL * 3 + 40);
-	check("340 XP → nivel 3", p.level === 3, `level=${p.level}`);
-	check("maxHealth = 23 (20+3)", p.maxHealth === 20 + 3, `max=${p.maxHealth}`);
-	check("xp conservada en el objeto", p.xp === XP_PER_LEVEL * 3 + 40);
+	playersMod.addXp(p, 340);
+	check(
+		"340 XP → nivel 12 (curva MC no lineal)",
+		p.level === 12,
+		`level=${p.level}`
+	);
+	check(
+		"maxHealth = 30 (20 + tope +10: nivel 12 ya pasa del tope)",
+		p.maxHealth === 20 + MAX_LEVEL_HEALTH_BONUS,
+		`max=${p.maxHealth}`
+	);
+	check("xp conservada en el objeto", p.xp === 340);
 }
 {
+	// Nivel alto (1500 XP → 27) pero maxHealth tope en 30 (+10)
 	const p = mkPlayer();
-	playersMod.addXp(p, XP_PER_LEVEL * 15);
+	playersMod.addXp(p, 1500);
 	check(
-		"nivel 15 pero maxHealth tope en 30 (+10)",
-		p.level === 15 && p.maxHealth === 20 + MAX_LEVEL_HEALTH_BONUS,
+		"1500 XP → nivel 27 y maxHealth tope en 30 (+10)",
+		p.level === 27 && p.maxHealth === 20 + MAX_LEVEL_HEALTH_BONUS,
 		`level=${p.level} max=${p.maxHealth}`
 	);
 }
 {
 	// El respawn tras morir usa maxHealth (y conserva XP/nivel)
 	const p = mkPlayer({ health: 3, maxHealth: 24 });
-	playersMod.addXp(p, XP_PER_LEVEL * 4);
+	playersMod.addXp(p, 400);
 	playersMod.damagePlayer(p, 999);
 	check(
-		"respawn usa maxHealth (24) y conserva nivel 4",
-		p.health === 24 && p.level === 4,
+		"respawn usa maxHealth (30) y conserva el nivel MC (13)",
+		p.health === 30 && p.level === 13,
 		`health=${p.health} level=${p.level}`
 	);
 }

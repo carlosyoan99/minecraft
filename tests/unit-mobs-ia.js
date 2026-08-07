@@ -133,7 +133,10 @@ check(
 	resetPlayers();
 }
 
-// --- 5) creeper: explota cerca del jugador ---
+// --- 5) creeper: fuse (~1.5s de siseo) y explosión cerca del jugador ---
+// Fase 9 (Bloque D): el creeper ya NO explota al primer tick — se detiene a
+// <3 bloques, "silba" (estado fuse) y solo explota si el jugador sigue cerca
+// al cabo de ~1.5s. El reloj se simula con Date.now() (el fuse lo usa).
 {
 	resetPlayers();
 	const p = mkPlayer({ id: "pc", x: 0.5, y: 10, z: 0.5 });
@@ -141,10 +144,25 @@ check(
 	const c = new mobs.Mob("creeper", 0, 10, 0);
 	const rnd = Math.random;
 	Math.random = () => 0; // 0 < 0.4 → siempre rompe bloques (determinista)
+	const realNow = Date.now;
+	let fakeNow = 1_000_000;
+	Date.now = () => fakeNow;
 	setBlockCalls = 0;
 	c.tick(true);
+	check(
+		"creeper silba (fuse) con el jugador a <3 bloques",
+		c.state === "fuse" && c.alive === true && c.fuseStart !== null,
+		`state=${c.state}`
+	);
+	fakeNow += 1600; // 1.6s después...
+	c.tick(true);
+	Date.now = realNow;
 	Math.random = rnd;
-	check("creeper explota cerca del jugador (alive=false)", c.alive === false);
+	check(
+		"creeper explota tras el fuse (alive=false)",
+		c.alive === false,
+		`state=${c.state}`
+	);
 	check(
 		"explosión daña al jugador (10)",
 		p.health === 10,
@@ -155,6 +173,38 @@ check(
 		setBlockCalls > 0,
 		`calls=${setBlockCalls}`
 	);
+	resetPlayers();
+}
+
+// --- 5a) creeper: si el jugador se aleja durante el fuse, se CANCELA ---
+// (Fase 9, Bloque D): el fuse se reinicia al alejarse a ≥3 y el creeper
+// vuelve a perseguir; al acercarse de nuevo, el siseo empieza desde cero.
+{
+	resetPlayers();
+	const p = mkPlayer({ id: "pcA", x: 0.5, y: 10, z: 0.5 });
+	state.players.set(p.id, p);
+	const c = new mobs.Mob("creeper", 0, 10, 0);
+	const realNow = Date.now;
+	let fakeNow = 2_000_000;
+	Date.now = () => fakeNow;
+	c.tick(true); // fuse iniciado
+	const started = c.fuseStart;
+	p.x = 8; // el jugador se aleja (>3 bloques)
+	c.tick(true);
+	check(
+		"creeper cancela el fuse al alejarse el jugador",
+		c.state === "chase" && c.fuseStart === null,
+		`state=${c.state}`
+	);
+	fakeNow += 3000; // pasa el tiempo; sin fuse no puede explotar
+	p.x = 0.5; // y vuelve a acercarse
+	c.tick(true);
+	check(
+		"creeper reinicia el fuse al re-acercarse",
+		c.state === "fuse" && c.fuseStart !== started,
+		`state=${c.state}`
+	);
+	Date.now = realNow;
 	resetPlayers();
 }
 
@@ -186,8 +236,15 @@ check(
 	state.chests.set(KEY(-2, 10, 0), new Array(27).fill(null));
 	const rnd = Math.random;
 	Math.random = () => 0; // 0 < 0.4 → intenta romper todos los bloques
+	// Fase 9 (Bloque D): el creeper pasa por el fuse antes de explotar.
+	const realNow = Date.now;
+	let fakeNow = 3_000_000;
+	Date.now = () => fakeNow;
 	const c2 = new mobs.Mob("creeper", 0, 10, 0);
 	c2.tick(true);
+	fakeNow += 1600;
+	c2.tick(true);
+	Date.now = realNow;
 	Math.random = rnd;
 	check("explosión NO rompe bedrock", !broken.includes(KEY(0, 10, 0)));
 	check("explosión NO rompe agua", !broken.includes(KEY(1, 10, 0)));
@@ -211,23 +268,44 @@ check(
 	resetPlayers();
 }
 
-// --- 6) skeleton: mantiene distancia y ataca a distancia ---
+// --- 6) skeleton: mantiene distancia y dispara FLECHAS (Fase 9, Bloque D) ---
+// El skeleton ya no ataca cuerpo a cuerpo: crea un proyectil (state.arrows)
+// que viaja con gravedad y hace daño al impactar (tickArrows).
 {
 	resetPlayers();
+	state.arrows = [];
 	const p = mkPlayer({ id: "ps", x: 3, y: 10, z: 0 });
 	state.players.set(p.id, p);
 	const sk = new mobs.Mob("skeleton", 0, 10, 0);
 	sk.tick(true);
 	check(
-		"skeleton se aleja cuando el jugador está cerca (dist < 4)",
+		"skeleton se aleja cuando el jugador está cerca (dist < 6)",
 		sk.x < 0,
 		`x=${sk.x}`
 	);
 	check(
-		"skeleton ataca a distancia (health 18)",
-		p.health === 18,
+		"skeleton dispara una flecha (proyectil en state.arrows)",
+		state.arrows.length === 1,
+		`arrows=${state.arrows.length}`
+	);
+	// La flecha impacta al jugador (tickArrows) y hace 3 de daño. Se coloca
+	// justo sobre el jugador y ESTÁTICA (vx=vy=vz=0) para que el avance del
+	// tick no la desplace del radio de colisión (0.7 bloques) antes de
+	// comprobar el impacto.
+	const arrow = state.arrows[0];
+	arrow.x = p.x;
+	arrow.y = p.y;
+	arrow.z = p.z;
+	arrow.vx = 0;
+	arrow.vy = 0;
+	arrow.vz = 0;
+	const alive = mobs.tickArrows(50);
+	check(
+		"la flecha impactada hace 3 de daño y desaparece",
+		p.health === 17 && alive.length === 0,
 		`health=${p.health}`
 	);
+	state.arrows = [];
 	resetPlayers();
 }
 
@@ -268,26 +346,45 @@ check(
 	resetPlayers();
 }
 
-// --- 9) pasivos: huyen del jugador cercano e idle si está lejos ---
+// --- 9) pasivos (Fase 9, Bloque D): duermen de noche; de día deambulan y
+//      huyen SOLO al ser golpeados (mobHit), no por cercanía ---
 {
 	resetPlayers();
 	const p = mkPlayer({ id: "pb", x: 1, y: 10, z: 0 });
 	state.players.set(p.id, p);
+	const rnd = Math.random;
+	// De noche: se agrupan en el rebaño y se quedan quietos (estado 'sleep').
+	Math.random = () => 0.5; // sin pausa aleatoria (0.5 > 0.008)
 	const v = new mobs.Mob("cow", 0, 10, 0);
 	v.tick(true);
 	check(
-		"vaca huye cuando el jugador está cerca",
-		v.state === "flee",
+		"vaca duerme de noche (agrupada en el rebaño)",
+		v.state === "sleep",
 		`state=${v.state}`
 	);
-	check("vaca se aleja del jugador", v.x < 0, `x=${v.x}`);
+	// De día y lejos: idle (no duerme, no huye por cercanía).
 	const v2 = new mobs.Mob("cow", 50, 10, 50);
-	v2.tick(true);
+	v2.tick(false);
 	check(
-		"vaca idle con jugador lejos",
+		"vaca idle de día con jugador lejos",
 		v2.state === "idle",
 		`state=${v2.state}`
 	);
+	// De día y cerca: NO huye por proximidad (el flee solo se activa con mobHit).
+	const v3 = new mobs.Mob("cow", 0, 10, 0);
+	v3.tick(false);
+	check(
+		"vaca de día cerca no huye por proximidad",
+		v3.state !== "flee",
+		`state=${v3.state}`
+	);
+	// Al ser golpeada (mobHit): huye ~4s en dirección contraria al atacante.
+	const v4 = new mobs.Mob("cow", 0, 10, 0);
+	v4.mobHit(p);
+	v4.tick(false);
+	check("vaca huye al ser golpeada", v4.state === "flee", `state=${v4.state}`);
+	check("vaca se aleja del atacante", v4.x < 0, `x=${v4.x}`);
+	Math.random = rnd;
 	resetPlayers();
 }
 
@@ -350,10 +447,11 @@ check(
 	{
 		const z = new mobs.Mob("zombie", 0, 10, 0); // y=10: suelo en 10, cabeza al aire
 		check(
-			"BURNS_IN_SUN incluye zombie y skeleton (no creeper/araña)",
+			"BURNS_IN_SUN incluye zombie (no skeleton/creeper/araña — Fase 9)",
 			BURNS_IN_SUN.has("zombie") &&
-				BURNS_IN_SUN.has("skeleton") &&
-				!BURNS_IN_SUN.has("creeper")
+				!BURNS_IN_SUN.has("skeleton") &&
+				!BURNS_IN_SUN.has("creeper") &&
+				!BURNS_IN_SUN.has("spider")
 		);
 		z.tick(false); // día, expuesto
 		check(
@@ -388,17 +486,31 @@ check(
 			`burning=${z.burning}`
 		);
 	}
-	// La quema puede matar: 20 HP → 20 segundos de sol.
+	// La quema puede matar: 20 HP → 20 segundos de sol (el ZOMBIE; el
+	// esqueleto ya no arde en Fase 9, como en Minecraft).
 	{
 		world.getBlock = (_x, y, _zz) => (y <= 10 ? 3 : 0);
-		const z = new mobs.Mob("skeleton", 0, 10, 0);
+		const z = new mobs.Mob("zombie", 0, 10, 0);
 		for (let s = 0; s < 20 && z.alive; s++) {
 			for (let i = 0; i < 1000 / TICK_MS; i++) z.tickSunBurn(false);
 		}
 		check(
-			"esqueleto muere tras ~20s de sol (alive=false)",
+			"zombie muere tras ~20s de sol (alive=false)",
 			z.alive === false,
 			`health=${z.health}`
+		);
+	}
+	// El esqueleto NO arde con el sol (Fase 9: solo el zombi se quema).
+	{
+		world.getBlock = (_x, y, _zz) => (y <= 10 ? 3 : 0);
+		const sk = new mobs.Mob("skeleton", 0, 10, 0);
+		for (let s = 0; s < 20; s++) {
+			for (let i = 0; i < 1000 / TICK_MS; i++) sk.tickSunBurn(false);
+		}
+		check(
+			"esqueleto NO arde con el sol (Fase 9)",
+			sk.alive === true && sk.burning === false,
+			`health=${sk.health}`
 		);
 	}
 	// Un pasivo (vaca) no arde de día.

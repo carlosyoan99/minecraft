@@ -25,8 +25,12 @@ const {
 	ARMOR_DURABILITY,
 	applyArmorDamageReduction,
 	SWORD_DAMAGE,
-	XP_PER_LEVEL,
-	MAX_LEVEL_HEALTH_BONUS
+	MAX_LEVEL_HEALTH_BONUS,
+	isHoe,
+	HOE_DURABILITY,
+	levelFromXp,
+	xpToNext,
+	xpIntoLevel
 } = require("./constants.js");
 
 function addToInventory(player, itemId, count = 1, durability) {
@@ -40,7 +44,10 @@ function addToInventory(player, itemId, count = 1, durability) {
 			id: itemId,
 			count: 1,
 			durability:
-				durability ?? TOOL_DURABILITY[itemId] ?? ARMOR_DURABILITY[itemId]
+				durability ??
+				TOOL_DURABILITY[itemId] ??
+				ARMOR_DURABILITY[itemId] ??
+				HOE_DURABILITY[itemId]
 		};
 		return true;
 	}
@@ -99,6 +106,19 @@ function finishMining(player, x, y, z, block, opts = {}) {
 		sendInventory(player);
 		return false;
 	}
+	// Fase 9 (Bloque C): cosecha de trigo — el drop depende del estado de
+	// crecimiento (state.crops): maduro suelta trigo + semillas; inmaduro solo
+	// semillas. El estado se limpia al cosechar.
+	if (block === B.WHEAT) {
+		const key = `${x},${y},${z}`;
+		const crop = state.crops.get(key);
+		state.crops.delete(key);
+		const mature = (crop?.stage ?? 0) >= 7;
+		addToInventory(player, I.SEEDS, 1 + Math.floor(Math.random() * 3));
+		if (mature) addToInventory(player, I.WHEAT, 1);
+		sendInventory(player);
+		return false;
+	}
 	const tool = player.inventory[player.selectedSlot]
 		? player.inventory[player.selectedSlot].id
 		: 0;
@@ -119,6 +139,12 @@ function finishMining(player, x, y, z, block, opts = {}) {
 				if (Math.random() < prob) addToInventory(player, id, 1);
 			}
 		}
+		// Fase 9 (Bloque F): las flores sueltan su tinte (amapola → rojo,
+		// diente de león → amarillo) y la hierba alta a veces semillas.
+		if (block === B.POPPY) addToInventory(player, I.RED_DYE, 1);
+		if (block === B.DANDELION) addToInventory(player, I.YELLOW_DYE, 1);
+		if (block === B.TALL_GRASS && Math.random() < 0.3)
+			addToInventory(player, I.SEEDS, 1);
 		// Fase 5: XP al minar minerales (solo si se obtiene el drop).
 		if (ORE_XP[block]) addXp(player, ORE_XP[block]);
 	}
@@ -142,7 +168,7 @@ function applyToolWear(player, onlySwords = false) {
 	const cur =
 		typeof slot.durability === "number"
 			? slot.durability
-			: TOOL_DURABILITY[slot.id];
+			: (TOOL_DURABILITY[slot.id] ?? HOE_DURABILITY[slot.id]);
 	const next = Math.max(0, cur - 1);
 	if (next <= 0) {
 		// Se rompe a mitad de la acción: se elimina aquí, de forma atómica con el
@@ -155,13 +181,16 @@ function applyToolWear(player, onlySwords = false) {
 }
 
 // ============================================================
-// EXPERIENCIA Y NIVELES SIMPLES (Fase 5, opcional)
-// XP acumulada -> nivel = floor(xp / XP_PER_LEVEL). Cada nivel suma +1 de
-// salud máxima (máx +10); la salud actual no crece sola. Se conserva al morir.
+// EXPERIENCIA Y NIVELES (Fase 5 simple → Fase 9 curva MC)
+// XP acumulada -> nivel por curva NO lineal estilo Minecraft (xpToNext:
+// 7, 10, 14, 17, 21...). Cada nivel suma +1 de salud máxima (máx +10); la
+// salud actual no crece sola. Se conserva al morir. El HUD recibe la XP
+// dentro del nivel (xpIntoLevel) y la necesaria para el siguiente
+// (xpToNext) para pintar la barra de progreso.
 // ============================================================
 function addXp(player, amount) {
 	player.xp = (player.xp || 0) + amount;
-	const newLevel = Math.floor(player.xp / XP_PER_LEVEL);
+	const newLevel = levelFromXp(player.xp);
 	if (newLevel > (player.level || 0)) {
 		player.level = newLevel;
 		player.maxHealth = 20 + Math.min(newLevel, MAX_LEVEL_HEALTH_BONUS);
@@ -183,7 +212,12 @@ function sendXp(player) {
 		player.ws.send(
 			JSON.stringify({
 				event: "xp_update",
-				data: { xp: player.xp, level: player.level || 0 }
+				data: {
+					xp: player.xp,
+					level: player.level || 0,
+					xpInto: xpIntoLevel(player.xp, player.level || 0),
+					xpToNext: xpToNext(player.level || 0)
+				}
 			})
 		);
 	}
@@ -414,7 +448,7 @@ function applyFallDamage(player, vyObs = 0) {
 // ============================================================
 // TELEMETRÍA DE DAÑO (Fase 8, B2)
 // Registra cada daño aplicado por origen para diagnosticar la pérdida de
-// vida "sin causa" (plan completo en fase8-spec.md §B2). Canales:
+// vida "sin causa" (plan completo en docs/fase8-spec.md §B2). Canales:
 //  1. state.damageLog — anillo de las últimas ~50 entradas (tests headless).
 //  2. Evento WS `damage_debug` al jugador afectado → window.__mcLastDamage
 //     en el cliente (mostrado por el F3, activable con window.__mcDamageDebug).

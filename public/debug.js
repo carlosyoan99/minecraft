@@ -13,6 +13,7 @@
 import * as THREE from "three";
 import { CHUNK_SIZE, WATER, WORLD_HEIGHT } from "./constants.js";
 import { camera, scene } from "./scene.js";
+import { getGamemode } from "./ui.js";
 import { chunkMeshes, getClientBlock, lodMeshes } from "./world.js";
 
 const hudEl = document.getElementById("debug-hud");
@@ -128,6 +129,8 @@ function updateHud() {
 		"<b>⛏ Mi Minecraft — Depuración (F3)</b>",
 		`FPS: ${fps ? fps.toFixed(0) : "--"} · Frame: ${frame ? frame.toFixed(1) : "--"} ms · Culling: ${cull ? cull.toFixed(2) : "--"} ms`,
 		`Posición: ${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}`,
+		// Fase 9 (Bloque B): modo de juego del mundo activo (survival/creative)
+		`Modo: ${getGamemode() === "creative" ? "✦ Creativo" : "⛏ Supervivencia"}`,
 		`Chunks: ${vis}/${chunks} visibles (${chunkMeshes.size + lodMeshes.size} en memoria)`,
 		`Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
 		`Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : "--"}`,
