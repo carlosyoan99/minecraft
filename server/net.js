@@ -1160,6 +1160,46 @@ function handleConnection(ws, req) {
 				break;
 			}
 
+			case "tame_mob": {
+				// Fase 12 (A1/A3): domesticar — hueso sobre lobo salvaje, pescado
+				// crudo sobre ocelote. ~33% por intento (MC real); el ítem se
+				// consume solo en el intento, se denomine o no. En éxito: corazones
+				// (mob_breed) y el ocelote se vuelve gato.
+				const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
+				if (!mob) return;
+				if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > 4) return;
+				const held = p.inventory[p.selectedSlot];
+				if (!held) return;
+				if (mobs.canTame(mob, held.id) !== "ok") return;
+				// Consumir el ítem del intento (hueso/pescado) y tirar la doma.
+				if (!playerHelpers.removeFromInventory(p, held.id, 1)) return;
+				if (mobs.applyTame(mob, p)) {
+					broadcast("mob_breed", { x: mob.x, y: mob.y, z: mob.z });
+					broadcast("tame_ok", { id: mob.id, type: mob.type });
+				}
+				playerHelpers.sendInventory(p);
+				break;
+			}
+
+			case "sit_pet": {
+				// Fase 12 (A1/E10): clic derecho con la mano vacía sobre la
+				// mascota propia alterna sentado/levantado (sentada no sigue ni
+				// ataca). Solo el dueño puede; se valida distancia y propiedad.
+				const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
+				if (!mob || mob.ownerId !== p.id) return;
+				if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > 4) return;
+				mobs.sitPet(mob);
+				break;
+			}
+
+			case "throw_trident": {
+				// Fase 12 (A4/E8): el jugador lanza su tridente (clic derecho) —
+				// se retira del inventario, vuela con la física de proyectiles y
+				// vuelve al inventario al impactar o expirar (mobs.tickArrows).
+				if (mobs.throwPlayerTrident(p)) playerHelpers.sendInventory(p);
+				break;
+			}
+
 			case "attack_mob": {
 				const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
 				if (!mob) return;
@@ -1174,10 +1214,19 @@ function handleConnection(ws, req) {
 				// espada el daño es 1 (mano desnuda, como Minecraft Java 1.9+).
 				const dmg = SWORD_DAMAGE[tool] || 1;
 				mob.health -= dmg;
+				// Fase 12 (A1/E10): los lobos domados del atacante se unen al
+				// golpe (≤12 bloques del objetivo, daño 3 cada uno). Se aplica
+				// ANTES de evaluar la muerte para que el golpe conjunto pueda
+				// rematar al mob.
+				const petsHit = mobs.petsJoinAttack(mob, p);
 				// Fase 8 (B10): feedback del golpe para TODOS los que ven el mob —
 				// flash de daño y sonido en el cliente (mob_hit). Antes el golpe no
 				// producía ninguna reacción visible: el jugador creía que no servía.
-				broadcast("mob_hit", { id: mob.id, dmg, health: mob.health });
+				broadcast("mob_hit", {
+					id: mob.id,
+					dmg: dmg + petsHit * 3,
+					health: mob.health
+				});
 				// Fase 8 (B10): knockback — el mob retrocede un poco en la dirección
 				// contraria al atacante (se replica con el próximo mobs_update).
 				const dist = Math.max(0.1, Math.hypot(mob.x - p.x, mob.z - p.z));
@@ -1190,6 +1239,11 @@ function handleConnection(ws, req) {
 				// (~4s, dirección contraria) — ver mobs.js mobHit().
 				mobs.Mob.prototype.mobHit.call(mob, p);
 				if (mob.health <= 0) {
+					// Fase 12 (A2/E2): el slime grande/mediano se divide al morir
+					// (2 hijos del tamaño inferior; el pequeño no divide). Debe
+					// ejecutarse ANTES de marcar alive=false: splitSlime rechaza
+					// mobs muertos.
+					mobs.splitSlime(mob);
 					mob.alive = false;
 					broadcast("mob_death", { id: mob.id });
 					// Drops de comida de animales al morir (directo al atacante)
@@ -1239,6 +1293,56 @@ function handleConnection(ws, req) {
 }
 
 // ============================================================
+// TRAMPA DEL TEMPLO DE JUNGLA (Fase 12, Bloque B)
+// Al pisar el pasadizo norte (celda de presión simplificada, templeTrapAt),
+// el templo dispara 3-5 flechas hacia el jugador con cooldown por templo
+// (~3s). Reusa la física de proyectiles (shootArrow de mobs.js) con un
+// shooter sintético cuyo `from` es null: la flecha no pertenece a ningún
+// jugador y daña a todos los que interseccione (como la trampa de
+// Minecraft). Sin redstone: la detección es posicional (decisión E5).
+// ============================================================
+const TEMPLE_TRAP_COOLDOWN_MS = 3000;
+const TEMPLE_TRAP_ARROWS = 4; // 3-5 flechas por disparo
+
+function tickTempleTraps() {
+	for (const p of state.players.values()) {
+		if (!p || p.ws.readyState !== WebSocket.OPEN) continue;
+		const bx = Math.floor(p.x);
+		const bz = Math.floor(p.z);
+		if (!world.templeTrapAt(bx, bz)) continue;
+		// Cooldown por templo: la clave es el centro del templo más cercano.
+		const s = world.structureAt(bx, bz);
+		if (s?.type !== "temple") continue;
+		const key = `${Math.floor(s.cx)},${Math.floor(s.cz)}`;
+		const last = state.templeTrapCooldowns.get(key) || 0;
+		if (Date.now() - last < TEMPLE_TRAP_COOLDOWN_MS) continue;
+		state.templeTrapCooldowns.set(key, Date.now());
+		// Flechas del dispensador: salen de la pared norte del pasillo (el
+		// techo del templo, ~4 bloques sobre el piso) hacia el jugador.
+		const shooter = {
+			x: Math.floor(s.cx) - 2,
+			y: world.getHeight(Math.floor(s.cx), Math.floor(s.cz)) + 4,
+			z: Math.floor(s.cz) - 2,
+			id: null
+		};
+		for (let i = 0; i < TEMPLE_TRAP_ARROWS; i++) {
+			// Dispersión aleatoria: cada flecha se desvía un poco de la línea
+			// directa (aún alcanza al jugador a corta distancia del pasillo).
+			const target = {
+				x: p.x + (Math.random() - 0.5) * 0.8,
+				y: p.y + 1.4 + (Math.random() - 0.5) * 0.6,
+				z: p.z + (Math.random() - 0.5) * 0.8
+			};
+			mobs.shootArrow(shooter, target);
+		}
+		broadcast("chat", {
+			id: "⚙️ Templo",
+			message: "¡Ssst! ¡Flechas!"
+		});
+	}
+}
+
+// ============================================================
 // BUCLE PRINCIPAL
 // ============================================================
 // Métricas de rendimiento (Fase 7): media móvil de 1s del tiempo por tick
@@ -1265,6 +1369,10 @@ function mainLoop() {
 	// Fase 9 (Bloque D): proyectiles del esqueleto — avanzar física y enviar.
 	const arrows = mobs.tickArrows(TICK_MS);
 	if (arrows.length) broadcast("arrows_update", arrows.map(mobs.arrowSnapshot));
+
+	// Fase 12 (Bloque B): trampa de los templos de jungla — al pisar el
+	// pasadizo se disparan flechas (con cooldown por templo).
+	tickTempleTraps();
 
 	// Fase 9 (Bloque C): crecimiento de cultivos — cada ~1s los cultivos
 	// sembrados avanzan de estado (hasta madurar, stage 7). Probabilidad por

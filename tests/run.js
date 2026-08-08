@@ -39,6 +39,7 @@ const UNIT = [
 	"unit-mobray.js", // Fase 8 (B9): raycast de mobs multibloque (grupo de partes)
 	"unit-camara.js", // Fase 11 (A2): fix del clamp de pitch — PLC r160 limita ±90° sin vueltas
 	"unit-fase11.js", // Fase 11 (B/C): biomas nuevos + esquileo, agua infinita + pendientes Fase 10
+	"unit-fase12.js", // Fase 12 (A): slimes, mascotas, ocelote→gato, tridentes, drops + pendientes B/C
 	"unit-mining-click.js", // Fase 9 (A): decisión de clic — mob delante/detrás y fix de matrixWorld obsoleto
 	"unit-fase9.js", // Fase 9 (B/C/F): gamemode por mundo, world_delete, cultivos, creative_pick/fly, libro
 	"unit-cofre.js",

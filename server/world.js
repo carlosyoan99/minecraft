@@ -53,6 +53,10 @@ let noise3D_cave,
 let noise2D_ms_a, noise2D_ms_b, noise2D_ms_region, noise2D_ms_depth;
 // Ruidos de pozos decorativos (Fase 7): agua y lava en superficie.
 let noise2D_pond, noise2D_pond_region, noise2D_lava;
+// Fase 12 (Bloque B): cache por celda de las estructuras (templo/naufragio)
+// — se declara ANTES de reinitNoise porque esta lo invalida al cambiar de
+// semilla (los ruidos de bioma/agua de structCenterAt son del seed).
+const structCellCache = new Map();
 function reinitNoise(seed) {
 	noise2D = createNoise2D(seededNoise(seed));
 	noise2D_detail = createNoise2D(seededNoise(`${seed}_detail`));
@@ -88,6 +92,9 @@ function reinitNoise(seed) {
 	noise2D_pond = createNoise2D(seededNoise(`${seed}_pond`));
 	noise2D_pond_region = createNoise2D(seededNoise(`${seed}_pond_region`));
 	noise2D_lava = createNoise2D(seededNoise(`${seed}_lava`));
+	// Fase 12 (Bloque B): las estructuras dependen del bioma/agua del centro
+	// de la celda (ruidos del seed) → cache inválido al cambiar de semilla.
+	structCellCache.clear();
 }
 reinitNoise(constants.SEED); // al arrancar, la SEED de la env var
 const SEA_LEVEL = 5; // bloques de agua: y ∈ (LAKE_FLOOR, SEA_LEVEL)
@@ -414,6 +421,213 @@ function msLootSpot(wx, wz) {
 	let h = (Math.imul(wx, 374761393) + Math.imul(wz, 668265263)) | 0;
 	h = Math.imul(h ^ (h >>> 13), 1274126177);
 	return ((h ^ (h >>> 16)) >>> 0) / 4294967296 < 0.006;
+}
+
+// ============================================================
+// ESTRUCTURAS DE FASE 12 (Bloque B): templo de jungla y naufragio
+// Deterministas por celda de STRUCT_CELL bloques (hash 2D con sal, sin
+// Math.random — mismo patrón que las minas abandonadas). Cada celda puede
+// albergar UNA estructura cuyo centro se deriva del hash (jitter dentro de
+// la celda, siempre a ≥STRUCT_CENTER_MIN del borde → el footprint, máx 11
+// bloques, nunca se sale de su celda ni solapa otra estructura).
+// ============================================================
+const STRUCT_CELL = 32; // celdas de 32x32 bloques
+const STRUCT_CENTER_MIN = 8; // el centro queda a ≥8 del borde de la celda
+const STRUCT_CENTER_RANGE = STRUCT_CELL - STRUCT_CENTER_MIN * 2; // 8..24
+const STRUCT_GATE = 0.06; // ~6% de las celdas tienen estructura (3% templo, 3% naufragio)
+const TEMPLE_HALF = 5; // footprint del templo: 11x11 (dx,dz ∈ [-5,5])
+const SHIPWRECK_W = 3; // naufragio: 7 de ancho (dx ∈ [-3,3])
+const SHIPWRECK_L = 2; // y 5 de largo (dz ∈ [-2,2])
+
+// Hash 2D determinista de una celda (con sal para derivar varios valores).
+function structCellHash(cellX, cellZ, salt) {
+	let h = (Math.imul(cellX, 374761393) + Math.imul(cellZ, 668265263)) | 0;
+	h = Math.imul(h ^ (h >>> 13), 1274126177);
+	h = Math.imul(h ^ salt, 2246822519);
+	h = Math.imul(h ^ (h >>> 16), 3266489917);
+	return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+// Devuelve { type: "temple"|"shipwreck", cx, cz } para la celda, o null si
+// no tiene estructura. El tipo se valida contra el bioma del centro: el
+// templo solo en jungla firme (nunca sobre agua) y el naufragio solo en
+// océano. El centro es el piso de la estructura.
+function structCenterAt(cellX, cellZ) {
+	const ckey = `${cellX},${cellZ}`;
+	if (structCellCache.has(ckey)) return structCellCache.get(ckey);
+	const gate = structCellHash(cellX, cellZ, 1);
+	let result = null;
+	if (gate < STRUCT_GATE) {
+		const type = structCellHash(cellX, cellZ, 2) < 0.5 ? "temple" : "shipwreck";
+		const jx = Math.floor(
+			structCellHash(cellX, cellZ, 3) * STRUCT_CENTER_RANGE
+		);
+		const jz = Math.floor(
+			structCellHash(cellX, cellZ, 4) * STRUCT_CENTER_RANGE
+		);
+		const cx = cellX * STRUCT_CELL + STRUCT_CENTER_MIN + jx;
+		const cz = cellZ * STRUCT_CELL + STRUCT_CENTER_MIN + jz;
+		if (type === "temple") {
+			// Templo: solo en jungla y nunca sobre agua (lago/río/océano).
+			if (getBiome(cx, cz) === "jungle" && columnFloorY(cx, cz) === null)
+				result = { type, cx, cz };
+		} else if (isOcean(cx, cz)) {
+			// Naufragio: solo en el fondo del océano.
+			result = { type, cx, cz };
+		}
+	}
+	structCellCache.set(ckey, result);
+	return result;
+}
+
+// ¿Qué estructura cubre la columna (wx, wz)? Devuelve { type, cx, cz } o null.
+// El footprint nunca sale de su celda (centro ≥8 del borde, radio máx 5), así
+// que basta con la celda propia.
+function structureAt(wx, wz) {
+	const s = structCenterAt(
+		Math.floor(wx / STRUCT_CELL),
+		Math.floor(wz / STRUCT_CELL)
+	);
+	if (!s) return null;
+	const halfW = s.type === "temple" ? TEMPLE_HALF : SHIPWRECK_W;
+	const halfL = s.type === "temple" ? TEMPLE_HALF : SHIPWRECK_L;
+	if (Math.abs(wx - s.cx) > halfW || Math.abs(wz - s.cz) > halfL) return null;
+	return s;
+}
+
+// Bloque del templo en (dx, dz, dy relativos al centro y su piso baseY):
+// piso de musgo, paredes 2 altas con entrada al sur, pasadizos en cruz de
+// 1x2 y cámara central 3x3 con el cofre del tesoro, techo, y una torre
+// 3x3x2 como segunda planta (sello del templo de jungla de Minecraft).
+function templeBlockAt(dx, dz, dy) {
+	if (dy === 0) {
+		// Piso: musgo en todo el footprint (el jugador entra caminando).
+		return B.MOSSY_COBBLESTONE;
+	}
+	if (dy === 1 || dy === 2) {
+		// Hueco de entrada al sur (1 de ancho, 2 de alto).
+		if (dx === 0 && dz === TEMPLE_HALF) return B.AIR;
+		// Cámara central 3x3: el cofre del tesoro en el centro del suelo.
+		if (dx === 0 && dz === 0 && dy === 1) return B.CHEST;
+		if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) return B.AIR;
+		// Paredes del perímetro.
+		if (Math.abs(dx) === TEMPLE_HALF || Math.abs(dz) === TEMPLE_HALF)
+			return B.MOSSY_COBBLESTONE;
+		// Pasadizos en cruz (1 de ancho, 2 de alto) hacia la cámara.
+		if (dx === 0 || dz === 0) return B.AIR;
+		// Relleno interior de piedra (E11: reuso de bloques).
+		return B.STONE;
+	}
+	if (dy === 3) {
+		// Techo: cubre todo salvo el hueco de entrada.
+		if (dx === 0 && dz === TEMPLE_HALF) return B.AIR;
+		return B.MOSSY_COBBLESTONE;
+	}
+	// Torre central 3x3x2 sobre el techo (segunda planta).
+	if (dy === 4 || dy === 5) {
+		if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) return B.MOSSY_COBBLESTONE;
+		return B.AIR;
+	}
+	return B.AIR;
+}
+
+// Coloca la columna del templo en el chunk local (x, z) → coords de mundo
+// (wx, wz). El piso del templo es la altura del terreno en su CENTRO
+// (determinista); el terreno natural de la columna se recorta al templo
+// (relleno de piedra si queda más bajo, aire por encima). El cofre central
+// crea su estado de loot en state.chests (una vez, con guard).
+function placeTempleColumn(data, x, z, wx, wz, struct, height) {
+	const cx = Math.floor(struct.cx);
+	const cz = Math.floor(struct.cz);
+	const baseY = getHeight(cx, cz);
+	const dx = wx - cx;
+	const dz = wz - cz;
+	if (Math.abs(dx) > TEMPLE_HALF || Math.abs(dz) > TEMPLE_HALF) return;
+	// Relleno de soporte si el terreno natural queda bajo el piso del templo.
+	for (let y = Math.max(1, height); y < baseY; y++) {
+		if (y < WORLD_HEIGHT) data[idx(x, y, z)] = B.STONE;
+	}
+	for (let y = baseY; y < WORLD_HEIGHT; y++) {
+		const block = templeBlockAt(dx, dz, y - baseY);
+		data[idx(x, y, z)] = block;
+		// Cofre del tesoro: registrar su estado de loot una sola vez.
+		if (block === B.CHEST) {
+			const key = `${wx},${y},${wz}`;
+			if (!state.chests.has(key))
+				state.chests.set(key, chests.templeLootSlots());
+		}
+	}
+}
+
+// Nº de cofres del naufragio (1-3, determinista por celda) y posición
+// candidata interior (dx, dz) → cofre si está entre las primeras `n`.
+function shipwreckChestCount(cx, cz) {
+	return 1 + Math.floor(structCellHash(cx, cz, 9) * 3); // 1..3
+}
+function isShipwreckChest(cx, cz, dx, dz) {
+	const n = shipwreckChestCount(cx, cz);
+	const candidates = [
+		[-1, -1],
+		[1, -1],
+		[-1, 1],
+		[1, 1]
+	];
+	for (let i = 0; i < n; i++) {
+		if (candidates[i][0] === dx && candidates[i][1] === dz) return true;
+	}
+	return false;
+}
+
+// Coloca la columna del naufragio: casco volcado de madera de abeto (piso en
+// el lecho oceánico, costados 2 altos y puntas) con viga central de tronco
+// de jungla; 1-3 cofres de loot marino en el interior (sobre el piso). El
+// interior sin cofre conserva el agua del océano (el casco se genera en la
+// columna de agua; la invariante de unit-mundo de "sin bolsas de aire bajo
+// el agua" se respeta: nunca se escribe aire aquí).
+function placeShipwreckColumn(data, x, z, wx, wz, struct) {
+	const cx = Math.floor(struct.cx);
+	const cz = Math.floor(struct.cz);
+	const baseY = oceanFloorY(cx, cz) + 1; // sobre la arena del lecho
+	const dx = wx - cx;
+	const dz = wz - cz;
+	if (Math.abs(dx) > SHIPWRECK_W || Math.abs(dz) > SHIPWRECK_L) return;
+	// Piso del casco: madera de abeto; la fila central es la viga de jungla.
+	if (baseY >= 0 && baseY < WORLD_HEIGHT) {
+		data[idx(x, baseY, z)] = dz === 0 ? B.JUNGLE_LOG : B.SPRUCE_LOG;
+	}
+	// Costados (1 y 2 sobre el piso): perímetro de madera.
+	for (const dy of [1, 2]) {
+		const y = baseY + dy;
+		if (y >= WORLD_HEIGHT) break;
+		if (Math.abs(dx) === SHIPWRECK_W || Math.abs(dz) === SHIPWRECK_L) {
+			data[idx(x, y, z)] = B.SPRUCE_LOG;
+		} else if (dy === 1) {
+			// Cofre de loot marino en el interior (sobre el piso del casco).
+			if (isShipwreckChest(cx, cz, dx, dz)) {
+				data[idx(x, y, z)] = B.CHEST;
+				const key = `${wx},${y},${wz}`;
+				if (!state.chests.has(key))
+					state.chests.set(key, chests.shipwreckLootSlots());
+			}
+		}
+	}
+	// Puntas del casco (tercera capa): solo los extremos en X.
+	const y3 = baseY + 3;
+	if (y3 < WORLD_HEIGHT && Math.abs(dx) === SHIPWRECK_W && Math.abs(dz) <= 1) {
+		data[idx(x, y3, z)] = B.SPRUCE_LOG;
+	}
+}
+
+// Trampa del templo (E5): el pasadizo NORTE (dx=0, dz ∈ [-4,-1], 1 de ancho)
+// es la celda de presión simplificada — al pisarla, net.js dispara 3-5
+// flechas hacia el jugador (reuso de shootArrow, from: null). Función
+// determinista y consistente con templeBlockAt (ahí ese tramo es pasadizo).
+function templeTrapAt(wx, wz) {
+	const s = structureAt(wx, wz);
+	if (s?.type !== "temple") return false;
+	const dx = wx - Math.floor(s.cx);
+	const dz = wz - Math.floor(s.cz);
+	return dx === 0 && dz <= -1 && dz >= -4;
 }
 
 // ============================================================
@@ -749,6 +963,13 @@ function generateChunk(cx, cz) {
 				data[idx(x, height - 2, z)] = B.SAND;
 			}
 
+			// Fase 12 (Bloque B): estructura de la celda (templo de jungla o
+			// naufragio oceánico) si la columna cae en su footprint. Se calcula
+			// ANTES que los árboles: dentro del footprint no crecen árboles ni
+			// vegetación (la estructura pisa el terreno; se rellena y recorta en
+			// placeTempleColumn/placeShipwreckColumn).
+			const struct = structureAt(wx, wz);
+
 			// Minas abandonadas (Fase 7): excavar el pasillo horizontal en piedra
 			// (preserva minerales y el techo) a la profundidad del túnel; nunca
 			// rompen la superficie (y < height - 1). Los cofres de loot van en el
@@ -782,7 +1003,13 @@ function generateChunk(cx, cz) {
 			// Fase 9 (Bloque F): variedad — abedul en el bosque (tronco claro,
 			// copa normal) y pino cónico en tundra/montaña (tronco de abeto).
 			const canGrowTree =
-				!waterCol && !mouth && !pond && !lavaPond && surfaceBlock === B.GRASS;
+				!waterCol &&
+				!mouth &&
+				!pond &&
+				!lavaPond &&
+				!struct &&
+				surfaceBlock === B.GRASS;
+
 			const treeRoll = Math.random();
 			if (canGrowTree && biome === "jungle" && treeRoll < 0.09) {
 				// Árbol de jungla (Fase 11, B): tronco alto (5-8) y copa ancha y
@@ -824,7 +1051,8 @@ function generateChunk(cx, cz) {
 			} else if (
 				canGrowTree &&
 				(biome === "forest" || biome === "plains" || biome === "swamp") &&
-				treeRoll < (biome === "forest" ? 0.05 : biome === "swamp" ? 0.02 : 0.012)
+				treeRoll <
+					(biome === "forest" ? 0.05 : biome === "swamp" ? 0.02 : 0.012)
 			) {
 				// Roble (bosque/llanura/pantano) o abedul (bosque, ~1/3): misma
 				// forma, madera distinta (tronco claro). En el pantano (Fase 11,
@@ -937,6 +1165,15 @@ function generateChunk(cx, cz) {
 						data[idx(x, y, z)] =
 							i === h - 1 ? B.MOSSY_COBBLESTONE : B.COBBLESTONE;
 				}
+			}
+
+			// Fase 12 (Bloque B): colocar la estructura de la celda (templo o
+			// naufragio) — va DESPUÉS de árboles/vegetación para pisar el terreno
+			// ya generado (rellena, recorta y crea los cofres de loot).
+			if (struct) {
+				if (struct.type === "temple")
+					placeTempleColumn(data, x, z, wx, wz, struct, height);
+				else placeShipwreckColumn(data, x, z, wx, wz, struct);
 			}
 		}
 	}
@@ -1140,6 +1377,12 @@ module.exports = {
 	mineshaftDepth,
 	msLootSpot,
 	MS_TUNNEL_H,
+	// Fase 12 (Bloque B): estructuras deterministas
+	structureAt,
+	templeTrapAt,
+	placeTempleColumn,
+	placeShipwreckColumn,
+	templeBlockAt,
 	isPondAt,
 	isLavaPondAt,
 	getBlock,

@@ -187,11 +187,24 @@ export function updateRemotePlayer(id, x, y, z, yaw) {
 
 // Escala por tipo (Fase 5): la araña y el conejo son pequeños, el lobo
 // es algo más grande que un humanoide. Los bebés se renderizan a media escala.
+// Fase 12 (Bloque A): slime escala por TAMAÑO (2/1/0 → 2.0/1.0/0.5, la
+// multiplica updateMobs con el slimeSize del snapshot); ocelote/gato son
+// pequeños (0.6); el ahogado usa la escala humana por defecto.
 const MOB_SCALE = {
 	spider: 0.7,
 	rabbit: 0.55,
-	wolf: 1.05
+	wolf: 1.05,
+	ocelot: 0.6,
+	cat: 0.6,
+	slime: 1.0
 };
+// Escala del slime según su tamaño (snapshot.slimeSize): grande 2, mediano
+// 1, pequeño 0.5 — como en Minecraft.
+function slimeScale(size) {
+	if (size === 2) return 2.0;
+	if (size === 1) return 1.0;
+	return 0.5;
+}
 
 // Fase 10 (nota "mobs en caja"): balanceo de extremidades al caminar.
 // Avanza una fase por la distancia recorrida (setMobWalk) y convierte esa
@@ -254,8 +267,21 @@ export function updateMobs(list) {
 		}
 		mesh.userData.lastPos = { x: m.x, y: m.y, z: m.z };
 		mesh.position.set(m.x, m.y, m.z);
-		const s = (m.isBaby ? 0.5 : 1) * (MOB_SCALE[m.type] || 1);
+		// Fase 12 (A): el slime escala por tamaño y el lobo domado lleva el
+		// collar rojo (visual de la doma, ver A5 del spec).
+		const slimeS = m.type === "slime" ? slimeScale(m.slimeSize) : 1;
+		const s = (m.isBaby ? 0.5 : 1) * (MOB_SCALE[m.type] || 1) * slimeS;
 		mesh.scale.set(s, s, s);
+		if (m.type === "wolf" && m.ownerId && !mesh.userData.collar) {
+			mesh.userData.collar = true;
+			// Collar rojo: caja fina alrededor del cuello del lobo.
+			const collar = new THREE.Mesh(
+				new THREE.BoxGeometry(0.42, 0.12, 0.42),
+				new THREE.MeshLambertMaterial({ color: 0xd43d2a })
+			);
+			collar.position.set(0, 0.82, 0.5);
+			mesh.add(collar);
+		}
 		// Quema solar (Fase 6): el mob en llamas se tiñe de fuego; al apagarse
 		// (noche/techo) vuelve a su color base. El servidor manda `burning` en
 		// cada mobs_update.
@@ -318,11 +344,41 @@ let arrowGeo = null;
 let arrowConeGeo = null;
 const arrowMaterial = new THREE.MeshLambertMaterial({ color: 0x8f6b3e });
 const arrowTipMaterial = new THREE.MeshLambertMaterial({ color: 0xd8d8d8 });
+// Fase 12 (A4): material del tridente — acero azulado con punta clara.
+const tridentMaterial = new THREE.MeshLambertMaterial({ color: 0x6fa8dc });
 const ARROW_LIFE_MS = 4000; // los meshes huérfanos se limpian a los 4s
 const arrowLastSeen = new Map(); // id -> performance.now()
 
 function arrowId(a) {
 	return `${a.x.toFixed(2)},${a.y.toFixed(2)},${a.z.toFixed(2)}`;
+}
+
+// Fase 12 (A4): el tridente se dibuja como lanza — astil largo + punta de 3
+// púas (tres conos pequeños) + guarda. Misma física que la flecha, otra forma.
+function makeTridentMesh(id) {
+	const group = new THREE.Group();
+	const shaft = new THREE.Mesh(
+		new THREE.CylinderGeometry(0.035, 0.045, 0.8, 6),
+		tridentMaterial
+	);
+	shaft.position.y = 0;
+	group.add(shaft);
+	const prongGeo = new THREE.ConeGeometry(0.05, 0.16, 5);
+	for (const dx of [-0.09, 0, 0.09]) {
+		const prong = new THREE.Mesh(prongGeo, tridentMaterial);
+		prong.position.set(dx, 0.47, 0);
+		group.add(prong);
+	}
+	// Guarda (barra transversal) y contrapeso.
+	const guard = new THREE.Mesh(
+		new THREE.BoxGeometry(0.22, 0.05, 0.05),
+		tridentMaterial
+	);
+	guard.position.y = 0.3;
+	group.add(guard);
+	scene.add(group);
+	arrowMeshes.set(id, { shaft, tip: null, group, trident: true });
+	return group;
 }
 
 function makeArrowMesh(id) {
@@ -350,7 +406,15 @@ export function updateArrows(arrows) {
 		const id = arrowId(a);
 		seen.add(id);
 		let mesh = arrowMeshes.get(id);
-		if (!mesh) mesh = makeArrowMesh(id);
+		// Fase 12 (A4): kind distingue tridente de flecha — si el proyectil
+		// cambia de tipo (no debería), se reconstruye con la forma correcta.
+		const isTrident = a.kind === "trident";
+		if (mesh && isTrident !== !!mesh.trident) {
+			scene.remove(mesh.group);
+			arrowMeshes.delete(id);
+			mesh = null;
+		}
+		if (!mesh) mesh = isTrident ? makeTridentMesh(id) : makeArrowMesh(id);
 		mesh.group.position.set(a.x, a.y, a.z);
 		// Orientar por velocidad: forward = v, up = Y (normalizar, defensivo).
 		const speed = Math.hypot(a.vx, a.vy, a.vz) || 1;

@@ -203,8 +203,20 @@ function stopMining() {
 	send("block_action", { action: "break_cancel" });
 }
 // Solo los pasivos se pueden alimentar (trigo/zanahoria/semillas); el
-// conejo también come zanahorias (Fase 5)
-const PASSIVE_MOBS = new Set(["cow", "pig", "chicken", "sheep", "rabbit"]);
+// conejo también come zanahorias (Fase 5). Fase 12 (A): el ocelote es un
+// pasivo más (se doma con pescado crudo, no se alimenta para criar).
+const PASSIVE_MOBS = new Set([
+	"cow",
+	"pig",
+	"chicken",
+	"sheep",
+	"rabbit",
+	"ocelot"
+]);
+// Fase 12 (A1/A3): ítems de doma — hueso (136) → lobo, pescado crudo
+// (134) → ocelote. La doma consume el ítem con ~33% por intento.
+const BONE_ITEM = 136;
+const RAW_FISH_ITEM = 134;
 
 // ============================================================
 // FASE 9 (Bloque C): AZADA, PLANTAR, PICKER CREATIVO Y VUELO
@@ -501,6 +513,8 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 
 	// Alimentar animales: clic derecho sobre un animal pasivo con su comida de
 	// cría (trigo → vaca/oveja, zanahoria → cerdo, semillas → pollo); izquierdo ataca.
+	// Fase 12 (A): domar lobos con hueso y ocelotes con pescado; mano vacía
+	// sobre la mascota propia → sentarse/levantarse.
 	if (hitMob) {
 		stopMining(); // clicar un mob cancela cualquier mina en curso
 		if (e.button === 0) {
@@ -521,6 +535,29 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 		) {
 			// Fase 11 (C): tijeras (141) sobre una oveja → esquilar (lana sin matar)
 			send("shear_mob", { mobId: hitMob.id });
+		} else if (
+			e.button === 2 &&
+			held &&
+			held.id === BONE_ITEM &&
+			hitMob.type === "wolf"
+		) {
+			// Fase 12 (A1): hueso sobre un lobo salvaje → intentar domar
+			send("tame_mob", { mobId: hitMob.id });
+		} else if (
+			e.button === 2 &&
+			held &&
+			held.id === RAW_FISH_ITEM &&
+			hitMob.type === "ocelot"
+		) {
+			// Fase 12 (A3): pescado crudo sobre un ocelote → intentar domar
+			send("tame_mob", { mobId: hitMob.id });
+		} else if (
+			e.button === 2 &&
+			!held &&
+			(hitMob.type === "wolf" || hitMob.type === "cat")
+		) {
+			// Fase 12 (A1/E10): mano vacía sobre la mascota → sentarse/levantarse
+			send("sit_pet", { mobId: hitMob.id });
 		}
 		return;
 	}
@@ -534,9 +571,17 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	}
 
 	// Fase 7: equipar armadura con clic derecho (la pieza en mano va a su
-	// slot; la que hubiera vuelve al inventario). Sin necesidad de apuntar.
+	// slot; la que hubiera vuelto al inventario). Sin necesidad de apuntar.
 	if (e.button === 2 && held && ARMOR_ITEMS.has(held.id)) {
 		send("equip_armor", { inventorySlot: getSelectedSlot() });
+		return;
+	}
+
+	// Fase 12 (A4/E8): lanzar el tridente con clic derecho (sin necesidad de
+	// apuntar a un bloque — vuela hacia donde mira la cámara). El servidor lo
+	// retira del inventario y lo devuelve al impactar o agotar su vida.
+	if (e.button === 2 && held && held.id === 245) {
+		send("throw_trident", {});
 		return;
 	}
 

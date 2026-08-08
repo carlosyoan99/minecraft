@@ -826,6 +826,51 @@ function drawHoney(g) {
 }
 
 // ============================================================
+// ÍTEMS DE LA FASE 12 (Bloque A): tridente y bola de slime
+// ============================================================
+// Tridente: lanza vertical con astil de madera, punta de 3 púas y guarda
+// metálica — el sello del ahogado (drop ~15% y arma arrojadiza del jugador).
+function drawTrident(g) {
+	const steel = "#6fa8dc",
+		steelDark = "#4a7ab0",
+		steelLight = "#a8d0f0",
+		wood = "#8a5a2b",
+		woodDark = "#6b4226";
+	// Astil diagonal (como las flechas del icono del palo)
+	line(g, 8, 2, 8, 13, woodDark);
+	line(g, 7, 2, 7, 13, wood);
+	// Puntas (3 púas)
+	line(g, 7, 2, 6, 0, steel);
+	line(g, 8, 2, 8, 0, steelLight);
+	line(g, 9, 2, 10, 0, steel);
+	// Guarda (barra transversal)
+	hline(g, 4, 11, 4, steel);
+	hline(g, 4, 11, 3, steelLight);
+	set(g, 4, 3, steelDark);
+	set(g, 11, 3, steelDark);
+	// Contrapeso
+	vline(g, 8, 14, 15, steel);
+	set(g, 7, 14, steelLight);
+}
+// Bola de slime: gel verde translúcido con brillo y burbuja interior.
+function drawSlimeBall(g, rng) {
+	const gel = "#7ac74f",
+		gelDark = "#5aa23c",
+		gelLight = "#b0f080";
+	for (let y = 5; y <= 11; y++) {
+		const t = Math.abs(y - 8) / 3.5;
+		const w = Math.max(1, Math.round(5 * (1 - t)));
+		for (let x = 8 - w; x <= 8 + w; x++) set(g, x, y, gel);
+	}
+	for (let i = 0; i < 5; i++)
+		set(g, 4 + Math.floor(rng() * 8), 6 + Math.floor(rng() * 5), gelDark);
+	set(g, 6, 6, gelLight);
+	set(g, 5, 6, gelLight);
+	set(g, 6, 7, gelLight);
+	set(g, 9, 10, gelDark);
+}
+
+// ============================================================
 // HERRAMIENTAS Y ARMADURA (plantillas por forma + color por material)
 // Cada forma es un mapa 16x16: 'm' material, 'h' mango, 'd' sombra.
 // ============================================================
@@ -1066,6 +1111,9 @@ ICONS[139] = (g) => drawDye(g, "#f5f5f0", "#c9c9c0", "#ffffff");
 ICONS[140] = drawHoney;
 // Fase 11 (C): tijeras
 ICONS[141] = drawShears;
+// Fase 12 (A): tridente (245) y bola de slime (246)
+ICONS[245] = drawTrident;
+ICONS[246] = drawSlimeBall;
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);

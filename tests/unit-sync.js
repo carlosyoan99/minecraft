@@ -214,9 +214,7 @@ check(
 // navegador). Se extrae el cuerpo de la función ESM y se evalúa contra el
 // servidor en niveles 0-39 (cubre los tres tramos: 2L+7, 5L−38, 9L−158). ---
 {
-	const m = src.match(
-		/export function xpToNext\(level\) \{([\s\S]*?)\n\}/
-	);
+	const m = src.match(/export function xpToNext\(level\) \{([\s\S]*?)\n\}/);
 	let equal = !!m;
 	if (m) {
 		let clientXpToNext;
@@ -276,6 +274,19 @@ check(
 		equal
 			? ""
 			: `cliente=[${[...clientTypes].join(",")}] servidor=[${[...serverTypes].join(",")}]`
+	);
+}
+// --- 10) Fase 12 (A): ítems nuevos (tridente/slimeball) sincronizados ---
+// El wire del inventario depende de los IDs; si divergen, el tridente no se
+// dibuja y la bola de slime no se puede craftear.
+{
+	const clientItems = parseObj("ITEM_NAMES");
+	check(
+		"Fase 12: tridente (245) y slimeball (246) tienen nombre en el cliente",
+		!!clientItems &&
+			clientItems[server.I.TRIDENT] &&
+			clientItems[server.I.SLIME_BALL],
+		`cliente tiene ${Object.keys(clientItems || {}).length} ítems`
 	);
 }
 process.exit(fails ? 1 : 0);

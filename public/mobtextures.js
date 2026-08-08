@@ -224,6 +224,48 @@ export const MOB_PARTS = {
 			{ name: "leg", size: [0.06, 0.3, 0.06], pos: [-0.1, 0.15, 0] },
 			{ name: "leg", size: [0.06, 0.3, 0.06], pos: [0.1, 0.15, 0] }
 		]
+	},
+	// Fase 12 (Bloque A): mobs por bioma —
+	// Slime: un solo cuerpo cúbico gelatinoso (sin patas); la escala la
+	// decide el cliente según slimeSize (2/1/0 → 2.0/1.0/0.5) en MOB_SCALE.
+	slime: {
+		parts: [{ name: "body", size: [0.8, 0.8, 0.8], pos: [0, 0.4, 0] }]
+	},
+	// Ocelote y gato: felino esbelto — cuerpo + cabeza + cola + 4 patas.
+	// El gato (ocelote domado) comparte anatomía con textura propia.
+	ocelot: {
+		parts: [
+			{ name: "body", size: [0.45, 0.4, 0.9], pos: [0, 0.45, -0.05] },
+			{ name: "head", size: [0.35, 0.35, 0.35], pos: [0, 0.5, 0.5] },
+			{ name: "tail", size: [0.08, 0.08, 0.55], pos: [0, 0.55, -0.65] },
+			{ name: "leg", size: [0.14, 0.4, 0.14], pos: [-0.16, 0.2, 0.25] },
+			{ name: "leg", size: [0.14, 0.4, 0.14], pos: [0.16, 0.2, 0.25] },
+			{ name: "leg", size: [0.14, 0.4, 0.14], pos: [-0.16, 0.2, -0.35] },
+			{ name: "leg", size: [0.14, 0.4, 0.14], pos: [0.16, 0.2, -0.35] }
+		]
+	},
+	cat: {
+		parts: [
+			{ name: "body", size: [0.45, 0.4, 0.9], pos: [0, 0.45, -0.05] },
+			{ name: "head", size: [0.35, 0.35, 0.35], pos: [0, 0.5, 0.5] },
+			{ name: "tail", size: [0.08, 0.08, 0.55], pos: [0, 0.55, -0.65] },
+			{ name: "leg", size: [0.14, 0.4, 0.14], pos: [-0.16, 0.2, 0.25] },
+			{ name: "leg", size: [0.14, 0.4, 0.14], pos: [0.16, 0.2, 0.25] },
+			{ name: "leg", size: [0.14, 0.4, 0.14], pos: [-0.16, 0.2, -0.35] },
+			{ name: "leg", size: [0.14, 0.4, 0.14], pos: [0.16, 0.2, -0.35] }
+		]
+	},
+	// Ahogado: misma silueta humanoide que el zombi, textura de no-muerto
+	// acuático (piel verdosa-azulada, harapos oscuros).
+	drowned: {
+		parts: [
+			{ name: "head", size: [0.5, 0.5, 0.5], pos: [0, 1.55, 0] },
+			{ name: "body", size: [0.5, 0.75, 0.25], pos: [0, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [-0.375, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [0.375, 1.05, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [-0.125, 0.375, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [0.125, 0.375, 0] }
+		]
 	}
 };
 
@@ -561,6 +603,143 @@ function drawSheepLeg(ctx, rng) {
 	speckle(ctx, rng, SH.wool, 0.25);
 }
 
+// --- SLIME (Fase 12): gel verde con cara simple y brillo ---
+const SL = {
+	body: "#7ac74f",
+	bodyDark: "#5aa23c",
+	bodyLight: "#a0e070",
+	face: "#1a1a1a"
+};
+function drawSlimeBody(ctx, rng) {
+	fill(ctx, SL.body);
+	speckle(ctx, rng, SL.bodyDark, 0.12);
+	speckle(ctx, rng, SL.bodyLight, 0.1);
+	rect(ctx, 0, 0, TILE, 2, SL.bodyLight); // brillo superior (gel)
+	px(ctx, 4, 4, SL.face); // ojos
+	px(ctx, 11, 4, SL.face);
+	rect(ctx, 5, 9, 6, 1, SL.face); // boca
+	rect(ctx, 6, 10, 4, 1, SL.face);
+}
+
+// --- OCELOTE (Fase 12): naranja atigrado con manchas oscuras ---
+const OC = {
+	fur: "#e8a03c",
+	furDark: "#c08028",
+	spot: "#5a3a1a",
+	belly: "#f0d8a0",
+	eye: "#1a1a1a",
+	ear: "#8a5a20"
+};
+function drawOcelotBody(ctx, rng) {
+	fill(ctx, OC.fur);
+	speckle(ctx, rng, OC.furDark, 0.14);
+	for (let i = 0; i < 6; i++) {
+		px(ctx, 2 + Math.floor(rng() * 12), 2 + Math.floor(rng() * 12), OC.spot);
+	}
+	rect(ctx, 0, 12, TILE, 4, OC.belly); // vientre claro
+}
+function drawOcelotHead(ctx, rng) {
+	fill(ctx, OC.fur);
+	speckle(ctx, rng, OC.furDark, 0.1);
+	rect(ctx, 1, 0, 3, 3, OC.spot); // orejas oscuras
+	rect(ctx, 12, 0, 3, 3, OC.spot);
+	px(ctx, 4, 4, OC.eye); // ojos
+	px(ctx, 11, 4, OC.eye);
+	px(ctx, 7, 6, OC.belly); // hocico claro
+	px(ctx, 8, 6, OC.belly);
+	px(ctx, 6, 8, OC.belly);
+	px(ctx, 9, 8, OC.belly);
+	px(ctx, 7, 8, OC.spot); // nariz
+	px(ctx, 8, 8, OC.spot);
+}
+function drawOcelotTail(ctx, rng) {
+	fill(ctx, OC.fur);
+	speckle(ctx, rng, OC.furDark, 0.15);
+	rect(ctx, 0, 0, TILE, 4, OC.spot); // punta oscura
+}
+function drawOcelotLeg(ctx, rng) {
+	fill(ctx, OC.furDark);
+	speckle(ctx, rng, OC.fur, 0.25);
+	rect(ctx, 0, 13, TILE, 3, OC.belly); // pata clara
+}
+
+// --- GATO (Fase 12): gris tuxedo (negro con pecho blanco) ---
+const CT = {
+	fur: "#4a4a52",
+	furDark: "#2e2e34",
+	belly: "#f0f0ee",
+	eye: "#e8d21a",
+	ear: "#2e2e34"
+};
+function drawCatBody(ctx, rng) {
+	fill(ctx, CT.fur);
+	speckle(ctx, rng, CT.furDark, 0.16);
+	rect(ctx, 0, 12, TILE, 4, CT.belly); // pecho/vientre blanco
+}
+function drawCatHead(ctx, rng) {
+	fill(ctx, CT.fur);
+	speckle(ctx, rng, CT.furDark, 0.1);
+	rect(ctx, 1, 0, 3, 3, CT.ear); // orejas
+	rect(ctx, 12, 0, 3, 3, CT.ear);
+	px(ctx, 4, 4, CT.eye); // ojos amarillos
+	px(ctx, 11, 4, CT.eye);
+	px(ctx, 6, 7, CT.belly); // hocico blanco
+	px(ctx, 7, 7, CT.belly);
+	px(ctx, 8, 7, CT.belly);
+	px(ctx, 9, 7, CT.belly);
+	px(ctx, 7, 8, CT.eye); // nariz
+	px(ctx, 8, 8, CT.eye);
+}
+function drawCatTail(ctx, rng) {
+	fill(ctx, CT.fur);
+	speckle(ctx, rng, CT.furDark, 0.15);
+	rect(ctx, 0, 12, TILE, 4, CT.belly); // punta blanca
+}
+function drawCatLeg(ctx, rng) {
+	fill(ctx, CT.furDark);
+	speckle(ctx, rng, CT.fur, 0.2);
+	rect(ctx, 0, 13, TILE, 3, CT.belly); // calcetines blancos
+}
+
+// --- AHOGADO (Fase 12): zombi acuático — piel azul-verde, harapos ---
+const D = {
+	skin: "#4a8f6f",
+	skinDark: "#3a7058",
+	eye: "#1a3a2a",
+	shirt: "#2e4a3a",
+	shirtDark: "#1f3328",
+	pants: "#3a3a4a",
+	pantsDark: "#2a2a38"
+};
+function drawDrownedHead(ctx, rng) {
+	fill(ctx, D.skin);
+	speckle(ctx, rng, D.skinDark, 0.12);
+	rect(ctx, 3, 1, 10, 2, D.skinDark); // pelo de alga
+	for (let i = 0; i < 4; i++)
+		px(ctx, 2 + Math.floor(rng() * 12), 1, D.skinDark);
+	rect(ctx, 4, 3, 2, 1, D.eye); // ojos hundidos
+	rect(ctx, 10, 3, 2, 1, D.eye);
+	rect(ctx, 5, 5, 6, 2, D.skinDark); // boca
+}
+function drawDrownedBody(ctx, rng) {
+	fill(ctx, D.shirt);
+	speckle(ctx, rng, D.shirtDark, 0.18);
+	px(ctx, 2, 4, D.skin); // rasgones
+	px(ctx, 13, 6, D.skin);
+	px(ctx, 6, 11, D.skinDark);
+}
+function drawDrownedArm(ctx, rng) {
+	fill(ctx, D.skin);
+	speckle(ctx, rng, D.skinDark, 0.15);
+	rect(ctx, 0, 0, TILE, 5, D.shirt); // manga
+	speckle(ctx, rng, D.shirtDark, 0.15);
+}
+function drawDrownedLeg(ctx, rng) {
+	fill(ctx, D.pants);
+	speckle(ctx, rng, D.pantsDark, 0.2);
+	rect(ctx, 0, 13, TILE, 3, D.skinDark); // pie
+}
+
 // --- RABBIT: crema con orejas largas ---
 const R = {
 	body: "#d9c8a8",
@@ -631,7 +810,28 @@ const MOB_TEXTURES = {
 		leg: drawChickenLeg
 	},
 	sheep: { body: drawSheepBody, head: drawSheepHead, leg: drawSheepLeg },
-	rabbit: { body: drawRabbitBody, head: drawRabbitHead, ear: drawRabbitEar }
+	rabbit: { body: drawRabbitBody, head: drawRabbitHead, ear: drawRabbitEar },
+	// Fase 12 (Bloque A): mobs por bioma — slime (un cuerpo), ocelote y gato
+	// (felinos con cola), ahogado (humanoide acuático).
+	slime: { body: drawSlimeBody },
+	ocelot: {
+		body: drawOcelotBody,
+		head: drawOcelotHead,
+		tail: drawOcelotTail,
+		leg: drawOcelotLeg
+	},
+	cat: {
+		body: drawCatBody,
+		head: drawCatHead,
+		tail: drawCatTail,
+		leg: drawCatLeg
+	},
+	drowned: {
+		head: drawDrownedHead,
+		body: drawDrownedBody,
+		arm: drawDrownedArm,
+		leg: drawDrownedLeg
+	}
 };
 
 const atlasCache = new Map();

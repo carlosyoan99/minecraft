@@ -300,7 +300,15 @@ const I = {
 	STONE_HOE: 241,
 	IRON_HOE: 242,
 	GOLDEN_HOE: 243,
-	DIAMOND_HOE: 244
+	DIAMOND_HOE: 244,
+	// Fase 12 (Bloque A): ítems nuevos de los mobs por bioma.
+	// TRIDENT: arma arrojadiza (no crafteable) — drop del ahogado (~15%) y
+	// usable por el jugador (clic derecho lanza; al impactar o agotar su vida
+	// se puede recoger del suelo). No coloca bloque ni se craftea.
+	TRIDENT: 245,
+	// SLIME_BALL: material del slime — drop de los slimes pequeños (0-1). Sin
+	// recetas en esta fase (material de colección, como el hilo de la araña).
+	SLIME_BALL: 246
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -693,7 +701,12 @@ const MOB_XP = {
 	chicken: 2,
 	sheep: 3,
 	rabbit: 2,
-	bee: 1 // Fase 9 (Bloque F): pasivo volador (versión simplificada)
+	bee: 1, // Fase 9 (Bloque F): pasivo volador (versión simplificada)
+	// Fase 12 (Bloque A): XP de los mobs por bioma
+	slime: 1, // por tamaño (el grande 2, el pequeño 1)
+	ocelot: 2,
+	cat: 2,
+	drowned: 5
 };
 const ORE_XP = {
 	[B.COAL_ORE]: 1,
@@ -771,7 +784,10 @@ const CREATIVE_ITEMS = [
 	I.CARROT,
 	I.SEEDS,
 	// Fase 11 (C): tijeras (esquilar ovejas)
-	I.SHEARS
+	I.SHEARS,
+	// Fase 12 (Bloque A): ítems nuevos en el inventario creativo
+	I.TRIDENT,
+	I.SLIME_BALL
 ];
 // Todos los ítems/armas/herramientas del juego (para el picker creativo).
 const ALL_TOOLS_AND_ARMOR = [
@@ -793,7 +809,13 @@ const MOB_COLORS = {
 	pig: 0xf0a8b8,
 	chicken: 0xf2e08a,
 	sheep: 0xf5f5f0,
-	rabbit: 0xd9c8a8 // Fase 5: nuevo pasivo
+	rabbit: 0xd9c8a8, // Fase 5: nuevo pasivo
+	// Fase 12 (Bloque A): mobs por bioma — slime (verde gel), ocelote (naranja
+	// atigrado), gato (gris tuxedo) y ahogado (verde-azulado de no-muerto).
+	slime: 0x7ac74f,
+	ocelot: 0xe8a03c,
+	cat: 0x9a9a9a,
+	drowned: 0x4a8f6f
 };
 const HOSTILE = new Set([
 	"zombie",
@@ -801,7 +823,11 @@ const HOSTILE = new Set([
 	"skeleton",
 	"enderman",
 	"spider",
-	"wolf"
+	"wolf",
+	// Fase 12 (Bloque A): slime (pantano) y ahogado (océanos/ríos) atacan al
+	// jugador; el ocelote y el gato son pasivos (no van en HOSTILE).
+	"slime",
+	"drowned"
 ]);
 // Mobs que se queman con el sol de día (Fase 6: IA hostil más fiel): solo
 // los no-muertos clásicos arden al exponerse a la luz del día sin techo

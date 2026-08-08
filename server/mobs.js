@@ -53,11 +53,29 @@ const MOB_HEALTH = {
 	creeper: 20,
 	skeleton: 20,
 	enderman: 20,
-	bee: 5 // Fase 9 (Bloque F): pasivo volador frágil (versión simplificada)
+	bee: 5, // Fase 9 (Bloque F): pasivo volador frágil (versión simplificada)
+	// Fase 12 (Bloque A): mobs por bioma. El slime usa SLIME_HEALTH por tamaño
+	// (16/4/1); el valor base es el del grande y splitSlime re-ajusta la salud.
+	slime: 16,
+	ocelot: 10,
+	cat: 10,
+	drowned: 20
 };
+// Salud del slime por tamaño (Fase 12, A2): grande 16, mediano 4, pequeño 1.
+const SLIME_HEALTH = { 2: 16, 1: 4, 0: 1 };
+// Daño del slime por tamaño (MC real): grande 3, mediano 2, pequeño 0.
+const SLIME_DAMAGE = { 2: 3, 1: 2, 0: 0 };
 const state = require("./state.js");
 const world = require("./world.js");
-const { damagePlayer } = require("./players.js");
+// Fase 12 (Bloque A): addToInventory/removeFromInventory — el tridente del
+// jugador se retira al lanzarlo y vuelve al inventario al impactar/expirar
+// (simplificación de "recogerlo del suelo": no hay entidades de item en el
+// suelo en este clon). players.js no importa mobs.js, así que es seguro.
+const {
+	damagePlayer,
+	addToInventory,
+	removeFromInventory
+} = require("./players.js");
 const tnt = require("./tnt.js"); // Fase 10 (D2): el creeper encadena TNT
 
 const { players } = state;
@@ -75,6 +93,11 @@ const ARROW_SPEED = 14; // bloques/s
 const ARROW_GRAVITY = 16; // bloques/s² (como la gravedad del jugador)
 const ARROW_DAMAGE = 3;
 const ARROW_HIT_DIST = 0.7;
+// Fase 12 (Bloque A): tridente — misma física que la flecha (state.arrows),
+// distinto daño y `kind: "trident"` para que el cliente lo dibuje como tal.
+const TRIDENT_DAMAGE = 6; // ahogado
+const TRIDENT_PLAYER_DAMAGE = 8; // lanzado por el jugador
+const TRIDENT_SPEED = 16; // algo más veloz que la flecha
 
 function shootArrow(shooter, target) {
 	const dx = target.x - shooter.x,
@@ -97,6 +120,70 @@ function shootArrow(shooter, target) {
 	});
 }
 
+// Fase 12 (Bloque A4): el ahogado arroja tridentes reusando la física de las
+// flechas (misma gravedad, distinta velocidad y daño, kind "trident").
+function shootTrident(shooter, target) {
+	const dx = target.x - shooter.x,
+		dz = target.z - shooter.z;
+	const dist = Math.max(1, Math.hypot(dx, dz));
+	const vx = (dx / dist) * TRIDENT_SPEED;
+	const vz = (dz / dist) * TRIDENT_SPEED;
+	const vy = 3.5 + (dist / TRIDENT_SPEED) * (ARROW_GRAVITY / 2);
+	state.arrows.push({
+		x: shooter.x,
+		y: shooter.y + 1.4,
+		z: shooter.z,
+		vx,
+		vy,
+		vz,
+		life: ARROW_LIFE_MS,
+		from: shooter.id,
+		kind: "trident",
+		damage: TRIDENT_DAMAGE
+	});
+}
+
+// Fase 12 (Bloque A4/E8): el JUGADOR lanza su tridente (clic derecho) hacia
+// donde mira. Se le retira del inventario al lanzarlo; al impactar en un
+// bloque o agotar su vida vuelve a su inventario (no hay items en el suelo,
+// simplificación documentada — ver fase12-spec §E12). Devuelve true si se
+// lanzó.
+function throwPlayerTrident(player) {
+	const held = player.inventory?.[player.selectedSlot || 0];
+	if (!held || held.id !== I.TRIDENT) return false;
+	if (!addToInventory) return false;
+	// Dirección de la mirada (yaw/pitch en radianes, convención three.js: el
+	// cliente los envía como camera.rotation.y / camera.rotation.x).
+	const yaw = player.yaw || 0;
+	const pitch = player.pitch || 0;
+	const cp = Math.cos(pitch);
+	const dx = -Math.sin(yaw) * cp;
+	const dy = Math.sin(pitch);
+	const dz = -Math.cos(yaw) * cp;
+	removeFromInventory(player, I.TRIDENT, 1);
+	state.arrows.push({
+		x: player.x,
+		y: player.y + 1.4,
+		z: player.z,
+		vx: dx * TRIDENT_SPEED,
+		vy: dy * TRIDENT_SPEED,
+		vz: dz * TRIDENT_SPEED,
+		life: ARROW_LIFE_MS,
+		from: player.id,
+		kind: "trident",
+		damage: TRIDENT_PLAYER_DAMAGE
+	});
+	return true;
+}
+
+// Devuelve el tridente al jugador que lo lanzó (simplificación de la recogida
+// del suelo: al impactar/expirar, el tridente vuelve a su inventario).
+function returnPlayerTrident(a) {
+	if (a.kind !== "trident" || !a.from) return;
+	const owner = players.get(a.from);
+	if (owner?.inventory) addToInventory(owner, I.TRIDENT, 1);
+}
+
 // Avanza las flechas (dtMs) y aplica daño al primer jugador que intersecten.
 // Devuelve las flechas vivas para el broadcast (arrows_update).
 function tickArrows(dtMs) {
@@ -104,7 +191,13 @@ function tickArrows(dtMs) {
 	const alive = [];
 	for (const a of state.arrows) {
 		a.life -= dtMs;
-		if (a.life <= 0) continue;
+		// Fase 12 (A4/E8): el tridente del jugador que expira (supera su vida)
+		// vuelve a su inventario ANTES de descartarse — no hay entidades de
+		// item en el suelo en este clon, así que la "recogida" es automática.
+		if (a.life <= 0) {
+			returnPlayerTrident(a);
+			continue;
+		}
 		// Posición previa: necesaria para el barrido anti-tunneling (la flecha a
 		// 14 bloques/s avanza 0.7 bloques por tick — podría saltarse una pared de
 		// 1 bloque si solo se comprobara el punto final).
@@ -123,12 +216,19 @@ function tickArrows(dtMs) {
 		// jugador con mock de bloques sólidos). Caso borde aceptado: un jugador
 		// pegado a una pared y a <0.7 de la flecha podría recibir daño a través
 		// de ella.
+		// Fase 12: el daño puede ser por flecha (3) o tridente (6/8) y el
+		// tridente del JUGADOR no daña a su propio lanzador (from = id de
+		// jugador): el salto se hace para no auto-dañarse al lanzarlo.
 		let hit = false;
 		for (const p of players.values()) {
+			if (a.from === p.id) continue; // el lanzador no se golpea a sí mismo
 			if (Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) < ARROW_HIT_DIST) {
-				damagePlayer(p, ARROW_DAMAGE, {
+				damagePlayer(p, a.damage || ARROW_DAMAGE, {
 					source: "mob",
-					meta: { mobType: "skeleton", projectile: true }
+					meta: {
+						mobType: a.kind === "trident" ? "drowned" : "skeleton",
+						projectile: true
+					}
 				});
 				hit = true;
 				break;
@@ -154,6 +254,9 @@ function tickArrows(dtMs) {
 				}
 			}
 		}
+		// Fase 12: el tridente del jugador que impacta (o expira) vuelve a su
+		// inventario (no hay entidades de item en el suelo en este clon).
+		if (hit || a.life <= 0) returnPlayerTrident(a);
 		if (!hit) alive.push(a);
 	}
 	state.arrows = alive;
@@ -161,7 +264,16 @@ function tickArrows(dtMs) {
 }
 
 function arrowSnapshot(a) {
-	return { x: a.x, y: a.y, z: a.z, vx: a.vx, vy: a.vy, vz: a.vz };
+	return {
+		x: a.x,
+		y: a.y,
+		z: a.z,
+		vx: a.vx,
+		vy: a.vy,
+		vz: a.vz,
+		// Fase 12: kind distingue flecha de tridente para el dibujo del cliente.
+		kind: a.kind || "arrow"
+	};
 }
 
 class Mob {
@@ -197,6 +309,11 @@ class Mob {
 		this.fuseStart = null; // creeper: inicio del fuse (explosión tras ~1.5s)
 		this.stuckTicks = 0; // hostiles: contador de persecución bloqueada
 		this.shootCooldown = 0; // esqueleto: milisegundos entre disparos
+		// Fase 12 (Bloque A): mobs por bioma y mascotas —
+		this.slimeSize = type === "slime" ? 2 : undefined; // 2 grande, 1 mediano, 0 pequeño
+		this.ownerId = null; // mascota domesticada: id del dueño (sesión)
+		this.ownerName = null; // nombre del dueño (persistencia en la Fase 12 D)
+		this.sitting = false; // mascota sentada (no sigue ni ataca)
 	}
 
 	distTo(p) {
@@ -427,8 +544,12 @@ class Mob {
 		const hostiles = HOSTILE.has(this.type);
 		if (!hostiles) {
 			// Fase 9 (Bloque F): la abeja tiene su propio movimiento volador 3D
-			// (no usa el suelo); el resto de pasivos usan tickPassive.
+			// (no usa el suelo); el resto de pasivos usan tickPassive. Fase 12:
+			// el ocelote huye del jugador (radio 8) y el gato domado sigue al
+			// dueño — IA propia antes del genérico.
 			if (this.type === "bee") tickBee(this);
+			else if (this.type === "ocelot") this.tickOcelot(nearest, dist);
+			else if (this.type === "cat") this.tickCat(nearest, dist);
 			else this.tickPassive(isNight, nearest, dist);
 			return;
 		}
@@ -471,7 +592,14 @@ class Mob {
 					this.wander();
 				}
 				break;
-			case "wolf": // Fase 5: hostil resistente de la noche
+			case "wolf": // Fase 5: hostil resistente de la noche; Fase 12: domable
+				// Lobo DOMADO (Fase 12, A1): sigue al dueño, se sienta con clic
+				// derecho y no ataca al dueño (solo a su objetivo — ver net.js
+				// petsJoinAttack). Si está sentado no sigue ni ataca.
+				if (this.ownerId) {
+					this.tickPet(nearest, dist);
+					break;
+				}
 				if (nearest && (isNight || dist < 8)) {
 					this.state = "chase";
 					this.chase(nearest, 0.04);
@@ -481,7 +609,27 @@ class Mob {
 					this.wander();
 				}
 				break;
+			case "slime": // Fase 12 (A2): salta en vez de caminar y se divide al morir
+				this.tickSlime(isNight, nearest, dist);
+				break;
+			case "drowned": // Fase 12 (A4): nada, ataca y lanza tridentes
+				this.tickDrowned(isNight, nearest, dist);
+				break;
 			case "creeper": {
+				// Fase 12 (A3): el GATO domado espanta a los creepers — si hay un
+				// gato aliado a ≤6 bloques, el creeper huye en vez de perseguir o
+				// explotar (decisión E9 del spec).
+				if (catNearby(this.x, this.z, 6)) {
+					this.fuseStart = null;
+					this.state = "flee";
+					if (nearest)
+						this.moveToward(
+							{ x: 2 * this.x - nearest.x, z: 2 * this.z - nearest.z },
+							0.05
+						);
+					else this.wander();
+					break;
+				}
 				// Fase 9 (Bloque D): fuse fiel — se detiene, "silba" (~1.5s) y
 				// explota si el jugador sigue cerca; si se aleja, cancela.
 				if (nearest && dist < 10) {
@@ -630,6 +778,140 @@ class Mob {
 		};
 		this.wanderPauseUntil = 0; // el susto interrumpe la pausa
 	}
+
+	// ============================================================
+	// FASE 12 (Bloque A): IA de los mobs por bioma y mascotas
+	// ============================================================
+
+	// Ocelote (A3): pasivo huidizo — corre en dirección contraria al jugador
+	// cuando este está a ≤8 bloques (radio mayor que el susto de los pasivos
+	// genéricos, prioridad alta). De noche deambula igual.
+	tickOcelot(nearest, dist) {
+		if (nearest && dist <= 8) {
+			this.state = "flee";
+			this.moveToward(
+				{ x: 2 * this.x - nearest.x, z: 2 * this.z - nearest.z },
+				0.06 // más rápido que deambular (huida)
+			);
+			return;
+		}
+		this.state = "idle";
+		this.wander();
+	}
+
+	// Gato (ocelote domado, A3): sigue al dueño y no ataca. Si está sentado,
+	// se queda quieto. Si el dueño se desconecta, deambula (al reconectar, el
+	// follow se restaura en la Fase 12 D con ownerName persistido).
+	tickCat(_nearest, _dist) {
+		if (this.sitting) {
+			this.state = "sit";
+			this.settleOnGround();
+			return;
+		}
+		const owner = this.ownerId ? players.get(this.ownerId) : null;
+		if (owner) {
+			const od = this.distTo(owner);
+			this.state = "follow";
+			// Seguir al dueño: acercarse hasta ~2 bloques y quedarse.
+			if (od > 2.5) this.moveToward(owner, 0.05);
+			else this.settleOnGround();
+			return;
+		}
+		this.state = "idle";
+		this.wander();
+	}
+
+	// Mascota genérica (lobo domado A1 / gato A3): sigue al dueño; si está
+	// sentada, no sigue ni ataca. El ataque al objetivo del dueño lo dispara
+	// net.js (petsJoinAttack) — aquí solo el seguimiento.
+	tickPet(_nearest, _dist) {
+		if (this.sitting) {
+			this.state = "sit";
+			this.settleOnGround();
+			return;
+		}
+		const owner = this.ownerId ? players.get(this.ownerId) : null;
+		if (owner) {
+			const od = this.distTo(owner);
+			this.state = "follow";
+			if (od > 3) this.moveToward(owner, 0.05);
+			else this.settleOnGround();
+			return;
+		}
+		this.state = "idle";
+		this.wander();
+	}
+
+	// Slime (A2): salta en vez de caminar. Ciclo de salto simple con
+	// "gravedad" (sube y cae), avanza hacia el jugador en el aire y ataca por
+	// tamaño (3/2/0). No sufre daño de caída (los mobs no tienen daño de
+	// caída en este clon — verify: no hay applyFallDamage para mobs).
+	tickSlime(_isNight, nearest, dist) {
+		// Salto: fase periódica determinista por tick (no Math.random para
+		// que el movimiento sea estable en tests).
+		const hopPhase = (Date.now() % 1200) / 1200; // 0..1 cada 1.2s
+		if (!this.slimeHopY) this.slimeHopY = this.y;
+		// Altura del salto: parábola de hop (0..0.5 bloques sobre el suelo).
+		const hop = Math.sin(hopPhase * Math.PI) * 0.5;
+		// Suelo real: getHeight de la columna (el slime salta sobre el terreno).
+		const groundY = world.getHeight(Math.floor(this.x), Math.floor(this.z)) + 1;
+		this.y = groundY + hop;
+		if (nearest && dist < 10) {
+			// Avanzar hacia el jugador (movimiento horizontal en el aire).
+			const dx = nearest.x - this.x,
+				dz = nearest.z - this.z;
+			const len = Math.hypot(dx, dz);
+			if (len > 0.4) {
+				this.x += (dx / len) * 0.05;
+				this.z += (dz / len) * 0.05;
+			}
+			this.state = "chase";
+			// Daño por tamaño (MC real): grande 3, mediano 2, pequeño 0.
+			const dmg = SLIME_DAMAGE[this.slimeSize] || 0;
+			if (dist < 1.8 && dmg > 0) this.attack(nearest, dmg, 1000);
+		} else {
+			// Deambular saltando (sin jugador cerca o de día en superficie).
+			this.wander();
+			this.state = "idle";
+		}
+	}
+
+	// Ahogado (A4): nada hacia el jugador en 3D (mantiene la profundidad del
+	// agua, sube/baja según la posición del objetivo), ataca cuerpo a cuerpo
+	// a ≤1.5 y lanza tridentes con cooldown (~3s) si el jugador está a 4-14
+	// bloques (~50% por intento). No se ahoga (no hay sistema de ahogo de
+	// mobs) y no arde (no está en BURNS_IN_SUN).
+	tickDrowned(_isNight, nearest, dist) {
+		if (nearest && dist < 16) {
+			this.state = "chase";
+			// Nadar: moverse en 3D hacia el jugador — horizontal igual que el
+			// resto de hostiles, vertical hacia la profundidad del objetivo
+			// (sin salirse del agua: techo en SEA_LEVEL - 1).
+			this.chase(nearest, 0.04);
+			const targetY = Math.min(
+				Math.max(1, nearest.y - 1.5),
+				world.SEA_LEVEL - 1
+			);
+			if (Math.abs(this.y - targetY) > 0.5) {
+				this.y += Math.sign(targetY - this.y) * 0.04;
+			}
+			if (dist < 1.5) this.attack(nearest, 3, 1200);
+			// Tridente arrojadizo: cooldown ~3s y ~50% de intentar si el jugador
+			// está a 4-14 bloques (E4).
+			if (
+				dist >= 4 &&
+				dist <= 14 &&
+				Date.now() > this.shootCooldown &&
+				Math.random() < 0.5
+			) {
+				shootTrident(this, nearest);
+				this.shootCooldown = Date.now() + 3000;
+			}
+		} else {
+			this.state = "idle";
+			this.wander();
+		}
+	}
 }
 
 // ============================================================
@@ -661,6 +943,93 @@ const SPAWN_TYPES = {
 		"bee"
 	]
 };
+
+// ============================================================
+// FASE 12 (Bloque A): helpers de los mobs por bioma
+// ============================================================
+
+// ¿Hay un gato DOMADO (ocelote domesticado con dueño) a ≤radius del punto?
+// El gato espanta a los creepers (A3, E9): a 6 bloques, el creeper entra en
+// huida en vez de perseguir/explosionar.
+function catNearby(x, z, radius = 6) {
+	for (const m of state.mobs) {
+		if (!m.alive || m.type !== "cat" || !m.ownerId) continue;
+		if (Math.hypot(m.x - x, m.z - z) <= radius) return true;
+	}
+	return false;
+}
+
+// División del slime al morir (A2, E2): grande (2) → 2 medianos (1) →
+// 2 pequeños (0); el pequeño no divide. Los hijos se crean desplazados ±1
+// bloque en X (si el suelo lo permite) y con la salud de su tamaño.
+function splitSlime(mob) {
+	const kids = [];
+	if (mob.type !== "slime" || mob.slimeSize <= 0 || !mob.alive) return kids;
+	const childSize = mob.slimeSize - 1;
+	for (const dir of [-1, 1]) {
+		const nx = mob.x + dir;
+		const groundY = world.getHeight(Math.floor(nx), Math.floor(mob.z));
+		// Solo si la celda de destino no está bloqueada por un sólido.
+		if (
+			isSolidBlock(
+				world.getBlock(Math.floor(nx), groundY + 1, Math.floor(mob.z))
+			)
+		)
+			continue;
+		const child = new Mob("slime", nx, groundY + 1.05, mob.z);
+		child.slimeSize = childSize;
+		child.health = SLIME_HEALTH[childSize];
+		state.mobs.push(child);
+		kids.push(child);
+	}
+	return kids;
+}
+
+// ¿Se puede domesticar a este mob con el ítem? 'ok' o el motivo del rechazo
+// (A1/E1 lobo con hueso; A3/E3 ocelote con pescado crudo).
+function canTame(mob, itemId) {
+	if (mob.ownerId) return "owned";
+	if (mob.type === "wolf") return itemId === I.BONE ? "ok" : "wrongfood";
+	if (mob.type === "ocelot") return itemId === I.COD ? "ok" : "wrongfood";
+	return "notameable";
+}
+
+// Intenta domesticar: probabilidad ~33% por ítem (MC real). En éxito, el
+// ocelote se vuelve gato (type "cat", textura propia) y ambos reciben
+// ownerId/ownerName. Devuelve true/false (el consumo del ítem y los
+// corazones los gestiona net.js).
+function applyTame(mob, player) {
+	if (Math.random() >= 1 / 3) return false;
+	mob.ownerId = player.id;
+	mob.ownerName = player.name;
+	if (mob.type === "ocelot") mob.type = "cat";
+	return true;
+}
+
+// Alterna el estado sentado de una mascota (clic derecho con la mano vacía).
+// Devuelve el nuevo estado (net.js valida propiedad y distancia).
+function sitPet(mob) {
+	mob.sitting = !mob.sitting;
+	return mob.sitting;
+}
+
+// Las mascotas del jugador se unen a su ataque (A1/E10): cuando el dueño
+// ataca a un mob, los lobos domados con ownerId y a ≤12 bloques del objetivo
+// golpean también (daño 3, como el lobo hostil). Devuelve cuántos golpearon.
+function petsJoinAttack(target, player) {
+	let n = 0;
+	for (const m of state.mobs) {
+		if (!m.alive || m.ownerId !== player.id || m.sitting) continue;
+		if (m.type !== "wolf") continue; // solo los lobos atacan (el gato no)
+		// Distancia 3D: un lobo a 12 bloques lateralmente pero muy por debajo
+		// (cueva) no debe "golpear" a través del terreno (revisión Fase 12).
+		if (Math.hypot(m.x - target.x, m.y - target.y, m.z - target.z) > 12)
+			continue;
+		target.health -= 3;
+		n++;
+	}
+	return n;
+}
 
 function spawnMobs(isNight) {
 	if (state.mobs.length > 30 || players.size === 0) return [];
@@ -741,7 +1110,13 @@ function mobSnapshot(m) {
 		burning: m.burning,
 		// Fase 9 (Bloque D): creeper en fuse (silbando antes de explotar) — el
 		// cliente escala el mob para la animación.
-		fuse: m.state === "fuse" ? 1 : 0
+		fuse: m.state === "fuse" ? 1 : 0,
+		// Fase 12 (Bloque A): mascotas y tamaño del slime —
+		// ownerId: el cliente pinta el collar rojo del lobo y la textura de
+		// gato según el dueño; slimeSize: escala del slime (2/1/0 → 2/1/0.5).
+		ownerId: m.ownerId || null,
+		sitting: !!m.sitting,
+		slimeSize: m.slimeSize ?? 2
 	};
 }
 
@@ -764,7 +1139,12 @@ const OTHER_DROPS = {
 	spider: { id: I.STRING, min: 0, max: 2 },
 	cow: { id: I.LEATHER, min: 0, max: 2 },
 	rabbit: { id: I.LEATHER, min: 0, max: 1 },
-	skeleton: { id: I.BONE, min: 0, max: 2 }
+	skeleton: { id: I.BONE, min: 0, max: 2 },
+	// Fase 12 (Bloque A): slime → slimeball (0-1, solo el pequeño lo suelta)
+	// y ahogado → tridente (~15%, roll explícito en mobDrops — la tabla
+	// 0..1 daría 50%).
+	slime: { id: I.SLIME_BALL, min: 0, max: 1 },
+	drowned: { id: I.TRIDENT, min: 0, max: 1 }
 };
 
 // Devuelve [{ id, count }] para el tipo o null si no dropea nada. Un mob
@@ -772,9 +1152,15 @@ const OTHER_DROPS = {
 // Minecraft). Los bebés no sueltan nada.
 function mobDrops(mob) {
 	if (mob.isBaby) return null;
+	// Fase 12 (A2): solo el slime PEQUEÑO suelta slimeball (el grande y el
+	// mediano se dividen, no dropean — como Minecraft).
+	if (mob.type === "slime" && mob.slimeSize !== 0) return null;
 	const drops = [];
 	for (const table of [FOOD_DROPS[mob.type], OTHER_DROPS[mob.type]]) {
 		if (!table) continue;
+		// Fase 12 (A4): el tridente del ahogado cae ~15% (roll explícito; el
+		// rango 0..1 de la tabla daría 50%).
+		if (table.id === I.TRIDENT && Math.random() >= 0.15) continue;
 		const count =
 			table.min + Math.floor(Math.random() * (table.max - table.min + 1));
 		if (count > 0) drops.push({ id: table.id, count });
@@ -863,6 +1249,12 @@ function restoreMobs(list) {
 		mob.health = m.health;
 		mob.isBaby = !!m.isBaby;
 		mob.age = m.age || 0; // retrocompatible: faltan en guardados viejos
+		// Fase 12 (A): restaurar tamaño de slime y mascotas (persistencia
+		// completa en el Bloque D; aquí se conserva lo que venga del meta).
+		if (typeof m.slimeSize === "number") mob.slimeSize = m.slimeSize;
+		if (typeof m.ownerId === "string") mob.ownerId = m.ownerId;
+		if (typeof m.ownerName === "string") mob.ownerName = m.ownerName;
+		mob.sitting = !!m.sitting;
 		return mob;
 	});
 }
@@ -903,5 +1295,17 @@ module.exports = {
 	setSpawnSafeRadius,
 	tickArrows,
 	arrowSnapshot,
-	BEE_HEALTH
+	BEE_HEALTH,
+	// Fase 12 (Bloque A): mobs por bioma y mascotas
+	canTame,
+	applyTame,
+	sitPet,
+	catNearby,
+	splitSlime,
+	petsJoinAttack,
+	shootTrident,
+	throwPlayerTrident,
+	// Fase 12 (Bloque B): trampa del templo — las flechas del dispensador
+	// reusan shootArrow con un shooter sintético (from: null → dañan a todos).
+	shootArrow
 };

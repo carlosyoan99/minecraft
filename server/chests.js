@@ -38,16 +38,49 @@ const LOOT_TABLE = [
 	[I.HONEY, 1, 1]
 ];
 
-// Devuelve un array de CHEST_SLOTS slots con loot aleatorio (1-3 stacks).
-function lootSlots() {
+// Fase 12 (Bloque B): tablas de loot de las estructuras nuevas.
+// Templo de jungla — tesoro de la selva: oro/esmeralda, hierro, huesos y un
+// tridente raro. Naufragio — botín marino: hierro, oro, pescado crudo, pan y
+// un tridente raro.
+const TEMPLE_LOOT_TABLE = [
+	[I.GOLD_INGOT, 1, 3],
+	[I.EMERALD, 1, 2],
+	[I.IRON_INGOT, 1, 4],
+	[I.BONE, 2, 5],
+	[I.TRIDENT, 1, 1]
+];
+const SHIPWRECK_LOOT_TABLE = [
+	[I.IRON_INGOT, 1, 3],
+	[I.GOLD_INGOT, 1, 2],
+	[I.COD, 1, 2],
+	[I.BREAD, 1, 2],
+	[I.TRIDENT, 1, 1]
+];
+
+// Genera slots de loot (1-3 stacks) desde una tabla [id, min, max].
+function lootSlotsFrom(table) {
 	const slots = new Array(CHEST_SLOTS).fill(null);
 	const n = 1 + Math.floor(Math.random() * 3); // 1..3 stacks
 	for (let i = 0; i < n; i++) {
-		const [id, min, max] =
-			LOOT_TABLE[Math.floor(Math.random() * LOOT_TABLE.length)];
+		const [id, min, max] = table[Math.floor(Math.random() * table.length)];
 		slots[i] = { id, count: min + Math.floor(Math.random() * (max - min + 1)) };
 	}
 	return slots;
+}
+
+// Devuelve un array de CHEST_SLOTS slots con loot aleatorio (1-3 stacks).
+function lootSlots() {
+	return lootSlotsFrom(LOOT_TABLE);
+}
+
+// Loot del cofre central del templo de jungla (Fase 12, B1).
+function templeLootSlots() {
+	return lootSlotsFrom(TEMPLE_LOOT_TABLE);
+}
+
+// Loot de los cofres del naufragio (Fase 12, B2).
+function shipwreckLootSlots() {
+	return lootSlotsFrom(SHIPWRECK_LOOT_TABLE);
 }
 
 function getOrCreateChest(key) {
@@ -80,5 +113,7 @@ module.exports = {
 	getOrCreateChest,
 	chestSnapshot,
 	restoreChests,
-	lootSlots
+	lootSlots,
+	templeLootSlots,
+	shipwreckLootSlots
 };

@@ -26,6 +26,10 @@ const timeOffset = 0; // Fase 6: desplazamiento del reloj del mundo (ms) para /t
 // daño aplicado). Lo alimenta players.logDamage y lo inspeccionan los tests
 // headless para diagnosticar la pérdida de vida "sin causa".
 const damageLog = [];
+// Fase 12 (Bloque B): cooldowns de las trampas de los templos — clave
+// "cx,cz" del centro del templo → timestamp del último disparo (evita que
+// un jugador parado en el pasillo reciba un aluvión de flechas por tick).
+const templeTrapCooldowns = new Map();
 
 module.exports = {
 	chunks,
@@ -37,5 +41,6 @@ module.exports = {
 	arrows,
 	dirtyChunks,
 	timeOffset,
-	damageLog
+	damageLog,
+	templeTrapCooldowns
 };

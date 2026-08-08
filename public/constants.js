@@ -249,7 +249,10 @@ export const ITEM_NAMES = {
 	241: "Azada de piedra",
 	242: "Azada de hierro",
 	243: "Azada de oro",
-	244: "Azada de diamante"
+	244: "Azada de diamante",
+	// Fase 12 (Bloque A): ítems de los mobs por bioma
+	245: "Tridente", // drop del ahogado; arma arrojadiza (clic derecho lanza)
+	246: "Bola de slime" // drop del slime pequeño
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
