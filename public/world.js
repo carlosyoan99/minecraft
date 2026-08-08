@@ -1222,9 +1222,12 @@ export function hasTorchNear(wx, wy, wz) {
 		y1 = wy + r;
 	for (const t of torchSet.values()) {
 		if (
-			t[0] >= x0 && t[0] <= x1 &&
-			t[1] >= y0 && t[1] <= y1 &&
-			t[2] >= z0 && t[2] <= z1
+			t[0] >= x0 &&
+			t[0] <= x1 &&
+			t[1] >= y0 &&
+			t[1] <= y1 &&
+			t[2] >= z0 &&
+			t[2] <= z1
 		)
 			return true;
 	}
