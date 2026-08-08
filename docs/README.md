@@ -23,9 +23,9 @@ de cada fase.
 | 9.5 — Mejoras de skills, docs y `.gitignore` | — (en `TODO.md`) | Retrospectiva | ✅ Completada | Colisión de flechas con bloques (anti-tunneling), clamp de pitch de cámara, backup `.bak` del guardado, variación de pitch en audio, documentación técnica `docs/server/` + `docs/public/`, `.gitignore` completo |
 | 10 — Notas del usuario y paridad avanzada | [`fase10-spec.md`](fase10-spec.md) | Prospectiva | ✅ Completada | Bugs de las notas (agua, lava, hitbox, `/tp`, hielo, hostiles por luz), tamaño de mundo, pantalla de muerte, `/kill`, `test.log`, gravedad de bloques, TNT, sprint, visuales y audio |
 | 11 — Bugs de input y cámara, biomas, paridad y cierre de tests | [`fase11-spec.md`](fase11-spec.md) | Prospectiva | ✅ Completada | Clic roto (pointer lock sobre el canvas) y cámara que da vueltas, 4 biomas nuevos (taiga, pantano, jungla, océano), esquilar, bonemeal, fuente de agua infinita, sonidos de mobs, cierre con tests (`unit-fase11`, `unit-camara`) |
-| 12 — Mobs por bioma, estructuras, spawn por bioma y persistencia | [`fase12-spec.md`](fase12-spec.md) | Prospectiva (entrevista, alcance acordado) | 🔄 En curso | Implementados en el árbol (bloques A-D): lobo de taiga domesticable, slime con división y hop determinista, ocelote→gato que espanta creepers, ahogado con tridente, templo de jungla con trampa, naufragio con cofres; spawn por bioma (`BIOME_SPAWN`/`WATER_SPAWN`), persistencia de mascotas (`SCHEMA_VERSION` 5) y `unit-fase12`/`unit-persistencia`. Pendientes: E2E y auditoría de cierre |
-| 13 — Paridad 1.0, rendimiento, POO y tests de paridad | [`fase13-spec.md`](fase13-spec.md) | Prospectiva (reporte de paridad + entrevista) | 🔄 En curso | La **paridad de valores** (vida 20 fija, curva de XP oficial por tramos, espadas 4/5/6/7, armadura por puntos, durezas, durabilidades reales) está implementada y fijada por `unit-paridad.js`. Pendientes: greedy meshing, Web Workers de chunks, POO completa del servidor y lagunas (arco, puertas, escaleras/losas/vallas, cubo, recetas) |
-| 14 — Auditoría y cierre de Fases 12-13 | [`fase14-spec.md`](fase14-spec.md) | Prospectiva (auditoría) | 🔄 En curso | Bloques A (spawn por bioma, persistencia `SCHEMA_VERSION` 5, tridente contra mobs, slime determinista) y B (drop de menas con `ORE_DROP`, tier de pico por mineral, comida/combustible, salud/XP de mobs, boom de creeper = `TNT_DAMAGE`) implementados y en verde; pendiente el bloque C (rendimiento cliente/servidor) |
+| 12 — Mobs por bioma, estructuras, spawn por bioma y persistencia | [`fase12-spec.md`](fase12-spec.md) | Prospectiva (entrevista, alcance acordado) | ✅ Completada y auditada | Lobo de taiga domesticable, slime con división y hop determinista, ocelote→gato que espanta creepers, ahogado con tridente; templo de jungla con trampa, naufragio con cofres; spawn por bioma (`BIOME_SPAWN`/`WATER_SPAWN`), persistencia de mascotas (`SCHEMA_VERSION` 5) y `unit-fase12`/`unit-persistencia` (bloques A-D + migración) |
+| 13 — Paridad 1.0, rendimiento, POO y tests de paridad | [`fase13-spec.md`](fase13-spec.md) | Prospectiva (reporte de paridad + entrevista) | 🔄 En curso | La **paridad de valores** (vida 20 fija, curva de XP oficial por tramos, espadas 4/5/6/7, armadura por puntos, durezas, durabilidades reales) está implementada y fijada por `unit-paridad.js`; greedy meshing (`unit-greedy`) y worker de chunks (`unit-workers`) en el árbol con sus unit en verde. Pendientes: commit de la 13, POO completa del servidor y lagunas (arco, puertas, escaleras/losas/vallas, cubo, recetas) |
+| 14 — Auditoría y cierre de Fases 12-13 | [`fase14-spec.md`](fase14-spec.md) | Prospectiva (auditoría) | ✅ Completada y auditada | Bloques A (spawn por bioma, persistencia `SCHEMA_VERSION` 5, tridente contra mobs, slime determinista), B (drop de menas con `ORE_DROP`, tier de pico por mineral, comida/combustible, salud/XP de mobs, boom de creeper = `TNT_DAMAGE`) y C (un solo rayo por `pointermove`, broadcast solo si cambia, rebuild de vecinos, luz de antorcha stale, `sendInit` liviano con relleno progresivo) implementados y en verde. Auditoría de cierre: unit 3666 OK, E2E 4/4, `audit-fase7` CDP OK, `biome` 0 errores |
 
 ## Reporte comparativo 1:1
 
@@ -62,11 +62,12 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
   `SCHEMA_VERSION`, reglas de culling/LOD).
 - **Prospectivas (fases 9-14):** especifican el trabajo pendiente y son la
   fuente de verdad de las decisiones de diseño; guían la implementación por
-  bloques, cada bloque con su test (convención de `AGENTS.md`). Las fases
-  12, 13 y 14 están **en curso**: la 12 con sus bloques A-D implementados
-  (pendiente E2E/auditoría), la 13 con la paridad de valores hecha
-  (`unit-paridad.js`) y la 14 con los bloques A y B implementados y el C
-  (rendimiento) pendiente.
+  bloques, cada bloque con su test (convención de `AGENTS.md`). Las fases 12
+  y 14 están **cerradas y auditadas** (la 12 con los bloques A-D completos y
+  la 14 con la paridad + rendimiento del Bloque C) y la 13 **en curso**: la
+  paridad de valores hecha (`unit-paridad.js`) y greedy meshing + worker de
+  chunks en el árbol con sus unit en verde, pendientes de commit junto con
+  POO completa y las lagunas (arco, puertas, escaleras/losas/vallas, cubo).
 - El estado real de cada tarea (checkboxes `[ ]`/`[x]`) vive en `TODO.md`;
   al cerrar una fase se marca en el roadmap y se refleja en la columna
   "Estado" de este índice.

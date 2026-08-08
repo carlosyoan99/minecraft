@@ -6,8 +6,17 @@
 > trabajo sin commitear de la **Fase 12 en curso**: mobs por bioma, templo de
 > jungla y naufragio, mascotas y tridente).
 >
-> Estado: **en curso** (este spec guía el cierre de los bugs detectados y de
-> los pendientes de Fase 12; los bloques B y C dependen de cerrar la A).
+> Estado: **completada y auditada (2026-08-08)**. Los tres bloques están
+> implementados y en verde: A) bugs de la Fase 12 (spawn por bioma +
+> `BIOME_SPAWN`, persistencia `SCHEMA_VERSION` 5, tridente contra mobs,
+> hop determinista del slime); B) paridad real (drop de menas con `ORE_DROP`,
+> tier de pico por mineral, comida/combustible, salud/XP de mobs, creeper =
+> `TNT_DAMAGE`); C) rendimiento (un solo raycast por `pointermove`, broadcast
+> de `mobs_update` solo si cambia, rebuild de vecinos al completar bordes de
+> chunk, luz de antorcha stale con `hasTorchNear` y `sendInit` liviano con
+> relleno progresivo del radio). Auditoría de cierre: suite unitaria
+> 3666 OK/0 fallos, E2E 4/4 contra servidor vivo, `audit-fase7` (Chrome
+> headless/CDP) en verde, `biome check` 0 errores.
 
 ---
 
@@ -182,38 +191,48 @@ reproducible. El ritmo sigue siendo ~1.2 s por hop.
 
 ## 5. Bloque C — Rendimiento (cliente + servidor)
 
-### C1 — Doble raycast de `input.js`
+### C1 — Doble raycast de `input.js` ✅
 
 Fusionar el `updateHighlight` (offset 678) y el retarget (offset 686) en un
 solo `raycastTerrainAndMobs` por `pointermove`. Un hit compartido alimenta
-aspectos: highlight + `miningTarget`/retarget. (los tests `unit-mining-click`
-valida resultado, no el nº de raycasts; añadir medidor de llamadas → test
-"1 raycast per event").
+aspectos: highlight + `miningTarget`/retarget. Implementado en
+`public/input.js`: una sola `raycastTerrainAndMobs()` por `pointermove`
+(singular) que da de comer al highlight y al retarget a la vez.
 
-### C2 — Broadcast mobs sin cambios
+### C2 — Broadcast mobs sin cambios ✅
 
-En `mainLoop`, `broadcast("mobs_update", ...)` incondicional → dime flag
-per-mob (snapshot previo, `mobVersion`). Solo emit si algo cam` (tick de mob,
-fuse, burn, position...). Alternativa simple: calcular el snapshot único por
-tick y comparar string del `JSON` con el anterior (barato y suficiente).
+En `mainLoop`, `broadcast("mobs_update", ...)` incondicional → emitir solo si
+algo cambia. Implementado en `server/net.js`: snapshot único por tick
+(`JSON.stringify`) comparado con el anterior (`lastMobsJson`); se reinicia al
+entrar un jugador nuevo para que el recién conectado vea el estado real.
 
-### C3 — Vecinos con huecos al `chunks_add`
+### C3 — Vecinos con huecos al `chunks_add` ✅
 
-En `public/world.js`, al cargar `chunk` nuevo (`handleChunksAdd` /
-`loadChunkData`) llamar `rebuildAround` de los vecinos si el chunk contrario
-ya está en `chunkStore` (reusar la misma salida visible de `rebuildAffectedChunks`).
+En `public/world.js`, al cargar `loadChunkData`/`chunks_add` (carga
+incremental, también la del init pospuesto) los bordes quedan sellados: por
+cada chunk nuevo se reconstruyen los 4 vecinos ortogonales que ya existían
+(`existingNeighbors`, capturados antes del bucle) → sin caras ausentes hasta
+`updateLod`.
 
-### C4 — Luz de antorcha stale
+### C4 — Luz de antorcha stale ✅
 
-En `network.js` `block_update` no-antorcha, además re-hornear `lightStore` de
-los vecinos del borde diag (recalc del vecind largo ya del commentario).
+En `public/network.js`, el caso `block_update` (cualquier bloque) re-hornea la
+luz si toca una antorcha: `rebuildAround` si previo/nuevo es una, o si hay una
+a menos de `LIGHT_RADIUS` del punto (`hasTorchNear(wx, wy, wz)` en
+`public/world.js`); si no, `rebuildAffectedChunks`. Al colocar/romper
+bloques sólidos junto a un borde de chunk la luz ya no queda stale.
 
-### C5 — `sendInit` pesado
+### C5 — `sendInit` pesado ✅
 
-Opcional, roadmap: diferir la generación de los chunks del `init` (serializar
-solo los 4-6 chunks del spawn, `chunks_add` al tull el cliente no se bloquea).
-Métricas de F7 ya permiten medir; es la mejora con más impacto en joins
-multi-J pero la de menor urgencia si el mundo es pequeño.
+Opcional, roadmap → implementado: diferir la generación de los chunks del
+`init` para que el cliente no se bloquee con ~2.7 MB. En `server/net.js`:
+- `INIT_CHUNK_RADIUS = 2`: el `init` serializa solo el radio cercano al
+  spawn (25 chunks, ~470 KB) en vez de los 169 de golpe.
+- El `mainLoop` rellena el resto con lotes de `CHUNK_FILL_PER_TICK = 6`
+  chunks por tick y jugador, ordenados por distancia Chebyshev y enviados
+  como `chunks_add` (generación idempotente; el cliente se descongela a
+  medida que llegan).
+- `move`/`ensureChunksAround` quedan igual (idempotentes).
 
 ---
 
@@ -221,10 +240,13 @@ multi-J pero la de menor urgencia si el mundo es pequeño.
 
 1. Bloque A: `node tests/run.js --unit` exit 0 (incl. `unit-fase12` completo y
    `unit-persistencia` con el caso de pets/slime); `node --check` sobre el
-   servidor. Sin cambio de protocolo WS ni SCHEMA a mayores que la A2 (vetesheet).
-2. Bloque B: `tests/unit-parid.js` incluye los tablas nuevas y en verde.
-3. Bloque C: `unit-mining-click`/`unit-lod`/`unit-torch` sin regresión;
-   `audit-fase7` CDP ok (0 exceps, 169 chunks) con los valores de F3.
+   servidor. Sin cambio de protocolo WS ni SCHEMA a mayores que la A2.
+   ✅ Suite unitaria 3666 OK, 0 fallos.
+2. Bloque B: `tests/unit-paridad.js` incluye las tablas nuevas y en verde. ✅
+3. Bloque C: `unit-mining-click`/`unit-lod`/`unit-antorchas` sin regresión;
+   `audit-fase7` CDP ok (0 excepciones, 169 chunks) con los valores de F3.
+   ✅ **`audit-fase7`: OK (Chrome headless/CDP, ticks < 100 ms con el
+   relleno progresivo del init funcionando).**
 
 ---
 

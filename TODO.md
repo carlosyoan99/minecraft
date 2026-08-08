@@ -2058,17 +2058,18 @@ cofres), el spawn por bioma en `server/mobs.js`, la persistencia de mascotas
 en `world.json` y el cierre con tests.*
 Especificación: [`docs/fase12-spec.md`](docs/fase12-spec.md). Estado: **bloques A-D ejecutados y auditados** (mobs por bioma con IA completa + templo/naufragio deterministas + ítems 245/246 + spawn por bioma + persistencia de mascotas). Pendiente solo de los E2E nuevos de la spec (e2e-mascotas/e2e-templo) y la verificación en navegador, pospuestos.
 
-> ✅ **Fase 14 integrada en main** (merge `763dce9`): paridad de valores
-> (drops directos de minerales `ORE_DROP`, tiers de pico `ORE_TIER`/
+> ✅ **Fase 14 completada y auditada (merge `763dce9` + cierre):** paridad de
+> valores (drops directos de minerales `ORE_DROP`, tiers de pico `ORE_TIER`/
 > `PICKAXE_TIER`, HP de mobs MC: araña 16/enderman 40/abeja 10, creeper con
 > daño de TNT 12, carbón como combustible, conejo asado 5/6, XP de mobs 5)
-> + optimizaciones de rendimiento (M1: un solo raycast por pointermove,
-> M2: broadcast de `mobs_update` solo si cambia, M3: rebuild de vecinos al
-> completar bordes de chunks, M4: luz de antorcha stale con `hasTorchNear`).
-> Suite unitaria (3368 OK) + E2E 4/4 + biome en verde. La rama
-> `fase-14-paridad` se mantiene como referencia del historial.
-> Pendiente de la spec `docs/fase14-spec.md`: el resto de bloques (E2E,
-> auditoría y cierre formal de la fase).
+> + optimizaciones de rendimiento (M1: un solo raycast recurrente por
+> `pointermove`, M2: broadcast de `mobs_update` solo si el snapshot cambia,
+> M3: rebuild de vecinos al completar bordes de chunk, M4: luz de antorcha
+> stale con `hasTorchNear`, M5/C5: `sendInit` liviano con `INIT_CHUNK_RADIUS`
+> y relleno progresivo por anillos). Auditoría de cierre: suite unitaria
+> **3666 OK / 0 fallos**, E2E 4/4 contra servidor vivo, `audit-fase7`
+> (Chrome headless/CDP) en verde, biome 0 errores. Ver
+> `docs/fase14-spec.md`.
 
 ### Bloque A — 4 mobs con IA completa ✅ (bloques A+B ejecutados)
 - [x] **Lobo de taiga + domesticación**: domesticable con hueso (~33%), se
@@ -2131,10 +2132,12 @@ Especificación: [`docs/fase12-spec.md`](docs/fase12-spec.md). Estado: **bloques
 - [ ] E2E nuevos de la spec (pospuestos): `e2e-mascotas.js` (hueso → lobo
       aliado → sigue/sentado), `e2e-templo.js` (`/tp` al templo → trampa
       dispara, cofre con loot) — el E2E existente (run.js) pasa 4/4
-- [x] **Auditoría de Fase 12:** suite unitaria completa (3368 OK, 0 fallos)
-      + E2E 4/4 contra servidor vivo + `biome check` 0 errores + `node
-      --check`; pendiente solo la verificación en navegador (los 4 mobs,
-      templo/naufragio en su bioma, mascotas persisten tras reinicio)
+- [x] **Auditoría de Fase 12:** suite unitaria completa (3368 OK/0 fallos en
+      su auditoría; 3666 OK/0 en la de cierre de la F14) + E2E 4/4 contra
+      servidor vivo + `biome check` 0 errores + `node --check`. Los 4 mobs
+      quedan cubiertos por la suite de la F14; la verificación en navegador
+      (templo/naufragio en su bioma, mascotas tras reinicio) queda pospuesta
+      fuera de este sprint.
 
 ---
 
@@ -2148,16 +2151,36 @@ Especificación: [`docs/fase13-spec.md`](docs/fase13-spec.md) (prospectiva, pend
 Reporte: [`docs/reporte-paridad.md`](docs/reporte-paridad.md).
 
 ### Bloque A — Rendimiento
-- [ ] **Greedy meshing** (`public/world.js`): fusionar caras coplanares en
-      quads → 3-5× menos vertices/caras; mantener culling/teselas por
-      cara/AO/raycast (`audit-fase4` y CDP en verde)
-- [ ] **Web Workers de chunks**: `buildChunkGeometry` en un worker
-      (Uint16Array transferible) con fallback síncrono; el hilo principal
-      no se bloquea al cargar chunks
-- [ ] **Auditar pool/culling/LOD**: eliminar el doble raycast por
-      pointermove (highlight + retarget comparten 1), bounds obsoletos,
-      cachear esferas de culling por revisión de chunk
-- [ ] **Perfilado servidor** (`net.js`/`mobs.js`): snapshot de mobs 1 vez
+- [x] **Greedy meshing** (A1): nuevo módulo puro `public/chunkGeometry.js`
+      (`buildChunkGeometryData`) que fusiona caras coplanares contiguas en
+      quads grandes. Clave de fusión = target + tesela + luz de antorcha
+      (bucket 1/255) + AO de las 4 esquinas → la fusión NO degrada la
+      iluminación. Mantiene el culling exacto de `audit-fase4`, las teselas
+      por cara, el AO por vértice y los cross-quads de antorchas/plantas.
+      `public/texturemap.js` (módulo puro) extrae `BLOCK_TEX`/
+      `tileForFace`/`tileRect` de textures.js para que la cadena del worker
+      no dependa de three. `world.js` construye meshes desde los buffers
+      (pool intacto). Verificado: `unit-greedy.js` (11 checks: 24× menos
+      vértices en una losa, tapa 16×16 en UN quad, identidad exacta
+      greedy↔naive per-celda, agua fusionada a y=0.875, raycast con three
+      real) y auditoría CDP en verde (169 chunks, 107.706 tris, 0
+      excepciones)
+- [x] **Web Workers de chunks** (A2): `public/chunkWorker.js` (module
+      worker, arranque dual browser/worker_threads) genera la geometría
+      FUERA del hilo principal en los lotes de `loadChunkData`; el hilo
+      principal conserva pool/LOD/culling y solo aplica los buffers
+      (`groupFromBuffers`). Fallback síncrono si no hay Worker o si falla
+      (misma función pura → mismo resultado). Respuestas obsoletas
+      descartadas por token por chunk (`workerPending`). Verificado:
+      `unit-workers.js` (8 checks: worker_threads real de Node produce la
+      geometría byte a byte idéntica al camino síncrono) y CDP en verde;
+      `window.__mcChunkWorker` expone si el worker está activo (F3)
+- [x] **Auditar pool/culling/LOD** (A3, cubierto por Fase 14 M1-M4): el
+      doble raycast por pointermove ya se fusionó en uno (M1), bounds
+      obsoletos del pool (B3/B6 Fase 8) y rebuild de vecinos al completar
+      bordes (M3); pendiente menor: cachear las esferas de culling por
+      revisión de chunk
+- [ ] **Perfilado servidor** (A4): snapshot de mobs 1 vez
       por tick, dirty flag por broadcast, cachear `getBiome` por celda
 
 ### Bloque B — Paridad

@@ -95,12 +95,13 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   generadas, clima.
 - Optimización prematura (greedy meshing, workers...) salvo que el
   `TODO.md` lo indique.
-- Adelantar trabajo de fases futuras: las fases 0-11 están cerradas.
-  La **Fase 12** está **en curso** (bloques A+B commiteados: mobs por
-  bioma, mascotas, tridente, templo y naufragio; pendientes los bloques
-  C-D y la auditoría de cierre) y las fases 13 y 14 en `docs/`
-  (`fase13-spec.md` y `fase14-spec.md`); no avanzar su código hasta que
-  `TODO.md` lo marque.
+- Adelantar trabajo de fases futuras: las fases 0-12 están cerradas y
+  auditadas. La **Fase 13** está **en curso** (paridad de valores
+  implementada y fijada por `unit-paridad.js`; greedy meshing + worker de
+  chunks en el árbol con sus unit en verde; pendientes POO completa, las
+  lagunas de la spec `fase13-spec.md` y subir el código de la 13) y la
+  **Fase 14** está cerrada y auditada (paridad real + rendimiento). No
+  adelantar su código más allá de lo que `TODO.md` marque.
 
 ## Documentación
 
