@@ -42,6 +42,7 @@ import {
 	showDeathScreen // Fase 10 (B2): pantalla de muerte con causa
 } from "./ui.js";
 import {
+	hasTorchNear, // Fase 14 (M4): luz de antorcha stale al cambiar bloques sólidos
 	hideCrackIfAt,
 	hotReloadTextures,
 	loadChunkData,
@@ -119,13 +120,19 @@ socket.addEventListener("message", (e) => {
 			// Fase 9 (Bloque F): tablas de recetas para el libro (crafteo + horno).
 			renderRecipeBook(data);
 			break;
-		case "block_update": {
+case "block_update": {
 			// Una antorcha colocada/rota cambia la luz de un radio 7: el radio cruza
 			// las fronteras de chunk, así que hay que re-hornear el vecindario 3x3
 			// (rebuildAround) y no solo el chunk + los vecinos pegados al borde
 			// (rebuildAffectedChunks). Sin esto la luz se cortaría en los bordes.
+			// Fase 14 (M4): un bloque NO-antorcha sólido también altera la luz si
+			// hay una antorcha a ≤LIGHT_RADIUS (la BFS la propaga a través de la
+			// celda, incluso cruzando un borde de chunk → el vecino queda stale).
+			// Solo en ese caso se re-hornea el vec3; si no hay antorchas cerca,
+			// rebuildAffectedChunks (más barato) basta.
 			const prev = setClientBlock(data.x, data.y, data.z, data.block);
-			if (prev === TORCH || data.block === TORCH) rebuildAround(data.x, data.z);
+			if (prev === TORCH || data.block === TORCH || hasTorchNear(data.x, data.y, data.z))
+				rebuildAround(data.x, data.z);
 			else rebuildAffectedChunks(data.x, data.z);
 			hideCrackIfAt(data.x, data.y, data.z); // el bloque en mina se rompió
 			// Fase 7: partículas — romper (sólido → aire) o colocar (aire → bloque).
