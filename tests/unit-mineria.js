@@ -122,8 +122,9 @@ check(
 check("piedra con pico → drop", canHarvest(I.STONE_PICKAXE, B.STONE) === true);
 check("piedra a mano → sin drop", canHarvest(0, B.STONE) === false);
 check(
-	"mineral con pico → drop",
-	canHarvest(I.WOODEN_PICKAXE, B.DIAMOND_ORE) === true
+	"mineral con pico → drop (pico de hierro cosecha diamante, madera no)",
+	canHarvest(I.IRON_PICKAXE, B.DIAMOND_ORE) === true &&
+		canHarvest(I.WOODEN_PICKAXE, B.DIAMOND_ORE) === false
 );
 check(
 	"mineral con hacha → sin drop",
@@ -186,10 +187,10 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	for (let i = 0; i < 400 && !result; i++)
 		result = mining.tickMining(p, 20, world, playerHelpers, sendFn);
 	check(
-		"mineral con pico: bloque roto + drop + XP (ORE_XP)",
+		"mineral con pico: bloque roto + drop directo de carbón + XP (ORE_XP)",
 		result === "done" &&
 			world.getBlock(10, 5, 5) === B.AIR &&
-			p.inventory.some((s) => s && s.id === B.COAL_ORE) &&
+			p.inventory.some((s) => s && s.id === I.COAL) &&
 			p.xp === 1,
 		`xp=${p.xp}`
 	);

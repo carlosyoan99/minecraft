@@ -61,8 +61,8 @@ function resetPlayers() {
 // --- 1) Constructor: salud por tipo y estado inicial ---
 check("zombie 20 HP", new mobs.Mob("zombie", 0, 0, 0).health === 20);
 check(
-	"spider 12 HP (frágil pero rápida)",
-	new mobs.Mob("spider", 0, 0, 0).health === 12
+	"spider 16 HP (Fase 14, paridad MC)",
+	new mobs.Mob("spider", 0, 0, 0).health === 16
 );
 check("wolf 20 HP", new mobs.Mob("wolf", 0, 0, 0).health === 20);
 check("conejo 10 HP (pasivo)", new mobs.Mob("rabbit", 0, 0, 0).health === 10);
@@ -170,8 +170,8 @@ check(
 		`state=${c.state}`
 	);
 	check(
-		"explosión daña al jugador (10)",
-		p.health === 10,
+		"explosión daña al jugador (TNT_DAMAGE=12, Fase 14)",
+		p.health === 8,
 		`health=${p.health}`
 	);
 	check(

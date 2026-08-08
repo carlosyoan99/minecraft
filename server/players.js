@@ -15,6 +15,7 @@ const {
 	SPAWN_GRACE_MS,
 	GRAVITY,
 	ORE_XP,
+	ORE_DROP,
 	canHarvest,
 	FOOD_VALUES,
 	isFood,
@@ -130,6 +131,9 @@ function finishMining(player, x, y, z, block, opts = {}) {
 		let drop = block;
 		if (block === B.STONE) drop = B.COBBLESTONE;
 		if (block === B.GRASS) drop = B.DIRT;
+		// Fase 14 (Bloque B): los minerales sueltan su gema/lingote/carbón
+		// directamente (no el bloque de mena, que no es un ítem utilizable).
+		if (ORE_DROP[block]) drop = ORE_DROP[block];
 		addToInventory(player, drop, 1);
 		// La hierba también suelta comida de cría (semillas → pollo, trigo →
 		// vaca/oveja, zanahoria → cerdo), como en el handler original.

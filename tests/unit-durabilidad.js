@@ -7,16 +7,9 @@
 //  - Recetas: hilo(118) → lana y conejo crudo(118) → asado(119) en el horno.
 const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
-const {
-	TOOL_DURABILITY,
-	SWORD_DAMAGE,
-	isTool,
-	XP_PER_LEVEL,
-	MOB_XP,
-	ORE_XP,
-	B,
-	I
-} = require(path.join(ROOT, "server", "constants.js"));
+const { TOOL_DURABILITY, SWORD_DAMAGE, isTool, MOB_XP, ORE_XP, B, I } = require(
+	path.join(ROOT, "server", "constants.js")
+);
 const playersMod = require(path.join(ROOT, "server", "players.js"));
 const mobsMod = require(path.join(ROOT, "server", "mobs.js"));
 const crafting = require(path.join(ROOT, "server", "crafting.js"));
@@ -239,8 +232,8 @@ check(
 
 // 11) Salud por tipo
 check(
-	"spider 12 HP (frágil)",
-	new mobsMod.Mob("spider", 0, 64, 0).health === 12
+	"spider 16 HP (Fase 14: paridad MC)",
+	new mobsMod.Mob("spider", 0, 64, 0).health === 16
 );
 check("wolf 20 HP", new mobsMod.Mob("wolf", 0, 64, 0).health === 20);
 check(

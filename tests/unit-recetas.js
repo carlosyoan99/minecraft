@@ -265,21 +265,25 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 	);
 	// Lingotes: el mineral se dropea con pico y se funde en el horno.
 	check(
-		"hierro: mineral (10) con pico → horno → lingote (102)",
-		canHarvest(200, B.IRON_ORE) &&
+		"hierro: pico de piedra cosecha hierro (madera no) → lingote directo",
+		canHarvest(201, B.IRON_ORE) &&
+			!canHarvest(200, B.IRON_ORE) &&
 			horno[String(B.IRON_ORE)] &&
 			horno[String(B.IRON_ORE)].result.id === I.IRON_INGOT
 	);
 	check(
-		"oro: mineral (11) con pico → horno → lingote (103)",
-		canHarvest(200, B.GOLD_ORE) &&
+		"oro: pico de piedra cosecha oro (madera no) → lingote directo",
+		canHarvest(201, B.GOLD_ORE) &&
+			!canHarvest(200, B.GOLD_ORE) &&
 			horno[String(B.GOLD_ORE)] &&
 			horno[String(B.GOLD_ORE)].result.id === I.GOLD_INGOT
 	);
 	// Diamante: se mina directo con pico (no se funde, como Minecraft).
 	check(
-		"diamante (12) se mina directo con pico (sin horno)",
-		canHarvest(200, B.DIAMOND_ORE) && !horno[String(B.DIAMOND_ORE)]
+		"diamante: solo pico de hierro (drop directo, sin horno)",
+		canHarvest(202, B.DIAMOND_ORE) &&
+			!canHarvest(201, B.DIAMOND_ORE) &&
+			!horno[String(B.DIAMOND_ORE)]
 	);
 	// El combustible del horno (tronco/planks/palos) es obtenible desde la
 	// primera madera, así que la fundición nunca queda bloqueada.
@@ -291,11 +295,12 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 	// anterior (madera→piedra, piedra→hierro/oro/diamante) — ninguna
 	// herramienta queda inaccesible por falta de la anterior.
 	check(
-		"progresión de picos: madera→piedra→hierro/diamante (ninguna inaccesible)",
+		"progresión de picos: madera→piedra→hierro→diamante (ninguna inaccesible)",
 		canHarvest(200, B.STONE) &&
 			canHarvest(201, B.IRON_ORE) &&
-			canHarvest(201, B.DIAMOND_ORE) &&
-			canHarvest(202, B.DIAMOND_ORE)
+			!canHarvest(200, B.IRON_ORE) &&
+			canHarvest(202, B.DIAMOND_ORE) &&
+			!canHarvest(201, B.DIAMOND_ORE)
 	);
 }
 process.exit(fails ? 1 : 0);

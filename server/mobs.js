@@ -17,6 +17,7 @@ const {
 	NOT_MINEABLE,
 	WORLD_HEIGHT,
 	MOB_XP, // Fase 12 (A4): XP del mob asesinado con un proyectil
+	TNT_DAMAGE, // Fase 14 (Bloque B): el creeper explota con el daño del TNT
 	worldPaths
 } = require("./constants.js");
 
@@ -46,15 +47,16 @@ function setSpawnSafeRadius(r) {
 }
 
 // Salud por tipo (por defecto: hostiles 20, pasivos 10); la araña es frágil
-// pero rápida, el lobo es un hostil más resistente.
+// pero rápida, el lobo es un hostil más resistente. Fase 14 (Bloque B):
+// paridad real de MC — araña 16, abeja 10, enderman 40.
 const MOB_HEALTH = {
-	spider: 12,
+	spider: 16,
 	wolf: 20,
 	zombie: 20,
 	creeper: 20,
 	skeleton: 20,
-	enderman: 20,
-	bee: 5, // Fase 9 (Bloque F): pasivo volador frágil (versión simplificada)
+	enderman: 40,
+	bee: 10, // Fase 9 (Bloque F): pasivo volador (versión simplificada)
 	// Fase 12 (Bloque A): mobs por bioma. El slime usa SLIME_HEALTH por tamaño
 	// (16/4/1); el valor base es el del grande y splitSlime re-ajusta la salud.
 	slime: 16,
@@ -544,8 +546,9 @@ class Mob {
 		for (const p of players.values()) {
 			// Fase 8 (B2): telemetría — la explosión del creeper cuenta como daño
 			// de mob (mobType creeper) con su distancia.
+			// Fase 14 (Bloque B): el boom del creeper usa el daño del TNT.
 			if (this.distTo(p) < 3.5)
-				damagePlayer(p, 10, {
+				damagePlayer(p, TNT_DAMAGE, {
 					source: "mob",
 					meta: { mobType: "creeper", dist: this.distTo(p) }
 				});
