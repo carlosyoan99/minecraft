@@ -1384,12 +1384,22 @@ const perf = {
 	lastGenMs: 0
 };
 
+// Último snapshot serializado de mobs (Fase 14, M2): el broadcast de
+// mobs_update a 20 Hz era incondicional aunque nada hubiera cambiado entre
+// ticks. Ahora se serializa el snapshot una sola vez y solo se emite si el
+// JSON difiere del anterior (barato y suficiente: sin cambios → sin mensaje).
+let lastMobsJson = "";
 function mainLoop() {
 	const t0 = performance.now();
 	const isNight = worldTime() > DAY_CYCLE_MS / 2;
 	for (const m of state.mobs) if (m.alive) m.tick(isNight);
 	state.mobs = state.mobs.filter((m) => m.alive);
-	broadcast("mobs_update", state.mobs.map(mobs.mobSnapshot));
+	const mobsData = state.mobs.map(mobs.mobSnapshot);
+	const mobsJson = JSON.stringify(mobsData);
+	if (mobsJson !== lastMobsJson) {
+		lastMobsJson = mobsJson;
+		broadcast("mobs_update", mobsData);
+	}
 
 	// Fase 9 (Bloque D): proyectiles del esqueleto — avanzar física y enviar.
 	const arrows = mobs.tickArrows(TICK_MS);

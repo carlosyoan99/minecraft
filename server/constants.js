@@ -367,7 +367,15 @@ const isSolidBlock = (id) =>
 	id !== B.TORCH &&
 	id !== B.BED &&
 	!NON_SOLID_PLANTS.has(id);
-const FUEL_ITEMS = new Set([B.OAK_LOG, B.PLANKS, I.STICK]);
+const FUEL_ITEMS = new Set([
+	B.OAK_LOG,
+	B.BIRCH_LOG,
+	B.SPRUCE_LOG,
+	B.JUNGLE_LOG,
+	B.PLANKS,
+	I.COAL, // Fase 14 (Bloque B): el carbón también arde
+	I.STICK
+]);
 
 // ============================================================
 // COMIDA (valores de hambre y saturación por ítem, escala 0-20)
@@ -383,7 +391,8 @@ const FOOD_VALUES = {
 	[I.COOKED_CHICKEN]: { food: 6, saturation: 7.2 },
 	[I.COOKED_MUTTON]: { food: 6, saturation: 9.6 },
 	[I.RABBIT]: { food: 3, saturation: 1.8 },
-	[I.COOKED_RABBIT]: { food: 8, saturation: 12.8 },
+	// Fase 14 (Bloque B): conejo asado 5/6 (antes 8/12.8, igualaba al bistec).
+	[I.COOKED_RABBIT]: { food: 5, saturation: 6 },
 	// Fase 9 (Bloque F): pan y pescado (crudo/cocinado), valores estilo MC
 	[I.BREAD]: { food: 5, saturation: 6 },
 	[I.COD]: { food: 2, saturation: 0.4 },
@@ -522,6 +531,9 @@ function breakSeconds(tool, block) {
 // ¿Suelta drop con la herramienta/mano actual? (piedra/minerales: solo pico)
 // Fase 9 (Bloque C): la ESPADA no cosecha NADA (en Minecraft rompe bloques
 // pero no sueltan item) — el resto de herramientas cosechan lo suyo.
+// Fase 14 (Bloque B): los minerales además exigen un TIER mínimo de pico
+// (PICKAXE_TIER vs ORE_TIER): minerales de hierro/oro → pico de piedra,
+// redstone/diamante/esmeralda → pico de hierro.
 function canHarvest(tool, block) {
 	if (isSword(tool)) return false;
 	if (
@@ -530,7 +542,10 @@ function canHarvest(tool, block) {
 		block === B.MOSSY_COBBLESTONE
 	)
 		return isPickaxe(tool);
-	if (block >= B.COAL_ORE && block <= B.EMERALD_ORE) return isPickaxe(tool);
+	if (ORE_TIER[block] !== undefined) {
+		if (!isPickaxe(tool)) return false;
+		return (PICKAXE_TIER[tool] ?? 0) >= ORE_TIER[block];
+	}
 	if (block === B.GLASS) return false; // el vidrio no suelta item sin Silk Touch (simplificado)
 	return true;
 }
@@ -696,9 +711,9 @@ function xpIntoLevel(xp, level) {
 const MOB_XP = {
 	zombie: 5,
 	creeper: 5,
-	skeleton: 7,
-	enderman: 9,
-	spider: 7,
+	skeleton: 5, // Fase 14 (Bloque B): 5 (era 7)
+	enderman: 5, // Fase 14 (Bloque B): 5 (era 9)
+	spider: 5, // Fase 14 (Bloque B): 5 (era 7)
 	wolf: 8,
 	cow: 3,
 	pig: 3,
@@ -719,6 +734,40 @@ const ORE_XP = {
 	[B.DIAMOND_ORE]: 5,
 	[B.REDSTONE_ORE]: 1,
 	[B.EMERALD_ORE]: 5
+};
+// Fase 14 (Bloque B): QUÉ suelta cada mineral al minarlo (paridad 1.17 con
+// fundición implícita, sin ítem "raw"). El bloque de mena EN SÍ no es un
+// ítem utilizable: el clon solo dropea la gema/lingote/carbón directamente.
+// El crafteo aquí NO mete artefactos: no existen "bloques de mena" en el
+// inventario ni recetas para ellos.
+const ORE_DROP = {
+	[B.COAL_ORE]: I.COAL,
+	[B.IRON_ORE]: I.IRON_INGOT,
+	[B.GOLD_ORE]: I.GOLD_INGOT,
+	[B.DIAMOND_ORE]: I.DIAMOND,
+	[B.REDSTONE_ORE]: I.REDSTONE,
+	[B.EMERALD_ORE]: I.EMERALD
+};
+// Fase 14 (Bloque B): nivel de pico mínimo necesario por mineral (paridad MC
+// simplificada): hierro/oro → pico de piedra, redstone/diamante/esmeralda →
+// pico de hierro. El carbón vale con cualquier pico.
+const ORE_TIER = {
+	[B.COAL_ORE]: 1,
+	[B.IRON_ORE]: 2,
+	[B.GOLD_ORE]: 2,
+	[B.REDSTONE_ORE]: 3,
+	[B.DIAMOND_ORE]: 3,
+	[B.EMERALD_ORE]: 3
+};
+// Fase 14 (Bloque B): tier de cosecha por pico (estilo Minecraft — madera 1,
+// piedra 2, hierro 3, oro 1, diamante 4). El pico de oro cosecha como el de
+// madera (curiosidad oficial: es "rápido pero ligero").
+const PICKAXE_TIER = {
+	[I.WOODEN_PICKAXE]: 1,
+	[I.STONE_PICKAXE]: 2,
+	[I.IRON_PICKAXE]: 3,
+	[I.GOLDEN_PICKAXE]: 1,
+	[I.DIAMOND_PICKAXE]: 4
 };
 
 // ============================================================
@@ -931,6 +980,9 @@ module.exports = {
 	XP_PER_LEVEL,
 	MOB_XP,
 	ORE_XP,
+	ORE_DROP,
+	ORE_TIER,
+	PICKAXE_TIER,
 	BLOCK_HARDNESS,
 	TOOL_TIER_SPEED,
 	miningSpeed,
