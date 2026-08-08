@@ -120,7 +120,7 @@ socket.addEventListener("message", (e) => {
 			// Fase 9 (Bloque F): tablas de recetas para el libro (crafteo + horno).
 			renderRecipeBook(data);
 			break;
-case "block_update": {
+		case "block_update": {
 			// Una antorcha colocada/rota cambia la luz de un radio 7: el radio cruza
 			// las fronteras de chunk, así que hay que re-hornear el vecindario 3x3
 			// (rebuildAround) y no solo el chunk + los vecinos pegados al borde
@@ -131,7 +131,11 @@ case "block_update": {
 			// Solo en ese caso se re-hornea el vec3; si no hay antorchas cerca,
 			// rebuildAffectedChunks (más barato) basta.
 			const prev = setClientBlock(data.x, data.y, data.z, data.block);
-			if (prev === TORCH || data.block === TORCH || hasTorchNear(data.x, data.y, data.z))
+			if (
+				prev === TORCH ||
+				data.block === TORCH ||
+				hasTorchNear(data.x, data.y, data.z)
+			)
 				rebuildAround(data.x, data.z);
 			else rebuildAffectedChunks(data.x, data.z);
 			hideCrackIfAt(data.x, data.y, data.z); // el bloque en mina se rompió
