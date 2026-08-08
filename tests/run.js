@@ -28,6 +28,7 @@ const UNIT = [
 	"unit-recetas.js",
 	"unit-recipecats.js", // Fase 9 (F): categorías del libro de recetas (regresión: armadura en su pestaña)
 	"unit-sync.js",
+	"unit-paridad.js", // Fase 13 (B): fija la tabla oficial de MC (vida, XP, espadas, armadura, durezas, durabilidad) — falla si alguien desvía un valor
 	"unit-commands.js",
 	"unit-arboles.js",
 	"unit-reload.js",

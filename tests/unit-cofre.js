@@ -378,7 +378,7 @@ const { ws, player: p } = connect();
 	const c = chests.getOrCreateChest(key);
 	c[0] = { id: I.DIAMOND, count: 1 };
 	p.inventory.fill(null);
-	p.inventory[0] = { id: I.WOODEN_PICKAXE, count: 1, durability: 60 };
+	p.inventory[0] = { id: I.WOODEN_PICKAXE, count: 1, durability: 59 }; // Fase 13 B6: max real 59
 	p.selectedSlot = 0;
 	ws.sent.length = 0;
 	playerHelpers.finishMining(p, cx, cy, cz, B.CHEST);

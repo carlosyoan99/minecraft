@@ -102,7 +102,9 @@ ws.on("message", (d) => {
 				PASSIVE.has(mo.type) &&
 				Math.hypot(mo.x - 0.5, mo.y - spawnY, mo.z - 0.5) < 4
 		);
-		if (near && hitsSent < 8) {
+		if (near && hitsSent < 16) {
+			// Fase 13 (paridad B3): el daño a mano es 1 (MC Java 1.9+), antes 2 —
+			// con 8 golpes no morían la vaca/cerdo (10 HP); 16 × 1 = 16 > 10.
 			ws.send(
 				JSON.stringify({ event: "attack_mob", data: { mobId: near.id } })
 			);

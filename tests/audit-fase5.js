@@ -23,7 +23,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
-const { TOOL_DURABILITY, XP_PER_LEVEL, MAX_LEVEL_HEALTH_BONUS, B, I } = require(
+const { TOOL_DURABILITY, XP_PER_LEVEL, B, I } = require(
 	path.join(ROOT, "server", "constants.js")
 );
 const playersMod = require(path.join(ROOT, "server", "players.js"));
@@ -187,48 +187,48 @@ function mkPlayer(over = {}) {
 	);
 }
 {
-	// Fase 9 (Bloque C4): la curva de niveles ya no es lineal (XP_PER_LEVEL*3
-	// ya no da nivel 3). La curva MC sube ~7 + 3.5·nivel por tramo: 340 XP
-	// acumulada = niveles 7+10+14+17+21+24+28+31+35+38+42+45 = 312 → nivel 12.
+	// Fase 13 (paridad B2): curva de XP OFICIAL de Minecraft por tramos
+	// (2L+7 para 0-15, 5L−38 para 16-30, 9L−158 para 31+). 340 XP acumulada
+	// = suma 7+9+...+35 = 315 → nivel 15 (el 16 cuesta 37 → 352 > 340).
 	const p = mkPlayer();
 	playersMod.addXp(p, 340);
 	check(
-		"340 XP → nivel 12 (curva MC no lineal)",
-		p.level === 12,
+		"340 XP → nivel 15 (curva MC oficial)",
+		p.level === 15,
 		`level=${p.level}`
 	);
 	check(
-		"maxHealth = 30 (20 + tope +10: nivel 12 ya pasa del tope)",
-		p.maxHealth === 20 + MAX_LEVEL_HEALTH_BONUS,
+		"maxHealth siempre 20 (sin bonus por nivel)",
+		p.maxHealth === 20,
 		`max=${p.maxHealth}`
 	);
 	check("xp conservada en el objeto", p.xp === 340);
 }
 {
-	// Nivel alto (1500 XP → 27) pero maxHealth tope en 30 (+10)
+	// Nivel alto (1500 XP → 30: el coste total a nivel 30 es 1.395 XP)
 	const p = mkPlayer();
 	playersMod.addXp(p, 1500);
 	check(
-		"1500 XP → nivel 27 y maxHealth tope en 30 (+10)",
-		p.level === 27 && p.maxHealth === 20 + MAX_LEVEL_HEALTH_BONUS,
+		"1500 XP → nivel 30 y maxHealth 20",
+		p.level === 30 && p.maxHealth === 20,
 		`level=${p.level} max=${p.maxHealth}`
 	);
 }
 {
-	// El respawn tras morir usa maxHealth (y conserva XP/nivel)
-	const p = mkPlayer({ health: 3, maxHealth: 24 });
-	playersMod.addXp(p, 400);
+	// El respawn tras morir usa salud máxima 20 (y conserva XP/nivel)
+	const p = mkPlayer({ health: 3 });
+	playersMod.addXp(p, 400); // 400 XP → nivel 17 (315+37+42=394 ≤ 400 < 441)
 	playersMod.damagePlayer(p, 999);
 	check(
-		"respawn usa maxHealth (30) y conserva el nivel MC (13)",
-		p.health === 30 && p.level === 13,
+		"respawn usa salud máxima 20 y conserva el nivel MC (17)",
+		p.health === 20 && p.level === 17,
 		`health=${p.health} level=${p.level}`
 	);
 }
 {
 	// Rendimiento: desgastar 10.000 veces < 1s (barato, sin abusar del tick)
 	const p = mkPlayer({ selectedSlot: 0 });
-	p.inventory[0] = { id: I.DIAMOND_PICKAXE, count: 1, durability: 1562 };
+	p.inventory[0] = { id: I.DIAMOND_PICKAXE, count: 1, durability: 1561 }; // Fase 13 B6: max real 1561
 	const t0 = process.hrtime.bigint();
 	for (let i = 0; i < 10000; i++) playersMod.applyToolWear(p);
 	const ms = Number(process.hrtime.bigint() - t0) / 1e6;

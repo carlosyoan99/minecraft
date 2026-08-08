@@ -145,38 +145,41 @@ export const EYE_HEIGHT = 1.6;
 // Durabilidad máxima por herramienta (Fase 5). Mantener en sincronía con
 // TOOL_DURABILITY de constants.js (servidor) — lo verifica tests/audit-fase5.js.
 export const DURABILITY = {
-	200: 60,
-	201: 132,
-	202: 251,
-	203: 33,
-	204: 1562,
-	205: 60,
-	206: 132,
-	207: 251,
-	208: 33,
-	209: 1562,
-	210: 60,
-	211: 132,
-	212: 251,
-	213: 33,
-	214: 1562,
-	215: 60,
-	216: 132,
-	217: 251,
-	218: 33,
-	219: 1562,
-	240: 60, // azadas (Fase 9, C): misma durabilidad que la herramienta del material
-	241: 132,
-	242: 251,
-	243: 33,
-	244: 1562
+	200: 59,
+	201: 131,
+	202: 250,
+	203: 32,
+	204: 1561,
+	205: 59,
+	206: 131,
+	207: 250,
+	208: 32,
+	209: 1561,
+	210: 59,
+	211: 131,
+	212: 250,
+	213: 32,
+	214: 1561,
+	215: 59,
+	216: 131,
+	217: 250,
+	218: 32,
+	219: 1561,
+	240: 59, // azadas (Fase 9, C): misma durabilidad que la herramienta del material
+	241: 131,
+	242: 250,
+	243: 32,
+	244: 1561
 };
 export const XP_PER_LEVEL = 100; // retrocompat: paridad auditada (unit-sync); la curva real usa xpToNext
-// Curva de XP estilo Minecraft (Fase 9, C): coste del nivel `level` al
-// siguiente (7, 10, 14, 17, 21...). PARIDAD con server-side constants.js —
-// lo verifica tests/unit-sync.js.
+// Curva de XP OFICIAL de Minecraft (Fase 13, paridad B2): coste del nivel
+// `level` al siguiente por tramos — 2L+7 (0-15), 5L−38 (16-30), 9L−158
+// (31+): 7, 9, 11, 13... 37, 42, 47... 112, 121... PARIDAD con server-side
+// constants.js — lo verifica tests/unit-sync.js.
 export function xpToNext(level) {
-	return 7 + Math.floor(level * 3.5);
+	if (level < 16) return 2 * level + 7;
+	if (level < 31) return 5 * level - 38;
+	return 9 * level - 158;
 }
 export const ITEM_NAMES = {
 	100: "Palo",

@@ -410,10 +410,10 @@ const BLOCK_HARDNESS = {
 	[B.GLASS]: 0.3,
 	[B.SNOW]: 0.2,
 	[B.SAND]: 0.5,
-	[B.GRAVEL]: 0.4, // Fase 10 (D1)
+	[B.GRAVEL]: 0.6, // Fase 10 (D1) + Fase 13 (paridad B5): MC dureza 0.6 (antes 0.4)
 	[B.TNT]: 0.05, // Fase 10 (D2): se rompe al instante (como en MC)
 	[B.GRASS]: 0.6,
-	[B.DIRT]: 0.75,
+	[B.DIRT]: 0.5, // Fase 13 (paridad B5): MC dureza 0.5 (antes 0.75)
 	[B.FARMLAND]: 0.6,
 	[B.WOOL]: 0.8,
 	[B.RED_WOOL]: 0.8,
@@ -525,37 +525,38 @@ function canHarvest(tool, block) {
 
 // ============================================================
 // DURABILIDAD DE HERRAMIENTAS Y DAÑO DE ESPADA (Fase 5)
-// Valores estilo Minecraft: madera 60, piedra 132, hierro 251,
-// oro 33, diamante 1562. Mantener en sincronía con DURABILITY
+// Fase 13 (paridad B6): valores OFICIALES de Minecraft Java — madera 59,
+// piedra 131, hierro 250, oro 32, diamante 1561 (antes 60/132/251/33/1562).
+// Mantener en sincronía con DURABILITY
 // de public/constants.js (lo verifica tests/audit-fase5.js).
 // ============================================================
 const TOOL_DURABILITY = {
-	[I.WOODEN_PICKAXE]: 60,
-	[I.STONE_PICKAXE]: 132,
-	[I.IRON_PICKAXE]: 251,
-	[I.GOLDEN_PICKAXE]: 33,
-	[I.DIAMOND_PICKAXE]: 1562,
-	[I.WOODEN_AXE]: 60,
-	[I.STONE_AXE]: 132,
-	[I.IRON_AXE]: 251,
-	[I.GOLDEN_AXE]: 33,
-	[I.DIAMOND_AXE]: 1562,
-	[I.WOODEN_SHOVEL]: 60,
-	[I.STONE_SHOVEL]: 132,
-	[I.IRON_SHOVEL]: 251,
-	[I.GOLDEN_SHOVEL]: 33,
-	[I.DIAMOND_SHOVEL]: 1562,
-	[I.WOODEN_SWORD]: 60,
-	[I.STONE_SWORD]: 132,
-	[I.IRON_SWORD]: 251,
-	[I.GOLDEN_SWORD]: 33,
-	[I.DIAMOND_SWORD]: 1562,
+	[I.WOODEN_PICKAXE]: 59,
+	[I.STONE_PICKAXE]: 131,
+	[I.IRON_PICKAXE]: 250,
+	[I.GOLDEN_PICKAXE]: 32,
+	[I.DIAMOND_PICKAXE]: 1561,
+	[I.WOODEN_AXE]: 59,
+	[I.STONE_AXE]: 131,
+	[I.IRON_AXE]: 250,
+	[I.GOLDEN_AXE]: 32,
+	[I.DIAMOND_AXE]: 1561,
+	[I.WOODEN_SHOVEL]: 59,
+	[I.STONE_SHOVEL]: 131,
+	[I.IRON_SHOVEL]: 250,
+	[I.GOLDEN_SHOVEL]: 32,
+	[I.DIAMOND_SHOVEL]: 1561,
+	[I.WOODEN_SWORD]: 59,
+	[I.STONE_SWORD]: 131,
+	[I.IRON_SWORD]: 250,
+	[I.GOLDEN_SWORD]: 32,
+	[I.DIAMOND_SWORD]: 1561,
 	// Fase 9 (Bloque C): azadas (misma durabilidad que la herramienta de su material)
-	[I.WOODEN_HOE]: 60,
-	[I.STONE_HOE]: 132,
-	[I.IRON_HOE]: 251,
-	[I.GOLDEN_HOE]: 33,
-	[I.DIAMOND_HOE]: 1562
+	[I.WOODEN_HOE]: 59,
+	[I.STONE_HOE]: 131,
+	[I.IRON_HOE]: 250,
+	[I.GOLDEN_HOE]: 32,
+	[I.DIAMOND_HOE]: 1561
 };
 // Alias de durabilidad de azadas (para addToInventory/applyToolWear).
 const HOE_DURABILITY = TOOL_DURABILITY;
@@ -569,19 +570,25 @@ const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id);
 // los 4 slots del inventario con su barra de durabilidad.
 // ============================================================
 const ARMOR_SLOTS = ["helmet", "chestplate", "leggings", "boots"];
-const ARMOR_DAMAGE_REDUCTION = {
-	[I.LEATHER_HELMET]: 0.04,
-	[I.LEATHER_CHESTPLATE]: 0.08,
-	[I.LEATHER_LEGGINGS]: 0.06,
-	[I.LEATHER_BOOTS]: 0.03,
-	[I.IRON_HELMET]: 0.08,
-	[I.IRON_CHESTPLATE]: 0.12,
-	[I.IRON_LEGGINGS]: 0.1,
-	[I.IRON_BOOTS]: 0.06,
-	[I.DIAMOND_HELMET]: 0.12,
-	[I.DIAMOND_CHESTPLATE]: 0.16,
-	[I.DIAMOND_LEGGINGS]: 0.14,
-	[I.DIAMOND_BOOTS]: 0.08
+// Fase 13 (paridad B4): puntos de armadura por pieza como Minecraft Java
+// (casco-pechera-pantalones-botas: cuero 1-3-2-1, hierro 2-6-5-2, diamante
+// 3-8-6-3). La reducción real se calcula en applyArmorDamageReduction como
+// min(puntos × 4%, 80%) — la fórmula oficial de MC. Antes eran porcentajes
+// fijos por pieza (pechera hierro 12% ≈ 3 puntos → el total quedaba muy por
+// debajo de MC: hierro 36% vs 60% real).
+const ARMOR_POINTS = {
+	[I.LEATHER_HELMET]: 1,
+	[I.LEATHER_CHESTPLATE]: 3,
+	[I.LEATHER_LEGGINGS]: 2,
+	[I.LEATHER_BOOTS]: 1,
+	[I.IRON_HELMET]: 2,
+	[I.IRON_CHESTPLATE]: 6,
+	[I.IRON_LEGGINGS]: 5,
+	[I.IRON_BOOTS]: 2,
+	[I.DIAMOND_HELMET]: 3,
+	[I.DIAMOND_CHESTPLATE]: 8,
+	[I.DIAMOND_LEGGINGS]: 6,
+	[I.DIAMOND_BOOTS]: 3
 };
 const ARMOR_DURABILITY = {
 	[I.LEATHER_HELMET]: 55,
@@ -597,18 +604,23 @@ const ARMOR_DURABILITY = {
 	[I.DIAMOND_LEGGINGS]: 495,
 	[I.DIAMOND_BOOTS]: 429
 };
-const isArmor = (id) => !!ARMOR_DAMAGE_REDUCTION[id];
+const isArmor = (id) => !!ARMOR_POINTS[id];
 
 // Reduce el daño según la armadura del jugador: desgasta las piezas (-1 por
 // cada 4 de daño bruto, mínimo 1) y devuelve el daño real. Las piezas que
 // llegan a 0 se retiran. Si el jugador no tiene armadura, devuelve el daño.
+// Simplificación documentada vs MC (Fase 13, paridad B4): el daño real se
+// redondea con Math.round (MC descarta la fracción y reparte el desgaste
+// entre las piezas con un patrón pseudoaleatorio) — el desvío es de ≤1 HP en
+// golpes bajos y no afecta al equilibrio; se mantiene round por ser
+// determinista y fácil de auditar.
 function applyArmorDamageReduction(player, rawDamage) {
 	if (!player.armor) return rawDamage;
-	let reduction = 0;
+	let points = 0;
 	for (const slot of ARMOR_SLOTS) {
 		const piece = player.armor[slot];
 		if (piece && isArmor(piece.id)) {
-			reduction += ARMOR_DAMAGE_REDUCTION[piece.id] || 0;
+			points += ARMOR_POINTS[piece.id] || 0;
 			const wear = Math.max(1, Math.floor(rawDamage / 4));
 			piece.durability = Math.max(
 				0,
@@ -617,32 +629,40 @@ function applyArmorDamageReduction(player, rawDamage) {
 			if (piece.durability <= 0) player.armor[slot] = null;
 		}
 	}
-	return Math.max(0, Math.round(rawDamage * (1 - Math.min(reduction, 0.8))));
+	// Fórmula oficial de Minecraft: cada punto de armadura reduce 4% (tope 80%).
+	const reduction = Math.min(points * 4, 80) / 100;
+	return Math.max(0, Math.round(rawDamage * (1 - reduction)));
 }
-// Daño por golpe de espada (Fase 5: progresión de combate; sin espada = 2)
+// Daño por golpe de espada (Fase 5 progresión + Fase 13 paridad B3): valores
+// oficiales de Minecraft Java 1.9+ (madera 4, piedra 5, hierro 6, oro 4,
+// diamante 7). Sin espada el daño es 1 (mano desnuda, ver net.js).
 const SWORD_DAMAGE = {
-	[I.WOODEN_SWORD]: 3,
-	[I.STONE_SWORD]: 4,
-	[I.IRON_SWORD]: 5,
+	[I.WOODEN_SWORD]: 4,
+	[I.STONE_SWORD]: 5,
+	[I.IRON_SWORD]: 6,
 	[I.GOLDEN_SWORD]: 4,
-	[I.DIAMOND_SWORD]: 6
+	[I.DIAMOND_SWORD]: 7
 };
 // Las azadas no hacen daño extra (en Minecraft tampoco; sirven para arar).
 
 // ============================================================
-// EXPERIENCIA Y NIVELES (Fase 5 simple + Fase 9 curva MC)
-// XP por matar mobs y por minar minerales. Cada nivel suma +1 de
-// salud máxima (máx +10). La XP se conserva al morir (simplificado).
-// Fase 9 (Bloque C): curva de coste por nivel NO lineal estilo Minecraft
-// (xpToNext(0)=7, y +3.5 por nivel redondeado — aproximación de la curva
-// real de MC: 7, 10, 14, 17, 21...). XP_PER_LEVEL se mantiene exportado
-// por compatibilidad con tests/audit-fase5 (paridad con el cliente) aunque
-// la lógica de niveles ya no lo use.
+// EXPERIENCIA Y NIVELES (Fase 5 simple + Fase 9 curva MC + Fase 13 paridad)
+// XP por matar mobs y por minar minerales. La salud máxima es SIEMPRE 20
+// (paridad B1: en Minecraft real el nivel NO da vida; eso era de mods). La
+// XP se conserva al morir (simplificado documentado).
+// Fase 13 (paridad B2): curva de coste por nivel OFICIAL de Minecraft Java
+// por tramos — 2L+7 (niveles 0-15), 5L−38 (16-30), 9L−158 (31+):
+// 7, 9, 11, 13, 15... 37, 42, 47... 112, 121... El coste total a nivel 30
+// es 1.395 XP (la aproximación lineal anterior 7+3.5L daba mucho menos).
+// XP_PER_LEVEL se mantiene exportado por compatibilidad con
+// tests/audit-fase5 (paridad con el cliente) aunque la lógica ya no lo use.
 // ============================================================
 const XP_PER_LEVEL = 100; // retrocompat: paridad auditada, sin uso en la lógica actual
 // XP necesaria para pasar del nivel `level` al siguiente (curva MC).
 function xpToNext(level) {
-	return 7 + Math.floor(level * 3.5);
+	if (level < 16) return 2 * level + 7;
+	if (level < 31) return 5 * level - 38;
+	return 9 * level - 158;
 }
 // Nivel alcanzado con `xp` total acumulada (recorre la curva; barato: niveles
 // pequeños en la práctica).
@@ -661,7 +681,6 @@ function xpIntoLevel(xp, level) {
 	for (let l = 0; l < level; l++) rest -= xpToNext(l);
 	return Math.max(0, rest);
 }
-const MAX_LEVEL_HEALTH_BONUS = 10;
 const MOB_XP = {
 	zombie: 5,
 	creeper: 5,
@@ -871,7 +890,7 @@ module.exports = {
 	isTool,
 	SWORD_DAMAGE,
 	ARMOR_SLOTS,
-	ARMOR_DAMAGE_REDUCTION,
+	ARMOR_POINTS,
 	ARMOR_DURABILITY,
 	WORLD_SIZES,
 	worldHalfExtent,
@@ -880,7 +899,6 @@ module.exports = {
 	isArmor,
 	applyArmorDamageReduction,
 	XP_PER_LEVEL,
-	MAX_LEVEL_HEALTH_BONUS,
 	MOB_XP,
 	ORE_XP,
 	BLOCK_HARDNESS,

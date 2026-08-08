@@ -184,10 +184,12 @@ check(
 		JSON.stringify({ event: "equip_armor", data: { inventorySlot: slot } })
 	);
 	p2.health = 20;
-	playerHelpers.damagePlayer(p2, 10); // pechera hierro: -12% → 8.8 → redondea a 9
+	// Fase 13 (paridad B4): pechera de hierro = 6 puntos de armadura → 24% →
+	// round(10 × 0.76) = 8 (antes 9 con la tabla de porcentajes vieja).
+	playerHelpers.damagePlayer(p2, 10);
 	check(
-		"daño 10 con pechera de hierro → recibe 9",
-		p2.health === 11,
+		"daño 10 con pechera de hierro → recibe 8",
+		p2.health === 12,
 		`health=${p2.health}`
 	);
 	check(

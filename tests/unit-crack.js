@@ -101,7 +101,7 @@ const bx = 0,
 // ============================================================
 {
 	world.setBlock(bx, by, bz, B.STONE);
-	A.player.inventory[0] = { id: I.STONE_PICKAXE, count: 1, durability: 132 };
+	A.player.inventory[0] = { id: I.STONE_PICKAXE, count: 1, durability: 131 }; // Fase 13 B6: max real 131
 	A.player.selectedSlot = 0;
 	A.ws.sent.length = 0;
 	obsNear.ws.sent.length = 0;

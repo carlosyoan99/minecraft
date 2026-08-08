@@ -207,6 +207,39 @@ check(
 	`cliente=${parseNum("GRAVITY")} servidor=${server.GRAVITY}`
 );
 
+// --- 7b) Curva de XP (Fase 13, paridad B2): xpToNext cliente (función por
+// tramos MC) == servidor en TODO el rango de niveles. El cliente la usa para
+// la barra de progreso del HUD; si divergiera, el progreso visual no
+// coincidiría con el nivel real (desajuste silencioso, solo se ve en
+// navegador). Se extrae el cuerpo de la función ESM y se evalúa contra el
+// servidor en niveles 0-39 (cubre los tres tramos: 2L+7, 5L−38, 9L−158). ---
+{
+	const m = src.match(
+		/export function xpToNext\(level\) \{([\s\S]*?)\n\}/
+	);
+	let equal = !!m;
+	if (m) {
+		let clientXpToNext;
+		try {
+			// eslint-disable-next-line no-new-func
+			clientXpToNext = new Function("level", `"use strict";\n${m[1]}`);
+			for (let level = 0; level < 40; level++) {
+				if (clientXpToNext(level) !== server.xpToNext(level)) {
+					equal = false;
+					break;
+				}
+			}
+		} catch {
+			equal = false;
+		}
+	}
+	check(
+		"xpToNext cliente (curva MC por tramos) == servidor en niveles 0-39",
+		equal,
+		equal ? "" : "las curvas divergen"
+	);
+}
+
 // --- 8) Los items de crafteo de la Fase 3/5 están todos en ITEM_NAMES ---
 {
 	const clientItems = parseObj("ITEM_NAMES");

@@ -1090,7 +1090,9 @@ function handleConnection(ws, req) {
 				// el pelo). El servidor valida distancia, ítem y estado.
 				const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
 				if (!mob) return;
-				if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > mobs.SHEAR_RANGE)
+				if (
+					Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > mobs.SHEAR_RANGE
+				)
 					return;
 				const held = p.inventory[p.selectedSlot];
 				if (!held || held.id !== I.SHEARS) return;
@@ -1112,8 +1114,14 @@ function handleConnection(ws, req) {
 				const block = world.getBlock(data.x, data.y, data.z);
 				if (block === B.WHEAT) {
 					const key = `${data.x},${data.y},${data.z}`;
-					const crop = state.crops.get(key) || { stage: 0, plantedAt: Date.now() };
-					crop.stage = Math.min(7, crop.stage + 2 + Math.floor(Math.random() * 3));
+					const crop = state.crops.get(key) || {
+						stage: 0,
+						plantedAt: Date.now()
+					};
+					crop.stage = Math.min(
+						7,
+						crop.stage + 2 + Math.floor(Math.random() * 3)
+					);
 					state.crops.set(key, crop);
 				} else if (block === B.GRASS || block === B.DIRT) {
 					const above = world.getBlock(data.x, data.y + 1, data.z);
@@ -1162,8 +1170,9 @@ function handleConnection(ws, req) {
 				const tool = p.inventory[p.selectedSlot]
 					? p.inventory[p.selectedSlot].id
 					: 0;
-				// Fase 5: daño de espada por material (sin espada, 2)
-				const dmg = SWORD_DAMAGE[tool] || 2;
+				// Fase 5: daño de espada por material. Fase 13 (paridad B3): sin
+				// espada el daño es 1 (mano desnuda, como Minecraft Java 1.9+).
+				const dmg = SWORD_DAMAGE[tool] || 1;
 				mob.health -= dmg;
 				// Fase 8 (B10): feedback del golpe para TODOS los que ven el mob —
 				// flash de daño y sonido en el cliente (mob_hit). Antes el golpe no

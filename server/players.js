@@ -25,7 +25,6 @@ const {
 	ARMOR_DURABILITY,
 	applyArmorDamageReduction,
 	SWORD_DAMAGE,
-	MAX_LEVEL_HEALTH_BONUS,
 	HOE_DURABILITY,
 	levelFromXp,
 	xpToNext,
@@ -186,19 +185,20 @@ function applyToolWear(player, onlySwords = false) {
 }
 
 // ============================================================
-// EXPERIENCIA Y NIVELES (Fase 5 simple → Fase 9 curva MC)
-// XP acumulada -> nivel por curva NO lineal estilo Minecraft (xpToNext:
-// 7, 10, 14, 17, 21...). Cada nivel suma +1 de salud máxima (máx +10); la
-// salud actual no crece sola. Se conserva al morir. El HUD recibe la XP
-// dentro del nivel (xpIntoLevel) y la necesaria para el siguiente
-// (xpToNext) para pintar la barra de progreso.
+// EXPERIENCIA Y NIVELES (Fase 5 simple → Fase 9 curva MC → Fase 13 paridad)
+// XP acumulada -> nivel por la curva OFICIAL de Minecraft (xpToNext por
+// tramos: 7, 9, 11, 13... 37, 42...). La salud máxima es SIEMPRE 20
+// (paridad B1: en MC real el nivel no da vida); la salud actual no crece
+// sola. Se conserva al morir. El HUD recibe la XP dentro del nivel
+// (xpIntoLevel) y la necesaria para el siguiente (xpToNext) para pintar
+// la barra de progreso.
 // ============================================================
 function addXp(player, amount) {
 	player.xp = (player.xp || 0) + amount;
 	const newLevel = levelFromXp(player.xp);
 	if (newLevel > (player.level || 0)) {
 		player.level = newLevel;
-		player.maxHealth = 20 + Math.min(newLevel, MAX_LEVEL_HEALTH_BONUS);
+		player.maxHealth = 20;
 		sendHealth(player);
 		if (player.ws.readyState === WebSocket.OPEN) {
 			player.ws.send(
@@ -343,8 +343,9 @@ function respawnPlayer(player, cause) {
 	sendFireState(player, false);
 	// B2 (Fase 8): gracia inicial al reaparecer (30s sin daño de mobs).
 	player.spawnGraceUntil = Date.now() + SPAWN_GRACE_MS;
-	// Respawn (la XP y el nivel se conservan; la salud máxima sí aplica).
-	player.health = player.maxHealth || 20;
+	// Respawn (la XP y el nivel se conservan; la salud máxima es siempre 20,
+	// paridad B1 — en Minecraft real el nivel no da vida).
+	player.health = 20;
 	player.food = 20;
 	player.saturation = 20;
 	player.foodAccum = 0;

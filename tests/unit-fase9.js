@@ -315,7 +315,7 @@ function connect() {
 	world.setBlock(fx, fy, fz, B.DIRT);
 
 	// till: azada en la mano sobre tierra → tierra arada + desgaste.
-	p.inventory[0] = { id: I.WOODEN_HOE, count: 1, durability: 60 };
+	p.inventory[0] = { id: I.WOODEN_HOE, count: 1, durability: 59 }; // Fase 13 B6: max real 59
 	p.selectedSlot = 0;
 	ws.emit(
 		"message",
@@ -327,7 +327,7 @@ function connect() {
 	);
 	check(
 		"till: la azada se desgasta (-1)",
-		p.inventory[0].durability === 59,
+		p.inventory[0].durability === 58,
 		`dur=${p.inventory[0].durability}`
 	);
 
@@ -345,7 +345,7 @@ function connect() {
 	);
 
 	// plant: semillas sobre farmland → cultivo de trigo + estado en crops.
-	p.inventory[0] = { id: I.WOODEN_HOE, count: 1, durability: 59 };
+	p.inventory[0] = { id: I.WOODEN_HOE, count: 1, durability: 58 };
 	p.inventory[1] = { id: I.SEEDS, count: 5 };
 	p.selectedSlot = 1;
 	ws.emit(

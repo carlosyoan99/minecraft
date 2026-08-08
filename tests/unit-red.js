@@ -172,7 +172,7 @@ function connect() {
 
 	// 1) Minar piedra con un pico de piedra hasta romperla
 	world.setBlock(bx, by, bz, B.STONE);
-	p.inventory[0] = { id: I.STONE_PICKAXE, count: 1, durability: 132 };
+	p.inventory[0] = { id: I.STONE_PICKAXE, count: 1, durability: 131 }; // Fase 13 B6: max real 131
 	p.selectedSlot = 0;
 	ws.sent.length = 0;
 	ws.emit(
@@ -199,7 +199,7 @@ function connect() {
 	);
 	check(
 		"el pico se desgasta (-1)",
-		p.inventory[0].durability === 131,
+		p.inventory[0].durability === 130,
 		`dur=${p.inventory[0].durability}`
 	);
 	check("inventory_update enviado", ws.events("inventory_update").length >= 1);
@@ -286,7 +286,7 @@ function connect() {
 		bz = Math.floor(p.z);
 
 	p.gamemode = "creative";
-	p.inventory[0] = { id: I.DIAMOND_PICKAXE, count: 1, durability: 1562 };
+	p.inventory[0] = { id: I.DIAMOND_PICKAXE, count: 1, durability: 1561 }; // Fase 13 B6: max real 1561
 	p.selectedSlot = 0;
 	// El jugador ya tiene adoquín del test de break survival anterior: contar
 	// antes/después (romper en creative no debe AÑADIR drop, no exigir que no
@@ -317,7 +317,7 @@ function connect() {
 	);
 	check(
 		"creative: la herramienta NO se desgasta (durabilidad plena)",
-		p.inventory[0].durability === 1562,
+		p.inventory[0].durability === 1561,
 		`dur=${p.inventory[0].durability}`
 	);
 	const cobbleAfter = p.inventory.reduce(
@@ -791,7 +791,7 @@ function connect() {
 		Math.floor(p.z)
 	);
 	state.mobs.push(zombie);
-	p.inventory[0] = { id: I.IRON_SWORD, count: 1, durability: 251 };
+	p.inventory[0] = { id: I.IRON_SWORD, count: 1, durability: 250 }; // Fase 13 B6: max real 250
 	p.selectedSlot = 0;
 	p.xp = 0;
 	ws.sent.length = 0;
@@ -800,20 +800,20 @@ function connect() {
 		JSON.stringify({ event: "attack_mob", data: { mobId: zombie.id } })
 	);
 	check(
-		"attack_mob: espada de hierro hace 5 de daño",
-		zombie.health === 15,
+		"attack_mob: espada de hierro hace 6 de daño (paridad B3)",
+		zombie.health === 14,
 		`health=${zombie.health}`
 	);
 	check(
 		"attack_mob: la espada se desgasta (-1)",
-		p.inventory[0].durability === 250,
+		p.inventory[0].durability === 249,
 		`dur=${p.inventory[0].durability}`
 	);
 	// Fase 8 (B10): feedback del golpe — mob_hit broadcast con daño y salud.
 	const hitEvt = ws.events("mob_hit").at(-1);
 	check(
 		"attack_mob: broadcast mob_hit (feedback de daño)",
-		!!hitEvt && hitEvt.data.id === zombie.id && hitEvt.data.dmg === 5,
+		!!hitEvt && hitEvt.data.id === zombie.id && hitEvt.data.dmg === 6,
 		JSON.stringify(hitEvt?.data)
 	);
 	// Fase 8 (B10): knockback — el mob retrocede en la dirección contraria al
@@ -859,10 +859,10 @@ function connect() {
 		"message",
 		JSON.stringify({ event: "attack_mob", data: { mobId: medio.id } })
 	);
-	// El jugador lleva la espada de hierro seleccionada (dmg 5): cow 10 → 5.
+	// El jugador lleva la espada de hierro seleccionada (dmg 6): cow 10 → 4.
 	check(
 		"attack_mob: a 6 bloques (rango 7) sí golpea",
-		medio.health === 5,
+		medio.health === 4,
 		`health=${medio.health}`
 	);
 

@@ -233,7 +233,8 @@ check("nunca negativo", playerHelpers.fallDamage(1) === 0);
 		durability: ARMOR_DURABILITY[I.IRON_CHESTPLATE]
 	};
 	// Piso en (12,5) y columna limpia arriba: caída de 10 bloques → 7 de daño
-	// bruto → pechera de hierro (-12%) → 6.16 → redondea a 6 (health 20 → 14).
+	// bruto → pechera de hierro (6 puntos = 24%, Fase 13 paridad B4) →
+	// round(7 × 0.76) = 5 (health 20 → 15).
 	world.setBlock(12, 5, 12, B.STONE);
 	for (let y = 6; y <= 20; y++) world.setBlock(12, y, 12, B.AIR);
 	p.x = 12.5;
@@ -243,8 +244,8 @@ check("nunca negativo", playerHelpers.fallDamage(1) === 0);
 	p.y = landing;
 	playerHelpers.applyFallDamage(p);
 	check(
-		"la armadura reduce el daño por caída (10 bloques → 6 con pechera de hierro)",
-		p.health === 14,
+		"la armadura reduce el daño por caída (10 bloques → 5 con pechera de hierro)",
+		p.health === 15,
 		`health=${p.health}`
 	);
 	check(

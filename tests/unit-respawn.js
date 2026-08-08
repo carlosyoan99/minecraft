@@ -72,9 +72,10 @@ function connect() {
 	);
 	p.craftingGrid[0] = { id: I.STICK, count: 1 };
 	p.openChest = "1,2,3";
-	// Fase 9 (Bloque C): la curva de XP es no lineal (xpToNext: 7, 10, 14...)
-	// — el nivel 2 cuesta xpToNext(0)+xpToNext(1) = 17 XP → maxHealth 22.
-	playerHelpers.addXp(p, xpToNext(0) + xpToNext(1)); // nivel 2 → maxHealth 22
+	// Fase 13 (paridad B2/B1): la curva de XP es la oficial por tramos
+	// (xpToNext(0)=7, xpToNext(1)=9 → nivel 2 = 16 XP) y la salud máxima es
+	// SIEMPRE 20 (el nivel no da vida, como Minecraft real).
+	playerHelpers.addXp(p, xpToNext(0) + xpToNext(1)); // nivel 2 = 16 XP
 	p.health = 3;
 	ws.sent.length = 0;
 	broadcasts.length = 0;
@@ -106,8 +107,8 @@ function connect() {
 		`xp=${p.xp} level=${p.level}`
 	);
 	check(
-		"survival: respawn con salud máxima del nivel (22)",
-		p.health === 22,
+		"survival: respawn con salud máxima 20 (sin bonus por nivel)",
+		p.health === 20,
 		`health=${p.health}`
 	);
 	check(

@@ -138,7 +138,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	const sends = [];
 	const sendFn = sendFnCollect(sends);
 	world.setBlock(5, 5, 5, B.STONE);
-	p.inventory[0] = { id: I.IRON_PICKAXE, count: 1, durability: 251 };
+	p.inventory[0] = { id: I.IRON_PICKAXE, count: 1, durability: 250 }; // Fase 13 B6: max real 250
 	p.selectedSlot = 0;
 	mining.startMining(p, 5, 5, 5, B.STONE);
 	// hierro 6x → 1.8/6 = 0.3s; avanzar de 20 en 20 ms
@@ -153,7 +153,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	);
 	check(
 		"el pico se desgastó (-1)",
-		p.inventory[0].durability === 250,
+		p.inventory[0].durability === 249,
 		`dur=${p.inventory[0].durability}`
 	);
 	const stages = sends
@@ -179,7 +179,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	const sends = [];
 	const sendFn = sendFnCollect(sends);
 	world.setBlock(10, 5, 5, B.COAL_ORE);
-	p.inventory[0] = { id: I.WOODEN_PICKAXE, count: 1, durability: 60 };
+	p.inventory[0] = { id: I.WOODEN_PICKAXE, count: 1, durability: 59 }; // Fase 13 B6: max real 59
 	p.selectedSlot = 0;
 	mining.startMining(p, 10, 5, 5, B.COAL_ORE);
 	let result = null;
@@ -257,7 +257,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	const sendFn = sendFnCollect(sends);
 	world.setBlock(4, 5, 4, B.DIAMOND_ORE);
 	p.gamemode = "creative";
-	p.inventory[0] = { id: I.DIAMOND_PICKAXE, count: 1, durability: 1562 };
+	p.inventory[0] = { id: I.DIAMOND_PICKAXE, count: 1, durability: 1561 }; // Fase 13 B6: max real 1561
 	p.selectedSlot = 0;
 	playerHelpers.finishMining(p, 4, 5, 4, B.DIAMOND_ORE, { creative: true });
 	check("creative: rompe el bloque", world.getBlock(4, 5, 4) === B.AIR);
@@ -268,7 +268,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	check("creative: sin XP (ORE_XP ignorado)", p.xp === 0);
 	check(
 		"creative: la herramienta NO se desgasta",
-		p.inventory[0].durability === 1562,
+		p.inventory[0].durability === 1561,
 		`dur=${p.inventory[0].durability}`
 	);
 
@@ -284,7 +284,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 		"creative: bloque roto sin drop ni desgaste",
 		world.getBlock(4, 5, 6) === B.AIR &&
 			!p.inventory.some((s) => s && s.id === B.COBBLESTONE) &&
-			p.inventory[0].durability === 1562
+			p.inventory[0].durability === 1561
 	);
 }
 
@@ -294,7 +294,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	const sends = [];
 	const sendFn = sendFnCollect(sends);
 	world.setBlock(8, 5, 5, B.STONE);
-	p.inventory[0] = { id: I.WOODEN_SHOVEL, count: 1, durability: 60 };
+	p.inventory[0] = { id: I.WOODEN_SHOVEL, count: 1, durability: 59 }; // Fase 13 B6: max real 59
 	p.selectedSlot = 0;
 	mining.startMining(p, 8, 5, 5, B.STONE);
 	let result = null;
@@ -310,7 +310,7 @@ check("tronco a mano → drop", canHarvest(0, B.OAK_LOG) === true);
 	);
 	check(
 		"la herramienta se desgasta igualmente",
-		p.inventory[0].durability === 59,
+		p.inventory[0].durability === 58,
 		`dur=${p.inventory[0].durability}`
 	);
 }

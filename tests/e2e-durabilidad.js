@@ -2,7 +2,7 @@
 // E2E del sistema de durabilidad de herramientas (Fase 5) — v3
 // 1) Craftear un pico de madera (200) vía el evento `craft` (el grid viaja
 //    con el patrón 3x3; el servidor consume las celdas y añade el pico).
-// 2) Romper exactamente su durabilidad (60) de bloques de piedra: cada
+// 2) Romper exactamente su durabilidad (59) de bloques de piedra: cada
 //    rotura desgasta -1 en el wire (inventory_update) y añade 1 adoquín.
 // 3) Al llegar a 0 la herramienta se rompe: llega `tool_broke`, el slot
 //    queda vacío y los drops son exactamente 1 por bloque roto (sin duplicar).
@@ -12,7 +12,7 @@
 // sobre piedra ≈ 0.9 s) — el E2E espera el inventory_update de cada rotura.
 //
 // Robustez: si el área del spawn ya fue minada (p.ej. una ejecución previa
-// contra el mismo mundo) y no quedan >= 60 piedras a mano, el jugador camina
+// contra el mismo mundo) y no quedan >= DURABILITY piedras a mano, el jugador camina
 // vía eventos `move` (siguiendo el terreno del chunkData) hasta encontrar zona
 // virgen. La caminata es por ráfagas de 8 con un `setTimeout` de asentamiento:
 // los pasos rechazados disparan `teleport` y `cur` se corrige ANTES de computar
@@ -29,7 +29,7 @@
 //   - Si una dirección queda bloqueada (sin progreso neto tras una ráfaga),
 //     se gira a la siguiente (E → O → N → S).
 //
-// NOTA: ejecutar contra un servidor desechable — rompe 60 bloques de piedra
+// NOTA: ejecutar contra un servidor desechable — rompe 59 bloques de piedra
 // cerca del jugador y el autosave (30s) los persiste en ese mundo.
 //
 // Requiere un servidor vivo: WS_URL (por defecto ws://localhost:3998).
@@ -37,7 +37,7 @@ const WebSocket = require("ws");
 const URL = process.env.WS_URL || "ws://localhost:3998";
 
 const WOODEN_PICKAXE = 200;
-const DURABILITY = 60; // madera (TOOL_DURABILITY[200])
+const DURABILITY = 59; // madera (TOOL_DURABILITY[200]) — Fase 13 B6: 59 es el valor real de MC
 const STONE = 3,
 	COBBLESTONE = 8,
 	PLANKS = 7,
@@ -90,6 +90,8 @@ const timer = setTimeout(() => {
 }, 180000); // 60 minas × ~0.9 s + crafteo/desplazamiento: la secuencia completa
 // tarda ~130 s, así que 120 s era un margen demasiado justo y el timer
 // disparaba finish(1) aunque los 122 checks pasaran (flakiness de tiempo).
+// (La durabilidad 60→59 de la Fase 13 B6 no cambia este margen: 59 minas a
+// ~0.9 s + caminata siguen dentro de los 180 s.)
 
 // ============================================================
 // HELPERS SOBRE EL CHUNKDATA (mismo idx que world.js: (y*16+z)*16+x)
@@ -146,12 +148,12 @@ function stoneNear(x, y, z) {
 // Fase 10 (A6: lagos/playas/rios en la generación): el spawn de una semilla
 // nueva puede caer en zona playeras con poca piedra EXPUESTA a mano, y la
 // caminata en espiral a ciegas (dirIdx fija) se quedaba atascada en un lago o
-// acantilado sin avanzar. Ahora, cuando no hay 60 piedras a la mano, se camina
+// acantilado sin avanzar. Ahora, cuando no hay DURABILITY piedras a la mano, se camina
 // HACIA el chunk con más piedra conocida del mapa (stoneTarget): dirección
 // determinista calculada sobre el chunkData, en vez de probar E→O→N→S.
 // stoneNear cuenta TODA la piedra (también la subterránea a <= REACH vertical:
 // el servidor solo valida distancia, no visibilidad), así que basta acercarse
-// a una columna rica para que las 60 roturas queden a <= 7 bloques.
+// a una columna rica para que las DURABILITY roturas queden a <= 7 bloques.
 function stoneTarget() {
 	// Conteo de piedra por chunk: { cx, cz, count }
 	let best = null;
@@ -332,7 +334,7 @@ ws.on("message", (d) => {
 			(s) => s && s.id === WOODEN_PICKAXE
 		);
 		check(
-			"el pico se craftea con durabilidad plena (60)",
+			"el pico se craftea con durabilidad plena (59)",
 			pickIdx !== -1 && m.data.inventory[pickIdx].durability === DURABILITY,
 			`slot=${pickIdx} dur=${pickIdx !== -1 ? m.data.inventory[pickIdx].durability : "?"}`
 		);
@@ -357,7 +359,7 @@ ws.on("message", (d) => {
 			0
 		);
 		if (breaksSent < DURABILITY) {
-			// Tras `breaksSent` roturas confirmadas: durabilidad = 60 - breaksSent
+			// Tras `breaksSent` roturas confirmadas: durabilidad = DURABILITY - breaksSent
 			const expected = DURABILITY - breaksSent;
 			check(
 				`rotura ${breaksSent}/${DURABILITY}: durabilidad ${expected}`,
@@ -379,14 +381,14 @@ ws.on("message", (d) => {
 			breaksSent++;
 			return;
 		}
-		// Última rotura (breaksSent === 60): la herramienta ya no está
+		// Última rotura (breaksSent === DURABILITY): la herramienta ya no está
 		check(
-			"la herramienta se rompió al 60º uso (slot vacío)",
+			"la herramienta se rompió al 59º uso (slot vacío)",
 			!pick,
 			`slot=${JSON.stringify(pick)}`
 		);
 		check(
-			"drops exactos: 60 adoquines, sin copias fantasma del pico",
+			"drops exactos: 59 adoquines, sin copias fantasma del pico",
 			cobble === DURABILITY &&
 				m.data.inventory.filter((s) => s && s.id === WOODEN_PICKAXE).length ===
 					0,
