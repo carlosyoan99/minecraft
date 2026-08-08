@@ -26,7 +26,6 @@ const {
 	applyArmorDamageReduction,
 	SWORD_DAMAGE,
 	MAX_LEVEL_HEALTH_BONUS,
-	isHoe,
 	HOE_DURABILITY,
 	levelFromXp,
 	xpToNext,
@@ -298,12 +297,16 @@ function setBroadcastHandler(fn) {
 // mantienen siempre. Cierra cofres/hornos abiertos y olvida la caída en
 // curso (el jugador no "cae" al reaparecer).
 // ============================================================
-function respawnPlayer(player) {
+function respawnPlayer(player, cause) {
 	const keepInventory = player.gamemode === "creative";
+	// Fase 10 (B2): `cause` (mob/fall/lava/starve/void/kill...) viaja en
+	// player_die para que el cliente pinte la pantalla de muerte con la causa
+	// (reutiliza la telemetría source de damagePlayer, Fase 8).
 	if (broadcastHandler)
 		broadcastHandler("player_die", {
 			id: player.id,
-			lostInventory: !keepInventory
+			lostInventory: !keepInventory,
+			...(cause ? { cause } : {})
 		});
 	player.openFurnace = null;
 	player.openChest = null;
@@ -327,6 +330,11 @@ function respawnPlayer(player) {
 	player.fallVy = 0;
 	player.vyObs = 0;
 	player.airTimeMs = 0;
+	// Fase 10 (A2): al morir se apaga el fuego residual (no se revive ardiendo).
+	player.fireUntil = 0;
+	player.fireAccum = 0;
+	player.lastFireOn = false;
+	sendFireState(player, false);
 	// B2 (Fase 8): gracia inicial al reaparecer (30s sin daño de mobs).
 	player.spawnGraceUntil = Date.now() + SPAWN_GRACE_MS;
 	// Respawn (la XP y el nivel se conservan; la salud máxima sí aplica).
@@ -503,7 +511,8 @@ function damagePlayer(player, amount, opts = {}) {
 	logDamage(player, opts.source || "unknown", amount, real, opts.meta);
 	player.health = Math.max(0, player.health - real);
 	sendHealth(player);
-	if (player.health <= 0) respawnPlayer(player);
+	// Fase 10 (B2): la causa de muerte viaja a la pantalla de muerte.
+	if (player.health <= 0) respawnPlayer(player, opts.source || "damage");
 }
 
 // ============================================================
@@ -525,6 +534,13 @@ const MOVING_WINDOW_MS = 2000; // se considera en movimiento si hubo move recien
 // llama damagePlayer sin opts.armor=false, a diferencia de la inanición).
 const LAVA_DAMAGE_INTERVAL_MS = 500;
 const LAVA_DAMAGE = 2;
+// Fase 10 (A2): QUEMADURA RESIDUAL de lava. El contacto con lava deja un
+// "estado de fuego" que sigue doliendo unos segundos al salir (como en
+// Minecraft); el agua lo apaga al instante. El flag se replica al cliente
+// con `fire_state` para pintar la llamarada en pantalla.
+const FIRE_DURATION_MS = 5000; // ardiendo tras salir de la lava (5s)
+const FIRE_DAMAGE_INTERVAL_MS = 1000; // 1 HP por segundo mientras arda
+const FIRE_DAMAGE = 1;
 
 // ============================================================
 // COMER (Fase 3): aplica hambre + saturación si el ítem es comida
@@ -562,16 +578,61 @@ function inLava(player) {
 	);
 }
 
+// ¿El jugador está en agua? (misma comprobación que inLava): el agua apaga
+// el fuego de la lava al instante (Fase 10, A2).
+function inWater(player) {
+	const bx = Math.floor(player.x),
+		bz = Math.floor(player.z);
+	const by = Math.floor(player.y);
+	return (
+		world.getBlock(bx, by, bz) === B.WATER ||
+		world.getBlock(bx, by - 1, bz) === B.WATER
+	);
+}
+
+// Envía el estado de fuego al cliente (lo usa tickPlayer al cambiar y el
+// init de net.js lo replica al conectar).
+function sendFireState(player, on) {
+	if (player.ws && player.ws.readyState === WebSocket.OPEN) {
+		player.ws.send(JSON.stringify({ event: "fire_state", data: { on: !!on } }));
+	}
+}
+
 function tickPlayer(player, dtMs) {
-	// Lava: contacto periódico quema (acumulador para no depender del tick).
+	// Lava (Fase 7) + quemadura residual (Fase 10, A2): el contacto aplica
+	// daño periódico Y enciende un "estado de fuego" que sigue doliendo unos
+	// segundos al salir; el agua lo apaga al instante. El flag fire_state se
+	// reenvía solo cuando cambia (no cada tick).
 	if (inLava(player)) {
+		player.fireUntil = Date.now() + FIRE_DURATION_MS;
 		player.lavaAccum = (player.lavaAccum || 0) + dtMs;
 		if (player.lavaAccum >= LAVA_DAMAGE_INTERVAL_MS) {
 			player.lavaAccum = 0;
 			damagePlayer(player, LAVA_DAMAGE, { source: "lava" });
 		}
+	} else if (inWater(player)) {
+		player.fireUntil = 0; // el agua apaga el fuego
+		player.lavaAccum = 0;
 	} else {
 		player.lavaAccum = 0;
+	}
+	const fireOn = (player.fireUntil || 0) > Date.now();
+	if (fireOn) {
+		player.fireAccum = (player.fireAccum || 0) + dtMs;
+		if (player.fireAccum >= FIRE_DAMAGE_INTERVAL_MS) {
+			player.fireAccum = 0;
+			damagePlayer(player, FIRE_DAMAGE, {
+				source: "lava",
+				meta: { fire: true }
+			});
+		}
+	} else {
+		player.fireAccum = 0;
+	}
+	// Replicar el cambio de estado (arranca/apaga la llamarada del cliente).
+	if (fireOn !== player.lastFireOn) {
+		player.lastFireOn = fireOn;
+		sendFireState(player, fireOn);
 	}
 
 	// Decaimiento: más rápido en movimiento. La saturación se consume primero

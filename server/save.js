@@ -6,7 +6,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const constants = require("./constants.js");
-const { SCHEMA_VERSION, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE } = constants;
+const {
+	SCHEMA_VERSION,
+	UNLOAD_DISTANCE_CHUNKS,
+	CHUNK_SIZE,
+	DAY_CYCLE_MS // Fase 10: amanecer de los mundos nuevos (nota del usuario)
+} = constants;
 const state = require("./state.js");
 const world = require("./world.js");
 const { restoreMobs } = require("./mobs.js");
@@ -41,6 +46,8 @@ function buildMeta() {
 		// Fase 9 (Bloque B): modo de juego FIJO por mundo. buildMeta lo persiste
 		// en world.json; loadWorld lo restaura (mundos v3 sin el campo → survival).
 		gamemode: P.worldGamemode,
+		// Fase 10 (B1): tamaño del mundo en bloques por lado (256/512/1024/8192).
+		worldSize: P.worldSize,
 		lastSaved: new Date().toISOString(),
 		mobs: state.mobs
 			.filter((m) => m.alive)
@@ -57,7 +64,11 @@ function buildMeta() {
 		furnaces: Array.from(furnaces.entries()),
 		chests: Array.from(chests.entries()),
 		// Fase 9 (Bloque C): estado de crecimiento de los cultivos ("x,y,z" → stage).
-		crops: Array.from(state.crops.entries())
+		crops: Array.from(state.crops.entries()),
+		// Fase 10 (nota del usuario): hora del mundo (timeOffset) persistida —
+		// al reiniciar el servidor el reloj continúa desde donde quedó, y los
+		// mundos nuevos arrancan al amanecer (ver loadWorld).
+		timeOffset: state.timeOffset || 0
 	};
 }
 
@@ -115,9 +126,20 @@ function saveWorld() {
 //   false      — no hay mundo guardado: se generará uno nuevo
 //   'rechazo'  — hay mundo guardado pero no se puede abrir de forma segura
 //                (schemaVersion más nuevo, world.json ilegible, ...): no cargar ni tocar
+// Offset de reloj para que el mundo arranque al amanecer (fase 0): el mismo
+// cálculo que /time set day y dormir en la cama. Así un mundo nuevo nunca
+// empieza a una hora arbitraria del día (bug reportado por el usuario).
+function dawnOffsetMs() {
+	return (0 - (Date.now() % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS;
+}
+
 function loadWorld() {
 	try {
-		if (!fs.existsSync(P.chunksDir)) return false;
+		if (!fs.existsSync(P.chunksDir)) {
+			// Mundo nuevo: arrancar al amanecer.
+			state.timeOffset = dawnOffsetMs();
+			return false;
+		}
 
 		chunks.clear();
 		for (const file of fs.readdirSync(P.chunksDir)) {
@@ -139,9 +161,7 @@ function loadWorld() {
 				const bak = `${P.metaFile}.bak`;
 				if (fs.existsSync(bak)) {
 					// biome-ignore lint/suspicious/noConsole: aviso de restauración
-					console.warn(
-						"⚠️  world.json ilegible; restaurando el backup (.bak)"
-					);
+					console.warn("⚠️  world.json ilegible; restaurando el backup (.bak)");
 					meta = JSON.parse(fs.readFileSync(bak, "utf8"));
 				} else {
 					throw e;
@@ -176,17 +196,28 @@ function loadWorld() {
 			// Fase 9 (Bloque B): restaurar el modo de juego del mundo (los mundos
 			// v3 sin el campo abren como survival — decisión del usuario).
 			P.worldGamemode = constants.sanitizeGamemode(meta.gamemode);
+			// Fase 10 (B1): tamaño del mundo (los mundos viejos sin el campo abren
+			// con 8192 — el tamaño "infinito" previo, retrocompatible).
+			P.worldSize = constants.sanitizeWorldSize(meta.worldSize);
 			state.mobs = restoreMobs(meta.mobs);
 			restoreFurnaces(meta.furnaces);
 			restoreChests(meta.chests);
 			// Fase 9 (Bloque C): cultivos (los mundos v3 sin el campo → sin cultivos).
 			state.crops.clear();
 			for (const [k, v] of meta.crops || []) state.crops.set(k, v);
+			// Fase 10 (nota del usuario): restaurar la hora del mundo (los mundos
+			// viejos sin el campo siguen con el reloj real, retrocompatible).
+			state.timeOffset =
+				Number.isFinite(meta.timeOffset) && meta.timeOffset >= 0
+					? meta.timeOffset
+					: 0;
 		} else {
 			// biome-ignore lint/suspicious/noConsole: aviso de mundo sin metadatos
 			console.warn(
 				"⚠️  world.json no encontrado: mobs, hornos y cofres se reinician (chunks intactos)"
 			);
+			// Hora desconocida (sin metadatos): amanecer, como en un mundo nuevo.
+			state.timeOffset = dawnOffsetMs();
 		}
 		// biome-ignore lint/suspicious/noConsole: log de carga del servidor
 		console.log(
@@ -218,7 +249,7 @@ function loadWorld() {
 // Fase 9 (Bloque B): `newGamemode` (opcional) fija el modo del mundo NUEVO
 // (world.json lo persiste en el primer guardado); un mundo EXISTENTE conserva
 // el suyo (loadWorld restaura el de su world.json).
-function switchWorld(newSeed, newName, newGamemode) {
+function switchWorld(newSeed, newName, newGamemode, newSize) {
 	const prevSeed = P.currentSeed;
 	if (constants.seedDir(newSeed) === constants.seedDir(prevSeed)) {
 		// Misma semilla: solo normalizar la semilla activa (si difiere en formato)
@@ -257,6 +288,9 @@ function switchWorld(newSeed, newName, newGamemode) {
 		sanitizeWorldName(newName) || newSeed,
 		newGamemode
 	);
+	// Fase 10 (B1): tamaño pedido para el mundo NUEVO (si el mundo ya existe en
+	// disco, loadWorld restaura su tamaño guardado y este valor se descarta).
+	P.worldSize = constants.sanitizeWorldSize(newSize);
 	world.reinitNoise(newSeed);
 
 	const r = loadWorld();
@@ -379,7 +413,8 @@ function listWorlds() {
 			name = dir,
 			lastSaved = null,
 			chunkCount = 0,
-			gamemode = "survival";
+			gamemode = "survival",
+			worldSize = 8192; // Fase 10 (B1): mundos viejos sin el campo → 8192
 		try {
 			const metaFile = path.join(dirPath, "world.json");
 			if (fs.existsSync(metaFile)) {
@@ -390,6 +425,8 @@ function listWorlds() {
 				// Fase 9 (Bloque B): modo de juego del mundo para el badge del menú
 				// (los mundos v3 sin el campo → survival).
 				gamemode = constants.sanitizeGamemode(meta.gamemode);
+				// Fase 10 (B1): tamaño del mundo para el badge del menú.
+				worldSize = constants.sanitizeWorldSize(meta.worldSize);
 			}
 			const chunksDir = path.join(dirPath, "chunks");
 			if (fs.existsSync(chunksDir)) {
@@ -405,14 +442,22 @@ function listWorlds() {
 			if (constants.seedDir(seed) === constants.seedDir(P.currentSeed)) {
 				activeFound = true;
 				if (P.worldName) name = P.worldName;
-				out.push({ seed, name, chunkCount, lastSaved, gamemode, active: true });
+				out.push({
+					seed,
+					name,
+					chunkCount,
+					lastSaved,
+					gamemode,
+					worldSize,
+					active: true
+				});
 				continue;
 			}
 		} catch (e) {
 			// biome-ignore lint/suspicious/noConsole: aviso de mundo ilegible en el menú
 			console.warn(`⚠️  Mundo ilegible en world/${dir}: ${e.message}`);
 		}
-		out.push({ seed, name, chunkCount, lastSaved, gamemode });
+		out.push({ seed, name, chunkCount, lastSaved, gamemode, worldSize });
 	}
 	// El mundo activo recién creado aún no tiene directorio (los chunks se
 	// escriben en el primer autosave): incluirlo igualmente para que el menú lo
@@ -420,6 +465,7 @@ function listWorlds() {
 	if (!activeFound) {
 		out.push({
 			seed: P.currentSeed,
+			worldSize: P.worldSize, // Fase 10 (B1)
 			name: P.worldName || P.currentSeed,
 			chunkCount: 0,
 			lastSaved: null,

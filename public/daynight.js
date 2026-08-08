@@ -23,6 +23,13 @@ const skyColor = new THREE.Color(); // scratch reutilizado cada frame (evita all
 let dayTimeAtInit = 0;
 let moonTimeAtInit = 0; // Fase 8 (B8): reloj de la luna (ciclo de 8 días)
 let initWall = 0;
+// Fase 10 (E3): el jugador está bajo el agua (lo avisa player.js cada frame).
+// Con la cámara sumergida la niebla se vuelve azulada y muy cercana, como en
+// Minecraft — oculta el lejano y da sensación de profundidad acuática.
+let underwater = false;
+export function setUnderwater(v) {
+	underwater = !!v;
+}
 
 // Devuelve la fase actual del ciclo en [0, 1): 0 = amanecer, 0.25 = mediodía,
 // 0.5 = atardecer, 0.75 = medianoche. La extrapolación desde el reloj del
@@ -77,10 +84,18 @@ export function updateDayNight() {
 	// densa y cercana (reduce el alcance visual y esconde el horizonte); al
 	// mediodía es clara y lejana. En amanecer/atardecer se espesa con el
 	// tinte cálido (el color de la niebla ya sigue al cielo).
+	// Fase 10 (E3): bajo el agua la niebla se sobreescribe con azul denso y
+	// cercano (near 1/far 12) — el color acuático no depende del ciclo.
 	if (scene.fog) {
-		scene.fog.color.copy(skyColor);
-		scene.fog.near = 30 + dayFactor * 45; // 30 de noche → 75 al mediodía
-		scene.fog.far = 70 + dayFactor * 130 + dusk * 40; // 70 de noche → ~240 de día
+		if (underwater) {
+			scene.fog.color.set(0x1a4a7a);
+			scene.fog.near = 0.5;
+			scene.fog.far = 12;
+		} else {
+			scene.fog.color.copy(skyColor);
+			scene.fog.near = 30 + dayFactor * 45; // 30 de noche → 75 al mediodía
+			scene.fog.far = 70 + dayFactor * 130 + dusk * 40; // 70 de noche → ~240 de día
+		}
 	}
 
 	// Fase 7: actualizar el dome del cielo (degradado, sol/luna, estrellas).

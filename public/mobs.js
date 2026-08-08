@@ -24,7 +24,12 @@ export const mobMeshes = new Map(); // id -> mesh (grupo raíz)
 // ============================================================
 function buildPartGroup(parts, material, rects = null) {
 	const group = new THREE.Group();
-	for (const part of parts) {
+	// Fase 10 (nota del usuario "mobs en caja"): lista de extremidades
+	// animables (patas y brazos) con su índice par/impar — se balancean al
+	// caminar en updateMobs para que los mobs no parezcan cajas estáticas.
+	const limbs = [];
+	for (let i = 0; i < parts.length; i++) {
+		const part = parts[i];
 		const [w, h, d] = part.size;
 		const geo = new THREE.BoxGeometry(w, h, d);
 		if (rects) {
@@ -54,8 +59,21 @@ function buildPartGroup(parts, material, rects = null) {
 		mesh.castShadow = true;
 		mesh.position.set(part.pos[0], part.pos[1], part.pos[2]);
 		if (part.rot) mesh.rotation.set(part.rot[0], part.rot[1], part.rot[2]);
+		// Las extremidades conservan su pivote en la cadera/hombro (no se
+		// mueve el pivote): al girar en X alrededor de su propio centro el
+		// efecto visual de "paso" se logra con ángulos pequeños (ver
+		// setMobWalk). El índice sirve para alternar izquierda/derecha.
+		if (part.name === "leg" || part.name === "arm") {
+			mesh.userData.limbIndex = limbs.length;
+			// Rotación base de la parte (p. ej. patas de la araña con ángulo en
+			// X): el balanceo SUMA a esa pose, nunca la pisa (bug de Fase 10
+			// detectado en revisión — al pararse la araña "enderezaba" las patas).
+			mesh.userData.baseRotX = part.rot?.[0] || 0;
+			limbs.push(mesh);
+		}
 		group.add(mesh);
 	}
+	if (limbs.length > 0) group.userData.limbs = limbs;
 	return group;
 }
 
@@ -154,6 +172,13 @@ export function removeRemotePlayer(id) {
 export function updateRemotePlayer(id, x, y, z, yaw) {
 	const mesh = remotePlayers.get(id);
 	if (mesh) {
+		// Fase 10: los jugadores remotos también mueven las piernas al caminar.
+		const last = mesh.userData.lastPos;
+		const dx = last ? x - last.x : 0;
+		const dz = last ? z - last.z : 0;
+		if (Math.hypot(dx, dz) > 0.001) setMobWalk(mesh, dx, dz);
+		else resetMobWalk(mesh);
+		mesh.userData.lastPos = { x, y, z };
 		mesh.position.set(x, y, z);
 		mesh.rotation.y = yaw;
 	}
@@ -166,6 +191,38 @@ const MOB_SCALE = {
 	rabbit: 0.55,
 	wolf: 1.05
 };
+
+// Fase 10 (nota "mobs en caja"): balanceo de extremidades al caminar.
+// Avanza una fase por la distancia recorrida (setMobWalk) y convierte esa
+// fase en rotaciones alternadas de patas/brazos (seno). Se llama desde
+// updateMobs y updateRemotePlayer.
+const WALK_STRIDE = 2.2; // distancia (bloques) por ciclo completo de paso
+const WALK_SWING = 0.5; // amplitud del balanceo en radianes
+function setMobWalk(mesh, dx, dz) {
+	const limbs = mesh.userData?.limbs;
+	if (!limbs || limbs.length === 0) return;
+	// Fase acumulada por distancia: caminar despacio mueve las patas despacio.
+	mesh.userData.walkPhase =
+		(mesh.userData.walkPhase || 0) + Math.hypot(dx, dz) / WALK_STRIDE;
+	const ph = mesh.userData.walkPhase;
+	for (const limb of limbs) {
+		// Alternar: pares a un lado, impares al otro (contrafase entre patas
+		// contiguas). El balanceo SUMA a la rotación base de la parte
+		// (baseRotX — las patas de la araña ya vienen con ángulo propio).
+		const side = limb.userData.limbIndex % 2 === 0 ? 1 : -1;
+		limb.rotation.x =
+			(limb.userData.baseRotX || 0) +
+			Math.sin(ph * Math.PI * 2 + side) * WALK_SWING * side;
+	}
+}
+
+// Restablece el balanceo (mob quieto): vuelve las extremidades a su pose base
+// (no a 0 — respeta la rotación original de la parte, p. ej. la araña).
+function resetMobWalk(mesh) {
+	const limbs = mesh.userData?.limbs;
+	if (!limbs) return;
+	for (const limb of limbs) limb.rotation.x = limb.userData.baseRotX || 0;
+}
 
 export function updateMobs(list) {
 	const seen = new Set();
@@ -183,6 +240,18 @@ export function updateMobs(list) {
 			scene.add(mesh);
 			mobMeshes.set(m.id, mesh);
 		}
+		// Fase 10 ("mobs en caja"): balancear las patas si el mob se movió
+		// respecto a la snapshot anterior (el servidor manda posición por tick).
+		const last = mesh.userData.lastPos;
+		if (last) {
+			const dx = m.x - last.x,
+				dz = m.z - last.z;
+			if (Math.hypot(dx, dz) > 0.001) setMobWalk(mesh, dx, dz);
+			else resetMobWalk(mesh);
+		} else {
+			mesh.userData.walkPhase = 0;
+		}
+		mesh.userData.lastPos = { x: m.x, y: m.y, z: m.z };
 		mesh.position.set(m.x, m.y, m.z);
 		const s = (m.isBaby ? 0.5 : 1) * (MOB_SCALE[m.type] || 1);
 		mesh.scale.set(s, s, s);

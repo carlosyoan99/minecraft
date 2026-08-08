@@ -8,7 +8,14 @@ const path = require("node:path");
 const zlib = require("node:zlib"); // gzip del guardado por chunk (Fase 7)
 const { createNoise2D, createNoise3D } = require("simplex-noise");
 const constants = require("./constants.js");
-const { CHUNK_SIZE, WORLD_HEIGHT, SCHEMA_VERSION, B, isSolidBlock } = constants;
+const {
+	CHUNK_SIZE,
+	WORLD_HEIGHT,
+	SCHEMA_VERSION,
+	B,
+	isSolidBlock,
+	GRAVITY_BLOCKS
+} = constants;
 const state = require("./state.js");
 const chests = require("./chests.js"); // cofres de loot de las minas abandonadas (Fase 7)
 
@@ -32,7 +39,11 @@ function seededNoise(seedStr) {
 // Generadores MUTABLES: reinitNoise(seed) los recrea todos (Fase 6, el menú
 // del cliente puede cambiar la semilla en runtime con save.switchWorld).
 let noise2D, noise2D_detail, noise2D_ore, noise2D_mountain;
-let noise3D_cave, noise3D_cave_fine, noise2D_lake;
+let noise3D_cave,
+	noise3D_cave_fine,
+	noise2D_lake,
+	noise2D_lakeDepth,
+	noise2D_river;
 // Ruidos de las minas abandonadas (Fase 7): dos campos de "corredores"
 // (bandas finas alrededor de las curvas de nivel del ruido), una puerta de
 // región (solo ~1/3 del mapa tiene minas) y la profundidad del túnel.
@@ -55,6 +66,10 @@ function reinitNoise(seed) {
 	// agua llena la depresión hasta SEA_LEVEL. Muestreado en coordenadas de
 	// mundo → lagos continuos entre chunks y deterministas.
 	noise2D_lake = createNoise2D(seededNoise(`${seed}_lake`));
+	// Fase 10 (A4): profundidad variable del lago y ríos pequeños (canales
+	// que cortan el terreno y se llenan de agua).
+	noise2D_lakeDepth = createNoise2D(seededNoise(`${seed}_lake_depth`));
+	noise2D_river = createNoise2D(seededNoise(`${seed}_river`));
 	// Minas abandonadas (Fase 7).
 	noise2D_ms_a = createNoise2D(seededNoise(`${seed}_ms_a`));
 	noise2D_ms_b = createNoise2D(seededNoise(`${seed}_ms_b`));
@@ -73,6 +88,50 @@ const LAKE_THRESHOLD = 0.65; // calibrado por barrido: ~5% de columnas con lago
 const LAKE_FLOOR = 2; // fondo del lago: arena en y=LAKE_FLOOR, piedra debajo
 function isLake(wx, wz) {
 	return noise2D_lake(wx * LAKE_FREQ, wz * LAKE_FREQ) > LAKE_THRESHOLD;
+}
+
+// Fase 10 (A4): profundidad VARIABLE del lago (0..LAKE_FLOOR → de 3 a ~6
+// bloques de agua). Antes todos los lagos tenían el mismo fondo plano.
+function lakeFloorY(wx, wz) {
+	const d = (noise2D_lakeDepth(wx * 0.05, wz * 0.05) + 1) / 2; // 0..1
+	return Math.max(1, Math.floor(d * (LAKE_FLOOR + 1))); // 1..3 → agua de 2 a 4 bloques
+}
+
+// Fase 10 (A4): RÍOS pequeños — banda estrecha del ruido de río donde el
+// terreno se hunde en un canal y el agua lo llena hasta SEA_LEVEL (agua
+// siempre por debajo del nivel del mar: la invariante de unit-mundo de
+// "agua sobre SEA_LEVEL = charco" se conserva).
+const RIVER_FREQ = 0.008; // frecuencia baja → meandros amplios
+const RIVER_WIDTH = 0.14; // banda del ruido que es río (≈5% de columnas)
+function isRiver(wx, wz) {
+	return (
+		Math.abs(noise2D_river(wx * RIVER_FREQ, wz * RIVER_FREQ)) < RIVER_WIDTH
+	);
+}
+// Profundidad del canal (1-4 bloques bajo el terreno, según la fuerza del
+// ruido en esa columna) — los ríos son valles, no zanjas rectas.
+function riverDepth(wx, wz) {
+	const n = noise2D_river(wx * RIVER_FREQ, wz * RIVER_FREQ);
+	return 2 + Math.floor((Math.abs(n) / RIVER_WIDTH) * 2); // 2..4
+}
+
+// Fondo real de una columna de agua (lago o río): Y del lecho (el bloque
+// SAND) o null si la columna no es de agua. Lo usan generateChunk y los
+// tests (unit-mundo) — la profundidad ya no es LAKE_FLOOR fijo.
+function columnFloorY(wx, wz) {
+	if (isLake(wx, wz)) return lakeFloorY(wx, wz);
+	if (isRiver(wx, wz)) {
+		const temp = noise2D(wx * 0.005, wz * 0.005);
+		const mnt = noise2D_mountain(wx * 0.008, wz * 0.008);
+		const h = heightFrom(
+			temp,
+			smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
+			wx,
+			wz
+		);
+		return Math.max(1, Math.min(h - riverDepth(wx, wz), SEA_LEVEL - 1));
+	}
+	return null;
 }
 
 // Playas costeras (Fase 9, Bloque F): una columna es "costa" si hay un lago a
@@ -319,8 +378,8 @@ function msLootSpot(wx, wz) {
 // ============================================================
 const POND_REGION_GATE = 0.35; // ~32% del mapa puede tener charcos
 const POND_THRESHOLD = 0.7; // calibrado: ~1-1.5% global de columnas con charco
-const LAVA_REGION_GATE = 0.45; // la lava, más rara
-const LAVA_THRESHOLD = 0.78; // calibrado: ~0.5% global
+const LAVA_REGION_GATE = 0.5; // Fase 10 (A3): la lava, más rara (antes 0.45)
+const LAVA_THRESHOLD = 0.84; // Fase 10 (A3): ~0.3% global (antes 0.78 → demasiados lagos)
 function isPondAt(wx, wz) {
 	return (
 		noise2D_pond_region(wx * 0.01, wz * 0.01) > POND_REGION_GATE &&
@@ -328,6 +387,11 @@ function isPondAt(wx, wz) {
 	);
 }
 function isLavaPondAt(wx, wz) {
+	// Fase 10 (A3): nunca lava en biomas de hielo/tundra (bug de las notas) y
+	// solo en regiones templadas o cálidas (el ruido de temperatura es el
+	// mismo que usa biomeFrom, así que es consistente con el bioma real).
+	const temp = noise2D(wx * 0.005, wz * 0.005);
+	if (temp < SNOW_TEMP) return false;
 	return (
 		noise2D_pond_region(wx * 0.01, wz * 0.01) > LAVA_REGION_GATE &&
 		noise2D_lava(wx * 0.07, wz * 0.07) > LAVA_THRESHOLD
@@ -452,9 +516,28 @@ function takeChunkGenMs() {
 	return v;
 }
 
+// Fase 10 (B1): límites del mundo (tamaño por semilla, world.json). Fuera de
+// [-half, half) los chunks se devuelven VACÍOS (aire) sin cachear: el cliente
+// nunca los recibe (no están en state.chunks) y getBlock devuelve aire.
+function outOfBounds(cx, cz) {
+	const half = constants.worldHalfExtent();
+	const minC = Math.floor(-half / CHUNK_SIZE);
+	const maxC = Math.floor((half - 1) / CHUNK_SIZE);
+	return cx < minC || cx > maxC || cz < minC || cz > maxC;
+}
+
+function inBounds(wx, wz) {
+	const half = constants.worldHalfExtent();
+	return wx >= -half && wx < half && wz >= -half && wz < half;
+}
+
 function generateChunk(cx, cz) {
 	const key = `${cx},${cz}`;
 	if (chunks.has(key)) return chunks.get(key);
+	// Fase 10 (B1): fuera de los bordes → chunk vacío (no se cachea).
+	if (outOfBounds(cx, cz)) {
+		return new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+	}
 	// Si el chunk ya fue guardado en disco (p.ej. tras descargarse), recuperarlo
 	// tal cual en vez de regenerarlo: la generación usa Math.random y perdería cambios.
 	const fromDisk = diskLoader ? diskLoader(cx, cz) : loadChunkFromDisk(cx, cz);
@@ -473,23 +556,28 @@ function generateChunk(cx, cz) {
 			const wx = baseX + x,
 				wz = baseZ + z;
 			const lake = isLake(wx, wz);
-			// En un lago el terreno se hunde hasta LAKE_FLOOR y el agua llena la
-			// depresión hasta SEA_LEVEL; no hay árboles ni minerales bajo el agua.
-			// Ruidos compartidos por columna (getHeight/getBiome son ruido puro:
-			// recalcularlos daría valores idénticos, pero se evita el triple
-			// muestreo en el bucle de generación).
+			// Fase 10 (A4): ríos — canales que cortan el terreno (los lagos
+			// siguen siendo depresiones; los ríos se hunden en el terreno natural).
+			const river = !lake && isRiver(wx, wz);
+			const waterCol = lake || river; // columna de agua (lago o río)
+			// En un lago el terreno se hunde hasta su fondo (profundidad variable,
+			// Fase 10 A4) y el agua llena la depresión hasta SEA_LEVEL; los ríos
+			// cortan un canal bajo el terreno natural. No hay árboles ni minerales
+			// bajo el agua. Ruidos compartidos por columna (getHeight/getBiome son
+			// ruido puro: recalcularlos daría valores idénticos, pero se evita el
+			// triple muestreo en el bucle de generación).
 			const temp = noise2D(wx * 0.005, wz * 0.005);
 			const mnt = noise2D_mountain(wx * 0.008, wz * 0.008);
-			const height = lake
-				? LAKE_FLOOR
-				: heightFrom(
-						temp,
-						smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
-						wx,
-						wz
-					);
+			const baseHeight = heightFrom(
+				temp,
+				smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
+				wx,
+				wz
+			);
+			const floorY = columnFloorY(wx, wz) ?? 0; // fondo del agua (columna de agua)
+			const height = waterCol ? floorY : baseHeight;
 			const biome = biomeFrom(temp, mnt);
-			const surfaceBlock = lake
+			const surfaceBlock = waterCol
 				? B.AIR
 				: // Fase 9 (Bloque F): playa — la costa de un lago se cubre de arena
 					// (transición suave agua → arena → tierra).
@@ -507,11 +595,15 @@ function generateChunk(cx, cz) {
 			for (let y = 0; y < WORLD_HEIGHT; y++) {
 				let block = B.AIR;
 				if (y === 0) block = B.BEDROCK;
-				else if (lake) {
-					// Columna de lago: piedra bajo el fondo, arena en LAKE_FLOOR y agua
-					// encima hasta SEA_LEVEL. Sin huecos: nunca aire bajo el fondo.
-					if (y < LAKE_FLOOR) block = B.STONE;
-					else if (y === LAKE_FLOOR) block = B.SAND;
+				else if (waterCol) {
+					// Columna de agua (lago o río): piedra bajo el lecho, arena en el
+					// lecho y agua encima hasta SEA_LEVEL. Fase 10 (A4): las CUEVAS
+					// bajo el agua se inundan (cuevas acuáticas) — nunca hay bolsas
+					// de aire bajo el agua (invariante de unit-mundo).
+					if (y < floorY) {
+						if (y > 1 && isCaveBlock(wx, y, wz, false)) block = B.WATER;
+						else block = B.STONE;
+					} else if (y === floorY) block = B.SAND;
 					else if (y < SEA_LEVEL) block = B.WATER;
 				} else if (y < height - 1) {
 					// Cuevas (Fase 4): el ruido 3D excava la piedra sin tocar el
@@ -554,13 +646,14 @@ function generateChunk(cx, cz) {
 
 			// Pozos decorativos (Fase 7): charco de agua o lava que reemplaza al
 			// bloque de superficie y deja lecho de arena debajo. Nunca sobre lagos,
-			// ni en bocas de cueva, ni donde no quepa el lecho (height justo sobre
-			// el nivel del mar). El charco gana a la boca de cueva (rarísimo).
+			// ni en ríos, ni en bocas de cueva, ni donde no quepa el lecho (height
+			// justo sobre el nivel del mar). El charco gana a la boca de cueva
+			// (rarísimo).
 			const pond =
-				!lake && !mouth && height > SEA_LEVEL + 1 && isPondAt(wx, wz);
+				!waterCol && !mouth && height > SEA_LEVEL + 1 && isPondAt(wx, wz);
 			const lavaPond =
 				!pond &&
-				!lake &&
+				!waterCol &&
 				!mouth &&
 				height > SEA_LEVEL + 1 &&
 				isLavaPondAt(wx, wz);
@@ -605,7 +698,7 @@ function generateChunk(cx, cz) {
 			// Fase 9 (Bloque F): variedad — abedul en el bosque (tronco claro,
 			// copa normal) y pino cónico en tundra/montaña (tronco de abeto).
 			const canGrowTree =
-				!lake && !mouth && !pond && !lavaPond && surfaceBlock === B.GRASS;
+				!waterCol && !mouth && !pond && !lavaPond && surfaceBlock === B.GRASS;
 			const treeRoll = Math.random();
 			if (
 				canGrowTree &&
@@ -776,8 +869,87 @@ function cleanUnsupportedTorches(wx, wy, wz) {
 	}
 }
 
+// ============================================================
+// OSCURIDAD (Fase 10, A6): nivel de luz servidor-side, BARATO.
+// El servidor no simula luz de antorchas (solo el cliente); para que los
+// hostiles aparezcan de día en cuevas/zona oscuras basta con una métrica
+// de "cielo visible": una columna es oscura si tiene un bloque opaco
+// encima (techo, árboles, sobrehangs) o si la posición está bajo tierra.
+// getHeight(0,0) devuelve -1 fuera del mundo generado (lo usan los tests).
+// ============================================================
+
+// ¿La posición (wy = pies) tiene el cielo bloqueado (oscuro de día)?
+function isColumnDark(wx, wy, wz) {
+	for (let y = Math.max(0, wy) + 1; y < WORLD_HEIGHT; y++) {
+		const b = getBlock(wx, y, wz);
+		if (b !== B.AIR && b !== B.WATER && b !== B.LAVA) return true;
+	}
+	return false;
+}
+
+// Devuelve la Y del primer hueco de aire bajo tierra con techo opaco
+// (celda de cueva) para spawn de hostiles de día, o null si la columna
+// no tiene cueva (superficie sólida sin excavar).
+function findDarkCaveY(wx, wz, surfaceH) {
+	for (let y = surfaceH - 2; y > 1; y--) {
+		if (
+			getBlock(wx, y, wz) === B.AIR &&
+			isSolidBlock(getBlock(wx, y + 1, wz))
+		) {
+			return y; // aire de cueva con techo opaco justo encima → oscuro
+		}
+	}
+	return null;
+}
+
+// ============================================================
+// BLOQUES CON GRAVEDAD (Fase 10, D1)
+// Arena y grava caen si el bloque de debajo no es sólido (o es agua/lava:
+// la desplazan y se hunden hasta el fondo, como en Minecraft). Se llama al
+// final de cada setBlock sobre la columna del bloque cambiado: si se rompe
+// un bloque bajo la arena, la columna cae; si se coloca un bloque sólido
+// bajo la arena, deja de caer. Escritura directa de datos + blockChangeHandler
+// (no setBlock, para no recurrir) y límite de WORLD_HEIGHT (bucle acotado).
+// ============================================================
+// ¿Celda por la que puede caer un bloque con gravedad? (aire o líquido: la
+// arena/grava se hunde a través del agua/lava hasta el fondo, desplazándola).
+function isFallable(b) {
+	return b === B.AIR || b === B.WATER || b === B.LAVA;
+}
+
+function settleColumn(wx, wy, wz) {
+	// wy: celda recién cambiada. La gravedad afecta a la propia celda (si se
+	// colocó arena/grava en el aire) y a las de encima (si se rompió su apoyo).
+	for (let y = wy; y < WORLD_HEIGHT - 1; y++) {
+		const b = getBlock(wx, y, wz);
+		if (!GRAVITY_BLOCKS.has(b)) break; // solo la primera columna contigua
+		if (!isFallable(getBlock(wx, y - 1, wz))) break; // ya apoyado
+		// Buscar el primer soporte hacia abajo (la celda cae DE UN TIRÓN a
+		// través del hueco; si el hueco es agua/lava, las desplaza hacia arriba).
+		let dest = y - 1;
+		while (dest >= 1 && isFallable(getBlock(wx, dest - 1, wz))) dest--;
+		if (dest === y - 1 && !isFallable(getBlock(wx, dest, wz))) break; // sin hueco
+		const cx = Math.floor(wx / CHUNK_SIZE),
+			cz = Math.floor(wz / CHUNK_SIZE);
+		const chunk = generateChunk(cx, cz);
+		const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+		const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+		const displaced = chunk[idx(x, dest, z)]; // lo que había donde cae (aire/líquido)
+		chunk[idx(x, dest, z)] = b;
+		chunk[idx(x, y, z)] = displaced;
+		markChunkDirty(cx, cz);
+		if (blockChangeHandler) {
+			blockChangeHandler(wx, dest, wz, b); // destino
+			blockChangeHandler(wx, y, wz, displaced); // origen
+		}
+		// La celda que estaba encima ahora cae al hueco (el bucle continúa).
+	}
+}
+
 function setBlock(wx, wy, wz, blockId) {
 	if (wy < 0 || wy >= WORLD_HEIGHT) return false;
+	// Fase 10 (B1): no colocar fuera de los límites del mundo.
+	if (!inBounds(wx, wz)) return false;
 	const cx = Math.floor(wx / CHUNK_SIZE),
 		cz = Math.floor(wz / CHUNK_SIZE);
 	const chunk = generateChunk(cx, cz);
@@ -785,6 +957,9 @@ function setBlock(wx, wy, wz, blockId) {
 	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 	chunk[idx(x, wy, z)] = blockId;
 	markChunkDirty(cx, cz);
+	// Fase 10 (D1): después de cambiar el bloque, la gravedad asienta la
+	// columna (la arena/grava de encima cae si perdió el soporte).
+	settleColumn(wx, wy, wz);
 	if (blockChangeHandler) blockChangeHandler(wx, wy, wz, blockId);
 	return true;
 }
@@ -824,9 +999,16 @@ module.exports = {
 	loadChunkFromDisk,
 	setBlockChangeHandler,
 	setDiskLoader,
+	isColumnDark,
+	findDarkCaveY,
+	inBounds,
+	outOfBounds,
 	takeChunkGenMs,
 	reinitNoise,
 	isLake,
+	isRiver,
+	lakeFloorY,
+	columnFloorY,
 	SEA_LEVEL,
 	LAKE_FLOOR,
 	SNOW_TEMP,

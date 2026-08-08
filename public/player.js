@@ -2,7 +2,13 @@
 // FÍSICA Y MOVIMIENTO DEL JUGADOR LOCAL
 // ============================================================
 import * as THREE from "three";
-import { playSplash, playStep, updateAmbient } from "./audio.js";
+import {
+	playSplash,
+	playStep,
+	setMusicContext,
+	updateAmbient
+} from "./audio.js";
+import { initClouds, updateClouds } from "./clouds.js"; // Fase 10 (E4): nubes
 import { send } from "./connection.js";
 import {
 	EYE_HEIGHT,
@@ -10,10 +16,12 @@ import {
 	JUMP_SPEED,
 	LAVA,
 	NON_SOLID_PLANTS,
+	SAND,
+	SNOW,
 	TORCH,
 	WATER
 } from "./constants.js";
-import { updateDayNight } from "./daynight.js";
+import { setUnderwater, updateDayNight } from "./daynight.js";
 import { camera, controls, renderer, scene } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
 import {
@@ -28,6 +36,14 @@ import {
 
 const PLAYER_SPEED = 4.3; // bloques/segundo (en tierra)
 const SWIM_SPEED = 2.6; // bloques/segundo (en agua)
+// Fase 10 (D3): sprint — doble-tap W lo activa (estilo MC), ~1.3x la velocidad
+// de caminar; abre el FOV unos grados mientras se corre (ver animate()).
+const SPRINT_SPEED = 5.6; // bloques/segundo corriendo
+const SPRINT_FOV = 10; // grados extra de FOV al correr (MC abre ~10°)
+// Fase 10 (D5): agacharse (Shift) — 30% de la velocidad de caminar, como en
+// Minecraft, y con protección de bordes (no se cae del borde si el bloque de
+// debajo del siguiente paso no es sólido).
+const SNEAK_SPEED = 1.3; // bloques/segundo agachado
 // GRAVITY y JUMP_SPEED vienen de constants.js (paridad con el servidor para
 // el anti-cheat de vuelo y el daño de caída por velocidad vertical).
 const WATER_GRAVITY = 6; // gravedad reducida bajo el agua (flotación)
@@ -42,7 +58,8 @@ export const move = {
 	left: false,
 	right: false,
 	jump: false,
-	sneak: false // Fase 9 (C): Shift — bajar en el vuelo creativo
+	sneak: false, // Fase 9 (C): Shift — bajar en el vuelo creativo
+	sprint: false // Fase 10 (D3): doble-tap W — correr (más rápido + FOV abierto)
 };
 
 // ============================================================
@@ -85,6 +102,36 @@ function solidAt(x, y, z) {
 	);
 }
 
+// ============================================================
+// CONTEXTO MUSICAL (Fase 10, nota del usuario): la música generativa varía
+// según el entorno — cueva (techo encima → notas graves y espaciadas),
+// desierto (arena bajo los pies → brillante) y bioma frío (nieve → aguda).
+// Se llama ~1 vez/segundo desde animate(); es barata (2-3 lecturas de bloque).
+// ============================================================
+let musicCtxTimer = 0;
+function updateMusicContext() {
+	const px = camera.position.x;
+	const feet = camera.position.y - EYE_HEIGHT;
+	const pz = camera.position.z;
+	// Cueva: bloque sólido justo encima de la cabeza (techo) o el jugador
+	// está por debajo del nivel del mar con terreno encima. Solo importa el
+	// techo INMEDIATO: una cueva abierta al cielo no cuenta como cueva.
+	const headY = camera.position.y + 0.5;
+	const cave = solidAt(px, headY + 1.0, pz);
+	// Bioma por el bloque bajo los pies (aproximación sin red, suficiente
+	// para la música): arena → desierto, nieve (21) → frío.
+	const under = getClientBlock(
+		Math.floor(px),
+		Math.floor(feet - 0.1),
+		Math.floor(pz)
+	);
+	setMusicContext({
+		cave,
+		warm: under === SAND,
+		cold: under === SNOW
+	});
+}
+
 function isWaterAt(x, y, z) {
 	return getClientBlock(Math.floor(x), Math.floor(y), Math.floor(z)) === WATER;
 }
@@ -92,9 +139,14 @@ function isWaterAt(x, y, z) {
 function tryMove(dx, dz) {
 	const feet = camera.position.y - EYE_HEIGHT;
 	const r = 0.3;
+	// Fase 10 (D5): protección de bordes al agacharse — si el bloque bajo el
+	// siguiente paso no es sólido (borde de un risco/plataforma), no se avanza
+	// ese eje: el jugador se queda "pegado" al borde en vez de caerse.
+	const edgeSafe = (x, z) => !move.sneak || solidAt(x, feet - 0.6, z);
 	// Eje X
 	const nx = camera.position.x + dx;
 	if (
+		edgeSafe(nx, camera.position.z) &&
 		!solidAt(nx + Math.sign(dx) * r, feet + 0.1, camera.position.z) &&
 		!solidAt(nx + Math.sign(dx) * r, feet + 1.3, camera.position.z)
 	) {
@@ -103,6 +155,7 @@ function tryMove(dx, dz) {
 	// Eje Z
 	const nz = camera.position.z + dz;
 	if (
+		edgeSafe(camera.position.x, nz) &&
 		!solidAt(camera.position.x, feet + 0.1, nz + Math.sign(dz) * r) &&
 		!solidAt(camera.position.x, feet + 1.3, nz + Math.sign(dz) * r)
 	) {
@@ -186,6 +239,8 @@ function animate() {
 		// feedback auditivo de la inmersión, como en Minecraft.
 		if (inWater && !wasInWater) playSplash();
 		wasInWater = inWater;
+		// Fase 10 (E3): niebla azulada y densa mientras la cámara está sumergida.
+		setUnderwater(inWater);
 
 		let dx = 0,
 			dz = 0;
@@ -206,13 +261,31 @@ function animate() {
 			dz += lateral * right.z;
 		}
 		const len = Math.hypot(dx, dz);
-		// En el agua se nada más lento (resistencia del medio)
-		const speed = inWater ? SWIM_SPEED : PLAYER_SPEED;
+		// Fase 10 (D3/D5): velocidad por estado — sprint (doble-tap W) solo en
+		// tierra y moviéndose hacia delante; agacharse (Shift) reduce a 30%.
+		// El agua impone su propia resistencia (SWIM_SPEED) por encima de todo.
+		const sprinting = move.sprint && move.forward && !inWater && !flying;
+		const sneaking = move.sneak && !inWater && !flying;
+		const speed = inWater
+			? SWIM_SPEED
+			: sprinting
+				? SPRINT_SPEED
+				: sneaking
+					? SNEAK_SPEED
+					: PLAYER_SPEED;
 		if (len > 0) {
 			dx = (dx / len) * speed * dt;
 			dz = (dz / len) * speed * dt;
 		}
 		tryMove(dx, dz);
+
+		// Fase 10 (D3): efecto de FOV al correr — se abre ~10° con transición
+		// suave (lerp por frame) y vuelve al valor del ajuste al dejar de correr.
+		const targetFov = getSetting("fov") + (sprinting ? SPRINT_FOV : 0);
+		if (Math.abs(camera.fov - targetFov) > 0.05) {
+			camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 10);
+			camera.updateProjectionMatrix();
+		}
 
 		// Vuelo creativo: movimiento 3D sin gravedad (espacio sube, Shift baja).
 		if (flying) {
@@ -230,7 +303,19 @@ function animate() {
 				if (onGround) velocityY = 0;
 				else velocityY -= WATER_GRAVITY * dt;
 				velocityY = Math.max(velocityY, -SINK_SPEED);
-				if (move.jump) velocityY = SWIM_UP_SPEED;
+				if (move.jump) {
+					// Fase 10 (A1): bug "no se puede salir del agua". Al alcanzar la
+					// superficie (cabeza fuera del agua) el salto impulsa como en
+					// tierra (JUMP_SPEED en vez del tope de natación SWIM_UP_SPEED):
+					// permite saltar fuera a la orilla/ribazo. Antes el tope de 4
+					// bloques/s no bastaba para encaramarse a un borde de 1 bloque.
+					const atSurface = !isWaterAt(
+						camera.position.x,
+						feet + 1.5,
+						camera.position.z
+					);
+					velocityY = atSurface ? JUMP_SPEED : SWIM_UP_SPEED;
+				}
 			} else if (onGround) {
 				velocityY = 0;
 				if (move.jump) velocityY = JUMP_SPEED;
@@ -285,7 +370,16 @@ function animate() {
 
 	const frameT0 = performance.now();
 	updateDayNight();
+	updateClouds(dt); // Fase 10 (E4): nubes que se desplazan
 	updateLiquidAnimation(); // Fase 9 (E): pulso suave del agua/lava
+	// Fase 10 (nota del usuario): contexto musical — cada ~1 s se mira el
+	// entorno (techo encima → cueva; arena bajo los pies → desierto; nieve →
+	// frío) y audio.js varía la paleta de la música generativa en respuesta.
+	musicCtxTimer += dt;
+	if (musicCtxTimer >= 1) {
+		musicCtxTimer = 0;
+		updateMusicContext();
+	}
 	const ambientT0 = performance.now();
 	updateAmbient();
 	const ambientMs = performance.now() - ambientT0;
@@ -309,4 +403,5 @@ function animate() {
 	); // Fase 7: capa de coordenadas
 	updatePerfMetrics(ambientMs, cullMs, performance.now() - frameT0);
 }
+initClouds(); // Fase 10 (E4): nubes procedurales (antes del primer frame)
 animate();

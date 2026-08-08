@@ -13,6 +13,7 @@ const save = require("./save.js");
 const mobs = require("./mobs.js");
 const crafting = require("./crafting.js");
 const playerHelpers = require("./players.js");
+const tnt = require("./tnt.js"); // Fase 10 (D2)
 const net = require("./net.js");
 
 // Hooks de broadcast (dependencia world/save/players -> net, rota aquí)
@@ -21,6 +22,8 @@ world.setBlockChangeHandler((x, y, z, block) =>
 );
 save.setUnloadHandler((keys) => net.broadcast("chunks_unload", { keys }));
 playerHelpers.setBroadcastHandler((event, data) => net.broadcast(event, data));
+// Fase 10 (D2): TNT (mecha/explosión) → broadcast a todos los clientes.
+tnt.setBroadcastHandler((event, data) => net.broadcast(event, data));
 
 crafting.loadRecipes();
 

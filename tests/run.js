@@ -11,6 +11,7 @@
 const { spawnSync } = require("node:child_process");
 const http = require("node:http");
 const path = require("node:path");
+const fs = require("node:fs");
 
 const UNIT = [
 	"unit-hambre.js",
@@ -61,13 +62,48 @@ const E2E = [
 const args = process.argv.slice(2);
 
 let failed = 0;
+// Fase 10 (C1): resultado por test para el test.log (saber qué falló sin
+// re-ejecutar la suite).
+const results = [];
 
 function run(file) {
 	const r = spawnSync(process.execPath, [path.join(__dirname, file)], {
 		stdio: "inherit"
 	});
-	if (r.status !== 0) failed++;
-	return r.status === 0;
+	const ok = r.status === 0;
+	if (!ok) failed++;
+	results.push({ file, ok });
+	return ok;
+}
+
+// Fase 10 (C1): `test.log` — persistencia del resultado de la última
+// ejecución (fecha, modo, total, fallos y qué tests fallaron). Lo escribe
+// tests/run.js al terminar en cualquier modo (unit, e2e o completo).
+// Está en .gitignore (los logs no se versionan).
+function writeTestLog() {
+	const mode = args.includes("--e2e")
+		? "e2e"
+		: args.includes("--unit")
+			? "unit"
+			: "full";
+	const failedFiles = results.filter((r) => !r.ok).map((r) => r.file);
+	const entry = `# test.log — resultado de la última ejecución de tests
+fecha: ${new Date().toISOString()}
+modo: ${mode}
+total: ${results.length}
+fallos: ${failedFiles.length}
+${
+	failedFiles.length
+		? `tests con fallo: ${failedFiles.join(", ")}`
+		: "tests con fallo: (ninguno)"
+}
+exit: ${failed ? 1 : 0}
+`;
+	try {
+		fs.writeFileSync(path.join(__dirname, "test.log"), entry);
+	} catch {
+		// no bloquea el runner si no se puede escribir el log
+	}
 }
 
 // ¿Hay un servidor HTTP escuchando en el host/puerto del WS?
@@ -99,5 +135,6 @@ function serverUp(wsUrl) {
 		} else {
 		}
 	}
+	writeTestLog(); // Fase 10 (C1)
 	process.exit(failed ? 1 : 0);
 })();

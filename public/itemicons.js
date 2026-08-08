@@ -478,6 +478,59 @@ function drawBlockIcon(id, g, rng) {
 		case 38:
 			drawWoolColor(g, rng, "#f5f5f0", "#d9d9d2");
 			break;
+		// Fase 10 (D1): grava — piedrecitas grises moteadas (como adoquín pero
+		// sin las líneas de junta: bloques sueltos).
+		case 39: {
+			const base = "#9a9490",
+				dark = "#7d7671",
+				light = "#b5afab";
+			rect(g, 2, 2, 12, 12, base);
+			for (let i = 0; i < 12; i++)
+				set(
+					g,
+					2 + Math.floor(rng() * 12),
+					2 + Math.floor(rng() * 12),
+					rng() < 0.5 ? dark : light
+				);
+			rect(g, 2, 2, 12, 1, light);
+			rect(g, 2, 13, 12, 1, dark);
+			break;
+		}
+		// Fase 10 (D2): TNT — caja roja con banda blanca "TNT" y pólvora abajo.
+		case 40: {
+			const red = "#c0392b",
+				redDark = "#8f2a1e",
+				band = "#f5f5f0";
+			rect(g, 2, 2, 12, 12, red);
+			rect(g, 2, 2, 12, 3, band); // banda blanca superior
+			rect(g, 2, 11, 12, 3, "#7d5a3a"); // pólvora (madera oscura)
+			// Letras "TNT" en la banda
+			set(g, 3, 3, redDark);
+			set(g, 4, 3, redDark);
+			set(g, 4, 4, redDark);
+			set(g, 7, 3, redDark);
+			set(g, 7, 4, redDark);
+			set(g, 8, 3, redDark);
+			set(g, 11, 3, redDark);
+			set(g, 11, 4, redDark);
+			set(g, 12, 3, redDark);
+			set(g, 12, 4, redDark);
+			set(g, 5, 2, redDark);
+			set(g, 6, 2, redDark);
+			set(g, 9, 2, redDark);
+			set(g, 10, 2, redDark);
+			// motas de pólvora
+			for (let i = 0; i < 5; i++)
+				set(
+					g,
+					3 + Math.floor(rng() * 10),
+					11 + Math.floor(rng() * 3),
+					"#5a4026"
+				);
+			rect(g, 2, 2, 12, 1, "#e06050"); // brillo superior
+			rect(g, 2, 13, 12, 1, redDark);
+			break;
+		}
 		default:
 			if (id >= 9 && id <= 14) drawOre(g, rng, ORE_COLORS[id]);
 			else drawBlock(g, rng, blockHex(id));
@@ -699,7 +752,6 @@ function drawRabbit(g, cooked) {
 // ============================================================
 function drawBread(g) {
 	const crust = "#b07a3e",
-		dark = "#8a5a2a",
 		crumb = "#e8c98a",
 		crumbDark = "#d4b06a";
 	for (let y = 3; y <= 12; y++) {
@@ -947,9 +999,9 @@ const ARMOR_PALS = [C.leather, C.iron, C.diamond];
 // REGISTRO: id → función de dibujo (g, rng)
 // ============================================================
 const ICONS = {};
-// Bloques 1..38 (Fase 9, F: tierra arada, trigo, abedul, pino, musgo,
-// hierba, flores y lanas tintadas — todos con BLOCK_COLORS en constants).
-for (let id = 1; id <= 38; id++)
+// Bloques 1..40 (Fase 9 F: tierra arada, trigo, abedul, pino, musgo, hierba,
+// flores y lanas tintadas; Fase 10 D: grava y TNT — todos con BLOCK_COLORS).
+for (let id = 1; id <= 40; id++)
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Ítems
 ICONS[100] = drawStick;

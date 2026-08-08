@@ -54,6 +54,7 @@ function ensureCtx() {
 	ambGain.connect(master);
 	master.connect(ctx.destination);
 	startWind();
+	startMusic(); // Fase 10 (F1): pad ambiental generativo
 	return ctx;
 }
 
@@ -267,6 +268,80 @@ export function playSplash() {
 }
 
 // ============================================================
+// TNT (Fase 10, F2): mecha (chisporroteo) y explosión (boom grave + ruido).
+// El servidor las dispara con los broadcasts tnt_fuse/tnt_explode; el
+// cliente las dibuja donde suena la mecha y donde abre el cráter.
+// ============================================================
+export function playTntFuse() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	// Chisporroteo: ruido agudo con filtro que cae (la mecha "quema")
+	noiseBurst({
+		t,
+		freq: 3800 * pitchVar(),
+		q: 0.6,
+		vol: 0.18,
+		dur: 0.8,
+		type: "highpass"
+	});
+	// Chasquidos de la pólvora: 3 blips cortos desfasados
+	for (let i = 0; i < 3; i++) {
+		noiseBurst({
+			t: t + 0.15 + i * 0.25,
+			freq: 1600 * pitchVar(),
+			q: 2,
+			vol: 0.1,
+			dur: 0.03,
+			type: "bandpass"
+		});
+	}
+}
+
+export function playTntExplode() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	// Boom: ruido grave largo + golpe grave muy bajo (subwoofer del cráter)
+	noiseBurst({
+		t,
+		freq: 180 * pitchVar(),
+		q: 0.5,
+		vol: 0.65,
+		dur: 0.5,
+		type: "lowpass"
+	});
+	thud({ t, freq: 55 * pitchVar(), vol: 0.85, dur: 0.5 });
+	// Cascotes: ráfaga de ruido que cae de tono
+	noiseBurst({
+		t: t + 0.05,
+		freq: 900,
+		q: 0.8,
+		vol: 0.3,
+		dur: 0.35,
+		type: "bandpass"
+	});
+}
+
+// ============================================================
+// COFRES (Fase 10, F2): madera que se abre/cierra (clic seco de bisagra)
+// ============================================================
+export function playChestOpen() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	// Dos chasquidos: bisagra abre + tapa cae
+	thud({ t, freq: 180 * pitchVar(), vol: 0.3, dur: 0.06 });
+	noiseBurst({ t, freq: 1100, q: 3, vol: 0.12, dur: 0.04 });
+	thud({ t: t + 0.14, freq: 140 * pitchVar(), vol: 0.26, dur: 0.05 });
+}
+
+export function playChestClose() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	// Tapa que se cierra: golpe seco más grave
+	noiseBurst({ t, freq: 900, q: 3, vol: 0.1, dur: 0.03 });
+	thud({ t: t + 0.08, freq: 120 * pitchVar(), vol: 0.34, dur: 0.09 });
+}
+
+// ============================================================
 // ALIMENTAR ANIMALES (mordisco alegre que sube de tono)
 // ============================================================
 export function playFeed() {
@@ -301,6 +376,94 @@ export function playStep(blockId) {
 		dur: 0.055,
 		type: "lowpass"
 	});
+}
+
+// ============================================================
+// MÚSICA GENERATIVA (Fase 10, F1)
+// Pad ambiental sin samples: notas senoidales de una escala pentatónica
+// programadas al azar (estilo Minecraft — música relajante de fondo). De día
+// la escala es más brillante (La mayor relativa), de noche más grave y
+// misteriosa (La menor). Volumen muy bajo: es un "colchón", no una melodía.
+// ============================================================
+let musicGain = null;
+let nextMusicNoteAt = 0;
+// Frecuencias pentatónicas de La (A3..E5) — suenan bien juntas al azar.
+const MUSIC_SCALE = [
+	220, // A3
+	261.63, // C4
+	293.66, // D4
+	329.63, // E4
+	392.0, // G4
+	440.0, // A4
+	523.25 // C5
+];
+
+// ============================================================
+// CONTEXTO MUSICAL (Fase 10, nota del usuario: "música que varíe según el
+// bioma y las cuevas"). El cliente (player.js) lo actualiza cada segundo con
+// el entorno del jugador — barato, sin red:
+//   cave: bajo techo (cueva/mina) — notas graves y espaciadas, misterio
+//   warm: desierto (bloque arena bajo los pies) — escala brillante
+//   cold: bioma frío (nieve/hielo) — escala cristalina y aguda
+// updateMusic elige la paleta según este contexto en vez del día/noche.
+// ============================================================
+const musicCtx = { cave: false, warm: false, cold: false };
+export function setMusicContext(ctx) {
+	musicCtx.cave = !!ctx?.cave;
+	musicCtx.warm = !!ctx?.warm;
+	musicCtx.cold = !!ctx?.cold;
+}
+
+function startMusic() {
+	musicGain = ctx.createGain();
+	musicGain.gain.value = 0.035; // muy bajo: fondo, no protagonista
+	musicGain.connect(master);
+}
+
+// Nota de pad: seno suave + armónico (octava) con envolvente lenta y larga.
+function padNote(freq, t, vol) {
+	for (const mult of [1, 2]) {
+		const osc = ctx.createOscillator();
+		osc.type = "sine";
+		osc.frequency.value = freq * mult;
+		const g = ctx.createGain();
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.exponentialRampToValueAtTime(vol, t + 0.4); // attack lento
+		g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5); // decay largo
+		osc.connect(g);
+		g.connect(musicGain);
+		osc.start(t);
+		osc.stop(t + 4.6);
+	}
+}
+
+function updateMusic(dayFactor) {
+	if (!musicGain) return;
+	const now = performance.now();
+	if (now < nextMusicNoteAt) return;
+	// Paleta por contexto (Fase 10): cueva → grave/espaciado; desierto →
+	// brillante; nieve → agudo; por defecto el día/noche de siempre.
+	let pool;
+	let vol = 0.05 + Math.random() * 0.03;
+	let gapMin = 3000;
+	if (musicCtx.cave) {
+		pool = MUSIC_SCALE.slice(0, 3); // A3..D4, graves
+		vol *= 0.7; // más tenue: el silencio también es cueva
+		gapMin = 5000; // notas espaciadas
+	} else if (musicCtx.warm) {
+		pool = MUSIC_SCALE.slice(4, 7); // G4..C5, brillante
+		vol *= 1.15;
+	} else if (musicCtx.cold) {
+		pool = [MUSIC_SCALE[3], MUSIC_SCALE[4], MUSIC_SCALE[6]]; // E4, G4, C5
+		vol *= 0.9;
+	} else {
+		// De día: escala aguda/brillante (índices 2..6); de noche: grave (0..4).
+		pool = dayFactor > 0.5 ? MUSIC_SCALE.slice(2, 7) : MUSIC_SCALE.slice(0, 5);
+	}
+	const freq = pool[Math.floor(Math.random() * pool.length)];
+	padNote(freq, ctx.currentTime + 0.2, vol);
+	// Intervalo aleatorio 3..7 s (cuevas: 5..9): impredecible pero constante.
+	nextMusicNoteAt = now + gapMin + Math.random() * 4000;
 }
 
 // ============================================================
@@ -375,6 +538,9 @@ export function updateAmbient() {
 	const dayFactor = Math.max(0, Math.sin(currentPhase() * Math.PI * 2));
 	const t = ctx.currentTime;
 	const now = performance.now();
+
+	// Fase 10 (F1): música generativa de fondo
+	updateMusic(dayFactor);
 
 	// Viento: más abierto y suave de día, más grave y denso de noche
 	wind.filter.frequency.setTargetAtTime(250 + dayFactor * 550, t, 1.2);

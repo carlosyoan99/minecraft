@@ -63,7 +63,7 @@ carga.
 | `lighting.js` | Luz de antorcha por celda (horneada en vértices) | **puro** |
 | `textures.js` | Atlas procedural de bloques (16×16 por cara) | DOM (canvas) |
 | `itemicons.js` | Iconos procedurales de ítems (atlas de una fila) | **puro** (grid) |
-| `mobtextures.js` | Atlas procedural de mobs (una tesela por parte) | **puro** (grid) + THREE |
+| `mobtextures.js` | Atlas procedural de mobs (una tesela por parte) | DOM (canvas) |
 | `mobs.js` | Meshes de mobs y jugadores remotos (grupos de partes) | THREE |
 | `particles.js` | Partículas de romper/colocar (pool de cubitos) | THREE |
 | `player.js` | Física/movimiento del jugador local (predicción), vuelo creativo | THREE |
@@ -86,9 +86,10 @@ importan con `file://`, patrón `tests/unit-itemicons.js`).
 pero sí tests de servidor en Node. La solución es que **toda la lógica de
 decisión** (LOD, luz, pool, iconos, calidad, categorías) viva en módulos
 sin dependencias de navegador; los módulos con THREE/DOM se quedan como
-pegamento fino. Así `tests/unit-lod.js`, `tests/unit-light.js`,
-`tests/unit-geopool.js`, `tests/unit-itemicons.js` y
-`tests/unit-recipecats.js` importan y prueban lógica real, no mocks.
+pegamento fino. Así `tests/unit-lod.js`, `tests/unit-geopool.js`,
+`tests/unit-itemicons.js`, `tests/unit-recipecats.js` y
+`tests/unit-antorchas.js` (bloque B: luz de `lighting.js`) importan y
+prueban lógica real, no mocks.
 
 ## El bucle de render
 

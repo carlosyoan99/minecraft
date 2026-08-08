@@ -19,7 +19,9 @@ const mobs = [];
 const arrows = [];
 const dirtyChunks = new Set(); // claves "cx,cz" modificadas, pendientes de escribir
 const timeOffset = 0; // Fase 6: desplazamiento del reloj del mundo (ms) para /time set.
-// Runtime-only: no se persiste; al reiniciar el servidor vuelve a 0.
+// Fase 10 (nota del usuario): AHORA SÍ se persiste en world.json (save.js
+// buildMeta/loadWorld) para que la hora del mundo continúe entre sesiones, y
+// los mundos nuevos arrancan al amanecer. /time set y dormir lo siguen usando.
 // Fase 8 (B2): anillo de telemetría de daño (últimas ~50 entradas, una por
 // daño aplicado). Lo alimenta players.logDamage y lo inspeccionan los tests
 // headless para diagnosticar la pérdida de vida "sin causa".

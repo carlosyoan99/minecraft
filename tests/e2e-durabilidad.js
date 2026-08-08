@@ -143,6 +143,31 @@ function stoneNear(x, y, z) {
 	return found;
 }
 
+// Fase 10 (A6: lagos/playas/rios en la generación): el spawn de una semilla
+// nueva puede caer en zona playeras con poca piedra EXPUESTA a mano, y la
+// caminata en espiral a ciegas (dirIdx fija) se quedaba atascada en un lago o
+// acantilado sin avanzar. Ahora, cuando no hay 60 piedras a la mano, se camina
+// HACIA el chunk con más piedra conocida del mapa (stoneTarget): dirección
+// determinista calculada sobre el chunkData, en vez de probar E→O→N→S.
+// stoneNear cuenta TODA la piedra (también la subterránea a <= REACH vertical:
+// el servidor solo valida distancia, no visibilidad), así que basta acercarse
+// a una columna rica para que las 60 roturas queden a <= 7 bloques.
+function stoneTarget() {
+	// Conteo de piedra por chunk: { cx, cz, count }
+	let best = null;
+	for (const [key, arr] of worldMap) {
+		const [cx, cz] = key.split(",").map(Number);
+		let count = 0;
+		for (let i = 0; i < arr.length; i++) if (arr[i] === STONE) count++;
+		if (count >= DURABILITY && (!best || count > best.count)) {
+			best = { cx, cz, count };
+		}
+	}
+	if (!best) return null;
+	// Centro del chunk (bloques) hacia el que caminar.
+	return { x: best.cx * 16 + 8, z: best.cz * 16 + 8, count: best.count };
+}
+
 // Envía una ráfaga de pasos `move` en la dirección actual siguiendo el terreno.
 // Cada paso avanza 1 bloque en X/Z pero como mucho 0.5 en Y (límite anti-cheat
 // del servidor: dist <= 1.2), y en agua nada a nivel de superficie. Si un paso
@@ -169,10 +194,17 @@ function walkBurst(steps) {
 }
 
 // Busca zona con >= DURABILITY piedras a mano: en el spawn si las hay; si no,
-// camina por ráfagas de 8 dejando 300ms de asentamiento entre ráfaga y ráfaga
-// (tiempo para que lleguen los `teleport` de pasos rechazados y `cur` quede
-// correcto) y solo entonces computa los bloques a romper desde esa posición.
-// Si una dirección no produce progreso neto, se gira a la siguiente.
+// camina por ráfagas de 8 HACIA el chunk con más piedra del mapa (stoneTarget),
+// dejando 300ms de asentamiento entre ráfaga y ráfaga (tiempo para que lleguen
+// los `teleport` de pasos rechazados y `cur` quede correcto) y solo entonces
+// computa los bloques a romper desde esa posición. Si el objetivo queda a la
+// espalda o no hay progreso neto, se gira a la siguiente dirección cardinal
+// (las ráfagas en espiral siguen funcionando como fallback).
+// Si el spawn cae en un lago o zona ya minada por una corrida anterior, la
+// caminata en espiral puede atascarse; un /tp directo al chunk con más piedra
+// del mapa (stoneTarget) es determinista y barato: el servidor acepta /tp.
+let _tpPending = false;
+let _tpTries = 0;
 function tryFreshArea() {
 	const near = stoneNear(cur.x, cur.y, cur.z);
 	if (near.length >= DURABILITY) {
@@ -193,16 +225,42 @@ function tryFreshArea() {
 		phase = "breaking";
 		return;
 	}
-	if (walked >= WALK_MAX) {
-		check(
-			`hay >= ${DURABILITY} bloques de piedra a mano`,
-			false,
-			`solo ${near.length} tras caminar ${walked} bloques`
+	if (walked >= WALK_MAX && !_tpPending) {
+		// Zona sin piedra a mano tras caminar: /tp al chunk más rico del mapa.
+		const target = stoneTarget();
+		if (!target || _tpTries >= 3) {
+			check(
+				`hay >= ${DURABILITY} bloques de piedra a mano`,
+				false,
+				`solo ${near.length} tras caminar ${walked} bloques`
+			);
+			finish(1);
+			return;
+		}
+		// Altura del suelo en el objetivo: 2 bloques sobre la superficie sólida.
+		const ground = groundY(target.x, target.z);
+		_tpPending = true;
+		_tpTries++;
+		ws.send(
+			JSON.stringify({
+				event: "chat",
+				data: { message: `/tp ${target.x} ${ground + 2} ${target.z}` }
+			})
 		);
-		finish(1);
+		// El /tp dispara un teleport que re-dispara tryFreshArea desde la nueva
+		// posición (el handler lo encola con 300ms de asentamiento).
 		return;
 	}
 	const startKey = `${cur.x},${cur.z}`; // cur ya corregido por teleports
+	// Dirección preferente: hacia el chunk con más piedra del mapa (Fase 10).
+	const target = stoneTarget();
+	if (target) {
+		const dx = target.x - cur.x;
+		const dz = target.z - cur.z;
+		if (Math.abs(dx) > Math.abs(dz))
+			dirIdx = dx > 0 ? 0 : 1; // E / O
+		else dirIdx = dz > 0 ? 2 : 3; // N / S
+	}
 	walkBurst(8);
 	walked += 8;
 	walkTimer = setTimeout(() => {
@@ -210,8 +268,7 @@ function tryFreshArea() {
 		// (a) la ráfaga no movió al jugador (acantilado/terreno empinado) o
 		// (b) el nuevo radio no tiene piedra a mano — señal de que el jugador se
 		// adentró en un lago profundo/amplio, donde la piedra queda fuera del
-		// alcance de rotura (esto pasaba en la práctica: el lago al este del
-		// spawn dejaba el jugador sobre agua con 0 piedras a <=6.5).
+		// alcance de rotura.
 		if (
 			`${cur.x},${cur.z}` === startKey ||
 			stoneNear(cur.x, cur.y, cur.z).length === 0
@@ -260,6 +317,12 @@ ws.on("message", (d) => {
 	// ============ TELEPORT: paso rechazado → corregir posición (en cualquier fase) ============
 	if (m.event === "teleport") {
 		cur = { x: m.data.x, y: m.data.y, z: m.data.z };
+		// Fase 10: el /tp hacia el chunk rico llegó — reintentar desde la nueva
+		// posición (con asentamiento para que el chunkData llegue antes del break).
+		if (_tpPending) {
+			_tpPending = false;
+			walkTimer = setTimeout(() => tryFreshArea(), 400);
+		}
 		return;
 	}
 

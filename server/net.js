@@ -42,6 +42,7 @@ const chests = require("./chests.js");
 const mobs = require("./mobs.js");
 const commands = require("./commands.js");
 const mining = require("./mining.js");
+const tnt = require("./tnt.js"); // Fase 10 (D2)
 
 // Reloj del mundo ajustable (/time set): el día/noche, el ambiente y la IA
 // de mobs siguen al mismo reloj (worldTime), así que el comando afecta a todo.
@@ -148,10 +149,22 @@ function sendInit(p) {
 				xpToNext: xpToNext(p.level || 0),
 				food: p.food,
 				saturation: p.saturation,
+				// Fase 10 (A2): quemadura residual de lava — el cliente pinta la
+				// llamarada si el jugador reconecta ardiendo.
+				burning: (p.fireUntil || 0) > Date.now(),
 				seed: constants.worldPaths.currentSeed, // Fase 6: semilla activa del mundo
 				// Fase 9 (Bloque B): modo de juego del MUNDO (fijo por mundo). El
 				// cliente lo usa para el HUD, el inventario creativo y el vuelo.
 				gamemode: p.gamemode,
+				// Fase 10 (B1): tamaño del mundo (bloques por lado) para el menú.
+				worldSize: constants.worldPaths.worldSize,
+				// Fase 10 (D4): catálogo completo del picker creativo (bloques,
+				// ítems, herramientas y armadura) — el cliente lo dibuja al pulsar E
+				// en un mundo creative y valida que lo pedido esté en el catálogo.
+				creativeCatalog: [
+					...constants.CREATIVE_ITEMS,
+					...constants.ALL_TOOLS_AND_ARMOR
+				].filter((id, i, a) => a.indexOf(id) === i), // sin duplicados
 				otherPlayers: Array.from(state.players.values())
 					.filter((q) => q.id !== p.id)
 					.map((q) => ({ id: q.id, name: q.name, x: q.x, y: q.y, z: q.z }))
@@ -310,10 +323,17 @@ function handleConnection(ws, req) {
 				// sus moves se rechazarían (teleport al último punto aceptado), por lo
 				// que el jugador nunca alcanzaría VOID_Y por debajo del mundo.
 				if (y < VOID_Y) {
-					playerHelpers.respawnPlayer(p);
+					playerHelpers.respawnPlayer(p, "void"); // Fase 10 (B2): causa
 					return;
 				}
-				const dist = Math.hypot(x - p.x, y - p.y, z - p.z);
+				// Fase 10 (B1): límites del mundo — el jugador no puede salirse; si
+				// el cliente reporta una posición fuera del borde se sujeta al límite
+				// (en vez de teletransportar de vuelta, que haría "rebotar" en la
+				// frontera de forma brusca).
+				const half = constants.worldHalfExtent();
+				const cx = Math.max(-half + 0.6, Math.min(half - 0.6, x));
+				const cz = Math.max(-half + 0.6, Math.min(half - 0.6, z));
+				const dist = Math.hypot(cx - p.x, cz - p.z, y - p.y);
 				if (dist > 1.2) {
 					// límite anti-cheat de velocidad
 					ws.send(
@@ -390,9 +410,11 @@ function handleConnection(ws, req) {
 						return;
 					}
 				}
-				p.x = x;
+				// Fase 10 (B1): se asignan las coordenadas YA sujetas a los bordes
+				// (cx/cz calculados antes del anti-cheat).
+				p.x = cx;
 				p.y = y;
-				p.z = z;
+				p.z = cz;
 				p.yaw = yaw || 0;
 				p.pitch = pitch || 0;
 				p.lastMoveTime = nowMs;
@@ -404,7 +426,7 @@ function handleConnection(ws, req) {
 				// daño" reportando alturas falsas).
 				playerHelpers.applyFallDamage(p, vyObs);
 				// Generar chunks nuevos bajo demanda al moverse
-				const newChunks = world.ensureChunksAround(x, z, 2);
+				const newChunks = world.ensureChunksAround(cx, cz, 2);
 				if (newChunks.length) {
 					const extra = {};
 					for (const key of newChunks)
@@ -471,6 +493,11 @@ function handleConnection(ws, req) {
 			case "block_action": {
 				const { action, x, y, z, itemId } = data;
 				if (Math.hypot(x - p.x, y - p.y, z - p.z) > 7) return;
+				// Fase 10 (D2): clic derecho sobre un TNT enciende la mecha.
+				if (action === "ignite") {
+					tnt.ignite(x, y, z);
+					break;
+				}
 				if (action === "break") {
 					const block = world.getBlock(x, y, z);
 					// Fase 9 (Bloque C): en creative se pueden romper también el agua y
@@ -792,7 +819,9 @@ function handleConnection(ws, req) {
 				// Fase 9 (Bloque B): `gamemode` (opcional) fija el modo del mundo NUEVO
 				// (survival/creative); un mundo existente conserva el suyo.
 				const mode = constants.sanitizeGamemode(data.gamemode);
-				const r = save.switchWorld(seed, data.name, mode);
+				// Fase 10 (B1): tamaño del mundo nuevo (pequeño/medio/grande).
+				const size = constants.sanitizeWorldSize(data.size);
+				const r = save.switchWorld(seed, data.name, mode, size);
 				if (r === "rechazo" || r === "error") {
 					p.ws.send(
 						JSON.stringify({ event: "seed_rejected", data: { reason: r } })
@@ -1214,6 +1243,9 @@ function mainLoop() {
 	// Spawn de mobs por fase del día (Fase 6): de día solo pasivos, de noche
 	// también hostiles, en cualquier chunk cargado del área de render.
 	if (Math.random() < 0.03) mobs.spawnMobs(isNight);
+
+	// Fase 10 (D2): mechas de TNT (explotan al agotarse — cráter + cadena).
+	tnt.tick(TICK_MS);
 
 	crafting.tickFurnaces();
 	for (const [key, f] of state.furnaces) {

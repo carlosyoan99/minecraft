@@ -15,7 +15,12 @@ import { createGeometryPool, setOrReuseAttribute } from "./geopool.js";
 import { computeChunkLight, LIGHT_RADIUS } from "./lighting.js";
 import { lodTierFor } from "./lod.js";
 import { camera, scene } from "./scene.js";
-import { buildTerrainAtlas, tileForFace, tileRect } from "./textures.js";
+import {
+	buildTerrainAtlas,
+	buildWaterTexture,
+	tileForFace,
+	tileRect
+} from "./textures.js";
 
 const chunkStore = new Map(); // "cx,cz" -> Uint8Array
 export const chunkMeshes = new Map(); // "cx,cz" -> THREE.Group (detalle completo)
@@ -139,12 +144,20 @@ const terrainMaterial = new THREE.MeshLambertMaterial({
 // El agua es translúcida: material aparte (misma tesela del atlas), para que
 // se vea el lecho del lago a través de la superficie sin volver opacas las
 // caras sólidas adyacentes.
-const waterMaterial = new THREE.MeshLambertMaterial({
-	map: atlasTexture,
+// Fase 10 (E2): el agua tiene su propia textura desplazable (buildWaterTexture)
+// — updateLiquidAnimation mueve su offset cada frame para simular la corriente,
+// cosa que el atlas compartido no permite. Además es MeshPhongMaterial con
+// un specular suave: la luz del sol deja un brillo "mojado" en la superficie
+// (reflejo barato sin shaders; shininess bajo para que no sature).
+const waterTexture = buildWaterTexture();
+const waterMaterial = new THREE.MeshPhongMaterial({
+	map: waterTexture,
 	transparent: true,
 	opacity: 0.65,
 	side: THREE.DoubleSide, // al nadar bajo la superficie, la cara superior se ve desde abajo
-	vertexColors: true
+	vertexColors: true,
+	shininess: 24,
+	specular: 0x9fc8e8
 });
 // Lava (Fase 7): como el agua, pero opaca (no se ve el lecho a través) y
 // DoubleSide por si el jugador cae dentro del charco. Emissive suave para
@@ -207,6 +220,11 @@ export function updateLiquidAnimation() {
 	// y oscila su incandescencia (emissiveIntensity 0.35..0.6).
 	waterMaterial.opacity = 0.58 + wave * 0.14;
 	lavaMaterial.emissiveIntensity = 0.35 + wave * 0.25;
+	// Fase 10 (E2): la textura dedicada del agua se DESPLAZA lentamente con
+	// la onda (RepeatWrapping, así el patrón se repite sin costuras): simula
+	// la corriente sin reconstruir geometría. La lava conserva su pulso.
+	waterTexture.offset.x = (waterTexture.offset.x + 0.0016) % 1;
+	waterTexture.offset.y = (waterTexture.offset.y + 0.0008) % 1;
 }
 
 // Geometrías de una única cara (evita crear cubos completos por cara expuesta).
@@ -336,15 +354,71 @@ function buildChunkGeometry(cx, cz) {
 	// (block-scoped), así que una función definida fuera no puede capturarlos.
 	// Bug de la Fase 4 (ReferenceError: wx is not defined → ningún chunk se
 	// renderizaba); corregido al pasar las coordenadas explícitamente.
+	// Fase 10 (E1): AO (oclusión ambiental) por vértice estilo Minecraft. Para
+	// cada esquina de la cara se miran los 2 vecinos del plano de la cara + el
+	// diagonal: si la esquina está "encerrada" por bloques vecinos se oscurece
+	// (0.5), si tiene un solo lado ocupado se atenúa (0.7/0.75) y si está al
+	// aire queda a 1.0 — esto suaviza las esquinas de cuevas y relieves sin
+	// coste por frame (se hornea en el color por vértice, como la antorcha).
+	const isOccluder = (bx, by, bz) => {
+		const b = getClientBlock(bx, by, bz);
+		return (
+			b !== 0 &&
+			b !== WATER &&
+			b !== LAVA &&
+			b !== TORCH &&
+			!NON_SOLID_PLANTS.has(b)
+		);
+	};
+	const vertexAO = (wx, wy, wz, corner, dir) => {
+		// Ejes del plano de la cara (los 2 donde la normal es 0): el AO se
+		// calcula en el plano de la cara, alrededor de la esquina.
+		const axes = [];
+		for (let i = 0; i < 3; i++) if (dir[i] === 0) axes.push(i);
+		const a = axes[0],
+			b = axes[1];
+		// Offset de la esquina hacia FUERA del bloque (0 → -1, 1 → +1)
+		const off = (axis) => (corner[axis] === 1 ? 1 : -1);
+		const oa = [0, 0, 0];
+		oa[a] = off(a);
+		const ob = [0, 0, 0];
+		ob[b] = off(b);
+		const s1 = isOccluder(
+			wx + corner[0] + oa[0],
+			wy + corner[1] + oa[1],
+			wz + corner[2] + oa[2]
+		);
+		const s2 = isOccluder(
+			wx + corner[0] + ob[0],
+			wy + corner[1] + ob[1],
+			wz + corner[2] + ob[2]
+		);
+		const diag = isOccluder(
+			wx + corner[0] + oa[0] + ob[0],
+			wy + corner[1] + oa[1] + ob[1],
+			wz + corner[2] + oa[2] + ob[2]
+		);
+		// Curva AO clásica: dos lados → 0.5, un lado → 0.7 (0.55 si además el
+		// diagonal), ninguno → 1.0 (0.85 si solo el diagonal).
+		if (s1 && s2) return 0.5;
+		if (s1 || s2) return diag ? 0.55 : 0.7;
+		return diag ? 0.85 : 1.0;
+	};
 	const pushFace = (block, fi, target, wx, wy, wz) => {
-		const [u0, v0, u1, v1] = tex.tileRect(tex.tileForFace(block, fi));
-		const [a, b, c, d] = FACES[fi].corners;
-		const verts = [
-			[wx + a[0], wy + a[1], wz + a[2]],
-			[wx + b[0], wy + b[1], wz + b[2]],
-			[wx + c[0], wy + c[1], wz + c[2]],
-			[wx + d[0], wy + d[1], wz + d[2]]
-		];
+		// Fase 10 (E2): el agua usa su textura DEDICADA (buildWaterTexture) con
+		// RepeatWrapping, así que sus UVs son la tesela completa (0..1), no la
+		// porción del atlas. El offset que desplaza updateLiquidAnimation
+		// recorre la textura sin costuras.
+		const [u0, v0, u1, v1] =
+			block === WATER ? [0, 0, 1, 1] : tex.tileRect(tex.tileForFace(block, fi));
+		const corners = FACES[fi].corners;
+		const verts = corners.map((cor) => [wx + cor[0], wy + cor[1], wz + cor[2]]);
+		// Fase 10 (E2): superficie del agua MÁS BAJA (0.875 = 14/16, como MC) —
+		// la cara superior no coincide con la caja del bloque, lo que evita el
+		// z-fighting con bloques adyacentes y da el "hundido" característico.
+		if (block === WATER && fi === 2) {
+			for (const vert of verts) vert[1] = wy + 0.875;
+		}
 		const face = FACES[fi];
 		// Luz de antorcha en la celda de AIRE fuera de la cara (la celda que
 		// "mira" la cara). Color por vértice: 1 = sin antorcha, más = más luz.
@@ -353,7 +427,13 @@ function buildChunkGeometry(cx, cz) {
 			wy + face.dir[1],
 			wz + face.dir[2]
 		);
-		const v = 1 + light * TORCH_LIGHT_GAIN;
+		const baseV = 1 + light * TORCH_LIGHT_GAIN;
+		// AO por vértice: solo en el terreno opaco (el agua translúcida y la
+		// lava incandescente no se sombrean — como en Minecraft).
+		const useAO = target.pos === positions;
+		const ao = corners.map((cor) =>
+			useAO ? vertexAO(wx, wy, wz, cor, face.dir) : 1
+		);
 		// dos triángulos (a,b,c) y (a,c,d)
 		for (const [i, j, k] of [
 			[0, 1, 2],
@@ -364,6 +444,7 @@ function buildChunkGeometry(cx, cz) {
 				target.norm.push(...face.dir);
 				const [uu, vv] = face.uvs[idx];
 				target.uv.push(u0 + uu * (u1 - u0), v0 + vv * (v1 - v0));
+				const v = baseV * ao[idx];
 				target.col.push(v, v, v);
 			}
 		}

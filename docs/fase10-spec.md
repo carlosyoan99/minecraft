@@ -2,11 +2,12 @@
 
 > Documento de especificación de la Fase 10, elaborado a partir del `TODO.md`
 > (sección Fase 10), de `Notas del usuario.md` (auditoría manual del usuario)
-> y del estado del código. **No se ha modificado código**: este spec guía la
-> implementación de la Fase 10, en el mismo formato que `fase8-spec.md` /
+> y del estado del código. En el mismo formato que `fase8-spec.md` /
 > `fase9-spec.md`.
 >
-> Fecha: 2026-08-06 · Estado: **PLANIFICADA** (pendiente de ejecución) ·
+> Fecha: 2026-08-06 · Estado: **COMPLETADA** (implementada y auditada —
+> retrospectiva; la fuente de verdad del estado es `TODO.md` §Fase 10 y
+> `Notas del usuario.md` con los `[x]`) ·
 > Proyecto: clon de Minecraft (servidor Node autoritativo `server/` + cliente
 > Three.js `public/`, todo en español).
 >

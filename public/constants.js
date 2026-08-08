@@ -61,7 +61,9 @@ export const BLOCK_COLORS = {
 	35: 0xe8d21a, // diente de león (Fase 9, F)
 	36: 0xc0392b, // lana roja (Fase 9, F)
 	37: 0xe8c547, // lana amarilla (Fase 9, F)
-	38: 0xf5f5f0 // lana blanca (Fase 9, F)
+	38: 0xf5f5f0, // lana blanca (Fase 9, F)
+	39: 0x8a8a88, // grava (Fase 10, D1): tono apagado, distinto de la piedra
+	40: 0xd43d2a // TNT (Fase 10, D2): rojo explosivo
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -101,9 +103,12 @@ export const BLOCK_NAMES = {
 	35: "Diente de león", // Fase 9 (F)
 	36: "Lana roja", // Fase 9 (F)
 	37: "Lana amarilla", // Fase 9 (F)
-	38: "Lana blanca" // Fase 9 (F)
+	38: "Lana blanca", // Fase 9 (F)
+	39: "Grava", // Fase 10 (D1): con gravedad
+	40: "TNT" // Fase 10 (D2): explota al activarse
 };
 export const WATER = 20;
+export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
 export const SNOW = 21;
 export const CHEST = 22;
 export const TORCH = 23;
@@ -122,6 +127,8 @@ export const DANDELION = 35;
 export const RED_WOOL = 36; // Fase 9 (F): lana tintada (ítems tintables)
 export const YELLOW_WOOL = 37;
 export const WHITE_WOOL = 38;
+export const GRAVEL = 39; // Fase 10 (D1): con gravedad (cae sin soporte)
+export const TNT = 40; // Fase 10 (D2): explota al activarse (clic derecho)
 // Altura del ojo del jugador (Fase 7): la posición que el cliente envía en
 // `move` es la de la cámara (el ojo); el servidor la usa para el daño por
 // caída. Mantener en sincronía con EYE_HEIGHT de constants.js (servidor) —
@@ -239,7 +246,9 @@ export function itemLabel(id) {
 export const PLACEABLE_BLOCKS = new Set([
 	1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18, 21, 22, 23, 24,
 	// Fase 9 (F): bloques nuevos colocables
-	28, 29, 30, 31, 32, 36, 37, 38
+	28, 29, 30, 31, 32, 36, 37, 38,
+	// Fase 10 (D1/D2): grava y TNT
+	39, 40
 ]);
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
 export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35]);

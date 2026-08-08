@@ -66,6 +66,17 @@
             </select>
           </span>
         </label>
+        <!-- Fase 10 (B1): tamaño del mundo NUEVO (solo al crear; un mundo
+             existente conserva el suyo). Infinito queda interno (8192). -->
+        <label class="menu-field">Tamaño del mundo
+          <span class="rd-row">
+            <select id="world-size-select" class="quality-select">
+              <option value="small">Pequeño (256×256)</option>
+              <option value="medium" selected>Medio (512×512)</option>
+              <option value="large">Grande (1024×1024)</option>
+            </select>
+          </span>
+        </label>
         <button type="button" id="seed-create-btn">Crear / Ir a esta semilla</button>
         <button type="button" id="worlds-back-btn" class="menu-secondary">Volver</button>
       </div>
@@ -130,6 +141,16 @@
   </div>
 
   <div id="crosshair">+</div>
+  <!-- Fase 10 (A2): llamarada al arder (quemadura residual de lava) -->
+  <div id="fire-overlay" class="hidden"></div>
+  <!-- Fase 10 (B2): pantalla de muerte con la causa (mob, caída, lava...) -->
+  <div id="death-screen" class="hidden">
+    <div class="death-card">
+      <h2>💀 Has muerto</h2>
+      <p id="death-cause"></p>
+      <p class="death-hint">Reapareciendo...</p>
+    </div>
+  </div>
   <div id="coords-hud" class="hidden"></div>
   <div id="info">
     <div class="stat">❤️ <span id="hp">20</span>/<span id="maxhp">20</span></div>
@@ -148,6 +169,12 @@
     <div class="recipe-tabs" id="recipe-tabs"></div>
     <div id="recipe-list" class="recipe-list"></div>
     <p class="hint">Tecla B: abrir/cerrar · Recetas de crafteo y horno, todas visibles.</p>
+  </div>
+
+  <div id="picker-ui" class="panel hidden">
+    <h3>Selector de bloques (creativo)</h3>
+    <div id="picker-grid" class="picker-grid"></div>
+    <p class="hint">Tecla E: abrir/cerrar · Click en un bloque o ítem para ponerlo en el slot seleccionado.</p>
   </div>
 
   <div id="crafting-ui" class="panel hidden">

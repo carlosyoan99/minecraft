@@ -2,7 +2,7 @@
 // RED: MANEJO DE MENSAJES DEL SERVIDOR
 // ============================================================
 
-import { playCrack, playHit } from "./audio.js";
+import { playCrack, playHit, playTntExplode, playTntFuse } from "./audio.js"; // Fase 10 (F2): sonidos de TNT
 import { setStoredName, socket } from "./connection.js";
 import { TORCH } from "./constants.js";
 import { initDayNight } from "./daynight.js";
@@ -37,7 +37,9 @@ import {
 	onWorldDeleted,
 	onWorldLoaded,
 	renderRecipeBook,
-	renderWorldsList
+	renderWorldsList,
+	setCreativeCatalog, // Fase 10 (D4): catálogo del picker creativo
+	showDeathScreen // Fase 10 (B2): pantalla de muerte con causa
 } from "./ui.js";
 import {
 	hideCrackIfAt,
@@ -52,6 +54,15 @@ import {
 
 let playerId = null;
 let playerName = "";
+
+// Fase 10 (A2): llamarada del jugador (quemadura residual de lava). El
+// servidor la manda con `fire_state` cuando cambia; el init la replica al
+// reconectar. Se pinta con un overlay CSS (viñeta naranja parpadeante).
+const fireOverlay = document.getElementById("fire-overlay");
+function setFire(on) {
+	if (fireOverlay) fireOverlay.classList.toggle("hidden", !on);
+}
+setFire(false); // por defecto: sin llamas hasta que el servidor diga lo contrario
 // Fase 7: nombre visible del jugador local (fuente de verdad: el servidor).
 export function getPlayerName() {
 	return playerName;
@@ -76,6 +87,9 @@ socket.addEventListener("message", (e) => {
 			// Fase 9 (Bloque B): modo de juego del mundo (survival/creative) — lo
 			// refleja el HUD y habilita el vuelo/creativo.
 			applyGamemode(data.gamemode);
+			// Fase 10 (D4): catálogo del picker creativo (tecla E en creative).
+			setCreativeCatalog(data.creativeCatalog);
+			setFire(!!data.burning); // Fase 10 (A2): reconectando ardiendo
 			initDayNight(data.dayTime, data.moonTime); // Fase 8 (B8): + fase lunar
 			for (const p of data.otherPlayers)
 				spawnRemotePlayer(p.id, p.x, p.y, p.z, p.name);
@@ -174,15 +188,22 @@ socket.addEventListener("message", (e) => {
 		case "teleport":
 			teleport(data.x, data.y, data.z);
 			break;
+		case "fire_state":
+			// Fase 10 (A2): cambio del estado de quemadura (lava).
+			setFire(!!data.on);
+			break;
 		case "player_die":
 			// Fase 7: lostInventory distingue la pérdida según gamemode (survival
 			// pierde el inventario al morir; creative lo conserva).
-			if (data.id === playerId)
+			if (data.id === playerId) {
 				flashMessage(
 					data.lostInventory
 						? "💀 Has muerto — inventario perdido, reapareciendo..."
 						: "💀 Has muerto — reapareciendo..."
 				);
+				// Fase 10 (B2): pantalla de muerte con la causa (mob/fall/lava/...).
+				showDeathScreen(data.cause);
+			}
 			break;
 		case "inventory_update":
 			applyInventory(data.inventory);
@@ -228,6 +249,20 @@ socket.addEventListener("message", (e) => {
 		case "chest_state":
 			applyChestState(data);
 			break; // Fase 6: slots del cofre abierto
+		case "tnt_fuse": {
+			// Fase 10 (D2/F2): mecha encendida — sonido de chisporroteo y un
+			// fogonazo de partículas en el bloque (feedback del "clic derecho").
+			playTntFuse();
+			spawnBlockPlace(data.x, data.y, data.z);
+			break;
+		}
+		case "tnt_explode": {
+			// Fase 10 (D2/F2): explosión — boom grave + ráfaga de partículas
+			// (la geometría ya la actualizan los block updates del cráter).
+			playTntExplode();
+			spawnBlockBreak(data.x, data.y, data.z);
+			break;
+		}
 		case "time_set":
 			// Fase 6: /time set re-sincroniza el ciclo visual; Fase 8 (B8):
 			// también la fase lunar (el servidor manda moonTime en el mismo evento).

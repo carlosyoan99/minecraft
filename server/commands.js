@@ -108,6 +108,7 @@ const HELP = [
 	"/time set <day|noon|night|midnight|ms> — fija la hora del mundo (0-239999 ms) (solo operadores)",
 	"/gamemode <creative|survival> — cambia el modo de juego (creative: sin hambre ni daño) (solo operadores)",
 	"/op <nombre> — otorga permisos de operador a un jugador conectado (solo operadores)",
+	"/kill [nombre] — mata a un jugador conectado; sin nombre, a ti mismo (solo operadores)",
 	"/reload — recarga recetas (recetas.json, recetas_horno.json) y el atlas del cliente (solo operadores)",
 	"Los comandos con (solo operadores) los ejecuta el host (primer jugador) o la lista OPS (env var OPS)"
 ].join("\n");
@@ -116,7 +117,15 @@ const HELP = [
 // jugador conectado o la lista OPS, ver net.js). /help y el chat normal
 // siguen abiertos a todos. Fase 7 (auditoría): antes cualquier jugador podía
 // darse todo en creative (/give, /gamemode) y cambiar la hora para todos.
-const OP_ONLY = new Set(["tp", "give", "time", "gamemode", "reload", "op"]);
+const OP_ONLY = new Set([
+	"tp",
+	"give",
+	"time",
+	"gamemode",
+	"reload",
+	"op",
+	"kill"
+]);
 
 function systemMessage(player, text) {
 	if (player.ws.readyState === WebSocket.OPEN) {
@@ -158,7 +167,6 @@ function parseId(tok) {
 function executeCommand(player, raw, ctx) {
 	if (typeof raw !== "string" || !raw.startsWith("/")) return false;
 	const { state, world, broadcast, playerHelpers } = ctx;
-	const viewDistance = ctx.viewDistance || 6;
 	const parts = raw.slice(1).trim().split(/\s+/);
 	const cmd = parts[0].toLowerCase();
 	const args = parts.slice(1);
@@ -177,6 +185,28 @@ function executeCommand(player, raw, ctx) {
 		case "help":
 			systemMessage(player, HELP);
 			break;
+
+		case "kill": {
+			// Fase 10 (B3): /kill [nombre] — solo operadores; sin nombre, al emisor.
+			// Usa respawnPlayer directamente (funciona en creative, donde
+			// damagePlayer se ignora) y respeta el respawn por gamemode.
+			const name = (args[0] || "").trim();
+			const target = name
+				? [...state.players.values()].find(
+						(q) => (q.name || "").toLowerCase() === name.toLowerCase()
+					)
+				: player;
+			if (name && !target) {
+				systemMessage(player, `No hay ningún jugador «${name}» conectado.`);
+				break;
+			}
+			ctx.playerHelpers.respawnPlayer(target, "kill");
+			systemMessage(
+				player,
+				name ? `💀 ${target.name} ha sido eliminado.` : "💀 Te has eliminado."
+			);
+			break;
+		}
 
 		case "tp": {
 			if (args.length < 3 || args.some((a) => !/^-?\d+(\.\d+)?$/.test(a))) {
@@ -209,9 +239,20 @@ function executeCommand(player, raw, ctx) {
 			player.lastMoveTime = Date.now();
 			player.fallFromY = null; // teletransportarse no es caerse (Fase 7)
 			player.lastGroundY = null;
-			// Enviar los chunks del nuevo área al teletransportado (como el init) y
-			// avisar al resto de jugadores del salto.
-			const fresh = world.ensureChunksAround(tx, tz, viewDistance);
+			// Fase 10 (A5): fix "el mundo deja de cargar" tras un /tp lejano.
+			// 1) El TELEPORT se envía ANTES que los chunks: loadChunkData del
+			//    cliente filtra por withinRenderDistance(cámara) y, si la cámara
+			//    aún está en el origen, DESCARTA todos los chunks nuevos (bug).
+			// 2) No se generan los 169 chunks del viewDistance de golpe (bloquea
+			//    el servidor síncronamente): solo el radio 2; el streaming del
+			//    move handler carga el resto al moverse (como en el juego normal).
+			player.ws.send(
+				JSON.stringify({
+					event: "teleport",
+					data: { x: player.x, y: player.y, z: player.z }
+				})
+			);
+			const fresh = world.ensureChunksAround(tx, tz, 2);
 			if (fresh.length) {
 				const extra = {};
 				for (const key of fresh) extra[key] = Array.from(state.chunks.get(key));
@@ -219,12 +260,6 @@ function executeCommand(player, raw, ctx) {
 					JSON.stringify({ event: "chunks_add", data: { chunkData: extra } })
 				);
 			}
-			player.ws.send(
-				JSON.stringify({
-					event: "teleport",
-					data: { x: player.x, y: player.y, z: player.z }
-				})
-			);
 			broadcast(
 				"player_move",
 				{

@@ -58,6 +58,7 @@ const MOB_HEALTH = {
 const state = require("./state.js");
 const world = require("./world.js");
 const { damagePlayer } = require("./players.js");
+const tnt = require("./tnt.js"); // Fase 10 (D2): el creeper encadena TNT
 
 const { players } = state;
 
@@ -390,6 +391,12 @@ class Mob {
 						// entidades de item en el suelo — ver finishMining).
 						const block = world.getBlock(bx, by, bz);
 						if (NOT_MINEABLE.has(block)) continue;
+						// Fase 10 (D2): reacción en cadena — el creeper ignita el TNT
+						// que alcanza su explosión (como en Minecraft).
+						if (block === B.TNT) {
+							tnt.ignite(bx, by, bz);
+							continue;
+						}
 						if (block === B.CHEST) {
 							const slots = state.chests.get(`${bx},${by},${bz}`);
 							if (slots?.some((s) => s)) continue;
@@ -692,7 +699,21 @@ function spawnMobs(isNight) {
 					if (Math.hypot(wx - s.x, wz - s.z) < spawnSafeRadius) continue;
 				}
 			}
-			const wy = world.getHeight(Math.floor(wx), Math.floor(wz)) + 1;
+			const hx = Math.floor(wx),
+				hz = Math.floor(wz);
+			const surfaceH = world.getHeight(hx, hz);
+			// Fase 10 (A6): hostiles también de DÍA, solo en zonas oscuras
+			// (cuevas con techo opaco) — las notas pedían "solo por la noche o
+			// en zonas oscuras como las cuevas". De noche siguen saliendo en
+			// superficie; de día se buscan celdas de cueva oscuras.
+			let wy;
+			if (HOSTILE.has(type) && !isNight) {
+				const caveY = world.findDarkCaveY(hx, hz, surfaceH);
+				if (caveY == null) continue; // sin cueva en esta columna: no spawn de día
+				wy = caveY + 0.5;
+			} else {
+				wy = surfaceH + 1;
+			}
 			const mob = new Mob(type, wx, wy, wz);
 			// Fase 9 (Bloque D): el punto de origen es el rebaño del pasivo (vuelven a
 			// él si se alejan). Las abejas vuelan alrededor de su panal (el origen).

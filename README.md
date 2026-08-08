@@ -209,15 +209,22 @@ volver a una semilla anterior recupera su mundo).
   de cámara, backup `.bak` del guardado, variación de pitch en audio,
   documentación técnica en `docs/server/` y `docs/public/`, y
   `.gitignore` completo.
+- **Fase 10 — Notas del usuario y paridad avanzada** (ver `TODO.md` y
+  `docs/fase10-spec.md`): bugs de las notas resueltos (salir del agua,
+  quemadura de lava, `/tp` lejano, biomas de hielo sin lava, lagos
+  profundos/ríos/cuevas acuáticas, hostiles en cuevas de día, amanecer
+  persistente, mobs con patas animadas), tamaño de mundo por semilla
+  (256/512/1024/8192), pantalla de muerte con causa, `/kill`, `test.log`
+  persistente, caída de grava, TNT con reacciones en cadena, sprint con
+  FOV, picker creativo (tecla E), agacharse con protección de bordes,
+  AO por vértice, agua mejorada, niebla submarina, nubes que se
+  desplazan, música generativa por bioma/cueva y más sonidos (TNT,
+  cofres, vidrio).
 
 ### 🚧 En desarrollo
 
-- **Fase 10 — Notas del usuario y paridad avanzada** (ver `TODO.md` y
-  `docs/fase10-spec.md`): bugs de las notas (salir del agua, lava,
-  hitbox, `/tp`, biomas de hielo, agua profunda, hostiles por luz),
-  tamaño de mundo, pantalla de muerte, `/kill`, `test.log`, caída de
-  arena/grava, TNT, sprint, picker creativo, pick-block, agacharse,
-  visuales (AO, agua, niebla, nubes) y audio.
+*(Todas las fases 0-10 completadas y auditadas. La próxima fase se
+planificará en `TODO.md`.)*
 
 ### ❌ Fuera de alcance (Won't)
 

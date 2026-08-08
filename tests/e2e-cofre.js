@@ -65,6 +65,39 @@ function blockAt(wx, wy, wz) {
 	return arr[(wy * 16 + z) * 16 + x];
 }
 
+// Fase 10 (A6: lagos profundos en la generación): el spawn de una semilla
+// nueva puede caer EN MEDIO de un lago (columna de aire sobre agua, sin suelo
+// a mano). El test necesita terreno firme para colocar el cofre: si no hay
+// celda aire+suelo a <= REACH, se usa /tp hacia la columna de tierra firme
+// más cercana del chunkData y se reintenta desde allí (el servidor acepta /tp
+// para jugadores: ver commands.js).
+function nearestSolidColumn() {
+	let best = null;
+	for (const [key, arr] of worldMap) {
+		const [cx, cz] = key.split(",").map(Number);
+		for (let wx = cx * 16; wx < cx * 16 + 16; wx++) {
+			for (let wz = cz * 16; wz < cz * 16 + 16; wz++) {
+				const lx = ((wx % 16) + 16) % 16,
+					lz = ((wz % 16) + 16) % 16;
+				// Superficie sólida: primer bloque no aire/agua/lava bajando.
+				let solidY = null;
+				for (let wy = WORLD_H - 1; wy >= 0; wy--) {
+					const id = arr[(wy * 16 + lz) * 16 + lx];
+					if (id === AIR || id === WATER) continue;
+					solidY = wy;
+					break;
+				}
+				if (solidY === null) continue;
+				const d = Math.hypot(wx - cur.x, wz - cur.z);
+				if (!best || d < best.d) best = { x: wx, y: solidY, z: wz, d };
+			}
+		}
+	}
+	return best;
+}
+
+let _tpPending = false; // evita reintentos en bucle si el /tp no llega
+
 // Celda de aire (con bloque sólido DEBAJO) a <= REACH del jugador, para
 // colocar el cofre sin que quede flotando. Prioriza cerca de la altura del
 // jugador (el spawn está sobre terreno firme).
@@ -151,6 +184,22 @@ ws.on("message", (d) => {
 		_chestSlot = idx;
 		send("inventory_select", { slot: idx });
 		const spot = airWithGroundNear(cur.x, cur.y, cur.z);
+		if (!spot && !_tpPending) {
+			// Spawn en medio del agua (Fase 10): ir a tierra firme y reintentar.
+			const target = nearestSolidColumn();
+			if (target) {
+				check(
+					"spawn acuático → /tp a la tierra más cercana",
+					true,
+					`${target.x},${target.y},${target.z}`
+				);
+				_tpPending = true;
+				send("chat", {
+					message: `/tp ${target.x} ${target.y + 2} ${target.z}`
+				});
+				return; // el teleport re-dispara este bloque (fase craft)
+			}
+		}
 		if (!spot) {
 			check(
 				"hay una celda de aire con suelo para colocar el cofre",
@@ -160,6 +209,7 @@ ws.on("message", (d) => {
 			finish(1);
 			return;
 		}
+		_tpPending = false;
 		check(
 			"hay una celda de aire con suelo para colocar el cofre",
 			true,
@@ -174,6 +224,36 @@ ws.on("message", (d) => {
 			itemId: CHEST
 		});
 		phase = "place";
+		return;
+	}
+
+	// ============ TELEPORT: corregir cur y, si era el /tp a tierra firme,
+	// reintentar la colocación del cofre desde la nueva posición ============
+	if (m.event === "teleport") {
+		cur = { x: m.data.x, y: m.data.y, z: m.data.z };
+		if (_tpPending) {
+			_tpPending = false;
+			const spot = airWithGroundNear(cur.x, cur.y, cur.z);
+			if (spot) {
+				placeAt = spot;
+				send("block_action", {
+					action: "place",
+					x: spot.x,
+					y: spot.y,
+					z: spot.z,
+					itemId: CHEST
+				});
+				phase = "place";
+			} else {
+				// Tierra aún sin celda válida (p. ej. el target era agua): fallo claro
+				check(
+					"hay una celda de aire con suelo para colocar el cofre",
+					false,
+					"sin sitio ni tras /tp a tierra"
+				);
+				finish(1);
+			}
+		}
 		return;
 	}
 

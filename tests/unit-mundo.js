@@ -34,10 +34,12 @@ const check = (_name, ok, _extra = "") => {
 	if (!ok) failed++;
 };
 
-// Superficie efectiva de una columna: en un lago el terreno se hunde hasta
-// LAKE_FLOOR (getHeight no contempla lagos, por eso se ajusta aquí).
+// Superficie efectiva de una columna: en un lago/río el terreno se hunde
+// hasta su fondo real (profundidad variable, Fase 10 A4); getHeight no
+// contempla lagos ni ríos, por eso se ajusta aquí con columnFloorY.
 function columnSurface(wx, wz) {
-	return world.isLake(wx, wz) ? world.LAKE_FLOOR : world.getHeight(wx, wz);
+	const floorY = world.columnFloorY(wx, wz);
+	return floorY != null ? floorY : world.getHeight(wx, wz);
 }
 
 // --- 1) Generar una zona de 7x7 chunks y medir invariantes básicas ---
@@ -59,6 +61,10 @@ let waterCells = 0,
 	badWaterFloor = 0,
 	airUnderWater = 0,
 	badPond = 0;
+// Fase 10 (A4): ríos y profundidad variable de lagos (se rellenan en el
+// barrido principal, que ya calcula river/floorY por columna).
+let riverWaterCells = 0;
+const lakeFloors = new Set();
 for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 	for (let cz = -RADIUS; cz <= RADIUS; cz++) {
 		const data = state.chunks.get(`${cx},${cz}`);
@@ -67,8 +73,15 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 				const wx = cx * CHUNK_SIZE + x,
 					wz = cz * CHUNK_SIZE + z;
 				const lake = world.isLake(wx, wz);
-				const surface = lake ? world.LAKE_FLOOR : world.getHeight(wx, wz);
+				const river = world.isRiver(wx, wz);
+				const floorY = world.columnFloorY(wx, wz);
+				const surface = floorY != null ? floorY : world.getHeight(wx, wz);
 				columns++;
+				// Fase 10 (A4): métricas de ríos y de profundidad variable de lagos.
+				if (floorY != null) {
+					if (river) riverWaterCells++;
+					if (lake) lakeFloors.add(floorY);
+				}
 				for (let y = 1; y < surface - 1; y++) {
 					stoneTotal++;
 					if (data[idx(x, y, z)] === B.AIR) carved++;
@@ -84,7 +97,7 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 					if (data[idx(x, y, z)] === B.AIR) topHoles++;
 				}
 				if (topHoles > 0) surfaceHoles++;
-				// agua: invariantes de lago + charcos decorativos (Fase 7)
+				// agua: invariantes de lago/río + charcos decorativos (Fase 7)
 				for (let y = 1; y < WORLD_HEIGHT; y++) {
 					if (data[idx(x, y, z)] === B.WATER) {
 						waterCells++;
@@ -103,9 +116,15 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 							)
 								badPond++;
 						}
-						if (y < world.LAKE_FLOOR) airUnderWater++; // agua en zona de piedra: raro
+						// Fase 10 (A4): el agua de lago/río está SIEMPRE por debajo del
+						// nivel del mar y no hay AIRE justo debajo de una celda de agua
+						// (el lecho es arena; las cuevas bajo el agua se inundan).
 						const below = data[idx(x, y - 1, z)];
-						if (y === world.LAKE_FLOOR + 1 && below !== B.SAND) badWaterFloor++;
+						if (below === B.AIR) airUnderWater++;
+						// Lecho del lago/río: el bloque del fondo real (columnFloorY) es
+						// arena. El agua en y = floorY + 1 descansa sobre él.
+						if (floorY != null && y === floorY + 1 && below !== B.SAND)
+							badWaterFloor++;
 					}
 				}
 			}
@@ -156,7 +175,17 @@ check(
 check(
 	"sin aire bajo el agua dentro de la columna",
 	airUnderWater === 0,
-	`${airUnderWater} celdas`
+	`${airUnderWater} celdas de aire bajo agua`
+);
+check(
+	"hay ríos pequeños (canales de agua fuera de lagos)",
+	riverWaterCells > 0,
+	`${riverWaterCells} celdas de agua de río`
+);
+check(
+	"los lagos tienen profundidad variable (fondo no uniforme)",
+	lakeFloors.size > 1,
+	`profundidades: ${[...lakeFloors].sort().join(",")}`
 );
 check(
 	"el agua no es sólida (isSolidBlock(WATER) === false)",

@@ -96,6 +96,10 @@ const worldPaths = {
 	// persiste en world.json (buildMeta/loadWorld) y aplica a TODOS los
 	// jugadores que entran: el modo es propiedad del mundo, no del jugador.
 	worldGamemode: "survival",
+	// Fase 10 (B1): TAMAÑO del mundo en bloques por lado (256/512/1024/8192).
+	// Se persiste en world.json; los mundos viejos (sin el campo) abren con
+	// 8192 (el tamaño "infinito" que había antes, retrocompatible).
+	worldSize: 8192,
 	worldDir: null,
 	chunksDir: null,
 	legacyFile: null,
@@ -202,8 +206,21 @@ const B = {
 	// la harina de hueso — verde/azul quedan fuera por no tener fuente de tinte).
 	RED_WOOL: 36,
 	YELLOW_WOOL: 37,
-	WHITE_WOOL: 38
+	WHITE_WOOL: 38,
+	// Fase 10 (D1/D2): bloques con gravedad y explosivo
+	GRAVEL: 39, // cae si no tiene soporte (como la arena)
+	TNT: 40 // explota al activarse (clic derecho o reacción en cadena)
 };
+
+// Bloques con gravedad (Fase 10, D1): caen si el bloque de debajo no es
+// sólido (arena y grava). El servidor es la fuente de verdad: world.settleColumn
+// los mueve al setBlock y broadcast con block_update.
+const GRAVITY_BLOCKS = new Set([B.SAND, B.GRAVEL]);
+
+// Fase 10 (D2): TNT — mecha, radio del cráter y daño por explosión.
+const TNT_FUSE_MS = 1600; // ~1.6s de mecha (chisporroteo) antes de explotar
+const TNT_RADIUS = 3; // radio del cráter en bloques
+const TNT_DAMAGE = 12; // daño máximo (centro de la explosión)
 const I = {
 	STICK: 100,
 	COAL: 101,
@@ -277,6 +294,40 @@ const I = {
 	GOLDEN_HOE: 243,
 	DIAMOND_HOE: 244
 };
+// ============================================================
+// TAMAÑO DE MUNDO (Fase 10, B1)
+// Lados en bloques por dimensión (el mundo es cuadrado: [-half, +half)).
+// `debug` e `infinito` NO se ofrecen en el menú (solo interno). El límite se
+// aplica en world.js (generación/bordes) y net.js (validación de move).
+// ============================================================
+const WORLD_SIZES = {
+	debug: 64,
+	small: 256,
+	medium: 512,
+	large: 1024,
+	infinite: 8192
+};
+
+// Límite por lado (mitad del tamaño): coordenadas fuera de [-half, half) se
+// rechazan (movimiento, colocación, generación). Los tests lo consultan.
+function worldHalfExtent() {
+	const size = worldPaths.worldSize || WORLD_SIZES.medium;
+	return Math.floor(size / 2);
+}
+
+// Normaliza un tamaño pedido (número de bloques por lado o clave de
+// WORLD_SIZES): devuelve el lado válido o el tamaño por defecto (medio).
+function sanitizeWorldSize(raw) {
+	if (typeof raw === "number" && Number.isFinite(raw) && raw >= 64) {
+		const side = Math.round(raw);
+		return side >= 8192 ? WORLD_SIZES.infinite : side;
+	}
+	if (typeof raw === "string" && WORLD_SIZES[raw]) return WORLD_SIZES[raw];
+	return WORLD_SIZES.medium;
+}
+function worldSizeBlocks() {
+	return worldPaths.worldSize || WORLD_SIZES.medium; // lado del mundo en bloques
+}
 const NOT_MINEABLE = new Set([B.AIR, B.BEDROCK, B.WATER, B.LAVA]); // agua/lava no se pueden romper a mano (sin cubo)
 // Bloques NO sólidos (Fase 9): cultivos, hierba alta y flores se atraviesan
 // y se rompen al instante (como plantas).
@@ -343,6 +394,8 @@ const BLOCK_HARDNESS = {
 	[B.GLASS]: 0.3,
 	[B.SNOW]: 0.2,
 	[B.SAND]: 0.5,
+	[B.GRAVEL]: 0.4, // Fase 10 (D1)
+	[B.TNT]: 0.05, // Fase 10 (D2): se rompe al instante (como en MC)
 	[B.GRASS]: 0.6,
 	[B.DIRT]: 0.75,
 	[B.FARMLAND]: 0.6,
@@ -653,6 +706,9 @@ const CREATIVE_ITEMS = [
 	B.BED,
 	B.WATER,
 	B.LAVA,
+	// Fase 10 (D1/D2): grava (con gravedad) y TNT
+	B.GRAVEL,
+	B.TNT,
 	// Minerales y materiales
 	B.COAL_ORE,
 	B.IRON_ORE,
@@ -772,6 +828,10 @@ module.exports = {
 	B,
 	I,
 	NOT_MINEABLE,
+	GRAVITY_BLOCKS,
+	TNT_FUSE_MS,
+	TNT_RADIUS,
+	TNT_DAMAGE,
 	FUEL_ITEMS,
 	FOOD_VALUES,
 	isFood,
@@ -789,6 +849,10 @@ module.exports = {
 	ARMOR_SLOTS,
 	ARMOR_DAMAGE_REDUCTION,
 	ARMOR_DURABILITY,
+	WORLD_SIZES,
+	worldHalfExtent,
+	worldSizeBlocks,
+	sanitizeWorldSize,
 	isArmor,
 	applyArmorDamageReduction,
 	XP_PER_LEVEL,

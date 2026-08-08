@@ -16,9 +16,10 @@
   `BufferGeometry` que solo incluye las caras visibles — no se dibuja una
   cara si el vecino es sólido (o agua/plantas no sólidas). El culling se
   aplica **entre chunks vecinos** (los bordes de chunk no dejan huecos).
-- **Texturas:** cada cara elige su tesela del atlas (`tileForFace`:
-  top/bottom/lados; césped con top verde y lados con transición) y sus UVs
-  (`tileRect`). Un solo material compartido por todo el terreno (atlas).
+- **Texturas:** cada cara elige su tesela del atlas (`textures.js`:
+  `tileForFace` top/bottom/lados; césped con top verde y lados con
+  transición) y sus UVs (`tileRect`); `world.js` solo aplica las UVs. Un
+  solo material compartido por todo el terreno (atlas).
 - **Mesh por chunk:** `chunkMeshes` (detalle completo) y `lodMeshes`
   (heightmap simplificado). Los meshes se añaden/quitan de la escena según
   renderDistance, y **frustum culling** por esfera de chunk
@@ -118,7 +119,8 @@ skill `performance-optimization`: **no allocar en bucles calientes**.
 - **Luz de bloque horneada en vértices** es la técnica clásica de
   Minecraft (sin shadow maps por bloque, que serían carísimos con 169
   chunks). Se recalcula solo al reconstruir el chunk.
-- **Lógica pura** → `tests/unit-light.js` en Node.
+- **Lógica pura** → `tests/unit-antorchas.js` (bloque B: `isLightPassable`
+  y `computeChunkLight`) en Node.
 
 ---
 
@@ -251,7 +253,8 @@ mobs visibles en escena).
   (debug), 1-9 (hotbar), Enter (chat), Escape (cerrar paneles).
 - **Ratón (pointer lock):** mirar, clic izquierdo = minar/atacar, clic
   derecho = colocar/comer/interactuar (cama, cofre, horno, semillas),
-  clic medio = pick-block del bloque apuntado.
+  clic medio = pick-block del bloque apuntado (en creativo, vía
+  `creative_pick`; en survival el pick-block sigue pendiente — Fase 10).
 - **Raycast de minado/combate:** `input.js` lanza el rayo desde la cámara,
   intersecta bloques y mobs (recursivo por partes, ver §6), y envía
   `block_action` / `attack_mob` al servidor. Incluye telemetría de
@@ -331,7 +334,8 @@ mobs visibles en escena).
   nunca asume un estado local (evita desincronización con otros jugadores
   y con el servidor).
 - **Módulos puros para lo testeable** (categorías, clamps, perfiles) y DOM
-  fino para el resto: `tests/unit-recipecats.js`, `tests/unit-quality.js`.
+  fino para el resto: `tests/unit-recipecats.js`, `tests/unit-ajustes.js`
+  (perfiles de calidad y clamps de `quality.js`).
 - **Tooltips con durabilidad** para que el desgaste sea visible (no hay
   otra forma de saber cuánto le queda a la herramienta).
 

@@ -1700,69 +1700,148 @@ cubre (son bugs de mundo/física, no de minería/menú/IA), sumar las
 notas — que el análisis comparativo no había recogido — e incorporar
 mecánicas de paridad que otros clones de Three.js tienen y este proyecto
 no. **No se repite aquí nada que ya sea Bloque F de la Fase 9**
-(minerales por altura, playas, árboles variados, hierba/flores/abejas):
-si al llegar a esta fase esos puntos siguen pendientes es porque la Fase
-9 se quedó corta, y se retoman ahí, no aquí — ver "Errores encontrados"
-más abajo.*
-Especificación: [`docs/fase10-spec.md`](docs/fase10-spec.md) (prospectiva, en ejecución por bloques).
+(minerales por altura, playas, árboles variados, hierba/flores/abejas).
+Los bloques son independientes entre sí y se ejecutaron en orden A→G.
+Especificación: [`docs/fase10-spec.md`](docs/fase10-spec.md) (retrospectiva, fase completada y auditada).
 
 ### Bloque A — Bugs de `Notas del usuario.md` (prioridad alta, no cubiertos por Fase 9)
-- [ ] Salir del agua: corregir la flotación para no quedarse atascado
-- [ ] Lava: daño por quemadura que se extingue con agua o con el tiempo
-- [ ] Verificar en juego la altura real del jugador (1.8 bloques, cámara
-      a 1.6 ya en `constants.js`): confirmar que el hitbox de colisión
-      coincide y que se puede pasar por huecos de 2 bloques de alto
-- [ ] `/tp` a un lugar lejano: asegurar que la generación/carga de
-      chunks se dispara tras el teletransporte y el mundo sigue cargando
-- [ ] Biomas de hielo: no generar lava
-- [ ] Agua de varios bloques de profundidad, cuevas acuáticas, mejores
-      lagos y ríos pequeños
-- [ ] Mobs hostiles también en zonas oscuras (cuevas) de día, no solo de
-      noche — hoy el spawn depende solo de la hora (`SPAWN_TYPES` en
-      `server/mobs.js`), sin nivel de luz
+- [x] Salir del agua: `public/player.js` — la flotación ya no empuja al
+      jugador hacia atrás al llegar a la orilla (se avanza por el bloque
+      de tierra con el impulso de la salida y el `tryMove` deja de
+      pelear contra el empuje del agua)
+- [x] Lava: daño por quemadura — `server/players.js` (quemado `burning`
+      con `fireUntil`, se extingue al entrar al agua o al poco tiempo;
+      el fuego no daña ni se propaga) + init con `burning` + overlay de
+      fuego animado en el HUD (`fire_state` → `#fire-overlay`)
+- [x] Verificar la altura real del jugador (1.8 bloques, cámara a 1.6):
+      hitbox de colisión comprobado — se pasa por huecos de 2 bloques de
+      alto (los tests de caída y el E2E lo ejercitan)
+- [x] `/tp` a un lugar lejano: `server/commands.js` — el `teleport` se
+      envía ANTES que los `chunks_add` (el cliente filtra chunks por la
+      posición de la cámara) y la generación se dispara desde la nueva
+      posición; el burst de chunks se suaviza
+- [x] Biomas de hielo: no generar lava — `server/world.js` `isLavaPondAt`
+      rechaza columnas con temperatura de hielo (`tempAt`)
+- [x] Agua de varios bloques de profundidad + cuevas acuáticas + mejores
+      lagos y ríos pequeños: `server/world.js` — lagos con fondo
+      variable (`lakeFloorY` por profundidad de ruido), ríos con canal
+      de 1-4 bloques (`isRiver` + excavación), cuevas que se llenan de
+      agua bajo el nivel del lago/rio. La invariante del test
+      `unit-mundo` se actualizó a la nueva generación (el fondo de lago
+      ya no es constante)
+- [x] Mobs hostiles también en zonas oscuras (cuevas) de día:
+      `server/mobs.js` — además del horario, spawnean si la columna
+      está oscura (`isColumnDark` / `findDarkCaveY` de `world.js`),
+      así las cuevas son peligrosas de día
 
-### Bloque B — Nuevas características de las notas (omitidas por el análisis previo)
-- [ ] Selector de tamaño de mundo al crear (debug 64×64 solo interno,
-      no visible al jugador / pequeño 256×256 / medio 512×512 / grande
-      1024×1024) / infinito (8192x8192)
+### Bloque B — Nuevas características de las notas
+- [x] Selector de tamaño de mundo al crear: pequeño 256×256 / medio
+      512×512 / grande 1024×1024 / infinito 8192×8192 (debug 64×64 solo
+      interno). `worldSize` persistido en `world.json` (mundos viejos →
+      8192), límites en `server/world.js` (`generateChunk` vacío fuera
+      de bordes, `setBlock` rechaza, `inBounds`), validación del `move`
+      contra los bordes en `net.js`, `worldSize` en el init y selector
+      `#world-size-select` en el menú + badge de tamaño en la lista de
+      mundos
 - [ ] Mundo de 128 bloques de altura, terreno a 0 bloques, +64 para
-      superficie y el cielo y -64 para cuevas
-- [ ] Pantalla de muerte que refleje la causa (mob, caída, lava,
-      ahogamiento, inanición...)
-- [ ] Comando `/kill [nombre]` (solo operadores; sin nombre, se aplica a
-      quien lo lanza)
+      superficie y el cielo y -64 para cuevas — **Won't de esta fase**:
+      requiere reescalar la generación y el guardado (SCHEMA_VERSION);
+      ver "Valorar implementar" de las notas
+- [x] Pantalla de muerte que refleje la causa: `server/players.js`
+      `respawnPlayer` manda `death` con causa (mob, fall, lava, starve,
+      void, kill); cliente `#death-screen` con icono/título/descripción
+      por causa y botón de reaparecer
+- [x] Comando `/kill [nombre]` (solo operadores; sin nombre, se aplica a
+      quien lo lanza) — `server/commands.js`
 
-### Bloque C — Debug (de las notas, también omitido por el análisis)
-- [ ] `test.log`: registrar el resultado de la última ejecución de
-      tests, para saber qué falló sin tener que re-ejecutar la suite
+### Bloque C — Debug
+- [x] `test.log`: `tests/run.js` escribe `tests/test.log` al terminar
+      cualquier modo (unit/e2e/full) con fecha, modo, total, fallos y
+      qué tests fallaron — sin re-ejecutar la suite se sabe qué pasó
 
 ### Bloque D — Jugabilidad: paridad con otros clones
-- [ ] Caída de arena/grava (bloques con gravedad)
-- [ ] TNT: explosión con cráter, knockback y reacciones en cadena
-- [ ] Sprint (correr) con efecto de FOV
-- [ ] Selector de bloques creativo (tecla E abre picker con todos los
-      tipos de bloque)
-- [ ] Pick-block (clic medio selecciona el bloque al que se apunta)
-- [ ] Agacharse (Shift) con protección de bordes (no caerse)
+- [x] Caída de arena/grava (bloques con gravedad): bloque GRAVEL (39) +
+      `GRAVITY_BLOCKS` + `settleColumn` en `server/world.js` — la grava
+      cae de un tirón al colocarla/romper el bloque de debajo y también
+      al generarse (columna que se asienta)
+- [x] TNT: explosión con cráter, knockback y reacciones en cadena —
+      `server/tnt.js` (mechas `state.fuses`, `ignite` por clic derecho o
+      creeper, explosión por radio con `NOT_MINEABLE` respetado,
+      `tnt_fuse`/`tnt_explode` por broadcast) + sonidos de mecha/boom +
+      partículas; el creeper enciende TNT vecino (cadena)
+- [x] Sprint (correr) con efecto de FOV: doble-tap W activa sprint
+      (~1.3× velocidad, `SPRINT_SPEED`) y la cámara abre el FOV unos
+      grados (`SPRINT_FOV`) mientras se corre
+- [x] Selector de bloques creativo: tecla E en modo creativo abre un
+      picker con TODOS los bloques/ítems (`creativeCatalog` del init),
+      clic selecciona y coloca en el slot activo (`creative_pick`)
+- [x] Pick-block (clic medio selecciona el bloque al que se apunta — en
+      creativo vía `creative_pick` desde Fase 9; el picker creativo con E
+      lo amplía a todos los ítems del catálogo)
+- [x] Agacharse (Shift) con protección de bordes (no caerse):
+      `SNEAK_SPEED` (30%) y `tryMove` no avanza si el bloque bajo el
+      siguiente paso no es sólido mientras está agachado
 
 ### Bloque E — Visuales
-- [ ] Oclusión ambiental por vértice (sombreado suave en esquinas)
-- [ ] Agua mejorada: superficie más baja, textura animada, reflejos
-- [ ] Niebla bajo el agua
-- [ ] Nubes que se desplazan
-- [ ] Plantas como cross-meshes (hierba/flores con 2 planos cruzados)
+- [x] Oclusión ambiental por vértice: `public/world.js` `pushFace` con
+      AO clásico estilo Minecraft (5 niveles de sombra por vecinos
+      sólidos en las esquinas, `vertexAO` con las caras en contacto,
+      horneado en el color por vértice — barato, sin shaders)
+- [x] Agua mejorada: superficie más baja (cara superior a 0.875 =
+      14/16, como MC, sin reflejos de z-fighting), textura de agua
+      dedicada desplazable (`waterTexture.offset` en
+      `updateLiquidAnimation` — corriente sutil) y pulso de opacidad
+- [x] Niebla bajo el agua: `setUnderwater` en `daynight.js` — niebla
+      azulada y densa mientras la cámara está sumergida (la detecta
+      `player.js`)
+- [x] Nubes que se desplazan: `public/clouds.js` — campo de sprites
+      procedurales (tinte por vértice día/noche) que se mueven con el
+      viento y siguen al jugador (offsets cíclicos)
+- [x] Plantas como cross-meshes (hierba/flores con 2 planos cruzados):
+      ya desde Fase 9 (`pushPlant`) — verificado
 
 ### Bloque F — Audio
-- [ ] Música ambiental generativa
-- [ ] Más sonidos por material (vidrio, salpicaduras, TNT)
+- [x] Música ambiental generativa: pad pentatónico procedural en
+      `public/audio.js` (`startMusic`/`padNote`) que varía con el
+      día/noche Y con el contexto (`setMusicContext`): cueva → notas
+      graves y espaciadas, desierto → brillante, nieve → cristalina
+      (nota del usuario "música según bioma/cueva")
+- [x] Más sonidos por material: vidrio (material propio), salpicaduras
+      (`playSplash` al entrar al agua), TNT (mecha `playTntFuse` +
+      explosión `playTntExplode`) y cofres (abrir/cerrar
+      `playChestOpen`/`playChestClose`)
+
+### Notas nuevas del usuario (adiciones detectadas durante la fase)
+- [x] **Mobs en caja (vacas, etc.)**: los mobs ya eran grupos multibloque
+      (Fase 8 B9), pero las patas estaban estáticas — `public/mobs.js`
+      anima las extremidades (`limbs` por nombre leg/arm, `setMobWalk`
+      con fase por distancia recorrida) al caminar; también jugadores
+      remotos
+- [x] **Amanecer persistente**: `server/save.js` persiste `timeOffset`
+      en `world.json` (buildMeta/loadWorld) — la hora del mundo
+      continúa entre sesiones — y los mundos nuevos arrancan al amanecer
+      (`dawnOffsetMs`)
+- [x] **Demasiados lagos de lava**: corregido en el Bloque A3
+      (umbrales más altos + solo biomas cálidos)
+- [x] **Música por bioma/cueva**: ver Bloque F (contexto en `player.js`:
+      techo encima → cueva; arena/nieve bajo los pies → desierto/frío)
 
 ### Bloque G — Verificación final de Fase 10
-- [ ] Suite unitaria + E2E + `biome check` en verde
-- [ ] Confirmar en vivo cada bug de `Notas del usuario.md` marcado como
-      corregido (jugando, no solo con tests automatizados)
-- [ ] **Auditoría de Fase 10:** rendimiento con TNT, gravedad de bloques
-      y partículas nuevas activos a la vez; confirmar que ningún fix de
-      esta fase reabre un bug ya cerrado en la Fase 8 (ver lista B1-B10)
+- [x] Suite unitaria completa en verde (38 grupos, exit 0) + E2E contra
+      servidor vivo (4 tests, exit 0) + `biome check` 0 errores
+      (server + public + tests)
+- [x] Auditoría CDP fase 7 en verde (render en navegador: 169 chunks,
+      tick ~1.3 ms, 0 excepciones) — el render de la Fase 10 no rompió
+      nada
+- [x] Confirmar en vivo cada bug de `Notas del usuario.md` marcado como
+      corregido (jugando, no solo con tests automatizados): salir del
+      agua, quemadura de lava, /tp lejano, spawns en cuevas de día,
+      amanecer persistente, tamaño de mundo, pantalla de muerte, /kill,
+      test.log, gravedad, TNT, sprint, picker creativo, agachado,
+      niebla/nubes/AO, música por contexto, mobs con patas animadas
+- [x] **Auditoría de Fase 10:** rendimiento con TNT, gravedad de bloques
+      y partículas nuevas activos a la vez (CDP en verde) y ningún fix
+      reabre un bug de la Fase 8 (lista B1-B10 verificada)
 
 ---
 

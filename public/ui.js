@@ -2,7 +2,7 @@
 // UI: HUD (hotbar, salud), chat, panel de crafteo y panel de horno
 // ============================================================
 
-import { isMuted, setMuted } from "./audio.js";
+import { isMuted, playChestClose, playChestOpen, setMuted } from "./audio.js"; // Fase 10 (F2): cofres
 import { defaultName, send, setStoredName } from "./connection.js";
 import {
 	ARMOR_DURABILITY,
@@ -182,6 +182,9 @@ const seedCreateBtn = document.getElementById("seed-create-btn");
 const randomSeedBtn = document.getElementById("random-seed-btn");
 // Fase 9 (Bloque B): selector de modo al crear un mundo NUEVO.
 const gamemodeSelect = document.getElementById("gamemode-select");
+// Fase 10 (B1): tamaño del mundo nuevo (small/medium/large; debug/infinito
+// quedan internos y no se ofrecen aquí).
+const sizeSelect = document.getElementById("world-size-select");
 const nameInput = document.getElementById("name-input");
 const rdSlider = document.getElementById("rd-slider");
 const rdValue = document.getElementById("rd-value");
@@ -323,18 +326,21 @@ invertToggle.addEventListener("change", () =>
 // Fase 9 (Bloque B): `mode` (survival/creative) fija el modo del mundo NUEVO;
 // un mundo existente conserva el suyo (el servidor ignora el modo si la
 // semilla ya existía).
-function startWithSeed(seed, worldName, mode) {
+function startWithSeed(seed, worldName, mode, size) {
 	seed = (seed || "").trim();
 	const name = (worldName || "").trim();
 	const gamemodeReq = mode ? { gamemode: mode } : {};
+	// Fase 10 (B1): tamaño pedido para el mundo NUEVO (el servidor lo ignora
+	// si la semilla ya existía — cada mundo conserva su tamaño).
+	const sizeReq = size ? { size } : {};
 	if (seed && (seed !== currentSeed || name)) {
 		seedPending = seed;
 		showLoading(`Generando el mundo «${seed}»...`);
-		send("set_seed", { seed, name, ...gamemodeReq });
+		send("set_seed", { seed, name, ...gamemodeReq, ...sizeReq });
 	} else if (name && currentSeed) {
 		seedPending = currentSeed;
 		showLoading(`Renombrando el mundo «${currentSeed}»...`);
-		send("set_seed", { seed: currentSeed, name, ...gamemodeReq });
+		send("set_seed", { seed: currentSeed, name, ...gamemodeReq, ...sizeReq });
 	}
 	controls.lock(); // el lock en el gesto es fiable; la carga cubre el cambio
 }
@@ -349,7 +355,12 @@ startBtn.addEventListener("click", () => {
 });
 
 seedCreateBtn.addEventListener("click", () =>
-	startWithSeed(seedInput.value, worldNameInput.value, gamemodeSelect.value)
+	startWithSeed(
+		seedInput.value,
+		worldNameInput.value,
+		gamemodeSelect.value,
+		sizeSelect ? sizeSelect.value : undefined
+	)
 );
 seedInput.addEventListener("keydown", (e) => {
 	if (e.key === "Enter") seedCreateBtn.click();
@@ -407,9 +418,18 @@ export function renderWorldsList(worlds) {
 			`${w.chunkCount} chunks` +
 			(w.lastSaved ? ` · ${w.lastSaved.slice(0, 19).replace("T", " ")}` : "");
 		const badge = `<span class="mode-badge ${mode}">${mode === "creative" ? "✦" : "⛏"} ${mode === "creative" ? "Creativo" : "Supervivencia"}</span>`;
+		// Fase 10 (B1): badge de tamaño (256/512/1024 bloques por lado; los
+		// mundos viejos sin el campo se ven como 8192 = "Infinito").
+		const sizeName = {
+			256: "Pequeño",
+			512: "Medio",
+			1024: "Grande",
+			8192: "Infinito"
+		};
+		const sizeBadge = `<span class="mode-badge size">🗺 ${sizeName[w.worldSize] || `${w.worldSize}×${w.worldSize}`}</span>`;
 		const delBtn = `<button type="button" class="world-delete" title="Borrar este mundo (no se puede deshacer)" data-seed="${escapeHtml(w.seed)}" data-name="${escapeHtml(w.name)}">🗑️</button>`;
 		item.innerHTML =
-			`<span class="wi-left"><span class="wi-name">${escapeHtml(w.name)}</span>${badge}<span class="wi-seed">semilla: ${escapeHtml(w.seed)}</span></span>` +
+			`<span class="wi-left"><span class="wi-name">${escapeHtml(w.name)}</span>${badge}${sizeBadge}<span class="wi-seed">semilla: ${escapeHtml(w.seed)}</span></span>` +
 			`<span class="wi-meta">${escapeHtml(meta)}</span>` +
 			delBtn;
 		item.title = `Abrir el mundo «${w.name}» (semilla: ${w.seed})`;
@@ -663,6 +683,31 @@ export function getSelectedSlot() {
 
 export function flashMessage(text) {
 	addChatLine("Sistema", text);
+}
+
+// ============================================================
+// PANTALLA DE MUERTE CON CAUSA (Fase 10, B2)
+// El servidor envía `cause` en player_die (source de la telemetría de daño:
+// mob/fall/lava/starve/void/kill...). Se muestra ~3s con el texto legible y
+// desaparece sola (el respawn ya lo hizo el servidor al instante).
+// ============================================================
+const deathScreen = document.getElementById("death-screen");
+const deathCauseEl = document.getElementById("death-cause");
+const DEATH_CAUSES = {
+	mob: "Te ha matado un mob (o una explosión).",
+	fall: "Has caído desde muy alto.",
+	lava: "Has ardido en la lava.",
+	starve: "Has muerto de inanición.",
+	void: "Has caído al vacío.",
+	kill: "Has sido eliminado."
+};
+let deathTimer = null;
+export function showDeathScreen(cause) {
+	if (!deathScreen || !deathCauseEl) return;
+	deathCauseEl.textContent = DEATH_CAUSES[cause] || "Has muerto.";
+	deathScreen.classList.remove("hidden");
+	clearTimeout(deathTimer);
+	deathTimer = setTimeout(() => deathScreen.classList.add("hidden"), 3000);
 }
 
 // ============================================================
@@ -927,9 +972,11 @@ export function toggleChestUI(show, coords) {
 		send("chest_open", coords);
 		showBlocker(false); // quitar el menú para poder clicar los slots (bug inventario)
 		controls.unlock();
+		playChestOpen(); // Fase 10 (F2): bisagra de la tapa
 	} else if (openChestKey) {
 		send("chest_action", { action: "close" });
 		openChestKey = null;
+		playChestClose(); // Fase 10 (F2): tapa que se cierra
 	}
 }
 
@@ -945,15 +992,64 @@ export function toggleInventory() {
 	toggleCraftingUI(inventoryOpen);
 	if (!inventoryOpen) controls.lock();
 }
+
+// ============================================================
+// PICKER CREATIVO (Fase 10, D4)
+// En un mundo creative, la tecla E abre un selector con el catálogo completo
+// de bloques e ítems (lo manda el servidor en el init: creativeCatalog).
+// Click en un ítem → creative_pick → se coloca en el slot seleccionado.
+// ============================================================
+const pickerUI = document.getElementById("picker-ui");
+const pickerGridEl = document.getElementById("picker-grid");
+let creativeCatalog = [];
+let pickerOpen = false;
+
+export function setCreativeCatalog(list) {
+	creativeCatalog = Array.isArray(list) ? list : [];
+	if (pickerOpen) renderPickerGrid();
+}
+
+export function togglePicker() {
+	pickerOpen = !pickerOpen;
+	pickerUI.classList.toggle("hidden", !pickerOpen);
+	if (pickerOpen) {
+		renderPickerGrid();
+		showBlocker(false); // poder clicar los slots (mismo patrón que el inventario)
+		controls.unlock();
+	} else {
+		controls.lock();
+	}
+}
+
+function renderPickerGrid() {
+	pickerGridEl.innerHTML = "";
+	if (creativeCatalog.length === 0) {
+		pickerGridEl.innerHTML = '<p class="hint">Catálogo vacío</p>';
+		return;
+	}
+	for (const id of creativeCatalog) {
+		const el = document.createElement("div");
+		el.className = "slot picker-slot";
+		el.innerHTML = itemVisual(id);
+		el.title = itemLabel(id);
+		el.addEventListener("click", () => {
+			send("creative_pick", { itemId: id });
+			togglePicker(); // cierra y devuelve el puntero al juego
+		});
+		pickerGridEl.appendChild(el);
+	}
+}
 export function closePanels() {
 	const hadPanel =
 		inventoryOpen ||
+		pickerOpen || // Fase 10 (D4): el picker creativo también se cierra con Escape
 		openFurnaceKey !== null ||
 		openChestKey !== null ||
 		!recipeBook.classList.contains("hidden");
 	toggleCraftingUI(false);
 	toggleFurnaceUI(false);
 	toggleChestUI(false);
+	if (pickerOpen) togglePicker();
 	inventoryOpen = false;
 	if (!recipeBook.classList.contains("hidden")) toggleRecipeBook();
 	if (hadPanel) controls.lock(); // Escape cierra el panel y reanuda el juego

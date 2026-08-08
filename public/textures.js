@@ -494,6 +494,31 @@ function drawBedFront(ctx, _rng) {
 	rect(ctx, 11, 13, 2, 3, PAL.woodDark);
 }
 
+// Fase 10 (D1): grava — guijarros grises redondeados sobre fondo oscuro
+// (distinta de la piedra lisa y del adoquín, como en Minecraft).
+function drawGravel(ctx, rng) {
+	rect(ctx, 0, 0, TILE, TILE, "#6e6e6c");
+	for (let i = 0; i < 9; i++) {
+		const gx = 1 + rng() * 13;
+		const gy = 1 + rng() * 13;
+		const s = 3 + rng() * 3;
+		rect(ctx, Math.floor(gx), Math.floor(gy), s, s, "#585855");
+		rect(ctx, Math.floor(gx) + 1, Math.floor(gy), s - 1, 1, "#7d7d7a");
+	}
+}
+
+// Fase 10 (D2): TNT — rojo con banda blanca inferior y cinta central con la
+// "palabra" pixelada (estilo MC).
+function drawTnt(ctx, _rng) {
+	rect(ctx, 0, 0, TILE, TILE, "#d43d2a");
+	rect(ctx, 0, 1, TILE, 2, "#e85a45"); // brillo superior
+	rect(ctx, 0, 12, TILE, 3, "#f2ede4"); // banda base blanca
+	rect(ctx, 2, 5, TILE - 4, 4, "#f7f3ea"); // cinta central con el texto
+	rect(ctx, 4, 6, 2, 2, "#222"); // letras "TNT" pixeladas
+	rect(ctx, 8, 6, 2, 2, "#222");
+	rect(ctx, 12, 6, 2, 2, "#222");
+}
+
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
 	drawDirt, // 0  tierra
@@ -544,7 +569,9 @@ const TILES = [
 	drawFarmland, // 45 tierra arada
 	makeWool("#c0392b", "#e06050", "#8f2a1e"), // 46 lana roja
 	makeWool("#e8c547", "#f5e07a", "#b8860b"), // 47 lana amarilla
-	makeWool("#f5f5f0", "#ffffff", "#d9d9d2") // 48 lana blanca
+	makeWool("#f5f5f0", "#ffffff", "#d9d9d2"), // 48 lana blanca
+	drawGravel, // 49 grava (Fase 10, D1)
+	drawTnt // 50 TNT (Fase 10, D2)
 ];
 
 // Tesela por bloque y cara. Orden de FACES (ver world.js):
@@ -587,7 +614,9 @@ const BLOCK_TEX = {
 	35: { all: 43 }, // diente de león (cross)
 	36: { all: 46 }, // lana roja
 	37: { all: 47 }, // lana amarilla
-	38: { all: 48 } // lana blanca
+	38: { all: 48 }, // lana blanca
+	39: { all: 49 }, // grava (Fase 10, D1)
+	40: { all: 50 } // TNT (Fase 10, D2)
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.
@@ -612,6 +641,27 @@ export function tileRect(index) {
 	const v1 = 1 - row / rows,
 		v0 = 1 - (row + 1) / rows;
 	return [u0, v0, u1, v1];
+}
+
+// Fase 10 (E2): textura DEDICADA del agua (una tesela sola, en vez de la
+// porción del atlas). Con RepeatWrapping el material puede desplazarla con
+// `texture.offset` cada frame (corriente visible) sin afectar al resto del
+// mundo — el atlas compartido no se puede desplazar (rompería los demás
+// bloques). Se dibuja con el mismo drawWater del atlas para look idéntico.
+export function buildWaterTexture() {
+	const canvas = document.createElement("canvas");
+	canvas.width = TILE;
+	canvas.height = TILE;
+	const ctx = canvas.getContext("2d");
+	drawWater(ctx, mulberry32(31337));
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.wrapS = THREE.RepeatWrapping;
+	texture.wrapT = THREE.RepeatWrapping;
+	texture.magFilter = THREE.NearestFilter;
+	texture.minFilter = THREE.NearestFilter;
+	texture.generateMipmaps = false;
+	texture.colorSpace = THREE.SRGBColorSpace;
+	return texture;
 }
 
 // Construye el atlas (una sola vez) y devuelve la CanvasTexture lista para usar.

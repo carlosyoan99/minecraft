@@ -12,6 +12,7 @@ import {
 	FOOD_ITEMS,
 	HOES,
 	PLACEABLE_BLOCKS,
+	TNT,
 	WATER
 } from "./constants.js";
 import { toggleDebug } from "./debug.js";
@@ -28,6 +29,7 @@ import {
 	toggleChestUI,
 	toggleFurnaceUI,
 	toggleInventory,
+	togglePicker,
 	toggleRecipeBook,
 	getGamemode as uiGamemode
 } from "./ui.js";
@@ -49,7 +51,11 @@ document.addEventListener("keydown", (e) => {
 	if (isTyping()) return;
 	switch (e.code) {
 		case "KeyW":
+			// Fase 10 (D3): sprint estilo MC — doble-tap W activa correr. Se
+			// apaga al soltar W o con otro doble-tap (el keyup lo desactiva).
 			move.forward = true;
+			if (performance.now() - lastWPress < 300) move.sprint = true;
+			lastWPress = performance.now();
 			break;
 		case "KeyS":
 			move.back = true;
@@ -82,7 +88,10 @@ document.addEventListener("keydown", (e) => {
 			break;
 		}
 		case "KeyE":
-			toggleInventory();
+			// Fase 10 (D4): en creative la E abre el picker de bloques (catálogo
+			// completo); en survival abre el inventario/crafteo como siempre.
+			if (uiGamemode() === "creative") togglePicker();
+			else toggleInventory();
 			break;
 		case "KeyB":
 			// Fase 9 (Bloque F): libro de recetas (todas visibles por categorías)
@@ -102,6 +111,7 @@ document.addEventListener("keyup", (e) => {
 	switch (e.code) {
 		case "KeyW":
 			move.forward = false;
+			move.sprint = false; // Fase 10 (D3): soltar W corta el sprint
 			break;
 		case "KeyS":
 			move.back = false;
@@ -195,6 +205,9 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	if (target > 0) send("creative_pick", { itemId: target });
 });
 
+// Fase 10 (D3): doble-tap W → sprint (misma técnica que el doble espacio).
+let lastWPress = 0;
+
 // Doble espacio: activar/desactivar el vuelo (solo en creative). El primer
 // espacio salta (o sube si ya vuela); un segundo dentro de 260 ms alterna.
 let lastSpaceAt = 0;
@@ -266,7 +279,6 @@ const raycastStats = {
 };
 window.__mcMiningTrace = miningTrace;
 window.__mcRaycastStats = raycastStats;
-// biome-ignore lint/suspicious/noConsole: helper de diagnóstico (consola)
 window.__mcDebugMining = () => {
 	const hit = raycastTerrainAndMobs();
 	const root = mobRootData(hit);
@@ -451,6 +463,13 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 		// y fija el punto de reaparición; de día el servidor lo rechaza).
 		if (getClientBlock(x, y, z) === BED) {
 			send("sleep", { x, y, z });
+			return;
+		}
+		// Fase 10 (D2): clic derecho sobre un TNT enciende la mecha (no lo
+		// coloca encima). El servidor valida la distancia y arma la explosión.
+		if (getClientBlock(x, y, z) === TNT) {
+			playPlace(TNT);
+			send("block_action", { action: "ignite", x, y, z });
 			return;
 		}
 		const nx = x + Math.round(hit.face.normal.x);
