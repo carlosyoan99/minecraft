@@ -16,6 +16,7 @@ const {
 	isSolidBlock,
 	NOT_MINEABLE,
 	WORLD_HEIGHT,
+	MOB_XP, // Fase 12 (A4): XP del mob asesinado con un proyectil
 	worldPaths
 } = require("./constants.js");
 
@@ -74,7 +75,8 @@ const world = require("./world.js");
 const {
 	damagePlayer,
 	addToInventory,
-	removeFromInventory
+	removeFromInventory,
+	addXp // Fase 12 (A4): el tridente que mata un mob da XP a su lanzador
 } = require("./players.js");
 const tnt = require("./tnt.js"); // Fase 10 (D2): el creeper encadena TNT
 
@@ -218,20 +220,66 @@ function tickArrows(dtMs) {
 		// de ella.
 		// Fase 12: el daño puede ser por flecha (3) o tridente (6/8) y el
 		// tridente del JUGADOR no daña a su propio lanzador (from = id de
-		// jugador): el salto se hace para no auto-dañarse al lanzarlo.
+		// jugador): el salto se hace para no auto-dañarse al lanzarlo. La
+		// atribución del daño (source) distingue quién disparó: un tridente de
+		// jugador cuenta como ataque de jugador, el del ahogado/esqueleto como
+		// ataque de mob (la pantalla de muerte no culpa al "drowned" cuando el
+		// atacante fue otro jugador).
 		let hit = false;
+		const lanzadorJugador = typeof a.from === "string" && players.has(a.from);
 		for (const p of players.values()) {
 			if (a.from === p.id) continue; // el lanzador no se golpea a sí mismo
 			if (Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) < ARROW_HIT_DIST) {
+				const lanzador = players.get(a.from);
 				damagePlayer(p, a.damage || ARROW_DAMAGE, {
-					source: "mob",
-					meta: {
-						mobType: a.kind === "trident" ? "drowned" : "skeleton",
-						projectile: true
-					}
+					source: lanzador ? "player" : "mob",
+					meta: lanzador
+						? { playerName: lanzador.name, projectile: true }
+						: {
+								mobType: a.kind === "trident" ? "drowned" : "skeleton",
+								projectile: true
+							}
 				});
 				hit = true;
 				break;
+			}
+		}
+		// Fase 12 (A4/E8): los proyectiles también impactan en MOBS (no solo en
+		// jugadores) — el tridente del jugador caza mientras que antes solo
+		// calaba contra los jugadores. Reglas fieles al ataque a mano:
+		//  - el PROYECTIL NO daña a su propio lanzador (si es un mob, a.from
+		//    es su id; si es el jugador, ya se excluyó arriba);
+		//  - las MASCOTAS del lanzador no reciben fuego amigo;
+		//  - un slime que muere se divide (splitSlime) antes de desactivarse.
+		if (!hit) {
+			for (const m of state.mobs) {
+				if (!m.alive) continue;
+				// El lanzador no se daña a sí mismo (por ejemplo el ahogado que
+				// arroja no se clava su propio tridente).
+				if (a.from === m.id) continue;
+				// Las mascotas del lanzador (si el lanzador es jugador) no sufren
+				// el proyectil: no friendly-fire al lobo/gato aliado.
+				if (lanzadorJugador && m.ownerId === a.from) continue;
+				if (Math.hypot(m.x - a.x, m.y - a.y, m.z - a.z) < ARROW_HIT_DIST) {
+					m.health -= a.damage || ARROW_DAMAGE;
+					if (m.health <= 0) {
+						// El slime se divide antes de morir (como en attack_mob).
+						if (m.type === "slime") splitSlime(m);
+						m.alive = false;
+						// Si el lanzador es un jugador que está conectado, recibe los
+						// drops y la XP del mob (que es quien aprieta mejor que con la
+						// mano: misma regla de recompensa de attack_mob en net.js).
+						const lanzador = players.get(a.from);
+						if (lanzador) {
+							const drops = mobDrops(m);
+							if (drops)
+								for (const d of drops) addToInventory(lanzador, d.id, d.count);
+							addXp(lanzador, MOB_XP[m.type] || 0);
+						}
+					}
+					hit = true;
+					break;
+				}
 			}
 		}
 		// Colisión con bloques sólidos: barrido del segmento recorrido este tick
@@ -314,6 +362,13 @@ class Mob {
 		this.ownerId = null; // mascota domesticada: id del dueño (sesión)
 		this.ownerName = null; // nombre del dueño (persistencia en la Fase 12 D)
 		this.sitting = false; // mascota sentada (no sigue ni ataca)
+		// Fase 12 (A4/auditoría): fase del hop del slime POR-MOB y DETERMINISTA —
+		// offset derivado del id (único por mob) y contador propio que avanza con
+		// TICK_MS: los slimes no saltan al unísono y el movimiento no depende de
+		// la hora global (Date.now()%1200, no reproducible en tests).
+		this.slimeHopAccum = 0;
+		this.slimeHopPhase =
+			this.id.charCodeAt(0) * 31 + this.id.charCodeAt(this.id.length - 1);
 	}
 
 	distTo(p) {
@@ -847,9 +902,12 @@ class Mob {
 	// tamaño (3/2/0). No sufre daño de caída (los mobs no tienen daño de
 	// caída en este clon — verify: no hay applyFallDamage para mobs).
 	tickSlime(_isNight, nearest, dist) {
-		// Salto: fase periódica determinista por tick (no Math.random para
-		// que el movimiento sea estable en tests).
-		const hopPhase = (Date.now() % 1200) / 1200; // 0..1 cada 1.2s
+		// Salto: fase periódica POR-MOB y determinista (Fase 12, A4/auditoría) —
+		// un contador propio avanza con TICK_MS fijo y un offset derivado del id
+		// separa las fases entre slimes. Antes se usaba Date.now()%1200 (fase
+		// global): todos saltaban al unísono y el movimiento dependía del reloj.
+		this.slimeHopAccum = (this.slimeHopAccum + TICK_MS) % 1200;
+		const hopPhase = ((this.slimeHopAccum + this.slimeHopPhase) % 1200) / 1200; // 0..1 cada 1.2s
 		if (!this.slimeHopY) this.slimeHopY = this.y;
 		// Altura del salto: parábola de hop (0..0.5 bloques sobre el suelo).
 		const hop = Math.sin(hopPhase * Math.PI) * 0.5;
@@ -927,6 +985,14 @@ class Mob {
 // Devuelve los mobs creados (para tests) o [].
 // ============================================================
 const SPAWN_MIN_PLAYER_DIST = 24; // bloques: hostiles nunca a menos de esto
+// Mobs por bioma (Fase 12, Bloque C — E7): además de la tabla base, cada
+// bioma tiene su mob propio. El lobo (antes hostil genérico de la noche)
+// pasa a ser EXCLUSIVO de taiga (deja de spawnear en el resto de biomas).
+// Sin pesos complejos: si el bioma del punto tiene mobs propios, el 60% de
+// las veces se elige uno de ellos y 40% la tabla base ("mobs propios + resto
+// igual", decisión E7). getBiome devuelve: snow|taiga|desert|swamp|jungle|
+// forest|plains|mountain (los ríos/océanos no son bioma: se detectan como
+// columna de agua con columnFloorY y se asocian al ahogado).
 const SPAWN_TYPES = {
 	day: ["cow", "pig", "chicken", "sheep", "rabbit", "bee"],
 	night: [
@@ -934,7 +1000,6 @@ const SPAWN_TYPES = {
 		"creeper",
 		"skeleton",
 		"spider",
-		"wolf",
 		"cow",
 		"pig",
 		"chicken",
@@ -943,6 +1008,15 @@ const SPAWN_TYPES = {
 		"bee"
 	]
 };
+const BIOME_SPAWN = {
+	taiga: { day: [], night: ["wolf"] },
+	swamp: { day: [], night: ["slime"] }, // el slime solo aparece de NOCHE (como MC)
+	jungle: { day: ["ocelot"], night: [] } // el ocelote es pasivo y solo de DÍA
+};
+// Los ahogados viven en cualquier columna de agua (océano, río o lago): se
+// eligen como mob propio del "agua" de día y de noche (E4), y se colocan
+// bajo la superficie (wy = fondo + 2) en vez de sobre el terreno.
+const WATER_SPAWN = ["drowned"];
 
 // ============================================================
 // FASE 12 (Bloque A): helpers de los mobs por bioma
@@ -1053,8 +1127,44 @@ function spawnMobs(isNight) {
 			if (!state.chunks.has(key)) continue;
 			const wx = cx * CHUNK_SIZE + Math.floor(Math.random() * CHUNK_SIZE) + 0.5;
 			const wz = cz * CHUNK_SIZE + Math.floor(Math.random() * CHUNK_SIZE) + 0.5;
-			if (world.isLake?.(Math.floor(wx), Math.floor(wz))) continue; // sin mobs en lagos
-			const type = types[Math.floor(Math.random() * types.length)];
+			const hx = Math.floor(wx),
+				hz = Math.floor(wz);
+			// Fase 12 (Bloque C): el tipo se elige SEGÚN el bioma del punto (E7).
+			// Columna de agua (océano, río o lago) → mob propio "agua" (ahogado);
+			// si no, el mob propio del bioma cuando lo hay. El sorteo consume UN
+			// solo Math.random (unidad de disparo de los tests deterministas):
+			// si el bioma tiene mobs propios, 60% mob propio y 40% tabla base;
+			// si no los tiene, el mismo valor elige en la tabla base como antes.
+			const floorY = world.columnFloorY(hx, hz);
+			const isWater = floorY !== null;
+			const r = Math.random();
+			const biomePool = isWater
+				? WATER_SPAWN
+				: BIOME_SPAWN[world.getBiome(hx, hz)]?.[isNight ? "night" : "day"] ||
+					[];
+			// Un solo Math.random decide (determinismo de los tests). Cuando el
+			// bioma tiene pool propio: r<0.6 → mob propio; r≥0.6 → tabla base
+			// REMAPeada a [0.6,1)→[0,1) para no sesgar hacia los últimos tipos
+			// (sin el remape, zombie/creeper/skeleton/spider nunca salían por
+			// tabla base en taiga/pantano/jungla/agua — revisión Fase 12).
+			let type;
+			if (biomePool.length > 0) {
+				type =
+					r < 0.6
+						? biomePool[Math.floor((r / 0.6) * biomePool.length)]
+						: types[Math.floor(((r - 0.6) / 0.4) * types.length)];
+			} else {
+				type = types[Math.floor(r * types.length)];
+			}
+			// El ahogado solo vive en el agua (se coloca bajo la superficie);
+			// el resto de terrestres nunca spawnean sobre agua (ni lagos ni
+			// océanos/ríos): un pasivo hundido se ahogaría, un hostil no podría
+			// perseguir — el rechazo de lagos de la Fase 0 queda cubierto aquí.
+			if (type === "drowned") {
+				if (!isWater) continue;
+			} else if (isWater) {
+				continue;
+			}
 			if (HOSTILE.has(type)) {
 				// Hostiles: a ≥ 24 bloques del jugador más cercano.
 				let minDist = Infinity;
@@ -1068,15 +1178,17 @@ function spawnMobs(isNight) {
 					if (Math.hypot(wx - s.x, wz - s.z) < spawnSafeRadius) continue;
 				}
 			}
-			const hx = Math.floor(wx),
-				hz = Math.floor(wz);
 			const surfaceH = world.getHeight(hx, hz);
 			// Fase 10 (A6): hostiles también de DÍA, solo en zonas oscuras
 			// (cuevas con techo opaco) — las notas pedían "solo por la noche o
 			// en zonas oscuras como las cuevas". De noche siguen saliendo en
-			// superficie; de día se buscan celdas de cueva oscuras.
+			// superficie; de día se buscan celdas de cueva oscuras. El ahogado
+			// es la excepción (E4): sale de día y de noche en su agua, y se
+			// coloca bajo la superficie (wy = fondo + 2, dentro del agua).
 			let wy;
-			if (HOSTILE.has(type) && !isNight) {
+			if (type === "drowned") {
+				wy = floorY + 2;
+			} else if (HOSTILE.has(type) && !isNight) {
 				const caveY = world.findDarkCaveY(hx, hz, surfaceH);
 				if (caveY == null) continue; // sin cueva en esta columna: no spawn de día
 				wy = caveY + 0.5;
@@ -1307,5 +1419,9 @@ module.exports = {
 	throwPlayerTrident,
 	// Fase 12 (Bloque B): trampa del templo — las flechas del dispensador
 	// reusan shootArrow con un shooter sintético (from: null → dañan a todos).
-	shootArrow
+	shootArrow,
+	// Fase 12 (Bloque C): spawn por bioma — la tabla BIOME_SPAWN y el pool de
+	// agua (la prueban los tests de muestreo determinista de unit-fase12).
+	BIOME_SPAWN,
+	WATER_SPAWN
 };

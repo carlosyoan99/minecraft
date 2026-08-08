@@ -276,6 +276,121 @@ function resetWorld() {
 	state.mobs = [];
 }
 
+// --- 5c) Persistencia de mascotas y slimes (Fase 12, SCHEMA_VERSION 5): un
+// lobo domado y un slime mediano sobreviven al reinicio (buildMeta → archivo
+// → loadWorld → restoreMobs) — la mascota no vuelve salvaje ni el slime se
+// vuelve grande. ---
+{
+	resetWorld();
+	state.chunks.clear();
+	state.dirtyChunks.clear();
+	const arr = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+	arr[5] = B.GRASS;
+	state.chunks.set("0,0", arr);
+	state.dirtyChunks.add("0,0");
+	state.mobs = [
+		{
+			id: "mPet",
+			type: "wolf",
+			x: 1,
+			y: 2,
+			z: 3,
+			health: 9,
+			isBaby: false,
+			age: 0,
+			alive: true,
+			ownerId: "sesion-123",
+			ownerName: "Dueño",
+			sitting: true
+		},
+		{
+			id: "mSlime",
+			type: "slime",
+			x: 5,
+			y: 6,
+			z: 7,
+			health: 4,
+			isBaby: false,
+			age: 0,
+			alive: true,
+			slimeSize: 1
+		}
+	];
+	save.saveWorld();
+	const meta = JSON.parse(
+		fs.readFileSync(constants.worldPaths.metaFile, "utf8")
+	);
+	check(
+		"SCHEMA_VERSION 5 persistido (mascotas/slimes)",
+		meta.schemaVersion === SCHEMA_VERSION && SCHEMA_VERSION >= 5,
+		`v=${meta.schemaVersion}`
+	);
+	const savedPet = meta.mobs.find((m) => m.type === "wolf");
+	check(
+		"buildMeta guarda la mascota (ownerName/sitting)",
+		savedPet && savedPet.ownerName === "Dueño" && savedPet.sitting === true,
+		JSON.stringify(savedPet)
+	);
+	const savedSlime = meta.mobs.find((m) => m.type === "slime");
+	check(
+		"buildMeta guarda el tamaño del slime",
+		savedSlime && savedSlime.slimeSize === 1,
+		JSON.stringify(savedSlime)
+	);
+
+	state.chunks.clear();
+	state.mobs = [];
+	state.furnaces.clear();
+	check(
+		"loadWorld tras el guardado con mascotas → true",
+		save.loadWorld() === true
+	);
+	const pet = state.mobs.find((m) => m.id === "mPet");
+	check(
+		"loadWorld restaura la mascota (dueño y sentado)",
+		!!pet && pet.ownerName === "Dueño" && pet.sitting === true,
+		JSON.stringify(pet)
+	);
+	const slime = state.mobs.find((m) => m.id === "mSlime");
+	check(
+		"loadWorld restaura el tamaño del slime (1)",
+		!!slime && slime.slimeSize === 1,
+		JSON.stringify(slime)
+	);
+}
+
+// --- 5d) Migración retrocompatible v4 → v5: un world.json viejo (sin
+// campos de mascota/slime) carga con mobs salvajes — no se rompe nada. ---
+{
+	resetWorld();
+	state.chunks.clear();
+	state.dirtyChunks.clear();
+	const arr = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+	state.chunks.set("0,0", arr);
+	state.dirtyChunks.add("0,0");
+	save.saveWorld();
+	// Reescribir world.json con formato v4 (mobs sin ownerId/slimeSize).
+	const meta = JSON.parse(
+		fs.readFileSync(constants.worldPaths.metaFile, "utf8")
+	);
+	meta.schemaVersion = 4;
+	meta.mobs = meta.mobs.map((m) => {
+		const { ownerId, ownerName, sitting, slimeSize, ...base } = m;
+		return base;
+	});
+	fs.writeFileSync(constants.worldPaths.metaFile, JSON.stringify(meta));
+	state.chunks.clear();
+	state.mobs = [];
+	const r = save.loadWorld();
+	check("mundo v4 sin mascotas carga sin errores (true)", r === true, `r=${r}`);
+	check(
+		"restoreMobs deja los mobs v4 salvajes (sin dueño)",
+		state.mobs.every((m) => !m.ownerId && !m.ownerName && !m.sitting),
+		JSON.stringify(state.mobs.map((m) => ({ t: m.type, o: m.ownerId })))
+	);
+	state.mobs = [];
+}
+
 // --- 6) loadWorld se niega a abrir un mundo más nuevo (integridad) ---
 {
 	resetWorld();

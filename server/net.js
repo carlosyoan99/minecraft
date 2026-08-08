@@ -276,6 +276,31 @@ function handleConnection(ws, req) {
 		fallVy: 0
 	};
 	state.players.set(playerId, player);
+	// Fase 12 (Bloque D): al conectar, las mascotas persistidas reconocen a su
+	// dueño por NOMBRE (los IDs de jugador son por sesión; el ownerId guardado
+	// es de una sesión anterior y ya no vale). Si el ownerName del mob coincide
+	// con este jugador, se re-vincula el ownerId de la sesión actual para que
+	// lo siga y ataque con él. Guarda anti-homónimos: si la mascota ya tiene un
+	// ownerId de un jugador CONECTADO (mismo nombre en dos sesiones a la vez),
+	// no se la arrebata al primero.
+	// Fase 12 (Bloque D): el nombre es la identidad persistida de la mascota
+	// (ownerId es solo de sesión). Al conectar se re-vinculan las mascotas cuyo
+	// ownerName coincide con el jugador, SIEMPRE QUE su ownerId actual no
+	// pertenezca a un jugador conectado (dos jugadores conectados con el mismo
+	// nombre: el segundo no le arrebata la mascota al primero). Decisión de
+	// diseño documentada: si el dueño legítimo está desconectado y conecta un
+	// homónimo, este se queda con la mascota (no hay unicidad de nombres en el
+	// wire; es la misma regla que un mundo compartido sin autenticación).
+	for (const m of state.mobs) {
+		if (
+			m.alive &&
+			m.ownerName &&
+			m.ownerName === player.name &&
+			!state.players.has(m.ownerId)
+		) {
+			m.ownerId = playerId;
+		}
+	}
 	// Fase 9 (Bloque C): en un mundo CREATIVO el inventario no se persiste — se
 	// resetea al entrar y se entrega el inventario creativo completo (decisión
 	// del usuario). El survival restaura el inventario guardado como siempre.

@@ -78,10 +78,11 @@ const mkPlayer = (over = {}) => ({
 	);
 }
 
-// 2) SCHEMA_VERSION subió a 4 (bloques nuevos sin cambio de estructura).
+// 2) SCHEMA_VERSION subió a 4 en la Fase 11 y a 5 en la Fase 12 (Bloque D:
+//    persistencia de mascotas — ownerId/ownerName/sitting en world.json).
 check(
-	"SCHEMA_VERSION === 4 (Fase 11, Bloque B)",
-	SCHEMA_VERSION === 4,
+	"SCHEMA_VERSION === 5 (Fase 12, Bloque D: persistencia de mascotas)",
+	SCHEMA_VERSION === 5,
 	`v${SCHEMA_VERSION}`
 );
 

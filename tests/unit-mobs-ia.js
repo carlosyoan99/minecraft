@@ -21,6 +21,12 @@ const {
 // de quema re-mockean getBlock por altura.)
 world.getBlock = () => 3;
 world.isLake = () => false; // sin lagos en los tests de spawn (posición fija)
+// Fase 12 (Bloque C, spawn por bioma): el mundo real se fuerza a llanura y a
+// tierra firma para que el spawn de estos tests siga usando SOLO la tabla
+// base (el lobo ya no está en ella; el muestreo por bioma se prueba aparte
+// en unit-fase12 con mocks puntuales de getBiome/columnFloorY).
+world.getBiome = () => "plains";
+world.columnFloorY = () => null;
 // B2 (Fase 8): la zona segura del spawn se DESACTIVA aquí para que los tests
 // de IA pura (jugadores a 1-5 bloques) prueben el comportamiento bruto; el
 // bloque 13 la activa explícitamente y verifica el filtro.

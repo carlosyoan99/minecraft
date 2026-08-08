@@ -140,10 +140,14 @@ function sanitizeGamemode(raw) {
 	return GAMEMODES.has(raw) ? raw : "survival";
 }
 
-const SCHEMA_VERSION = 4; // versión actual del formato de guardado
+const SCHEMA_VERSION = 5; // versión actual del formato de guardado
 // Fase 11 (Bloque B): 3 → 4 — se añadieron bloques nuevos (jungla/pantano),
 // sin cambio de estructura del guardado (los chunks viejos v3 cargan igual:
 // simplemente no contienen los bloques nuevos; se regeneran al explorar).
+// Fase 12 (Bloque D): 4 → 5 — buildMeta persiste ahora mascotas (ownerId/
+// ownerName/sitting) y el tamaño del slime (slimeSize); un mundo v4 sin esos
+// campos carga igual (restoreMobs los deja por defecto: mob salvaje, slime
+// grande), migración retrocompatible cubierta por unit-persistencia.
 // Layout antiguo (v2 pre-semilla, todo en la raíz de world/) que se migra al
 // directorio de la semilla al arrancar (save.migrateWorldLayout()).
 const LEGACY_ROOT_FILES = [

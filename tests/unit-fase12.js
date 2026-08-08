@@ -14,10 +14,11 @@
 //   C) Drops (mobDrops), persistencia (restoreMobs/mobSnapshot) y handlers de
 //      red: tame_mob, sit_pet, throw_trident y attack_mob con división de
 //      slime y mascotas unidas al golpe (patrón unit-red).
-//   D) Pendientes GUARDADOS de la Fase 12 aún no implementados (Bloque B:
-//      templo de jungla y naufragio; Bloque C: BIOME_SPAWN): si la feature NO
-//      existe, se imprime un aviso y NO cuenta como fallo — andamiaje listo
-//      para "iluminarse" cuando el Bloque se implemente.
+//   D) Estructuras deterministas (templo de jungla y naufragio + trampa + loot).
+//   E) Bloque C: spawn por bioma (BIOME_SPAWN — taiga→lobo, pantano→slime,
+//      jungla→ocelote, agua→ahogado) con muestreo determinista.
+//   F) Bloque D: persistencia de mascotas (SCHEMA_VERSION 5, buildMeta +
+//      restoreMobs) y reconocimiento del dueño por nombre al reconectar.
 // ============================================================
 const mobs = require("../server/mobs.js");
 const state = require("../server/state.js");
@@ -43,14 +44,6 @@ const check = (_name, ok, _extra = "") => {
 		console.log(`FAIL: ${_name} | ${_extra}`);
 	}
 };
-// Aviso de pendiente sin contar como fallo (soporte a fases no terminadas).
-let pending = 0;
-const pendingNotice = (_where, _what) => {
-	pending++;
-	// biome-ignore lint/suspicious/noConsole: aviso de test pendiente (convención del repo)
-	console.log(`⚠ PENDIENTE (${_where}): ${_what}`);
-};
-
 const mkPlayer = (over = {}) => ({
 	id: "p-f12",
 	ws: { readyState: 3, send() {} },
@@ -787,32 +780,286 @@ const mkPlayer = (over = {}) => ({
 }
 
 // ============================================================
-// E) PENDIENTE GUARDADO (Bloque C — BIOME_SPAWN aún no implementado)
-//    Cuando la feature se implemente, esta sección se "ilumina".
 // ============================================================
+// E) BLOQUE C — SPAWN POR BIOMA (BIOME_SPAWN, implementado)
+//    taiga→lobos, pantano→slimes, jungla→ocelotes, océano→ahogados.
+//    Se verifica el mapeo (los tipos están en la tabla por bioma) y que el
+//    muestreo determinista los produce: se fuerza el sorteo con Math.random
+//    controlado y un mock de getBiome/columnFloorY (patrón unit-spawn).
+// ============================================================
+// 21) El mapeo BIOME_SPAWN asigna cada mob a su bioma (dia/noche correctos).
 {
-	const mobsExports = Object.keys(mobs);
-	if (
-		mobsExports.includes("BIOME_SPAWN") ||
-		mobsExports.includes("biomeSpawn")
-	) {
-		pendingNotice(
-			"Fase 12 Bloque C",
-			"BIOME_SPAWN presente — añadir checks de muestreo por bioma"
-		);
-	} else {
-		pendingNotice(
-			"Fase 12 Bloque C",
-			"BIOME_SPAWN (spawn por bioma) NO implementado todavía (taiga→lobos, pantano→slimes, jungla→ocelotes, océano→ahogados)"
+	const BS = mobs.BIOME_SPAWN;
+	check(
+		"BIOME_SPAWN exportado con taiga→lobo de noche",
+		BS?.taiga?.night?.includes("wolf")
+	);
+	check(
+		"BIOME_SPAWN pantano→slime de noche",
+		BS?.swamp?.night?.includes("slime")
+	);
+	check(
+		"BIOME_SPAWN jungla→ocelote de día (pasivo)",
+		BS?.jungle?.day?.includes("ocelot")
+	);
+	check(
+		"BIOME_SPAWN agua→ahogado (WATER_SPAWN)",
+		Array.isArray(mobs.WATER_SPAWN) && mobs.WATER_SPAWN.includes("drowned")
+	);
+}
+
+// 22) spawnMobs elige el mob del bioma: con Math.random controlado y un mock
+//     de bioma, el 60% de las veces sale el mob propio. Se muestrea el sorteo
+//     con varios randoms para cubrir ambos brazos del 60/40.
+{
+	state.players.clear();
+	state.mobs = [];
+	const rnd = Math.random;
+	// Guardar los mocks del mundo para restaurarlos al final (el test 24 usa
+	// handleConnection, que depende del mundo real).
+	const origBiome = world.getBiome;
+	const origFloorY = world.columnFloorY;
+	const origHeight = world.getHeight;
+	const origCave = world.findDarkCaveY;
+	const p = mkPlayer({ id: "spawner", x: 0, y: 64, z: 0, renderDistance: 4 });
+	state.players.set(p.id, p);
+	// Mock: toda la zona es taiga y sin agua → el sorteo tira BIOME_SPAWN.taiga.
+	world.getBiome = () => "taiga";
+	world.columnFloorY = () => null;
+	world.getHeight = () => 63;
+	world.findDarkCaveY = () => 50;
+	// Garantizar chunks cargados en el radio del mock.
+	for (let cx = -4; cx <= 4; cx++) {
+		for (let cz = -4; cz <= 4; cz++) {
+			state.chunks.set(`${cx},${cz}`, new Uint8Array(16 * 64 * 16));
+		}
+	}
+	// r<0.6 → mob propio; el valor r (0.3) cae en el pool de taiga → wolf.
+	Math.random = () => 0.3;
+	const created = mobs.spawnMobs(true);
+	Math.random = rnd;
+	check(
+		"spawnMobs en taiga de noche elige lobo (60% propio)",
+		created.some((m) => m.type === "wolf"),
+		`creados: ${created.map((m) => m.type).join(",") || "ninguno"}`
+	);
+	// r≥0.6 → tabla base (zombie/creeper/etc. de noche), NO lobo propio.
+	state.mobs = [];
+	Math.random = () => 0.8;
+	const base = mobs.spawnMobs(true);
+	Math.random = rnd;
+	check(
+		"spawnMobs en taiga con r≥0.6 usa la tabla base (no lobo)",
+		base.length === 0 || base.every((m) => m.type !== "wolf"),
+		`creados: ${base.map((m) => m.type).join(",") || "ninguno"}`
+	);
+	// Agua → ahogado: columnFloorY no null → WATER_SPAWN.
+	state.mobs = [];
+	world.columnFloorY = () => 40; // columna de agua con fondo en 40
+	Math.random = () => 0.3;
+	const wet = mobs.spawnMobs(true);
+	Math.random = rnd;
+	check(
+		"spawnMobs sobre agua elige ahogado y lo coloca bajo la superficie",
+		wet.some((m) => m.type === "drowned" && m.y >= 41 && m.y < 63),
+		`creados: ${wet.map((m) => `${m.type}@${m.y}`).join(",") || "ninguno"}`
+	);
+	state.mobs = [];
+	state.players.clear();
+	// Restaurar el mundo real (los siguientes tests usan getBiome/columnFloorY).
+	world.getBiome = origBiome;
+	world.columnFloorY = origFloorY;
+	world.getHeight = origHeight;
+	world.findDarkCaveY = origCave;
+}
+
+// ============================================================
+// F) BLOQUE D — PERSISTENCIA DE MASCOTAS (SCHEMA_VERSION 5)
+//    buildMeta persiste ownerId/ownerName/sitting; restoreMobs los restaura;
+//    y al reconectar, la mascota reconoce a su dueño por NOMBRE (los IDs de
+//    jugador son por sesión). Se prueba el ciclo completo sin disco: el meta
+//    construido con una mascota vuelve a un mob domado tras restoreMobs.
+// ============================================================
+// 23) buildMeta incluye la mascota (campos pet) y restoreMobs la recupera.
+{
+	const save = require("../server/save.js");
+	state.players.clear();
+	state.mobs = [];
+	const pet = new mobs.Mob("wolf", 3, 4, 5);
+	pet.ownerId = "sesion-vieja";
+	pet.ownerName = "DueñoF12";
+	pet.sitting = true;
+	pet.health = 9;
+	state.mobs.push(pet);
+	const meta = save.buildMeta();
+	const saved = meta.mobs.find(
+		(m) => m.type === "wolf" && m.ownerName === "DueñoF12"
+	);
+	check(
+		"buildMeta persiste ownerName/sitting de la mascota",
+		saved && saved.ownerName === "DueñoF12" && saved.sitting === true,
+		JSON.stringify(saved)
+	);
+	// Cargar: restoreMobs devuelve el lobo con su dueño (campos planos).
+	const [loaded] = mobs.restoreMobs([saved]);
+	check(
+		"restoreMobs restaura ownerId/ownerName/sitting",
+		loaded.ownerName === "DueñoF12" &&
+			loaded.ownerId === "sesion-vieja" &&
+			loaded.sitting === true,
+		`ownerId=${loaded.ownerId}`
+	);
+	// Migración retrocompatible: un snapshot v4 sin pet → mob salvaje.
+	const [wild] = mobs.restoreMobs([
+		{ type: "wolf", x: 1, y: 2, z: 3, health: 20 }
+	]);
+	check(
+		"snapshot sin pet → mob salvaje (sin dueño, no sentado)",
+		!wild.ownerId && !wild.ownerName && !wild.sitting
+	);
+	state.mobs = [];
+	state.players.clear();
+}
+
+// 24) Reconocimiento por nombre: la mascota guardada con ownerName se re-vincula
+//     al jugador que se conecta con ese nombre (los IDs son por sesión).
+{
+	state.players.clear();
+	state.mobs = [];
+	// Simular un mundo cargado: la mascota llega con ownerName y un ownerId
+	// viejo de otra sesión.
+	const pet = new mobs.Mob("wolf", 3, 4, 5);
+	pet.ownerName = "Alex";
+	pet.ownerId = "sesion-anterior";
+	pet.sitting = true;
+	state.mobs.push(pet);
+	// Conectar un jugador llamado Alex (patrón FakeWS de la sección 15): el
+	// flujo de handleConnection debe re-vincular m.ownerId = playerId.
+	class FakeWS {
+		constructor() {
+			this.sent = [];
+			this.handlers = {};
+			this.readyState = 1;
+		}
+		send(str) {
+			this.sent.push(JSON.parse(str));
+		}
+		on(ev, fn) {
+			this.handlers[ev] = fn;
+		}
+		emit(ev, data) {
+			if (this.handlers[ev]) this.handlers[ev](data);
+		}
+	}
+	const ws = new FakeWS();
+	// El nombre del jugador viaja en el query string del handshake WS
+	// (nameFromRequest): conectar como Alex para que la mascota lo reconozca.
+	net.handleConnection(ws, { url: "/?name=Alex" });
+	const init = ws.sent.find((m) => m.event === "init");
+	const player = state.players.get(init.data.playerId);
+	check(
+		"jugador de prueba conectado con nombre Alex",
+		player && player.name === "Alex",
+		`name=${player?.name}`
+	);
+	if (player && player.name === "Alex") {
+		check(
+			"mascota re-vinculada al dueño por nombre (ownerId de la sesión)",
+			pet.ownerId === player.id,
+			`ownerId=${pet.ownerId} playerId=${player.id}`
 		);
 	}
+	state.mobs = [];
+	state.players.clear();
+}
+
+// ============================================================
+// G) TRIDENTE DEL JUGADOR CONTRA MOBS (auditoría Fase 14)
+// El tridente (y las flechas) impactan en los mobs, no solo en los jugadores:
+// su lanzador no se daña a sí mismo ni a sus mascotas, el mob recibe el daño
+// y, si el lanzador es un jugador conectado, el mob que muere cae con drops.
+// ============================================================
+// 25) Un tridente lanzado por el jugador daña a un mob (caza); la mascota
+//     del lanzador no recibe fuego amigo aunque esté en la misma posición.
+{
+	state.players.clear();
+	state.mobs = [];
+	state.arrows.length = 0;
+	const lanzador = mkPlayer({ id: "trmob", x: 50, y: 10, z: 0 });
+	playerHelpers.addToInventory(lanzador, I.TRIDENT, 1);
+	state.players.set(lanzador.id, lanzador);
+	const zombie = new mobs.Mob("zombie", 0, 10, 0);
+	zombie.health = 20;
+	const pet = new mobs.Mob("wolf", 0, 10, 0);
+	pet.ownerId = lanzador.id; // mascota del lanzador
+	state.mobs.push(zombie, pet);
+	// Lanzar y colocar el proyectil justo sobre el zombie (tickArrows aplica
+	// el daño por proximidad; velocidad nula para no escaparse del marco).
+	mobs.throwPlayerTrident(lanzador);
+	const arrow = state.arrows[0];
+	arrow.x = 0;
+	arrow.y = 10;
+	arrow.z = 0;
+	arrow.vx = arrow.vy = arrow.vz = 0;
+	mobs.tickArrows(50);
+	check(
+		"el tridente del jugador daña al mob (zombie 20→12)",
+		zombie.health === 12,
+		`zombie=${zombie.health}`
+	);
+	check(
+		"el tridente NO daña a la mascota del lanzador (friendly-fire)",
+		pet.health === 20,
+		`pet=${pet.health}`
+	);
+	check(
+		"el tridente impactado vuelve al inventario del dueño",
+		lanzador.inventory.some((s) => s && s.id === I.TRIDENT),
+		JSON.stringify(lanzador.inventory.filter(Boolean).map((s) => s.id))
+	);
+	state.arrows = [];
+	state.mobs = [];
+	state.players.clear();
+}
+
+// 26) Un tridente que MATA a un mob da drops + XP al jugador lanzador; el
+//     ahogado que lanza su tridente no se daña a sí mismo.
+{
+	state.players.clear();
+	state.mobs = [];
+	state.arrows.length = 0;
+	const lanzador = mkPlayer({ id: "trkill", x: 100, y: 10, z: 0 });
+	playerHelpers.addToInventory(lanzador, I.TRIDENT, 1);
+	state.players.set(lanzador.id, lanzador);
+	const cob = new mobs.Mob("cow", 0, 10, 0);
+	cob.health = 3; // el tridente (8) la mata de un golpe
+	state.mobs.push(cob);
+	const xpAntes = lanzador.xp || 0;
+	mobs.throwPlayerTrident(lanzador);
+	const arrow = state.arrows[0];
+	arrow.x = 0;
+	arrow.y = 10;
+	arrow.z = 0;
+	arrow.vx = arrow.vy = arrow.vz = 0;
+	mobs.tickArrows(50);
+	check(
+		"el tridente mata a la vaca",
+		cob.alive === false,
+		`alive=${cob.alive}`
+	);
+	check(
+		"el lanzador recibe XP del mob asesinado",
+		(lanzador.xp || 0) > xpAntes,
+		`xp=${lanzador.xp}`
+	);
+	state.arrows = [];
+	state.mobs = [];
+	state.players.clear();
 }
 
 // ============================================================
 // RESUMEN
 // ============================================================
 // biome-ignore lint/suspicious/noConsole: resumen del test (convención del repo)
-console.log(
-	`${total} OK, ${failed} FAIL${pending ? ` (${pending} pendientes)` : ""}`
-);
+console.log(`${total} OK, ${failed} FAIL`);
 process.exit(failed ? 1 : 0);

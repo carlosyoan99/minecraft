@@ -59,7 +59,22 @@ function buildMeta() {
 				z: m.z,
 				health: m.health,
 				isBaby: m.isBaby,
-				age: m.age
+				age: m.age, // Fase 12 (Bloque D): persistencia COMPLETA de mascotas y slimes —
+				// ownerId/ownerName/sitting (la mascota no vuelve salvaje al
+				// reiniciar) y slimeSize (no se pierde el tamaño del slime).
+				// Se condiciona en ownerName (la identidad persistida es el
+				// NOMBRE del dueño; el ownerId es solo de sesión — spec E14):
+				// una mascota con dueño persiste aunque su ownerId momentáneo
+				// sea null. Los mobs normales y los mundos v4 no llevan estos
+				// campos (retrocompatible).
+				...(m.ownerName
+					? {
+							ownerId: m.ownerId ?? null,
+							ownerName: m.ownerName,
+							sitting: !!m.sitting
+						}
+					: {}),
+				...(typeof m.slimeSize === "number" ? { slimeSize: m.slimeSize } : {})
 			})),
 		furnaces: Array.from(furnaces.entries()),
 		chests: Array.from(chests.entries()),
@@ -581,6 +596,7 @@ function deleteWorld(seed) {
 
 module.exports = {
 	saveWorld,
+	buildMeta, // Fase 12 (D): los tests verifican los campos de mascota/slime
 	loadWorld,
 	migrateLegacyWorld,
 	migrateWorldLayout,
