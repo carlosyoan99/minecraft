@@ -2058,13 +2058,17 @@ cofres), el spawn por bioma en `server/mobs.js`, la persistencia de mascotas
 en `world.json` y el cierre con tests.*
 Especificación: [`docs/fase12-spec.md`](docs/fase12-spec.md). Estado: **bloques A-D ejecutados y auditados** (mobs por bioma con IA completa + templo/naufragio deterministas + ítems 245/246 + spawn por bioma + persistencia de mascotas). Pendiente solo de los E2E nuevos de la spec (e2e-mascotas/e2e-templo) y la verificación en navegador, pospuestos.
 
-> ⚠️ **Nota de proceso:** el trabajo de la **Fase 14** (paridad de valores:
-> drops directos de minerales ORE_DROP, tiers de pico ORE_TIER/
-> PICKAXE_TIER, HP de mobs MC, creeper con daño de TNT, carbón como
-> combustible, conejo asado 5/6 y XP de mobs 5) que una sesión anterior dejó
-> mezclado y sin commitear en el working tree (rompía la suite) quedó
-> guardado aparte en la rama **`fase-14-paridad`** (commit `2c0aa65`), con
-> sus tests actualizados y la suite en verde. Main sigue solo con Fase 12.
+> ✅ **Fase 14 integrada en main** (merge `763dce9`): paridad de valores
+> (drops directos de minerales `ORE_DROP`, tiers de pico `ORE_TIER`/
+> `PICKAXE_TIER`, HP de mobs MC: araña 16/enderman 40/abeja 10, creeper con
+> daño de TNT 12, carbón como combustible, conejo asado 5/6, XP de mobs 5)
+> + optimizaciones de rendimiento (M1: un solo raycast por pointermove,
+> M2: broadcast de `mobs_update` solo si cambia, M3: rebuild de vecinos al
+> completar bordes de chunks, M4: luz de antorcha stale con `hasTorchNear`).
+> Suite unitaria (3368 OK) + E2E 4/4 + biome en verde. La rama
+> `fase-14-paridad` se mantiene como referencia del historial.
+> Pendiente de la spec `docs/fase14-spec.md`: el resto de bloques (E2E,
+> auditoría y cierre formal de la fase).
 
 ### Bloque A — 4 mobs con IA completa ✅ (bloques A+B ejecutados)
 - [x] **Lobo de taiga + domesticación**: domesticable con hueso (~33%), se
