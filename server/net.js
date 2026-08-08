@@ -53,6 +53,17 @@ const worldTime = () => commands.worldTime(state);
 // progreso de rotura es visible para cualquiera que pueda minar ese bloque.
 const CRACK_VIEW_DISTANCE = 7;
 
+// Fase 14 (M5/C5): radio (chunks, Chebyshev) del área que se genera y
+// serializa en el `init` de una conexión. Antes se generaban los ~169 chunks
+// del radio de render completo y se serializaban en un único mensaje (~2.7 MB)
+// por conexión. Ahora solo se preparan los chunks inmediatos al spawn y el
+// resto del radio se rellena progresivamente en mainLoop (chunks_add por
+// lotes), sin bloquear la conexión ni las demás tareas del bucle.
+const INIT_CHUNK_RADIUS = 2;
+// Tamaño del lote de relleno (chunks por tick y jugador): con TICK_MS=50
+// (20 Hz) son ~6×20=120 chunks/s, el radio completo (169) se completa en ~1.5 s.
+const CHUNK_FILL_PER_TICK = 6;
+
 function broadcast(event, data, exceptId = null) {
 	const msg = JSON.stringify({ event, data });
 	for (const p of state.players.values()) {
@@ -210,11 +221,12 @@ function handleConnection(ws, req) {
 	const spawnX = spawn.x,
 		spawnY = spawn.y,
 		spawnZ = spawn.z;
-	const _generated = world.ensureChunksAround(
-		spawnX,
-		spawnZ,
-		VIEW_DISTANCE_CHUNKS
-	);
+	// Fase 14 (M5/C5): generar solo el radio INMEDIATO al spawn en lugar del
+	// radio de render completo (antes: 6 → ~169 chunks síncronos al conectar).
+	// El resto se rellena progresivamente en mainLoop (chunks_add por lotes);
+	// ensureChunksAround es idempotente, así que los chunks que ya existieran
+	// del jugador previo se mantienen tal cual.
+	const _generated = world.ensureChunksAround(spawnX, spawnZ, INIT_CHUNK_RADIUS);
 	// Fase 7 (auditoría): operador — el PRIMER jugador conectado (host) o
 	// cualquiera en la lista OPS (env var OPS="Nombre1,Nombre2"). Permiso para
 	// /tp /give /time /gamemode /reload /op (ver commands.js).
@@ -276,6 +288,12 @@ function handleConnection(ws, req) {
 		fallVy: 0
 	};
 	state.players.set(playerId, player);
+	// Fase 14 (M2, fix de revisión): al entrar un jugador NUEVO, el snapshot de
+	// mobs debe llegarle aunque nada haya cambiado desde el último mobs_update
+	// (el broadcast es condicional). Resetear el último JSON fuerza el envío en
+	// el próximo tick a todos, incluido el recién llegado (el init no incluye
+	// los mobs; el cliente los recibe por mobs_update).
+	lastMobsJson = "";
 	// Fase 12 (Bloque D): al conectar, las mascotas persistidas reconocen a su
 	// dueño por NOMBRE (los IDs de jugador son por sesión; el ownerId guardado
 	// es de una sesión anterior y ya no vale). Si el ownerName del mob coincide
@@ -1444,6 +1462,40 @@ function mainLoop() {
 	// Spawn de mobs por fase del día (Fase 6): de día solo pasivos, de noche
 	// también hostiles, en cualquier chunk cargado del área de render.
 	if (Math.random() < 0.03) mobs.spawnMobs(isNight);
+
+	// Fase 14 (M5/C5): relleno progresivo del radio de render. El init ya no
+	// envía los ~169 chunks de golpe: genera un lote por tick y jugador y los
+	// envía como chunks_add, sin bloquear el bucle. ensureChunksAround es
+	// idempotente (los chunks del movimiento/settings antiguos no se regeneran)
+	// y aquí solo se procesan los de dentro del radio NO generados aún.
+	for (const p of state.players.values()) {
+		if (p.ws.readyState !== WebSocket.OPEN) continue;
+		const pcx = Math.floor(p.x / constants.CHUNK_SIZE),
+			pcz = Math.floor(p.z / constants.CHUNK_SIZE);
+		// Lista de claves del radio de render que faltan por generar
+		// (Chebyshev, misma malla que sendInit y que el filtro del cliente).
+		// Ordenadas por distancia Chebyshev (anillos): los chunks más cercanos
+		// se rellenan PRIMERO y el terreno se "va ladrando" desde el jugador
+		// hacia fuera, en vez de aparecer un cuadrado de bloques arbitrario.
+		const missing = [];
+		for (let dx = -p.renderDistance; dx <= p.renderDistance; dx++) {
+			for (let dz = -p.renderDistance; dz <= p.renderDistance; dz++) {
+				const key = `${pcx + dx},${pcz + dz}`;
+				if (!state.chunks.has(key))
+					missing.push({ key, ring: Math.max(Math.abs(dx), Math.abs(dz)) });
+			}
+		}
+		missing.sort((a, b) => a.ring - b.ring);
+		if (missing.length === 0) continue;
+		const batch = missing.slice(0, CHUNK_FILL_PER_TICK);
+		const DATA = {};
+		for (const { key } of batch) {
+			const [cx, cz] = key.split(",").map(Number);
+			world.generateChunk(cx, cz); // idempotente (cachea en state.chunks)
+			DATA[key] = Array.from(state.chunks.get(key));
+		}
+		p.ws.send(JSON.stringify({ event: "chunks_add", data: { chunkData: DATA } }));
+	}
 
 	// Fase 10 (D2): mechas de TNT (explotan al agotarse — cráter + cadena).
 	tnt.tick(TICK_MS);
