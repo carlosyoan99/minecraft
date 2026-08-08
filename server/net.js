@@ -226,7 +226,11 @@ function handleConnection(ws, req) {
 	// El resto se rellena progresivamente en mainLoop (chunks_add por lotes);
 	// ensureChunksAround es idempotente, así que los chunks que ya existieran
 	// del jugador previo se mantienen tal cual.
-	const _generated = world.ensureChunksAround(spawnX, spawnZ, INIT_CHUNK_RADIUS);
+	const _generated = world.ensureChunksAround(
+		spawnX,
+		spawnZ,
+		INIT_CHUNK_RADIUS
+	);
 	// Fase 7 (auditoría): operador — el PRIMER jugador conectado (host) o
 	// cualquiera en la lista OPS (env var OPS="Nombre1,Nombre2"). Permiso para
 	// /tp /give /time /gamemode /reload /op (ver commands.js).
@@ -1494,7 +1498,9 @@ function mainLoop() {
 			world.generateChunk(cx, cz); // idempotente (cachea en state.chunks)
 			DATA[key] = Array.from(state.chunks.get(key));
 		}
-		p.ws.send(JSON.stringify({ event: "chunks_add", data: { chunkData: DATA } }));
+		p.ws.send(
+			JSON.stringify({ event: "chunks_add", data: { chunkData: DATA } })
+		);
 	}
 
 	// Fase 10 (D2): mechas de TNT (explotan al agotarse — cráter + cadena).
