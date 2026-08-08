@@ -1,11 +1,16 @@
 "use strict";
 // ============================================================
-// DIAGNÓSTICO DEL CLIC DE MINERÍA (Fase 9, Bloque A)
+// DIAGNÓSTICO DEL CLIC DE MINERÍA (Fase 9, Bloque A + Fase 11, Bloque A)
 // Reproduce "el clic no hace nada" en Chrome headless y lee la telemetría
 // que expone public/input.js:
 //   - window.__mcMiningTrace  (anillo de mousedowns: hit, target, sent)
 //   - window.__mcRaycastStats (candidatos/hits por tipo)
-//   - window.__mcDebugMining() (raycast forzado ahora)
+//   - window.__mcDebugMining() (raycast forzado + contexto ampliado: cámara,
+//     meshes en escena, elementFromPoint, blocker, bloque bajo el punto de
+//     mira — Fase 11 Bloque A para confirmar H1/H2/H3)
+// Además intenta activar el pointer lock de forma FIABLE (clic en Jugar con
+// reintentos + fallback requestPointerLock) y, si se consigue, prueba el
+// clamp de pitch de la cámara moviendo el ratón en vertical (Fase 11 A2).
 // Usa un servidor DESECHABLE (PORT=3999, SEED=diagClic) para no tocar el
 // mundo del usuario, y Chrome headless con CDP (patrón de audit-fase7.js).
 // Uso: node tests/diag-clic.js
@@ -19,7 +24,10 @@ const WebSocket = require("ws");
 
 const ROOT = path.join(__dirname, "..");
 const PORT = 3999;
-const SEED = "diagClic";
+const SEED = process.env.DIAG_SEED || "diagClic";
+// --audit: en vez de solo imprimir la telemetría, evalúa checks del flujo del
+// clic (auditoría CDP de la Fase 11) y sale con exit code 1 si algo falla.
+const AUDIT = process.argv.includes("--audit");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function httpGet(url) {
@@ -144,6 +152,7 @@ function findChrome() {
 (async () => {
 	const chrome = findChrome();
 	if (!chrome) {
+		// biome-ignore lint/suspicious/noConsole: salida del diagnóstico
 		console.log("⚠️  CDP omitido: no se encontró Chrome/Chromium");
 		process.exit(0);
 	}
@@ -156,6 +165,12 @@ function findChrome() {
 	let chromeProc = null;
 	const userData = fs.mkdtempSync(path.join(os.tmpdir(), "mc-diag-clic-"));
 	let cdp = null;
+	let auditFailed = 0;
+	const auditCheck = (name, ok, extra = "") => {
+		// biome-ignore lint/suspicious/noConsole: resumen de la auditoría
+		console.log(`${ok ? "✔" : "✘"} ${name}${extra ? ` | ${extra}` : ""}`);
+		if (!ok) auditFailed++;
+	};
 	try {
 		const up = await waitFor(
 			async () =>
@@ -165,6 +180,7 @@ function findChrome() {
 			250
 		);
 		if (!up) {
+			// biome-ignore lint/suspicious/noConsole: salida del diagnóstico
 			console.log("❌ servidor desechable no arrancó");
 			process.exit(1);
 		}
@@ -219,33 +235,103 @@ function findChrome() {
 		);
 		console.log("globals:", JSON.stringify(globals));
 
-		// 2) Clic REAL (confiable) sobre el botón Jugar → set_seed + pointer lock
-		const btnRect = await cdp.eval(
-			`(() => { const b = document.getElementById('start-btn'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width/2, y: r.y + r.height/2 }; })()`
-		);
-		console.log("botón Jugar en:", JSON.stringify(btnRect));
-		if (btnRect) {
+		// 2) Clic REAL sobre el botón Jugar → set_seed + pointer lock, con
+		// reintentos: en headless el lock puede fallar en el primer intento
+		// (user activation); se reintenta hasta 3 veces y, si sigue sin
+		// activarse, se prueba requestPointerLock directo sobre el canvas.
+		const clickAt = async (x, y) => {
 			await cdp.send("Input.dispatchMouseEvent", {
 				type: "mousePressed",
-				x: btnRect.x,
-				y: btnRect.y,
+				x,
+				y,
 				button: "left",
 				clickCount: 1
 			});
 			await cdp.send("Input.dispatchMouseEvent", {
 				type: "mouseReleased",
-				x: btnRect.x,
-				y: btnRect.y,
+				x,
+				y,
 				button: "left",
 				clickCount: 1
 			});
+		};
+		const btnRect = await cdp.eval(
+			`(() => { const b = document.getElementById('start-btn'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width/2, y: r.y + r.height/2 }; })()`
+		);
+		console.log("botón Jugar en:", JSON.stringify(btnRect));
+		let locked = false;
+		if (btnRect) {
+			for (let attempt = 1; attempt <= 3 && !locked; attempt++) {
+				await clickAt(btnRect.x, btnRect.y);
+				await sleep(1500);
+				locked = await cdp.eval(
+					"document.pointerLockElement !== null || (window.__mcDebugMining ? window.__mcDebugMining().locked : false)"
+				);
+				console.log(
+					`  intento ${attempt}: pointer lock ${locked ? "SÍ" : "NO"}`
+				);
+			}
+			// Fallback: si el clic no activó el lock, intentar requestPointerLock
+			// directo (user activation del último clic CDP suele bastar).
+			// Fase 11 (D2): debe ser el CANVAS (el elemento que bloquea
+			// PointerLockControls), no document.body — si el lock recae en body,
+			// PLC queda con isLocked=false (su domElement es el canvas), la
+			// cámara no rota y los clics se entregan a body (nunca al canvas).
+			if (!locked) {
+				await cdp.eval(
+					"document.querySelector('canvas').requestPointerLock ? document.querySelector('canvas').requestPointerLock() : null"
+				);
+				await sleep(800);
+				locked = await cdp.eval("document.pointerLockElement !== null");
+				console.log(`  fallback requestPointerLock: ${locked ? "SÍ" : "NO"}`);
+			}
 		}
-		await sleep(3000);
-
-		const locked = await cdp.eval("document.pointerLockElement !== null");
 		console.log(`pointer lock: ${locked ? "SÍ" : "NO"}`);
 
-		// 3) Clic izquierdo (mantenido ~1s) en el centro de la pantalla
+		// 3) Si hay lock, mover el ratón en vertical para diagnosticar el clamp
+		// de pitch (Fase 11 A2): una racha grande de movementY debe dejar el
+		// pitch acotado (~±90°) y NO dar vueltas. La cámara NO es global, así
+		// que se lee su dirección con __mcDebugMining().camera.dir (por closure).
+		// IMPORTANTE (Fase 11 D2): Input.dispatchMouseEvent de CDP NO entrega
+		// movementX/movementY (los calcula el navegador como delta de posición;
+		// con el mismo x,y el delta es 0 y la cámara no rota). Se despachan
+		// eventos mousemove SINTÉTICOS con movementX/movementY definidos —
+		// PointerLockControls r160 los lee de event.movementX/Y en onMouseMove
+		// (escucha en document), así que ejercitan el handler real.
+		const syntheticMove = async (mx, my) => {
+			await cdp.eval(`(() => {
+				const ev = new MouseEvent('mousemove', { bubbles: true });
+				Object.defineProperty(ev, 'movementX', { value: ${mx} });
+				Object.defineProperty(ev, 'movementY', { value: ${my} });
+				document.dispatchEvent(ev);
+			})()`);
+		};
+		let camUp = null,
+			camDown = null;
+		if (locked) {
+			const camBefore = await cdp.eval("window.__mcDebugMining().camera");
+			for (let i = 0; i < 5; i++) {
+				await syntheticMove(0, -800); // mirar arriba de golpe
+				await sleep(40);
+			}
+			camUp = await cdp.eval("window.__mcDebugMining().camera");
+			for (let i = 0; i < 10; i++) {
+				await syntheticMove(0, 800); // mirar abajo de golpe
+				await sleep(40);
+			}
+			camDown = await cdp.eval("window.__mcDebugMining().camera");
+			console.log(
+				"CÁMARA: antes=",
+				JSON.stringify(camBefore),
+				"arriba(dirY)=",
+				camUp?.dir?.[1],
+				"abajo(dirY)=",
+				camDown?.dir?.[1]
+			);
+			await sleep(300);
+		}
+
+		// 4) Clic izquierdo (mantenido ~1.2s) en el centro de la pantalla
 		for (const [cx, cy, label] of [
 			[240, 180, "centro"],
 			[200, 150, "izq-arriba"],
@@ -269,7 +355,8 @@ function findChrome() {
 			await sleep(400);
 		}
 
-		// 4) Leer la telemetría
+		// 4.5) Sondeo del terreno: lo incluye `__mcDebugMining` (terrainAround).
+		// 5) Leer la telemetría (contexto ampliado del Bloque A de Fase 11)
 		const trace = await cdp.eval("window.__mcMiningTrace ?? []");
 		const stats = await cdp.eval("window.__mcRaycastStats ?? null");
 		const debug = await cdp.eval("window.__mcDebugMining()");
@@ -305,6 +392,45 @@ function findChrome() {
 		console.log("DEBUG:", JSON.stringify(debug, null, 1));
 		console.log("EXCEPCIONES JS:", JSON.stringify(exceptions, null, 1));
 		console.log("CONSOLE.ERROR:", JSON.stringify(consoleErr, null, 1));
+
+		// ============================================================
+		// MODO --audit (Fase 11, Bloque D): auditoría CDP del flujo del clic
+		// 1) el mundo renderiza; 2) el pointer lock se activa; 3) la cámara
+		// queda con el pitch acotado (fix A2: sin vueltas); 4) el raycast
+		// encuentra terreno/agua mirando abajo (no "0 hits legítimos");
+		// 5) un clic real llega al handler (trace con entrada); 6) 0 excepciones.
+		// ============================================================
+		if (AUDIT) {
+			console.log("\n===== AUDITORÍA CDP DEL CLIC =====");
+			auditCheck(
+				"el mundo renderiza (__mcChunks > 0)",
+				globals?.chunks > 0,
+				`${globals?.chunks} chunks`
+			);
+			auditCheck("el pointer lock se activa", locked === true);
+			auditCheck(
+				"la cámara queda con el pitch acotado (fix A2: sin vueltas)",
+				locked && Array.isArray(camDown?.dir) && camDown.dir[1] < -0.3,
+				camDown?.dir
+					? `dirY=${camDown.dir[1].toFixed(2)} (mirando abajo)`
+					: "sin lock"
+			);
+			auditCheck(
+				"el raycast encuentra terreno/agua mirando abajo",
+				!!debug?.blockAlongView || (debug?.stats?.hits ?? 0) > 0,
+				JSON.stringify(debug?.blockAlongView || debug?.stats)
+			);
+			auditCheck(
+				"el clic izquierdo llega al handler (trace con entrada)",
+				Array.isArray(trace) && trace.length >= 1,
+				`${trace?.length ?? 0} mousedowns registrados`
+			);
+			auditCheck(
+				"0 excepciones JS en el flujo del clic",
+				exceptions.length === 0,
+				`${exceptions.length} excepciones`
+			);
+		}
 	} finally {
 		if (cdp) cdp.close();
 		if (chromeProc) chromeProc.kill("SIGKILL");
@@ -316,5 +442,5 @@ function findChrome() {
 			});
 		} catch {}
 	}
-	process.exit(0);
+	process.exit(AUDIT && auditFailed ? 1 : 0);
 })();

@@ -1167,6 +1167,41 @@ fix propio (el diagnóstico debe confirmarlo).
 
 ## Bugs conocidos (pendientes de corrección)
 
+- [x] **Fase 11: el clic "no hacía nada" (minar, colocar, atacar,
+      cofres) — pointer lock sobre `document.body` en vez del canvas.**
+      Causa raíz (confirmada con auditoría CDP del clic real en
+      `tests/diag-clic.js --audit`): `public/scene.js` creaba
+      `PointerLockControls` con `document.body`, y con el pointer lock
+      activo el navegador entrega TODOS los eventos de ratón al
+      elemento que tiene el lock (body) — pero `input.js` escucha el
+      mousedown/mouseup/pointermove en `renderer.domElement` (el
+      canvas), que nunca los recibía durante el juego. Por eso el trace
+      de telemetría quedaba vacío pese a los fixes de atlas (F9) y
+      cámara (F11 A2): el handler del clic jamás se disparaba.
+      **Corregido**: `new PointerLockControls(camera, renderer.domElement)`
+      (patrón canónico de three.js — con el lock activo los eventos van
+      al canvas). Verificado: clic CDP → target `BODY` antes, target
+      `CANVAS` después; auditoría 6/6 con 3 mousedowns reales
+      registrados en el trace y 0 excepciones. Nota de método: CDP
+      ignora `movementX/Y` en `Input.dispatchMouseEvent` (delta 0 con
+      el mismo x,y), así que el pitch se testea con `mousemove`
+      sintético con `movementX/Y` definidos; y el fallback de lock del
+      diagnóstico debe bloquear el canvas (si bloquea body, PLC queda
+      con `isLocked=false` y la cámara no rota).
+- [x] **Fase 11: el spawn del diagnóstico (y cualquier spawn pedido en
+      agua) caía en un río de la Fase 10 y el jugador nacía nadando sin
+      bloques minables a ≤7.** Causa raíz: `findSpawn` solo comprobaba
+      `isLake`, no los ríos ni el océano nuevo de la Fase 11.
+      **Corregido**: `findSpawn` rechaza TODA columna de agua
+      (`columnFloorY !== null` — lago, río u océano) y el espiral busca
+      la columna seca más cercana.
+- [x] **Fase 11: flakiness intermitente de `unit-mundo` — la copa de un
+      árbol caía sobre la celda de aire encima de un charco pantanoso
+      nuevo y el charco dejaba de estar "abierto al aire".** Causa
+      raíz: el fix de Fase 9 solo cubría `isPondAt`/`isLavaPondAt`, no
+      los charcos de pantano. **Corregido**: helper `isSwampPoolAt` en
+      `server/world.js` comprobado en las tres copas de árboles (mismo
+      patrón que Fase 9); 6/6 ejecuciones estables.
 - [x] **Fase 9: el juego no renderizaba nada en el navegador
       (`mcChunks: 0`) — el clic "no hacía nada" porque no había
       mundo que minar.** Causa raíz (confirmada con la auditoría CDP
@@ -1842,6 +1877,176 @@ Especificación: [`docs/fase10-spec.md`](docs/fase10-spec.md) (retrospectiva, fa
 - [x] **Auditoría de Fase 10:** rendimiento con TNT, gravedad de bloques
       y partículas nuevas activos a la vez (CDP en verde) y ningún fix
       reabre un bug de la Fase 8 (lista B1-B10 verificada)
+
+---
+
+---
+
+## Fase 11 — Bugs de input y cámara, biomas, paridad y cierre de tests
+*Objetivo: arreglar los dos bugs que rompen la jugabilidad (clic y cámara),
+incluir los 4 biomas nuevos de la auditoría de terceros (terreno y bloques,
+sin mobs ni estructuras), añadir las mecánicas rápidas de paridad que cierran
+bucles de recursos (esquilar, bonemeal, fuente de agua infinita, sonidos) y
+cerrar la fase con una sección de TESTS: tests pendientes de mecánicas ya
+incluidas + test de cada mecánica nueva. Estructura en 4 bloques A→D.*
+Especificación: [`docs/fase11-spec.md`](docs/fase11-spec.md) (retrospectiva, fase completada y auditada).
+
+### Bloque A — Bugs: clic roto y cámara que da vueltas
+*El bloque A hereda el diagnóstico del clic ya documentado (spec Fase 11 §2-§3:
+pointer lock NO en headless, raycast con 248 candidatos → 0 hits) y añade el
+bug de cámara reportado por el usuario.*
+
+#### A1. Clic roto (minar/colocar/atacar/cofres) — diagnóstico + fix
+- [x] Ampliar la telemetría del raycast (`__mcDebugMining`): posición y
+      dirección de la cámara, meshes reales en `scene` vs `chunkMeshes`,
+      `elementFromPoint` en el centro, `getComputedStyle(blocker)` y bloque
+      bajo el punto de mira (detecta el «spawn en lago» de la Fase 10)
+- [x] Confirmar la causa raíz entre H1 (raycast no intersecta: matrixWorld/
+      boundingSphere obsoletos o spawn en lago sin bloques a ≤7), H2 (overlay
+      invisible con `pointer-events` activo) y H3 (`controls.isLocked`
+      desincronizado). **Causa raíz real (H3, variante de entregada de
+      eventos): `scene.js` creaba PointerLockControls con `document.body`, y
+      con el pointer lock activo el navegador entrega TODOS los eventos de
+      ratón al elemento bloqueado (body) — pero `input.js` escucha el
+      mousedown/mouseup/pointermove en `renderer.domElement` (el canvas), que
+      nunca los recibía durante el juego. Por eso «el clic no hacía nada»
+      pese a los fixes de atlas (F9) y cámara (A2): el handler jamás se
+      disparaba. Fix: `new PointerLockControls(camera, renderer.domElement)`
+      (patrón canónico de three.js: los eventos van al canvas con el lock
+      activo). Confirmado con auditoría CDP: clic → target `BODY` antes,
+      target `CANVAS` después; trace con 3 mousedowns reales.**
+- [x] **Resaltado del bloque apuntado** (contorno negro tipo Minecraft) que
+      funcione siempre, como feedback visual (decisión D3 del spec):
+      `setHighlightedBlock`/`hideHighlight` en `public/world.js` (caja negra
+      1.02 wireframe, mismo patrón que el crack) + `updateHighlight` en
+      `input.js` (pointermove y mousedown, mobs no se resaltan)
+- [x] Auditoría CDP del clic con clic REAL: `node tests/diag-clic.js --audit`
+      (modo nuevo: checks con exit code). 6/6 en verde — mundo renderiza
+      (169 chunks), pointer lock se activa, pitch acotado (fix A2), raycast
+      encuentra terreno mirando abajo, clic izquierdo llega al handler
+      (trace con entrada) y 0 excepciones JS. Nota de método: CDP ignora
+      `movementX/Y` de `Input.dispatchMouseEvent` (delta 0 con mismo x,y) →
+      el pitch se testea con `mousemove` sintético con `movementX/Y`
+      definidos (PLC los lee de `event.movementX/Y`); el fallback de
+      pointer lock debe bloquear el CANVAS (si bloquea body, PLC queda con
+      `isLocked=false` y la cámara no rota). El spawn del diagnóstico (SEED
+      diagClic) caía en un RÍO: `findSpawn` ahora rechaza TODA columna de
+      agua (`columnFloorY !== null`), no solo lagos
+
+#### A2. Cámara que da vueltas al mirar con el ratón (Fase 9.5/10 la rompió)
+- [x] Diagnosticar el clamp de pitch de `public/scene.js` (`PITCH_LIMIT`,
+      añadido en el commit 69cf0ce «Fase 9.5», comentado como Fase 10): el
+      handler `change` escribe `camera.rotation.x` directamente, pero
+      PointerLockControls r160 gestiona la rotación vía quaternion → puede
+      desincronizar y causar vueltas al mirar. Confirmado: PLC r160 ya
+      limita el pitch a ±90° en `onMouseMove` (euler YXZ); el clamp externo
+      usa el Euler XYZ del Object3D y con yaw≠0 desvía la mira (0.7 rad en
+      el test) — la causa exacta de las «vueltas»
+- [x] Fix: eliminado el clamp redundante de `public/scene.js` (PLC r160 ya
+      limita el pitch); el sprint/FOV (Fase 10) no contribuye (solo toca
+      `camera.fov`, verificado por código)
+- [x] Test de regresión de cámara: `tests/unit-camara.js` (registrado en
+      `run.js`) — con three real verifica pitch limitado a ±90° arriba/abajo,
+      yaw estable sin movementX y responsive con movementX, mecanismo del
+      bug (XYZ vs YXZ) y ausencia del clamp en scene.js. Verificación CDP
+      con gestos reales: incorporada a `diag-clic.js --audit` (pitch acotado
+      a dirY ±1.00 mirando arriba/abajo, sin vueltas)
+
+### Bloque B — 4 biomas nuevos (terreno y bloques, sin mobs ni estructuras)
+*Decisión del usuario: los 4 biomas completos de la auditoría (Taiga, Pantano,
+Jungla, Océano) SOLO como terreno + bloques nuevos + árboles propios; mobs
+(lobo, slime, ocelote, ahogado) y estructuras (templo, naufragio) quedan para
+una fase futura. Esto exige bloques nuevos con bump de SCHEMA_VERSION.*
+
+- [x] **Taiga**: bosque de coníferas — reusa los abetos de la Fase 9
+      (`SPRUCE_LOG`/`SPRUCE_LEAVES` 30/31) con densidad mayor que el bosque
+      normal, temperatura fría (banda `temp < -0.2`)
+- [x] **Pantano**: charcos pantanosos con el mismo patrón que lagos
+      (`isSwampPoolAt` + `SWAMP_GATE 0.42`), árbol roble con enredaderas
+      (liana 43 decorativa colgando del tronco/copa) — sin bloque de musgo
+      nuevo (la piedra de musgo 32 de Fase 9 se reusa donde aplica)
+- [x] **Jungla**: árboles gigantes 2×2 con madera de jungla (41/42), lianas
+      colgantes (43), vegetación densa (hierba alta/flores, ruido de pantano
+      compartido) — sin templo ni ocelote
+- [x] **Océano**: terreno bajo el agua, islas, arena/grava de fondo,
+      profundidad variable (`oceanFloorY` + columna de agua hasta `SEA_LEVEL`)
+      — sin vida marina ni naufragios
+- [x] Bloques nuevos sincronizados servidor↔cliente (`constants.js` ambos
+      lados + teselas en `textures.js` + `itemicons.js` + `unit-sync` en
+      verde): `JUNGLE_LOG` 41, `JUNGLE_LEAVES` 42 y `VINES` 43; la grava
+      reusa `GRAVEL` 39 de Fase 10
+- [x] `SCHEMA_VERSION` → 4 con migración retrocompatible (mundos viejos sin
+      los bloques nuevos siguen abriendo; modelo `unit-persistencia.js`)
+- [x] Generación por bioma en `server/world.js` (`getBiome` ampliado con
+      bandas de temperatura re-tuneadas — jungla 21%→15% y pantano 1.2%→4%
+      midiendo la distribución real del ruido —, `isOcean`, superficie y
+      árboles por bioma, transiciones suaves) + `unit-biomas` y `unit-mundo`
+      en verde. Detalle: los charcos pantanosos también se protegen de las
+      copas de árboles (`isSwampPoolAt` en las 3 copas, misma regla que
+      `isPondAt` de Fase 9) — fix de un flakiness intermitente de
+      `unit-mundo`; `unit-spawn` sección 4 ahora busca columna SECA
+      (`columnFloorY === null`) para no elegir una columna oceánica
+
+### Bloque C — Mecánicas rápidas de paridad (auditoría de terceros)
+*Las 4 mecánicas de bajo coste / alto valor de la auditoría. Cada una lleva
+su test unitario nuevo (decisión del usuario: «cada mecánica añadida debe
+tener un test que valide su funcionamiento»).*
+
+- [x] **Esquilar ovejas**: ítem `SHEARS` 141 (tijeras) crafteable (2 lingotes
+      de hierro, shape `" #"/"# "` con durabilidad 238) + icono en
+      `itemicons.js` + `canShear`/`applyShear` en `server/mobs.js` (oveja →
+      1-3 lana sin dañarla; bebé → no esquila) + handler `shear_mob` en
+      `server/net.js` + clic derecho con tijeras sobre oveja en `input.js`
+      (antes del ataque). Test: esquilar da lana, no daña, bebé rechazado
+- [x] **Bonemeal (hueso)**: ítems `BONE` (136, drop de esqueleto) y
+      `BONE_MEAL` 139 (receta 1 hueso → 3, ya existía); handler `bonemeal`
+      en `server/net.js`: sobre trigo (27) madura el cultivo al instante,
+      sobre tierra/césped genera hierba alta/flores encima. Test: maduración
+      instantánea y generación de plantas
+- [x] **Fuente de agua infinita**: en `server/world.js`
+      (`isInfiniteWaterSource`/`refillInfiniteWater`) al romper agua en
+      creative el patrón 2×2 (o 1×2 con hueco) se rellena al tomar el agua;
+      `players.js`/`net.js` rellenan tras el break. Test: 2×2 se rellena,
+      un solo bloque no
+- [x] **Más sonidos de mobs**: siseo del creeper al encenderse (ráfaga de
+      ruido blanco filtrada en agudo, `playCreeperHiss`) y balido de oveja
+      (`playSheepBaa`) en `public/audio.js`; `public/mobs.js` los engancha
+      con flag de transición: el hiss suena UNA vez al empezar el fuse
+      (`mesh.userData.fusing` cambia a true), no cada frame; el balido es
+      probabilístico (0.002 por snapshot ≈ 1 cada 30-60s por oveja visible).
+      Test: audio.js genera los sonidos sin errores (procedural, sin assets)
+
+### Bloque D — Tests pendientes y cierre de la fase
+*El usuario pidió cerrar la Fase 11 con una sección enfocada en tests:
+primero, los tests que faltan de mecánicas/features YA incluidas; segundo,
+confirmar la herramienta. Decisión: mantener el runner propio
+(`node tests/run.js`, sin framework, 0 dependencias nuevas) — no migrar a
+vitest; aprovechar la fase para organizar y ampliar la cobertura.*
+
+- [x] Tests unitarios de mecánicas de Fase 10 sin cubrir, consolidados en
+      `tests/unit-fase11.js` (registrado en `run.js`, patrón del proyecto):
+      gravedad de arena/grava (`settleColumn` — la arena flotante cae al
+      primer soporte), TNT (`tnt.ignite` → mecha → explosión con cráter y
+      el bedrock sobrevive), mundo-size (`setBlock`/`getBlock` fuera de
+      límites rechazados → aire), `/kill` (solo operadores; sin nombre mata
+      al emisor y lo respawnea con salud máxima), además de los tests de
+      los bloques A-C: biomas nuevos presentes, lianas/árboles por bioma,
+      spawn nunca en agua, canShear/applyShear, bonemeal y fuente infinita
+- [x] Auditoría CDP del clic como modo `--audit` de `tests/diag-clic.js`
+      (checks con exit code, 6/6 en verde — ver Bloque A1). Los E2E por
+      mecánica (e2e-esquilar/bonemeal/agua/tnt) quedan cubiertos por los
+      unitarios de `unit-fase11.js` + la auditoría CDP; no se crean E2E WS
+      adicionales para no duplicar cobertura
+- [x] Test de cámara del Bloque A2 (`unit-camara.js`) + auditoría CDP del
+      clic en la suite final (verificación manual en navegador del usuario:
+      pendiente, el fix del canvas hace que el clic funcione en CDP real)
+- [x] Registrar todos los tests nuevos en `tests/run.js` (convención actual)
+- [x] **Auditoría de Fase 11:** suite unitaria completa en verde (exit 0,
+      con `unit-fase11` y `unit-camara` nuevos), E2E contra servidor vivo
+      (exit 0), auditoría CDP del clic 6/6, `biome check` 0 errores (5
+      infos de formato autofixed con `--write`), `node --check` en todo lo
+      tocado, y verificación en navegador: la auditoría CDP confirma el fix
+      del clic (mousedown llega al handler con el canvas bloqueado)
 
 ---
 

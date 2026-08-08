@@ -57,17 +57,22 @@ scene.add(sun);
 // accede a sun.shadow; antes de esta línea estaría en la zona muerta temporal).
 applyQuality(QUALITY_DEFAULT);
 
-export const controls = new PointerLockControls(camera, document.body);
-
-// Clamp de pitch (Fase 10, skill camera-systems): sin él la cámara puede
-// voltearse sobre la cabeza al mirar demasiado arriba/abajo (desorientación).
-// PointerLockControls no clampea la rotación vertical por defecto; se corrige
-// en cada 'change' (cada mousemove) antes del render, como en cualquier FPS.
-const PITCH_LIMIT = Math.PI / 2 - 0.1; // ~84°: no mirar más allá de vertical
-controls.addEventListener("change", () => {
-	if (camera.rotation.x > PITCH_LIMIT) camera.rotation.x = PITCH_LIMIT;
-	else if (camera.rotation.x < -PITCH_LIMIT) camera.rotation.x = -PITCH_LIMIT;
-});
+// Fase 11 (D2): el elemento bloqueado es el CANVAS, no document.body.
+// CAUSA RAÍZ del "clic que no hace nada" (minar/colocar/atacar/cofres): con
+// PointerLockControls sobre body, al activarse el pointer lock el navegador
+// dirige TODOS los eventos de ratón (mousedown/mouseup/pointermove) al
+// elemento que tiene el lock (body) — pero input.js escucha en
+// renderer.domElement (el canvas), que nunca los recibía durante el juego.
+// Bloquear el canvas es el patrón canónico de three.js (los eventos van a él
+// mientras el lock está activo) y hace que los listeners de input.js se
+// disparen. Confirmado con auditoría CDP: clic → target BODY antes, target
+// CANVAS después.
+export const controls = new PointerLockControls(camera, renderer.domElement);
+// Fase 11 (A2): NO añadir clamp de pitch manual. PointerLockControls r160 ya
+// limita la rotación vertical a ±90° internamente (euler YXZ) en onMouseMove;
+// un clamp externo que escriba camera.rotation.x (Euler XYZ del Object3D)
+// DESINCRONIZA la orientación cuando el yaw no es 0 → la cámara "da vueltas"
+// al mirar (bug reportado en Fase 10). El control nativo es suficiente.
 
 const blocker = document.getElementById("blocker");
 const craftingUI = document.getElementById("crafting-ui");

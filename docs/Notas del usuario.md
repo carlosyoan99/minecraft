@@ -59,6 +59,7 @@ Esta es una auditoría manual echa por el usuario, donde se van recogiendo **bug
   cueva, incluir pasos, sonido de mobs, abrir y cerrar cofres. *(Fase 10
   F: música generativa por contexto — cueva/desierto/nieve — + pasos,
   mobs, cofres y TNT ya sonoros)*
+- Las nubes se ven negras y no blanco semitransparente, ademas es necesario más variedad de estas
 
 ## Debug
 - [x] Implementa un test.log, donde se registre el resultado de la última

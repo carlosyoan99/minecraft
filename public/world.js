@@ -1356,3 +1356,49 @@ export function hideCrack() {
 export function hideCrackIfAt(x, y, z) {
 	removeCrack(crackKey(x, y, z));
 }
+
+// ============================================================
+// RESALTADO DEL BLOQUE APUNTADO (Fase 11, Bloque A1)
+// Contorno negro estilo Minecraft (EdgesGeometry + LineSegments) sobre el
+// bloque que el jugador apunta: feedback visual del objetivo de minar/
+// colocar/abrir. El diagnóstico de la Fase 11 mostró que con la cámara a la
+// altura de los ojos y el rayo casi horizontal, apuntar al suelo daba 0
+// golpes sin ninguna señal en pantalla — el contorno hace visible QUÉ
+// bloque está bajo el punto de mira (y su ausencia revela que no hay
+// objetivo, p. ej. mirando al cielo). Un único LineSegments reutilizado
+// que se reposiciona/oculta según el bloque objetivo.
+// ============================================================
+let highlight = null; // THREE.LineSegments reutilizado
+// Aristas del cubo unidad (1.01: sobresale un pelo para no z-fighting con
+// la cara del bloque). Se crea UNA vez; el contorno comparte esta geometría.
+const highlightEdges = new THREE.EdgesGeometry(
+	new THREE.BoxGeometry(1.01, 1.01, 1.01)
+);
+const highlightMaterial = new THREE.LineBasicMaterial({
+	color: 0x111111,
+	transparent: true,
+	opacity: 0.9,
+	depthTest: true
+});
+
+// Muestra el contorno sobre el bloque (x, y, z); con x === null lo oculta.
+// La posición se fija al CENTRO del bloque (como el crack). El contorno es
+// por-JUGADOR (solo este cliente): no se sincroniza por red.
+export function setHighlightedBlock(x, y, z) {
+	if (!highlight) {
+		highlight = new THREE.LineSegments(highlightEdges, highlightMaterial);
+		highlight.renderOrder = 5; // por encima de grietas (3) y agua
+		scene.add(highlight);
+	}
+	if (x === null || y === null || z === null) {
+		highlight.visible = false;
+		return;
+	}
+	highlight.position.set(x + 0.5, y + 0.5, z + 0.5);
+	highlight.visible = true;
+}
+
+// Oculta el contorno (sin objetivo, menú abierto, puntero liberado...).
+export function hideHighlight() {
+	if (highlight) highlight.visible = false;
+}

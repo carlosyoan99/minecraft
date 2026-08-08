@@ -765,5 +765,18 @@
       "id": 231,
       "count": 1
     }
+  },
+  "shears": {
+    "shape": [
+      " #",
+      "# "
+    ],
+    "ingredients": {
+      "#": 102
+    },
+    "result": {
+      "id": 141,
+      "count": 1
+    }
   }
 }

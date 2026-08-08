@@ -995,13 +995,42 @@ function makeArmorIcon(slot, mat) {
 const ARMOR_SHAPES = [HELMET, CHESTPLATE, LEGGINGS, BOOTS];
 const ARMOR_PALS = [C.leather, C.iron, C.diamond];
 
+// Tijeras (Fase 11, C): dos hojas metálicas cruzadas con anillas de dedo
+// (forma de tijeras abiertas, como el icono de Minecraft).
+function drawShears(g) {
+	const blade = "#c9c9cf",
+		bladeDark = "#8a8a90",
+		handle = "#6b4226";
+	line(g, 2, 14, 10, 6, bladeDark); // hoja 1 (sombra)
+	line(g, 1, 14, 9, 6, blade); // hoja 1
+	line(g, 14, 2, 6, 10, bladeDark); // hoja 2 (sombra)
+	line(g, 14, 1, 6, 9, "#e8e8ee"); // hoja 2 (brillo)
+	set(g, 9, 6, handle); // pivote
+	set(g, 8, 7, handle);
+	set(g, 9, 7, handle);
+	set(g, 10, 6, bladeDark);
+	// anilla 1 (arriba-izquierda)
+	set(g, 1, 13, handle);
+	set(g, 2, 13, handle);
+	set(g, 3, 13, handle);
+	set(g, 3, 14, handle);
+	set(g, 3, 15, handle);
+	// anilla 2 (abajo-derecha)
+	set(g, 13, 1, handle);
+	set(g, 13, 2, handle);
+	set(g, 13, 3, handle);
+	set(g, 12, 1, handle);
+	set(g, 11, 1, handle);
+}
+
 // ============================================================
 // REGISTRO: id → función de dibujo (g, rng)
 // ============================================================
 const ICONS = {};
-// Bloques 1..40 (Fase 9 F: tierra arada, trigo, abedul, pino, musgo, hierba,
-// flores y lanas tintadas; Fase 10 D: grava y TNT — todos con BLOCK_COLORS).
-for (let id = 1; id <= 40; id++)
+// Bloques 1..43 (Fase 9 F: tierra arada, trigo, abedul, pino, musgo, hierba,
+// flores y lanas tintadas; Fase 10 D: grava y TNT; Fase 11 B: jungla y
+// lianas — todos con BLOCK_COLORS).
+for (let id = 1; id <= 43; id++)
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Ítems
 ICONS[100] = drawStick;
@@ -1035,6 +1064,8 @@ ICONS[137] = (g) => drawDye(g, "#d92626", "#8f1010", "#f05a5a");
 ICONS[138] = (g) => drawDye(g, "#e8c547", "#b8860b", "#f5e07a");
 ICONS[139] = (g) => drawDye(g, "#f5f5f0", "#c9c9c0", "#ffffff");
 ICONS[140] = drawHoney;
+// Fase 11 (C): tijeras
+ICONS[141] = drawShears;
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);

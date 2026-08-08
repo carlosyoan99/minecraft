@@ -43,7 +43,10 @@ let noise3D_cave,
 	noise3D_cave_fine,
 	noise2D_lake,
 	noise2D_lakeDepth,
-	noise2D_river;
+	noise2D_river,
+	// Fase 11 (Bloque B): cuencas de océano y puerta de pantano
+	noise2D_ocean,
+	noise2D_swamp;
 // Ruidos de las minas abandonadas (Fase 7): dos campos de "corredores"
 // (bandas finas alrededor de las curvas de nivel del ruido), una puerta de
 // región (solo ~1/3 del mapa tiene minas) y la profundidad del túnel.
@@ -70,6 +73,12 @@ function reinitNoise(seed) {
 	// que cortan el terreno y se llenan de agua).
 	noise2D_lakeDepth = createNoise2D(seededNoise(`${seed}_lake_depth`));
 	noise2D_river = createNoise2D(seededNoise(`${seed}_river`));
+	// Fase 11 (Bloque B): cuencas de océano (campo de frecuencia muy baja que
+	// inunda regiones amplias) y puerta de pantano (regiones templadas que se
+	// vuelven pantanosas). El mismo ruido de pantano, muestreado a OTRA
+	// frecuencia (más alta), decide los charcos de agua del pantano.
+	noise2D_ocean = createNoise2D(seededNoise(`${seed}_ocean`));
+	noise2D_swamp = createNoise2D(seededNoise(`${seed}_swamp`));
 	// Minas abandonadas (Fase 7).
 	noise2D_ms_a = createNoise2D(seededNoise(`${seed}_ms_a`));
 	noise2D_ms_b = createNoise2D(seededNoise(`${seed}_ms_b`));
@@ -115,9 +124,26 @@ function riverDepth(wx, wz) {
 	return 2 + Math.floor((Math.abs(n) / RIVER_WIDTH) * 2); // 2..4
 }
 
-// Fondo real de una columna de agua (lago o río): Y del lecho (el bloque
-// SAND) o null si la columna no es de agua. Lo usan generateChunk y los
-// tests (unit-mundo) — la profundidad ya no es LAKE_FLOOR fijo.
+// Fase 11 (Bloque B): OCÉANO — cuencas amplias de agua (bioma de terreno).
+// Un campo de ruido de frecuencia MUY baja (cuencas de cientos de bloques)
+// inunda la región hasta su fondo (2-5 bloques de agua, más profundo que
+// los lagos). El spawn ya lo evita (columnFloorY devuelve el fondo como
+// cualquier columna de agua) y el lecho es arena como en lagos/ríos.
+const OCEAN_FREQ = 0.0025; // cuencas muy amplias (cientos de bloques)
+const OCEAN_GATE = 0.5; // ruido en [-1,1]: > 0.5 ≈ 25% del mapa es océano
+function isOcean(wx, wz) {
+	return noise2D_ocean(wx * OCEAN_FREQ, wz * OCEAN_FREQ) > OCEAN_GATE;
+}
+// Profundidad del océano (1..4): el fondo varía con el mismo ruido de
+// profundidad de los lagos, muestreado a otra frecuencia (desc correlate).
+function oceanFloorY(wx, wz) {
+	const d = (noise2D_lakeDepth(wx * 0.04, wz * 0.04) + 1) / 2; // 0..1
+	return Math.max(1, Math.floor(d * (LAKE_FLOOR + 2))); // 1..4
+}
+
+// Fondo real de una columna de agua (lago, río u océano): Y del lecho (el
+// bloque SAND) o null si la columna no es de agua. Lo usan generateChunk y
+// los tests (unit-mundo) — la profundidad ya no es LAKE_FLOOR fijo.
 function columnFloorY(wx, wz) {
 	if (isLake(wx, wz)) return lakeFloorY(wx, wz);
 	if (isRiver(wx, wz)) {
@@ -131,6 +157,7 @@ function columnFloorY(wx, wz) {
 		);
 		return Math.max(1, Math.min(h - riverDepth(wx, wz), SEA_LEVEL - 1));
 	}
+	if (isOcean(wx, wz)) return oceanFloorY(wx, wz);
 	return null;
 }
 
@@ -195,11 +222,23 @@ function flatBaseHeight(temp) {
 	return num / den;
 }
 
-function biomeFrom(temp, mnt) {
-	// Montañas primero: el ruido de montaña manda sobre la temperatura.
+// Fase 11 (Bloque B): 5 biomas → 8. Bandas de temperatura re-ajustadas y
+// dos biomas por puerta de ruido independiente:
+//   temp < -0.3      → snow (tundra)
+//   -0.3 .. -0.2     → taiga (bosque frío de pinos; césped, no nieve)
+//   -0.2 .. -0.05    → desert (arena)
+//   -0.05 .. 0.2     → plains, salvo puerta de pantano → swamp
+//   0.2 .. 0.32      → forest
+//   >= 0.32          → jungle (selva caliente)
+//   ruido de montaña > umbral → mountain (manda sobre todo lo anterior)
+const SWAMP_GATE = 0.42; // ruido de pantano en [-1,1]: regiones templadas donde se activa
+function biomeFrom(temp, mnt, swamp) {
 	if (mnt > MOUNTAIN_THRESHOLD) return "mountain";
 	if (temp < SNOW_TEMP) return "snow"; // tundra: nieve en la superficie
-	if (temp < -0.15) return "desert";
+	if (temp < -0.2) return "taiga";
+	if (temp < -0.05) return "desert";
+	if (swamp !== undefined && swamp > SWAMP_GATE && temp < 0.2) return "swamp";
+	if (temp > 0.38) return "jungle";
 	if (temp > 0.2) return "forest";
 	return "plains";
 }
@@ -207,7 +246,8 @@ function biomeFrom(temp, mnt) {
 function getBiome(wx, wz) {
 	return biomeFrom(
 		noise2D(wx * 0.005, wz * 0.005),
-		noise2D_mountain(wx * 0.008, wz * 0.008)
+		noise2D_mountain(wx * 0.008, wz * 0.008),
+		noise2D_swamp(wx * 0.005, wz * 0.005)
 	);
 }
 
@@ -241,8 +281,9 @@ function getHeight(wx, wz) {
 function flatSurfaceBlock(temp, j) {
 	const t = temp + j * 0.03;
 	if (t < SNOW_TEMP) return B.SNOW;
-	if (t < -0.15) return B.SAND;
-	return B.GRASS; // bosque y llanura comparten césped
+	if (t < -0.2) return B.GRASS; // taiga: césped (bosque frío, no nieve)
+	if (t < -0.05) return B.SAND; // desierto
+	return B.GRASS; // bosque, llanura, pantano y jungla comparten césped
 }
 
 function surfaceBlockFor(wx, wz, height, temp, mnt) {
@@ -266,7 +307,12 @@ function findSpawn(wx, wz) {
 	// Normalizar a la columna: el espiral y el centro (+0.5) asumen enteros.
 	wx = Math.floor(wx);
 	wz = Math.floor(wz);
-	if (!isLake(wx, wz)) {
+	// Fase 11 (A1): una columna es APTA si no es ni lago ni río (cualquier
+	// columna de agua). Antes solo se comprobaba isLake: el spawn podía caer
+	// en un río de la Fase 10 (A4) y el jugador nacía nadando en un canal sin
+	// bloques minables a ≤7 — el "clic no hace nada" de la Fase 11.
+	const waterAt = (x, z) => columnFloorY(x, z) !== null;
+	if (!waterAt(wx, wz)) {
 		return { x: wx + 0.5, z: wz + 0.5, y: getHeight(wx, wz) + 2 };
 	}
 	for (let r = 1; r <= SPAWN_SEARCH_RADIUS; r++) {
@@ -275,7 +321,7 @@ function findSpawn(wx, wz) {
 				if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue; // solo el anillo del radio r
 				const nx = wx + dx,
 					nz = wz + dz;
-				if (!isLake(nx, nz)) {
+				if (!waterAt(nx, nz)) {
 					return { x: nx + 0.5, z: nz + 0.5, y: getHeight(nx, nz) + 2 };
 				}
 			}
@@ -396,6 +442,17 @@ function isLavaPondAt(wx, wz) {
 		noise2D_pond_region(wx * 0.01, wz * 0.01) > LAVA_REGION_GATE &&
 		noise2D_lava(wx * 0.07, wz * 0.07) > LAVA_THRESHOLD
 	);
+}
+
+// Fase 11 (Bloque B): columna de charco pantanoso — agua en la superficie
+// del pantano (poza entre la hierba, lecho de arena debajo). Fuente de
+// verdad única del patrón (lo usa generateChunk para crear el charco y las
+// copas de los árboles para NO taparlo: la copa encima del charco dejaría
+// su celda superior sin aire y rompería la invariante de unit-mundo sobre
+// charcos válidos).
+function isSwampPoolAt(wx, wz) {
+	if (getBiome(wx, wz) !== "swamp") return false;
+	return noise2D_swamp(wx * 0.06, wz * 0.06) > 0.4;
 }
 
 function idx(x, y, z) {
@@ -531,6 +588,21 @@ function inBounds(wx, wz) {
 	return wx >= -half && wx < half && wz >= -half && wz < half;
 }
 
+// Fase 11 (Bloque B): lianas — cuelgan del borde de la copa (hasta 3
+// bloques, solo donde hay aire, sin tocar el suelo). Escritura directa
+// sobre el chunk (lx/lz son coordenadas LOCALES del chunk). El bucle solo
+// cuelga donde la celda de debajo es aire: en el interior de la copa las
+// hojas cortan la liana (break), así que las lianas salen del envés de la
+// copa hacia el suelo, como en Minecraft.
+function hangVines(data, lx, y, lz, height) {
+	const maxV = Math.max(height, y - 3);
+	for (let v = y - 1; v >= maxV; v--) {
+		const i = idx(lx, v, lz);
+		if (data[i] !== B.AIR) break;
+		data[i] = B.VINES;
+	}
+}
+
 function generateChunk(cx, cz) {
 	const key = `${cx},${cz}`;
 	if (chunks.has(key)) return chunks.get(key);
@@ -559,7 +631,10 @@ function generateChunk(cx, cz) {
 			// Fase 10 (A4): ríos — canales que cortan el terreno (los lagos
 			// siguen siendo depresiones; los ríos se hunden en el terreno natural).
 			const river = !lake && isRiver(wx, wz);
-			const waterCol = lake || river; // columna de agua (lago o río)
+			// Fase 11 (Bloque B): océano — cuencas amplias que inundan la región
+			// (más profundas que los lagos). Las tres fuentes son excluyentes.
+			const ocean = !lake && !river && isOcean(wx, wz);
+			const waterCol = lake || river || ocean; // columna de agua (lago/río/océano)
 			// En un lago el terreno se hunde hasta su fondo (profundidad variable,
 			// Fase 10 A4) y el agua llena la depresión hasta SEA_LEVEL; los ríos
 			// cortan un canal bajo el terreno natural. No hay árboles ni minerales
@@ -576,7 +651,10 @@ function generateChunk(cx, cz) {
 			);
 			const floorY = columnFloorY(wx, wz) ?? 0; // fondo del agua (columna de agua)
 			const height = waterCol ? floorY : baseHeight;
-			const biome = biomeFrom(temp, mnt);
+			// Fase 11 (Bloque B): el bioma ahora conoce la puerta de pantano
+			// (el ruido de pantano, muestreado a baja frecuencia).
+			const swampNoise = noise2D_swamp(wx * 0.005, wz * 0.005);
+			const biome = biomeFrom(temp, mnt, swampNoise);
 			const surfaceBlock = waterCol
 				? B.AIR
 				: // Fase 9 (Bloque F): playa — la costa de un lago se cubre de arena
@@ -648,9 +726,15 @@ function generateChunk(cx, cz) {
 			// bloque de superficie y deja lecho de arena debajo. Nunca sobre lagos,
 			// ni en ríos, ni en bocas de cueva, ni donde no quepa el lecho (height
 			// justo sobre el nivel del mar). El charco gana a la boca de cueva
-			// (rarísimo).
+			// (rarísimo). Fase 11 (Bloque B): en el PANTANO se añaden charcos
+			// propios — el mismo ruido de pantano a frecuencia alta decide dónde
+			// hay agua (pozas pantanosas entre la hierba, como en Minecraft).
+			const swampPool = isSwampPoolAt(wx, wz);
 			const pond =
-				!waterCol && !mouth && height > SEA_LEVEL + 1 && isPondAt(wx, wz);
+				!waterCol &&
+				!mouth &&
+				height > SEA_LEVEL + 1 &&
+				(isPondAt(wx, wz) || swampPool);
 			const lavaPond =
 				!pond &&
 				!waterCol &&
@@ -700,13 +784,51 @@ function generateChunk(cx, cz) {
 			const canGrowTree =
 				!waterCol && !mouth && !pond && !lavaPond && surfaceBlock === B.GRASS;
 			const treeRoll = Math.random();
-			if (
+			if (canGrowTree && biome === "jungle" && treeRoll < 0.09) {
+				// Árbol de jungla (Fase 11, B): tronco alto (5-8) y copa ancha y
+				// densa con lianas colgando del envés — el sello de la selva.
+				const treeHeight = 5 + Math.floor(Math.random() * 4);
+				for (let i = 0; i < treeHeight; i++) {
+					const y = height + i;
+					if (y < WORLD_HEIGHT) data[idx(x, y, z)] = B.JUNGLE_LOG;
+				}
+				for (let dx = -2; dx <= 2; dx++) {
+					for (let dz = -2; dz <= 2; dz++) {
+						for (let dy = treeHeight - 3; dy <= treeHeight + 1; dy++) {
+							// Esquinas recortadas en las dos capas superiores (copa irregular).
+							if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && dy >= treeHeight)
+								continue;
+							const lx = x + dx,
+								lz = z + dz;
+							if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE)
+								continue;
+							// Fase 9 (fix): la copa no tapa los charcos decorativos.
+							const leafWx = cx * CHUNK_SIZE + lx,
+								leafWz = cz * CHUNK_SIZE + lz;
+							if (
+								isPondAt(leafWx, leafWz) ||
+								isLavaPondAt(leafWx, leafWz) ||
+								isSwampPoolAt(leafWx, leafWz)
+							)
+								continue;
+							const y = height + dy;
+							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR) {
+								data[idx(lx, y, lz)] = B.JUNGLE_LEAVES;
+								// Lianas bajo el borde de la copa (donde hay aire debajo).
+								if (Math.abs(dx) === 2 || Math.abs(dz) === 2)
+									hangVines(data, lx, y, lz, height);
+							}
+						}
+					}
+				}
+			} else if (
 				canGrowTree &&
-				(biome === "forest" || biome === "plains") &&
-				treeRoll < (biome === "forest" ? 0.05 : 0.012)
+				(biome === "forest" || biome === "plains" || biome === "swamp") &&
+				treeRoll < (biome === "forest" ? 0.05 : biome === "swamp" ? 0.02 : 0.012)
 			) {
-				// Roble (bosque/llanura) o abedul (bosque, ~1/3): misma forma,
-				// madera distinta (tronco claro).
+				// Roble (bosque/llanura/pantano) o abedul (bosque, ~1/3): misma
+				// forma, madera distinta (tronco claro). En el pantano (Fase 11,
+				// B) los robles llevan lianas colgando del borde, como en Minecraft.
 				const birch = biome === "forest" && Math.random() < 0.33;
 				const log = birch ? B.BIRCH_LOG : B.OAK_LOG;
 				const leaves = birch ? B.BIRCH_LEAVES : B.OAK_LEAVES;
@@ -730,20 +852,32 @@ function generateChunk(cx, cz) {
 							// árboles de la Fase 9 (abedul/pino) hacía esto probable.
 							const leafWx = cx * CHUNK_SIZE + lx,
 								leafWz = cz * CHUNK_SIZE + lz;
-							if (isPondAt(leafWx, leafWz) || isLavaPondAt(leafWx, leafWz))
+							if (
+								isPondAt(leafWx, leafWz) ||
+								isLavaPondAt(leafWx, leafWz) ||
+								isSwampPoolAt(leafWx, leafWz)
+							)
 								continue;
 							const y = height + dy;
-							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR)
+							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR) {
 								data[idx(lx, y, lz)] = leaves;
+								// Pantano (Fase 11, B): lianas del borde de la copa.
+								if (
+									biome === "swamp" &&
+									(Math.abs(dx) === 2 || Math.abs(dz) === 2)
+								)
+									hangVines(data, lx, y, lz, height);
+							}
 						}
 					}
 				}
 			} else if (
 				canGrowTree &&
-				(biome === "snow" || biome === "mountain") &&
-				treeRoll < 0.02
+				(biome === "taiga" || biome === "snow" || biome === "mountain") &&
+				treeRoll < (biome === "taiga" ? 0.03 : 0.02)
 			) {
 				// Pino cónico (abeto) en frío: tronco alto y estrecho con copa cónica.
+				// En la taiga (Fase 11, B) es el árbol dominante (pinos densos).
 				const treeHeight = 5 + Math.floor(Math.random() * 4);
 				for (let i = 0; i < treeHeight; i++) {
 					const y = height + i;
@@ -767,7 +901,11 @@ function generateChunk(cx, cz) {
 							// charcos decorativos (mismo criterio que las hojas de roble).
 							const leafWx = cx * CHUNK_SIZE + lx,
 								leafWz = cz * CHUNK_SIZE + lz;
-							if (isPondAt(leafWx, leafWz) || isLavaPondAt(leafWx, leafWz))
+							if (
+								isPondAt(leafWx, leafWz) ||
+								isLavaPondAt(leafWx, leafWz) ||
+								isSwampPoolAt(leafWx, leafWz)
+							)
 								continue;
 							const y = height + dy;
 							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR)
@@ -946,6 +1084,20 @@ function settleColumn(wx, wy, wz) {
 	}
 }
 
+// Fase 11 (C): fuente de agua infinita — nº de fuentes de agua ORTOGONALES
+// adyacentes a una celda. Regla de Minecraft: si se retira un bloque de agua
+// con ≥2 vecinas de agua, se rellena solo (la 2×2 con 3 fuentes y el canal de
+// 1×3 con las dos puntas nunca se agotan; la única vía de retirarla es colocar
+// un bloque sólido encima).
+function countWaterNeighbors(wx, wy, wz) {
+	let n = 0;
+	if (getBlock(wx + 1, wy, wz) === B.WATER) n++;
+	if (getBlock(wx - 1, wy, wz) === B.WATER) n++;
+	if (getBlock(wx, wy, wz + 1) === B.WATER) n++;
+	if (getBlock(wx, wy, wz - 1) === B.WATER) n++;
+	return n;
+}
+
 function setBlock(wx, wy, wz, blockId) {
 	if (wy < 0 || wy >= WORLD_HEIGHT) return false;
 	// Fase 10 (B1): no colocar fuera de los límites del mundo.
@@ -1008,6 +1160,8 @@ module.exports = {
 	isLake,
 	isRiver,
 	lakeFloorY,
+	isOcean,
+	oceanFloorY,
 	columnFloorY,
 	SEA_LEVEL,
 	LAKE_FLOOR,
@@ -1015,5 +1169,6 @@ module.exports = {
 	MOUNTAIN_THRESHOLD,
 	MOUNTAIN_SNOW_LINE,
 	torchSupported,
-	cleanUnsupportedTorches
+	cleanUnsupportedTorches,
+	countWaterNeighbors
 };

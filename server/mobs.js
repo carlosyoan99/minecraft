@@ -798,6 +798,33 @@ function canFeed(mob, itemId) {
 	return "ok";
 }
 
+// ============================================================
+// ESQUILEO (Fase 11, C): tijeras + clic derecho → lana sin matar
+// La oveja queda esquilada (no se puede repetir hasta que le crece el
+// pelo: SHEAR_REGROW_MS) y suelta 1-3 de lana blanca (la oveja base es
+// blanca; el tinte de ovejas queda fuera del alcance de la Fase 11).
+// ============================================================
+const SHEARS_ITEM = 141; // constants.I.SHEARS (evitar require circular)
+const SHEAR_REGROW_MS = 120000; // 2 min para que el pelo vuelva a crecer
+const SHEAR_RANGE = 4; // distancia máxima para esquilar (bloques)
+
+// ¿Se puede esquilar a este mob con el ítem? 'ok' o el motivo del rechazo.
+function canShear(mob, itemId) {
+	if (mob.type !== "sheep") return "notsheep";
+	if (mob.isBaby) return "baby";
+	if (!mob.alive) return "dead";
+	if (itemId !== SHEARS_ITEM) return "wrongitem";
+	if (mob.shearedUntil && mob.shearedUntil > Date.now()) return "sheared";
+	return "ok";
+}
+
+// Esquilar: marca el momento en que volverá a crecer y devuelve cuánta
+// lana (1-3) se añade al inventario del jugador (la entrega la hace net.js).
+function applyShear(mob) {
+	mob.shearedUntil = Date.now() + SHEAR_REGROW_MS;
+	return 1 + Math.floor(Math.random() * 3);
+}
+
 // Alimentar al mob: entra en modo amor y busca pareja del mismo tipo ya
 // alimentada cerca. Si la encuentra, cría un bebé entre ambos (los padres
 // entran en cooldown) y lo devuelve; si no, espera hasta LOVE_WINDOW_MS.
@@ -869,6 +896,9 @@ module.exports = {
 	mobDrops,
 	canFeed,
 	applyFeed,
+	canShear,
+	applyShear,
+	SHEAR_RANGE,
 	getSafeSpawn,
 	setSpawnSafeRadius,
 	tickArrows,

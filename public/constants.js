@@ -63,7 +63,11 @@ export const BLOCK_COLORS = {
 	37: 0xe8c547, // lana amarilla (Fase 9, F)
 	38: 0xf5f5f0, // lana blanca (Fase 9, F)
 	39: 0x8a8a88, // grava (Fase 10, D1): tono apagado, distinto de la piedra
-	40: 0xd43d2a // TNT (Fase 10, D2): rojo explosivo
+	40: 0xd43d2a, // TNT (Fase 10, D2): rojo explosivo
+	// Fase 11 (Bloque B): bloques de los biomas nuevos
+	41: 0x7a4a1f, // tronco de jungla (marrón oscuro tropical)
+	42: 0x2f7a2a, // hojas de jungla (verde denso)
+	43: 0x3f8f3a // liana (verde colgante)
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -105,7 +109,11 @@ export const BLOCK_NAMES = {
 	37: "Lana amarilla", // Fase 9 (F)
 	38: "Lana blanca", // Fase 9 (F)
 	39: "Grava", // Fase 10 (D1): con gravedad
-	40: "TNT" // Fase 10 (D2): explota al activarse
+	40: "TNT", // Fase 10 (D2): explota al activarse
+	// Fase 11 (Bloque B): biomas nuevos
+	41: "Tronco de jungla", // jungla
+	42: "Hojas de jungla", // jungla
+	43: "Liana" // jungla/pantano (no sólida, decorativa)
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
@@ -201,6 +209,7 @@ export const ITEM_NAMES = {
 	138: "Tinte amarillo", // Fase 9 (F): del diente de león
 	139: "Harina de hueso", // Fase 9 (F): de hueso (tinte blanco)
 	140: "Miel", // Fase 9 (F): botín de cofres
+	141: "Tijeras", // Fase 11 (C): esquilan ovejas
 	220: "Casco de cuero",
 	221: "Pechera de cuero",
 	222: "Pantalones de cuero",
@@ -248,10 +257,12 @@ export const PLACEABLE_BLOCKS = new Set([
 	// Fase 9 (F): bloques nuevos colocables
 	28, 29, 30, 31, 32, 36, 37, 38,
 	// Fase 10 (D1/D2): grava y TNT
-	39, 40
+	39, 40,
+	// Fase 11 (Bloque B): jungla y lianas
+	41, 42, 43
 ]);
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
-export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35]);
+export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43]); // 43 = lianas (Fase 11, B)
 // Armadura equipable (Fase 7): clic derecho con la pieza en mano la equipa.
 // No se apilan (cada pieza con su durabilidad, como las herramientas).
 export const ARMOR_ITEMS = new Set([

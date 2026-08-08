@@ -360,6 +360,63 @@ export function playFeed() {
 }
 
 // ============================================================
+// MOBS (Fase 11, C): siseo del creeper y balido de la oveja
+// ============================================================
+
+// Siseo de mecha del creeper: ráfaga de ruido blanco filtrada en agudo con
+// frecuencia ASCENDENTE (el "fssss" que sube de tono mientras silba antes de
+// explotar). Se dispara una vez al empezar el fuse (public/mobs.js).
+export function playCreeperHiss() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	const src = ctx.createBufferSource();
+	src.buffer = getNoiseBuffer();
+	src.loop = false;
+	const f = ctx.createBiquadFilter();
+	f.type = "bandpass";
+	f.frequency.setValueAtTime(1700, t);
+	f.frequency.exponentialRampToValueAtTime(3400, t + 0.5);
+	f.Q.value = 1.1;
+	const g = ctx.createGain();
+	g.gain.setValueAtTime(0.0001, t);
+	g.gain.exponentialRampToValueAtTime(0.16, t + 0.03);
+	g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+	src.connect(f);
+	f.connect(g);
+	g.connect(sfxGain);
+	src.start(t);
+	src.stop(t + 0.6);
+}
+
+// Balido de la oveja: dos osciladores "sawtooth" suaves y desafinados con
+// paso grave que cae (voz gutural de oveja). Sonido ambiental raro.
+export function playSheepBaa() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	for (const [f0, f1, vol] of [
+		[340, 205, 0.13],
+		[452, 275, 0.09]
+	]) {
+		const osc = ctx.createOscillator();
+		osc.type = "sawtooth";
+		osc.frequency.setValueAtTime(f0 * pitchVar(), t);
+		osc.frequency.exponentialRampToValueAtTime(f1 * pitchVar(), t + 0.28);
+		const f = ctx.createBiquadFilter();
+		f.type = "lowpass";
+		f.frequency.value = 900;
+		const g = ctx.createGain();
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
+		g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+		osc.connect(f);
+		f.connect(g);
+		g.connect(sfxGain);
+		osc.start(t);
+		osc.stop(t + 0.36);
+	}
+}
+
+// ============================================================
 // PASOS (alternan sutilmente de tono)
 // ============================================================
 let stepAlt = false;

@@ -220,10 +220,22 @@ volver a una semilla anterior recupera su mundo).
   AO por vértice, agua mejorada, niebla submarina, nubes que se
   desplazan, música generativa por bioma/cueva y más sonidos (TNT,
   cofres, vidrio).
+- **Fase 11 — Bugs de input y cámara, biomas, paridad y tests** (ver
+  `TODO.md` y `docs/fase11-spec.md`): **causa raíz del clic roto**
+  (pointer lock sobre `document.body` en vez del canvas — los eventos
+  de ratón nunca llegaban a `input.js`; auditado con CDP 6/6), cámara
+  sin vueltas (clamp `PITCH_LIMIT` redundante eliminado + test de
+  regresión), resaltado del  bloque apuntado, spawn nunca en agua
+  (ríos/océanos), 4 biomas nuevos (Taiga con abetos, Pantano con
+  charcos y lianas, Jungla con árboles 2×2, Océano con islas — bloques
+  propios 41-43, `SCHEMA_VERSION` 4), esquilar ovejas (tijeras 141),
+  bonemeal, fuente de agua infinita, siseo de creeper y balido de
+  oveja, y cierre de tests (`unit-fase11.js` cubre gravedad, TNT,
+  mundo-size y `/kill` de Fase 10 + las mecánicas nuevas).
 
 ### 🚧 En desarrollo
 
-*(Todas las fases 0-10 completadas y auditadas. La próxima fase se
+*(Todas las fases 0-11 completadas y auditadas. La próxima fase se
 planificará en `TODO.md`.)*
 
 ### ❌ Fuera de alcance (Won't)

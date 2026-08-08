@@ -9,6 +9,7 @@
 // raycast de combate (input.js intersecta los hijos y sube al raíz).
 // ============================================================
 import * as THREE from "three";
+import { playCreeperHiss, playSheepBaa } from "./audio.js";
 import { getMobAtlas, MOB_PARTS, mobPartRects } from "./mobtextures.js";
 import { scene } from "./scene.js";
 
@@ -267,11 +268,13 @@ export function updateMobs(list) {
 		// Fase 9 (Bloque D): creeper en fuse — el servidor manda `fuse: 1`
 		// mientras silba antes de explotar; el cliente agranda y aclara el mob
 		// para que "se hinche" como en Minecraft (adelanto de la explosión).
+		// Fase 11 (C4): al EMPEZAR el fuse suena el siseo de mecha.
 		const fusing = !!m.fuse;
 		if (fusing && !mesh.userData.fusing) {
 			mesh.userData.fusing = true;
 			mesh.scale.set(s * 1.25, s * 1.25, s * 1.25);
 			if (material) material.color.setHex(0xffffff);
+			if (m.type === "creeper") playCreeperHiss();
 		} else if (!fusing && mesh.userData.fusing) {
 			mesh.userData.fusing = false;
 			mesh.scale.set(s, s, s);
@@ -281,6 +284,10 @@ export function updateMobs(list) {
 				);
 			}
 		}
+		// Fase 11 (C4): balido ambiental de las ovejas — raro, con probabilidad
+		// por snapshot (los mobs_update llegan varias veces por segundo; un
+		// 0.002 da ~1 balido cada ~30-60s por oveja visible).
+		if (m.type === "sheep" && Math.random() < 0.002) playSheepBaa();
 	}
 	for (const [id, mesh] of mobMeshes) {
 		if (!seen.has(id)) {

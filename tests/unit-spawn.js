@@ -62,11 +62,14 @@ const a = world.findSpawn(3, -7),
 check("findSpawn es determinista", a.x === b.x && a.y === b.y && a.z === b.z);
 
 // --- 4) Una columna firme se mantiene en su sitio (sin regresión) ---
-// Buscamos una columna que NO sea lago y comprobamos que findSpawn no la mueve.
+// Buscamos una columna SECA y comprobamos que findSpawn no la mueve.
+// Fase 11: findSpawn evita TODA columna de agua (lago, río y océano —
+// columnFloorY !== null), no solo los lagos; el test debe usar la misma
+// noción de firmeza que el servidor para no elegir una columna oceánica.
 let firme = null;
 for (let dx = -20; dx <= 20 && !firme; dx++) {
 	for (let dz = -20; dz <= 20 && !firme; dz++) {
-		if (!world.isLake(dx, dz)) firme = { x: dx, z: dz };
+		if (world.columnFloorY(dx, dz) === null) firme = { x: dx, z: dz };
 	}
 }
 const f = world.findSpawn(firme.x, firme.z);

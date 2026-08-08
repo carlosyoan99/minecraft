@@ -140,7 +140,10 @@ function sanitizeGamemode(raw) {
 	return GAMEMODES.has(raw) ? raw : "survival";
 }
 
-const SCHEMA_VERSION = 3; // versión actual del formato de guardado
+const SCHEMA_VERSION = 4; // versión actual del formato de guardado
+// Fase 11 (Bloque B): 3 → 4 — se añadieron bloques nuevos (jungla/pantano),
+// sin cambio de estructura del guardado (los chunks viejos v3 cargan igual:
+// simplemente no contienen los bloques nuevos; se regeneran al explorar).
 // Layout antiguo (v2 pre-semilla, todo en la raíz de world/) que se migra al
 // directorio de la semilla al arrancar (save.migrateWorldLayout()).
 const LEGACY_ROOT_FILES = [
@@ -209,7 +212,11 @@ const B = {
 	WHITE_WOOL: 38,
 	// Fase 10 (D1/D2): bloques con gravedad y explosivo
 	GRAVEL: 39, // cae si no tiene soporte (como la arena)
-	TNT: 40 // explota al activarse (clic derecho o reacción en cadena)
+	TNT: 40, // explota al activarse (clic derecho o reacción en cadena)
+	// Fase 11 (Bloque B): bloques de los biomas nuevos — jungla y pantano
+	JUNGLE_LOG: 41, // tronco de jungla (árboles de jungla)
+	JUNGLE_LEAVES: 42, // hojas de jungla
+	VINES: 43 // liana (no sólida, decorativa; cuelga de las copas)
 };
 
 // Bloques con gravedad (Fase 10, D1): caen si el bloque de debajo no es
@@ -253,6 +260,7 @@ const I = {
 	YELLOW_DYE: 138, // tinte amarillo (del diente de león)
 	BONE_MEAL: 139, // harina de hueso (de hueso) — tinte blanco
 	HONEY: 140, // miel: botín de cofres de loot (versión simplificada de las abejas)
+	SHEARS: 141, // tijeras (Fase 11, C): esquilan ovejas (lana sin matar)
 	// Armadura (Fase 7): casco, pechera, pantalones y botas × 3 materiales
 	LEATHER_HELMET: 220,
 	LEATHER_CHESTPLATE: 221,
@@ -331,7 +339,13 @@ function worldSizeBlocks() {
 const NOT_MINEABLE = new Set([B.AIR, B.BEDROCK, B.WATER, B.LAVA]); // agua/lava no se pueden romper a mano (sin cubo)
 // Bloques NO sólidos (Fase 9): cultivos, hierba alta y flores se atraviesan
 // y se rompen al instante (como plantas).
-const NON_SOLID_PLANTS = new Set([B.WHEAT, B.TALL_GRASS, B.POPPY, B.DANDELION]);
+const NON_SOLID_PLANTS = new Set([
+	B.WHEAT,
+	B.TALL_GRASS,
+	B.POPPY,
+	B.DANDELION,
+	B.VINES // Fase 11 (Bloque B): las lianas cuelgan y se atraviesan (como las plantas)
+]);
 // Sólido para física/validación: el agua no es sólida (se nada en ella), la
 // antorcha/cama tampoco (se atraviesan) y las plantas (Fase 9) tampoco.
 const isSolidBlock = (id) =>
@@ -391,6 +405,8 @@ const BLOCK_HARDNESS = {
 	[B.OAK_LEAVES]: 0.2,
 	[B.BIRCH_LEAVES]: 0.2,
 	[B.SPRUCE_LEAVES]: 0.2,
+	[B.JUNGLE_LEAVES]: 0.2, // Fase 11 (Bloque B)
+	[B.VINES]: 0.05, // Fase 11 (Bloque B): las lianas se rompen al instante
 	[B.GLASS]: 0.3,
 	[B.SNOW]: 0.2,
 	[B.SAND]: 0.5,
@@ -407,6 +423,7 @@ const BLOCK_HARDNESS = {
 	[B.OAK_LOG]: 2.0,
 	[B.BIRCH_LOG]: 2.0,
 	[B.SPRUCE_LOG]: 2.0,
+	[B.JUNGLE_LOG]: 2.0, // Fase 11 (Bloque B)
 	[B.CRAFTING_TABLE]: 2.5,
 	[B.CHEST]: 2.5,
 	[B.FURNACE]: 3.5,
@@ -463,6 +480,7 @@ const BLOCK_CATEGORY = {
 	[B.OAK_LOG]: "wood",
 	[B.BIRCH_LOG]: "wood",
 	[B.SPRUCE_LOG]: "wood",
+	[B.JUNGLE_LOG]: "wood", // Fase 11 (Bloque B)
 	[B.GRASS]: "dirt",
 	[B.DIRT]: "dirt",
 	[B.FARMLAND]: "dirt",
@@ -709,6 +727,10 @@ const CREATIVE_ITEMS = [
 	// Fase 10 (D1/D2): grava (con gravedad) y TNT
 	B.GRAVEL,
 	B.TNT,
+	// Fase 11 (Bloque B): bloques de los biomas nuevos
+	B.JUNGLE_LOG,
+	B.JUNGLE_LEAVES,
+	B.VINES,
 	// Minerales y materiales
 	B.COAL_ORE,
 	B.IRON_ORE,
@@ -728,7 +750,9 @@ const CREATIVE_ITEMS = [
 	I.LEATHER,
 	I.WHEAT,
 	I.CARROT,
-	I.SEEDS
+	I.SEEDS,
+	// Fase 11 (C): tijeras (esquilar ovejas)
+	I.SHEARS
 ];
 // Todos los ítems/armas/herramientas del juego (para el picker creativo).
 const ALL_TOOLS_AND_ARMOR = [

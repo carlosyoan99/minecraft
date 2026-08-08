@@ -519,6 +519,47 @@ function drawTnt(ctx, _rng) {
 	rect(ctx, 12, 6, 2, 2, "#222");
 }
 
+// ============================================================
+// FASE 11 (Bloque B): TESELAS DE JUNGLA Y LIANAS
+// Tronco de jungla: corteza marrón oscuro tropical con vetas verticales
+// (más contrastado que el roble) y médula clara en la tapa. Hojas de
+// jungla: verde denso y húmedo (selva). Liana: tira verde colgante con
+// fondo transparente (se dibuja como cross-quad, como las plantas Fase 9).
+// ============================================================
+function drawJungleLogSide(ctx, rng) {
+	fill(ctx, "#7a4a1f");
+	for (let x = 0; x < TILE; x += 3) rect(ctx, x, 0, 1, TILE, "#5a3512");
+	speckle(ctx, rng, "#8a5a2a", 0.05);
+	rect(ctx, 7, 0, 2, TILE, "#6a3f18"); // veta oscura
+}
+function drawJungleLogTop(ctx, _rng) {
+	fill(ctx, "#7a4a1f");
+	rect(ctx, 2, 2, 12, 12, "#c9a46b");
+	rect(ctx, 4, 4, 8, 8, "#d9b884");
+	rect(ctx, 6, 6, 4, 4, "#b8905a");
+	rect(ctx, 1, 1, 14, 1, "#5a3512");
+	rect(ctx, 1, 14, 14, 1, "#5a3512");
+}
+function drawJungleLeaves(ctx, rng) {
+	fill(ctx, "#2f7a2a");
+	speckle(ctx, rng, "#1f5f1c", 0.22);
+	speckle(ctx, rng, "#4a9a40", 0.12);
+}
+function drawVines(ctx, rng) {
+	// Liana colgante: dos tiras verticales con hojitas (fondo transparente:
+	// el canvas no se rellena, como en las plantas de la Fase 9).
+	vline(ctx, 7, 0, 15, "#2f7a2a");
+	vline(ctx, 9, 0, 15, "#3a8a32");
+	for (let i = 0; i < 5; i++) {
+		const y = 2 + Math.floor(rng() * 12);
+		px(ctx, 5 + Math.floor(rng() * 6), y, "#4a9a40");
+	}
+	px(ctx, 6, 3, "#4a9a40");
+	px(ctx, 10, 7, "#4a9a40");
+	px(ctx, 6, 11, "#4a9a40");
+	px(ctx, 10, 13, "#4a9a40");
+}
+
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
 	drawDirt, // 0  tierra
@@ -571,7 +612,11 @@ const TILES = [
 	makeWool("#e8c547", "#f5e07a", "#b8860b"), // 47 lana amarilla
 	makeWool("#f5f5f0", "#ffffff", "#d9d9d2"), // 48 lana blanca
 	drawGravel, // 49 grava (Fase 10, D1)
-	drawTnt // 50 TNT (Fase 10, D2)
+	drawTnt, // 50 TNT (Fase 10, D2)
+	drawJungleLogSide, // 51 tronco de jungla (lado) (Fase 11, B)
+	drawJungleLogTop, // 52 tronco de jungla (arriba/abajo)
+	drawJungleLeaves, // 53 hojas de jungla
+	drawVines // 54 liana (cross)
 ];
 
 // Tesela por bloque y cara. Orden de FACES (ver world.js):
@@ -616,7 +661,10 @@ const BLOCK_TEX = {
 	37: { all: 47 }, // lana amarilla
 	38: { all: 48 }, // lana blanca
 	39: { all: 49 }, // grava (Fase 10, D1)
-	40: { all: 50 } // TNT (Fase 10, D2)
+	40: { all: 50 }, // TNT (Fase 10, D2)
+	41: { top: 52, bottom: 52, side: 51 }, // tronco de jungla (Fase 11, B)
+	42: { all: 53 }, // hojas de jungla
+	43: { all: 54 } // liana (cross)
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

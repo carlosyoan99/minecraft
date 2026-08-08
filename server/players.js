@@ -79,6 +79,12 @@ function addToInventory(player, itemId, count = 1, durability) {
 // ============================================================
 function finishMining(player, x, y, z, block, opts = {}) {
 	world.setBlock(x, y, z, B.AIR);
+	// Fase 11 (C): fuente de agua infinita — si se retira un bloque de agua
+	// (solo ocurre en creative: en survival el agua es irrompible) con ≥2
+	// fuentes ortogonales adyacentes, se rellena solo (regla de Minecraft:
+	// la 2×2 nunca se agota; para limpiarla hay que colocar un sólido).
+	if (block === B.WATER && world.countWaterNeighbors(x, y, z) >= 2)
+		world.setBlock(x, y, z, B.WATER);
 	// Cofre roto: el bloque cae como item; su contenido se pierde (en este
 	// juego no hay entidades de item en el suelo — simplificación documentada
 	// en TODO.md). Se hace ANTES del camino creative (que no dropea).

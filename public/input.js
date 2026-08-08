@@ -8,6 +8,7 @@ import {
 	ARMOR_ITEMS,
 	BED,
 	BREED_FOOD,
+	EYE_HEIGHT,
 	FARMLAND,
 	FOOD_ITEMS,
 	HOES,
@@ -37,7 +38,9 @@ import {
 	chunkMeshes,
 	getClientBlock,
 	hideCrack,
+	hideHighlight,
 	lodMeshes,
+	setHighlightedBlock,
 	showCrack
 } from "./world.js";
 
@@ -144,15 +147,40 @@ raycaster.far = 7;
 // o soltar el puntero cancela la mina.
 let miningTarget = null; // {x,y,z} del bloque que se está minando
 
+// ============================================================
+// RESALTADO DEL BLOQUE APUNTADO (Fase 11, Bloque A1)
+// Contorno negro sobre el bloque objetivo, actualizado con cada movimiento
+// del ratón (la mira solo cambia con el ratón; al caminar sin moverlo el
+// objetivo no cambia y el siguiente movimiento lo refresca). Los mobs NO se
+// resaltan (como en Minecraft). Misma derivación x/y/z que el clic: el
+// bloque detrás de la cara golpeada → el resaltado coincide SIEMPRE con lo
+// que el clic va a minar/colocar.
+// ============================================================
+function updateHighlight(hit) {
+	if (!controls.isLocked || !hit || mobRootData(hit)) {
+		hideHighlight();
+		return;
+	}
+	const point = hit.point.clone().addScaledVector(hit.face.normal, -0.5);
+	setHighlightedBlock(
+		Math.floor(point.x),
+		Math.floor(point.y),
+		Math.floor(point.z)
+	);
+}
+
 function startMiningAt(x, y, z) {
 	const target = getClientBlock(x, y, z);
 	// Mesa de crafteo/horno/cofre se abren con clic (no se minan así); el agua
-	// no se rompe sin cubo (sin feedback falso). Bloques desconocidos (-1): no minar.
+	// no se rompe en survival sin cubo (sin feedback falso), pero EN CREATIVE sí
+	// (Fase 11, C3: fuente de agua infinita — el servidor rellena las fuentes
+	// con 2+ vecinas, así que el agua colocada en 2x2 nunca se agota).
+	// Bloques desconocidos (-1): no minar.
 	if (
 		target === 15 ||
 		target === 16 ||
 		target === 22 ||
-		target === WATER ||
+		(target === WATER && !isCreative()) ||
 		target === -1
 	) {
 		const last = miningTrace[miningTrace.length - 1];
@@ -279,12 +307,98 @@ const raycastStats = {
 };
 window.__mcMiningTrace = miningTrace;
 window.__mcRaycastStats = raycastStats;
+// Fase 11 (Bloque A): contexto ampliado del raycast para confirmar la causa
+// del clic roto. Además del raycast forzado, reporta: posición y dirección de
+// la cámara, meshes REALES en la escena (vs los mapas), estado del pointer
+// lock, qué elemento DOM recibe el clic en el centro (H2: overlay invisible)
+// y el estado del menú #blocker.
+function countMeshesInScene(obj) {
+	let n = 0;
+	if (!obj) return 0;
+	obj.traverse((o) => {
+		if (o.isMesh) n++;
+	});
+	return n;
+}
+// El bloque bajo el punto de mira: si el raycast falla (0 hits), se lee la
+// columna central de la cámara hasta `far` para saber si hay terreno delante
+// (distinguir «raycast roto» de «no hay bloques a ≤7»).
+function blockAlongView() {
+	const dir = camera.getWorldDirection(new THREE.Vector3());
+	const origin = camera.position;
+	for (let d = 1; d <= raycaster.far; d += 0.25) {
+		const x = Math.floor(origin.x + dir.x * d);
+		const y = Math.floor(origin.y + dir.y * d);
+		const z = Math.floor(origin.z + dir.z * d);
+		const b = getClientBlock(x, y, z);
+		if (b !== 0 && b !== -1) return { d: +d.toFixed(2), x, y, z, block: b };
+	}
+	return null;
+}
+// Sondeo del terreno alrededor del jugador (Fase 11, Bloque A): bloque bajo
+// los pies y barrido horizontal de 8 direcciones a la altura de los pies +0.5
+// hasta `far`. Distingue «raycast roto» de «spawn en lago sin bloques a ≤7».
+function terrainAround() {
+	const feet = camera.position.y - EYE_HEIGHT;
+	const under = getClientBlock(
+		Math.floor(camera.position.x),
+		Math.floor(feet - 0.1),
+		Math.floor(camera.position.z)
+	);
+	const dirs = {};
+	for (const [name, dx, dz] of [
+		["-Z", 0, -1],
+		["+Z", 0, 1],
+		["-X", -1, 0],
+		["+X", 1, 0],
+		["-X-Z", -0.7, -0.7],
+		["+X-Z", 0.7, -0.7],
+		["-X+Z", -0.7, 0.7],
+		["+X+Z", 0.7, 0.7]
+	]) {
+		dirs[name] = null;
+		for (let d = 1; d <= raycaster.far; d += 0.25) {
+			const b = getClientBlock(
+				Math.floor(camera.position.x + dx * d),
+				Math.floor(feet + 0.5),
+				Math.floor(camera.position.z + dz * d)
+			);
+			if (b !== 0 && b !== -1) {
+				dirs[name] = { d: +d.toFixed(2), block: b };
+				break;
+			}
+		}
+	}
+	return { feet: +feet.toFixed(2), underFeet: under, dirs };
+}
 window.__mcDebugMining = () => {
 	const hit = raycastTerrainAndMobs();
 	const root = mobRootData(hit);
+	const dir = camera.getWorldDirection(new THREE.Vector3());
+	const cx = Math.floor(window.innerWidth / 2);
+	const cy = Math.floor(window.innerHeight / 2);
+	const atCenter = document.elementFromPoint(cx, cy);
 	const detail = {
 		locked: controls.isLocked,
+		pointerLocked: document.pointerLockElement !== null,
 		stats: { ...raycastStats },
+		camera: {
+			x: +camera.position.x.toFixed(2),
+			y: +camera.position.y.toFixed(2),
+			z: +camera.position.z.toFixed(2),
+			dir: [+dir.x.toFixed(2), +dir.y.toFixed(2), +dir.z.toFixed(2)]
+		},
+		sceneMeshes: countMeshesInScene(scene),
+		mapMeshes: chunkMeshes.size + lodMeshes.size + mobMeshes.size,
+		elementAtCenter: atCenter
+			? `${atCenter.tagName.toLowerCase()}#${atCenter.id}`
+			: null,
+		blockerDisplay: (() => {
+			const b = document.getElementById("blocker");
+			return b ? getComputedStyle(b).display : "sin blocker";
+		})(),
+		blockAlongView: blockAlongView(),
+		terrainAround: terrainAround(),
 		firstHit: hit
 			? {
 					dist: +hit.distance.toFixed(2),
@@ -352,6 +466,7 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 
 	const held = getHeldItem();
 	const hit = raycastTerrainAndMobs();
+	updateHighlight(hit); // el objetivo queda resaltado al clicar (o se oculta)
 
 	// Fase 8 (B10): tolerancia de apuntado — si el rayo golpea el terreno (o el
 	// vacío) pero hay un mob DELANTE (proyección sobre el rayo, desviación
@@ -398,6 +513,14 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 		) {
 			playFeed();
 			send("feed_mob", { mobId: hitMob.id });
+		} else if (
+			e.button === 2 &&
+			held &&
+			held.id === 141 &&
+			hitMob.type === "sheep"
+		) {
+			// Fase 11 (C): tijeras (141) sobre una oveja → esquilar (lana sin matar)
+			send("shear_mob", { mobId: hitMob.id });
 		}
 		return;
 	}
@@ -428,6 +551,15 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	// con semillas sobre tierra arada → plantar. Antes de intentar colocar.
 	if (e.button === 2 && held) {
 		const targetBlock = getClientBlock(x, y, z);
+		// Fase 11 (C2): harina de hueso (139) sobre trigo (27, madura en salto)
+		// o sobre tierra/césped (1/2, crea vegetación encima) — como Minecraft.
+		if (
+			held.id === 139 &&
+			(targetBlock === 27 || targetBlock === 1 || targetBlock === 2)
+		) {
+			send("bonemeal", { x, y, z });
+			return;
+		}
 		if (
 			HOES.has(held.id) &&
 			(targetBlock === DIRT_BLOCK || targetBlock === GRASS_BLOCK)
@@ -493,6 +625,14 @@ renderer.domElement.addEventListener("mouseup", (e) => {
 	if (e.button === 0) stopMining();
 });
 
+// Resaltado del bloque apuntado: se actualiza en CADA pointermove mientras
+// el puntero está bloqueado (el objetivo cambia con la mira). Independiente
+// de la mina en curso: el contorno también se ve sin mantener el clic.
+renderer.domElement.addEventListener("pointermove", () => {
+	if (!controls.isLocked) return;
+	updateHighlight(raycastTerrainAndMobs());
+});
+
 // Mientras se mantiene pulsado: si el jugador mira a otro bloque, la mina se
 // retargetea (cancelar la anterior + empezar la nueva); si mira al vacío o a
 // un mob, se cancela.
@@ -515,7 +655,10 @@ renderer.domElement.addEventListener("pointermove", () => {
 
 // Si se pierde el pointer lock (Escape/menú), cancelar la mina también.
 document.addEventListener("pointerlockchange", () => {
-	if (!document.pointerLockElement) stopMining();
+	if (!document.pointerLockElement) {
+		stopMining();
+		hideHighlight();
+	}
 });
 
 renderer.domElement.addEventListener("contextmenu", (e) => e.preventDefault());

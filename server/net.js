@@ -1084,6 +1084,55 @@ function handleConnection(ws, req) {
 				break;
 			}
 
+			case "shear_mob": {
+				// Fase 11 (C): esquilar una oveja con tijeras — clic derecho da lana
+				// sin matar al animal (la oveja queda esquilada hasta que le crece
+				// el pelo). El servidor valida distancia, ítem y estado.
+				const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
+				if (!mob) return;
+				if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > mobs.SHEAR_RANGE)
+					return;
+				const held = p.inventory[p.selectedSlot];
+				if (!held || held.id !== I.SHEARS) return;
+				if (mobs.canShear(mob, held.id) !== "ok") return;
+				const woolCount = mobs.applyShear(mob);
+				playerHelpers.addToInventory(p, B.WHITE_WOOL, woolCount);
+				playerHelpers.sendInventory(p);
+				break;
+			}
+
+			case "bonemeal": {
+				// Fase 11 (C): harina de hueso — sobre trigo lo madura en salto
+				// (avanza etapas hasta 7); sobre césped/tierra crea vegetación
+				// encima (hierba alta o una flor). Consume 1 harina; el servidor
+				// valida el ítem y la distancia.
+				if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) break;
+				const held = p.inventory[p.selectedSlot];
+				if (!held || held.id !== I.BONE_MEAL) break;
+				const block = world.getBlock(data.x, data.y, data.z);
+				if (block === B.WHEAT) {
+					const key = `${data.x},${data.y},${data.z}`;
+					const crop = state.crops.get(key) || { stage: 0, plantedAt: Date.now() };
+					crop.stage = Math.min(7, crop.stage + 2 + Math.floor(Math.random() * 3));
+					state.crops.set(key, crop);
+				} else if (block === B.GRASS || block === B.DIRT) {
+					const above = world.getBlock(data.x, data.y + 1, data.z);
+					if (above !== B.AIR) break;
+					const r = Math.random();
+					world.setBlock(
+						data.x,
+						data.y + 1,
+						data.z,
+						r < 0.5 ? B.TALL_GRASS : r < 0.75 ? B.POPPY : B.DANDELION
+					);
+				} else {
+					break;
+				}
+				if (!playerHelpers.removeFromInventory(p, I.BONE_MEAL, 1)) break;
+				playerHelpers.sendInventory(p);
+				break;
+			}
+
 			case "chat": {
 				if (typeof data.message !== "string") break;
 				// Fase 6: los mensajes que empiezan por '/' son comandos de la consola
