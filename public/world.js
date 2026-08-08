@@ -1206,7 +1206,38 @@ export function rebuildAround(wx, wz) {
 	}
 }
 
+// Fase 14 (M4): ¿hay una antorcha conocida dentro del radio de luz (caja
+// horizontal 2*LIGHT_RADIUS+1 centrada en el bloque) que pueda verse
+// afectada por este cambio de bloque NO-antorcha? Solo la luz que puede
+// cruzar un borde de chunk (o un borde entre bloques) necesita un re-horneado
+// de vecinos; sin antorchas cerca, rebuildAffectedChunks basta. La BFS de
+// lighting.js se difracta arriba/abajo, así que se usa la distancia 3D.
+export function hasTorchNear(wx, wy, wz) {
+	const r = LIGHT_RADIUS;
+	const x0 = wx - r,
+		x1 = wx + r,
+		z0 = wz - r,
+		z1 = wz + r,
+		y0 = wy - r,
+		y1 = wy + r;
+	for (const t of torchSet.values()) {
+		if (
+			t[0] >= x0 && t[0] <= x1 &&
+			t[1] >= y0 && t[1] <= y1 &&
+			t[2] >= z0 && t[2] <= z1
+		)
+			return true;
+	}
+	return false;
+}
+
 export function loadChunkData(chunkData) {
+	// Fase 14 (M3): vecinos ya presentes ANTES de este lote. Al llegar un
+	// chunk nuevo que completa el borde de un vecino anterior, ese vecino ya
+	// horneó sus caras mirando al vacío → necesita rebuild. Las reconstrucciones
+	// en cascada durante un init masivo (todos nuevos) se evitan: solo se
+	// reconstruyen los que YA estaban en chunkStore al empezar el lote.
+	const existingNeighbors = new Set(chunkStore.keys());
 	for (const [key, arr] of Object.entries(chunkData)) {
 		// Fase 7: no construir chunks fuera de la distancia de render elegida
 		const [cx, cz] = key.split(",").map(Number);
@@ -1225,6 +1256,18 @@ export function loadChunkData(chunkData) {
 			}
 		}
 		rebuildChunk(key);
+		// Fase 14 (M3): reconstruir el vecino previo para que reaparezcan las
+		// caras del borde que miraba al hueco (mismo orden Chebyshev con el que
+		// el cliente geura/filtra; las diagonales no comparten cara).
+		for (const [dx, dz] of [
+			[1, 0],
+			[-1, 0],
+			[0, 1],
+			[0, -1]
+		]) {
+			const nk = `${cx + dx},${cz + dz}`;
+			if (existingNeighbors.has(nk)) rebuildChunk(nk);
+		}
 	}
 }
 

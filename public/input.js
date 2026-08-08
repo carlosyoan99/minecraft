@@ -670,20 +670,19 @@ renderer.domElement.addEventListener("mouseup", (e) => {
 	if (e.button === 0) stopMining();
 });
 
-// Resaltado del bloque apuntado: se actualiza en CADA pointermove mientras
-// el puntero está bloqueado (el objetivo cambia con la mira). Independiente
-// de la mina en curso: el contorno también se ve sin mantener el clic.
+// Resaltado del bloque apuntado + retargeteo de la mina (Fase 14, M1): ANTES
+// había dos listeners de pointermove con UN raycast cada uno (highlight y
+// retarget) → 2 intersectObjects recursivos por evento de ratón. Ahora un solo
+// listener hace UN raycast compartido que alimenta ambos: el resaltado se
+// actualiza en CADA pointermove mientras el puntero está bloqueado
+// (independiente de la mina), y si hay una mina en curso, se retargetea
+// (cancelar la anterior + empezar la nueva) o se cancela al mirar al vacío o
+// a un mob.
 renderer.domElement.addEventListener("pointermove", () => {
 	if (!controls.isLocked) return;
-	updateHighlight(raycastTerrainAndMobs());
-});
-
-// Mientras se mantiene pulsado: si el jugador mira a otro bloque, la mina se
-// retargetea (cancelar la anterior + empezar la nueva); si mira al vacío o a
-// un mob, se cancela.
-renderer.domElement.addEventListener("pointermove", () => {
-	if (!miningTarget || !controls.isLocked) return;
 	const hit = raycastTerrainAndMobs();
+	updateHighlight(hit);
+	if (!miningTarget) return;
 	if (!hit || hit.object.userData.mobId) {
 		stopMining();
 		return;
