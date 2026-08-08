@@ -1,7 +1,7 @@
 # Mi Minecraft — Clon Node.js + Three.js
 
 ![Estado de desarrollo](https://img.shields.io/badge/estado-en%20desarrollo-yellow)
-![Fases completadas](https://img.shields.io/badge/fases-5%2F5%20completadas-blue)
+![Fases completadas](https://img.shields.io/badge/fases-11%2F12%20completadas-blue)
 
 Copia jugable de Minecraft, no idéntica pero fiel a sus mecánicas
 distintivas: mundo por chunks, biomas, cuevas, día/noche, mobs con IA,
@@ -48,6 +48,7 @@ mi-minecraft/
 │   ├── save.js            Persistencia incremental por chunk + descarga de chunks
 │   ├── net.js             HTTP/WebSocket, handlers y bucle principal
 │   ├── mining.js          Sesiones de minería con progreso (Fase 6)
+│   ├── tnt.js             TNT: mechas, explosión con cráter y reacciones en cadena (Fase 10)
 │   └── commands.js        Consola de comandos (/help, /tp, /give, /time set, /gamemode)
 ├── recetas.json           Recetas de crafteo (patrones 3x3)
 ├── recetas_horno.json     Recetas de fundición
@@ -77,6 +78,7 @@ mi-minecraft/
 │   ├── daynight.js        Ciclo día/noche visual (cielo, luz, ambiente)
 │   ├── sky.js             Cielo procedural: degradado, sol/luna con fases, estrellas
 │   ├── skycolors.js       Paletas de color del cielo por hora del día
+│   ├── clouds.js          Nubes procedurales que se desplazan con el viento (Fase 10)
 │   ├── settings.js        Ajustes del menú persistidos en localStorage
 │   ├── quality.js         Calidad gráfica (renderDistance, LOD, luces)
 │   ├── recipeCategories.js Categorías del libro de recetas (módulo puro, testeable)
@@ -126,7 +128,7 @@ volver a una semilla anterior recupera su mundo).
 
 ## Estado actual
 
-### ✅ Implementado (Fases 0 a 9.5 completadas)
+### ✅ Implementado (Fases 0 a 12 completadas)
 
 > Especificaciones por fase (diseño, decisiones y estado):
 > [`docs/README.md`](docs/README.md).
@@ -159,12 +161,12 @@ volver a una semilla anterior recupera su mundo).
   el fondo es arena y no se rompe a mano), biomas de nieve y
   montaña (cumbres nevadas con el bloque `SNOW`).
 - **Fase 5 — Progresión y combate:** durabilidad real de
-  herramientas (madera 60, piedra 132, hierro 251, oro 33, diamante
-  1562 usos; barra de durabilidad en el hotbar, sonido de rotura y
-  aviso `tool_broke`), daño de espada por material, mobs nuevos
-  (araña hostil que suelta hilo → lana, lobo hostil, conejo pasivo
-  → conejo asado) y experiencia simple/niveles (+1 de salud máxima
-  por nivel, barra de XP en el HUD).
+  herramientas (valores oficiales MC desde Fase 13: 59/131/250/32/1561;
+  barra de durabilidad en el hotbar, sonido de rotura y
+  aviso `tool_broke`), daño de espada por material (4/5/6/7, oro 4),
+  mobs nuevos (araña hostil que suelta hilo → lana, lobo hostil, conejo
+  pasivo → conejo asado) y experiencia/niveles (la **salud máxima es
+  siempre 20**, la barra de XP con curva MC viaja en el HUD).
 - **Fase 6 — Mundo jugable y pulido:** consola de comandos
   (`/help`, `/tp`, `/give`, `/time set`, `/gamemode`, `/reload`;
   los de operador validan `isOp`), frustum culling, pantalla de
@@ -232,11 +234,43 @@ volver a una semilla anterior recupera su mundo).
   bonemeal, fuente de agua infinita, siseo de creeper y balido de
   oveja, y cierre de tests (`unit-fase11.js` cubre gravedad, TNT,
   mundo-size y `/kill` de Fase 10 + las mecánicas nuevas).
+- **Fase 12 — Mobs por bioma, estructuras, spawn por bioma y
+  persistencia de mascotas** (ver `docs/fase12-spec.md`): lobo de taiga
+  domesticable (hueso, sigue/sienta, collar rojo) y slime con división
+  (16→2×4→2×1 HP, hop determinista por-mob), ocelote→gato que espanta
+  creepers, ahogado con tridente (lanza tridentes y el jugador puede
+  usarlos contra mobs); templo de jungla con trampa de flechas y cofre,
+  naufragio oceánico con cofres (deterministas por semilla); **spawn por
+  bioma** (`BIOME_SPAWN`: taiga→lobos de noche, pantano→slimes, jungla→
+  ocelotes, océano/ríos→ahogados bajo el agua); persistencia de
+  mascotas y `slimeSize` en `world.json` (`SCHEMA_VERSION` 5 con
+  migración retrocompatible).
 
 ### 🚧 En desarrollo
 
-*(Todas las fases 0-11 completadas y auditadas. La próxima fase se
-planificará en `TODO.md`.)*
+*(Fases 0-12 implementadas. En curso:*
+
+- **Fase 13** [`docs/fase13-spec.md`](docs/fase13-spec.md) — la
+  **paridad de valores** está implementada (vida siempre 20, curva de XP
+  oficial por tramos con coste total 1.395 a nivel 30, espadas 4/5/6/7,
+  armadura por puntos, durezas y durabilidades exactas, con la red de
+  seguridad `tests/unit-paridad.js`). Quedan pendientes: rendimiento
+  (greedy meshing, Web Workers de chunks), POO completa del servidor y
+  las lagunas de paridad (arco, puertas, escaleras/losas/vallas, cubo,
+  recetas). Ver [`docs/reporte-paridad.md`](docs/reporte-paridad.md).
+
+- **Fase 14** [`docs/fase14-spec.md`](docs/fase14-spec.md) — auditoría y
+  cierre de las fases 12-13: el **bloque A** (spawn por bioma,
+  persistencia `SCHEMA_VERSION` 5, tridente contra mobs y slime
+  determinista — bugs C1-C3 de la spec) y el **bloque B** (drop de menas
+  con `ORE_DROP`, tier de pico por mineral, comida/combustible y salud/XP
+  de mobs fieles a MC) están implementados y en verde; queda el
+  **bloque C** de rendimiento (el doble raycast de `input.js`, el
+  `mobs_update` condicional, la luz de antorcha stale y el rebuild de
+  vecinos en bordes de chunk).
+
+*No se marcan las fases como completadas hasta ejecutar su auditoría
+final.)*
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -270,6 +304,16 @@ en el servidor y `public/network.js` en el cliente).
 | `set_name` | `{name}` | Cambiar el nombre visible del jugador (menú/ajustes, Fase 7): se sanea (≤16 chars) y se propaga con `player_rename` |
 | `settings` | `{renderDistance}` | Ajustes que afectan al servidor (Fase 7): distancia de render (clamp 2-10) → regenera/reenvía los chunks del nuevo radio |
 | `chat` | `{message}` | Mensaje de chat (máx 200 chars; con `/` es un comando) |
+| `till` | `{x, y, z}` | Arar tierra con azada (`FARMLAND`, Fase 9) |
+| `plant` | `{x, y, z}` | Plantar semillas en tierra arada (cultivo, Fase 9) |
+| `sleep` | `{}` | Dormir en la cama apuntada (solo de noche; salta al amanecer, Fase 6) |
+| `shear_mob` | `{mobId}` | Esquilar una oveja con tijeras (1-3 lana sin dañarla, Fase 11) |
+| `bonemeal` | `{x, y, z}` | Harina de hueso: madura cultivos o genera plantas (Fase 11) |
+| `creative_pick` | `{itemId}` | Poner un ítem del catálogo creativo en el slot activo (Fase 9/10) |
+| `creative_fly` | `{flying}` | Alternar vuelo en modo creativo (Fase 9) |
+| `world_delete` | `{seed}` | Borrar un mundo guardado (solo operador; no el activo, Fase 9) |
+| `equip_armor` / `unequip_armor` | `{slot}` / `{}` | Equipar/des-equipar armadura (Fase 7) |
+| `recipe_book` | `{}` | Pedir las recetas para el libro (Fase 9) |
 
 **Servidor → Cliente:**
 
@@ -283,21 +327,28 @@ en el servidor y `public/network.js` en el cliente).
 | `block_break_progress` | `{x, y, z, stage}` | Grieta de rotura (0-9, -1 al cancelar) durante la minería — broadcast a todos los jugadores en rango del bloque (Fase 6/7) |
 | `player_join` / `player_move` / `player_leave` | posición, yaw | Otros jugadores (con `name` en `player_join`) |
 | `player_rename` | `{id, name}` | Un jugador cambió su nombre → se actualizan los tags flotantes (Fase 7) |
-| `mobs_update` / `mob_death` / `mob_breed` | mobs, `{id}`, posición | Mobs en rango |
+| `mobs_update` / `mob_death` / `mob_breed` / `mob_hit` | mobs, `{id}`, posición | Mobs en rango (movimiento, muerte, cría y feedback de daño con `dmg`/`health`, Fase 8) |
+| `arrows_update` | `[arrowSnapshot]` | Flechas y tridentes en vuelo (gravedad/colisión, Fase 9) |
 | `server_metrics` | `{tickMs, chunkGenMs}` | Media móvil de 1s del tiempo por tick y de generación de chunks (Fase 7): el cliente lo expone como `window.__mcServerTickMs` / `__mcChunkGenMs` |
-| `time_set` | `{dayTime}` | Re-sincroniza el ciclo día/noche (comando `/time set`) |
+| `time_set` | `{dayTime}` | Re-sincroniza el ciclo día/noche (comando `/time set`, dormir, Fase 6/8) |
 | `textures_reload` | `{}` | Hot-reload del atlas: el cliente re-importa `textures.js` y reconstruye los chunks (Fase 6) |
 | `teleport` | `{x, y, z}` | Corrección anti-cheat |
-| `player_die` | `{id, lostInventory}` | Muerte y reaparición (`lostInventory`: se perdió el inventario según gamemode) |
+| `player_die` / `death` | `{id, lostInventory}` / `{cause}` | Muerte de otro jugador y pantalla de muerte del local con causa (mob/fall/lava/starve/void/kill, Fase 10) |
+| `fire_state` | `{on}` | El jugador está en llamas (overlay de fuego, Fase 10) |
+| `tnt_fuse` / `tnt_explode` | `{x, y, z}` / `{x, y, z, ...}` | Mecha encendida y explosión de TNT replicadas (Fase 10) |
 | `inventory_update` | `{inventory}` | Inventario completo (con `durability`) |
 | `health_update` | `{health, maxHealth}` | Salud |
 | `food_update` | `{food, saturation}` | Hambre y saturación |
 | `xp_update` / `level_up` | `{xp, level, xpInto, xpToNext}` | Experiencia (curva no lineal estilo MC) |
 | `tool_broke` | `{slot}` | Herramienta rota (sonido + aviso) |
 | `eat_rejected` | `{}` | "No tienes hambre" |
+| `sleep_ok` / `sleep_rejected` | `{}` | Dormir aceptado (salta al amanecer) o rechazado (de día) |
 | `crafting_grid_update` | `{grid, success}` | Resultado del crafteo |
 | `furnace_state` | `{key, ...}` | Estado del horno (combustible, progreso) |
 | `chest_state` | `{key, slots}` | Slots del cofre abierto (27) |
+| `recipe_book` | `{recipes}` | Recetas para el libro por categorías (Fase 9) |
+| `world_delete_result` | `{seed, ok}` | Resultado del borrado de un mundo (Fase 9) |
+| `damage_debug` | `{...}` | Telemetría de daño por origen (diagnóstico, Fase 8) |
 | `chat` | `{id, message}` | Mensaje de chat |
 
 ## Tests
@@ -375,6 +426,29 @@ en el servidor y `public/network.js` en el cliente).
     `unit-ajustes.js` (lógica pura de `public/quality.js`: perfiles de
     calidad baja/media/alta, clamps de FOV 50-110, sensibilidad
     0.2-3 y volumen 0-1).
+  - **Fase 8 (bugs B3/B6 y B9):** `unit-raycast.js` (bounds obsoletos del
+    geometry pool → el rayo de minería no intersectaba; fix `release()`
+    nullea los bounds y verificación del culling `expandByObject` con three
+    real) y `unit-mobray.js` (raycast de mobs multibloque: el rayo acierta
+    las partes, sube al raíz con `mobId`, el bloque delante gana a la
+    minería).
+  - **Fase 8 (mejoras documentadas):** `unit-anticheat.js` (anti-cheat de
+    vuelo: ascenso validado contra la parábola del salto; `WS_MAX_PAYLOAD`
+    del WebSocket) y `unit-caida.js` (daño por caída y void, con la
+    velocidad vertical observada).
+  - **Fase 9 (paridad):** `unit-fase9.js` (gamemode por mundo, `world_delete`
+    con path-traversal rechazado, cultivos, `creative_pick`/`creative_fly`,
+    libro de recetas) y `unit-mining-click.js` (decisión de clic mob
+    delante/detrás con three real).
+  - **Fase 10 (jugabilidad):** `unit-fase11.js` también cubre mecánicas de
+    Fase 10 pendientes — gravedad de arena/grava (`settleColumn`), TNT
+    (`ignite` → mecha → explosión con cráter y bedrock intacto), tamaño de
+    mundo (bloques fuera de límites → aire), `/kill` (solo operadores).
+  - **Fase 11 (biomas y paridad):** `unit-fase11.js` (los 4 biomas nuevos
+    presentes, lianas/árboles por bioma, spawn nunca en agua,
+    `canShear`/`applyShear`, bonemeal y fuente de agua infinita) y
+    `unit-camara.js` (fix del clamp de pitch: PLC r160 limita ±90° sin
+    vueltas, con three real).
   - **Integridad transversal:** `unit-recetas.js` (todas las recetas de
     crafteo/horno referencian IDs existentes, shapes bien formadas y
     alcanzables desde su grid — habría detectado el bug `hilo_a_lana` de la
@@ -389,7 +463,7 @@ en el servidor y `public/network.js` en el cliente).
     del cliente).
   - Y, si hay un servidor vivo en `ws://localhost:3998` (o `$WS_URL`), los
     E2E de comer (`tests/e2e-comer.js`), de durabilidad
-    (`tests/e2e-durabilidad.js` — craftea un pico de madera, rompe sus 60
+    (`tests/e2e-durabilidad.js` — craftea un pico de madera, rompe sus 59
     usos de piedra y verifica que se rompe al llegar a 0 sin duplicar drops),
     del cofre (`tests/e2e-cofre.js` — craftea un cofre con 8 tablones,
     lo coloca, lo abre, guarda/toma items y lo rompe verificando que cae
@@ -413,17 +487,21 @@ en el servidor y `public/network.js` en el cliente).
     caras/triángulos con y sin LOD (radio 6 completo, regla EXACTA del
     cliente), memoria de geometría por chunk, pool de geometrías en ciclo
     real de carga/descarga y determinismo del caparazón LOD.
+  - `node tests/audit-fase7.js` — métricas de tick del servidor y FPS en
+    Chrome headless vía CDP (con `--regresion` lanza además la suite
+    unitaria de fases 0-6) + integridad del guardado tras varios reinicios.
 
 ### Resultados (agosto 2026)
 
-Suite completa en verde: **24 tests unitarios + 4 E2E** (si hay servidor).
+Suite completa en verde: **40 tests unitarios + 4 E2E** (si hay servidor).
 Última ejecución: todos los unitarios pasan (persistencia, IA de mobs,
 handlers de red, integridad de recetas, sincronización servidor↔cliente,
-hot-reload, minería fina, LOD, cofre, antorchas, cama, armadura y
-terreno incluidos), y los E2E contra un servidor real con mundo fresco
-dan durabilidad 124/124, reload 4/4, comer 5/5 (el bonus de caza puede
-omitirse si no aparece un animal cercano, quedando 3/3 — los checks
-base siempre pasan) y cofre 12/12.
+hot-reload, minería fina, LOD, cofre, antorchas, cama, armadura, terreno,
+caída/void, anti-cheat, crack, métricas, raycast/pool con three real,
+cámara, biomas de Fase 11 y mecánicas de Fase 11 incluidos), y los E2E
+contra un servidor real con mundo fresco dan durabilidad 124/124,
+reload 4/4, comer 5/5 (el bonus de caza puede omitirse si no aparece un
+animal cercano, quedando 3/3 — los checks base siempre pasan) y cofre 12/12.
 La auditoría de la Fase 5 sigue cubriendo la sincronización de durabilidad
 y la no-duplicación de items; los unitarios transversales amplían la red
 de seguridad a toda la base.
@@ -450,7 +528,7 @@ preocupación por commit, y los commits son en español.
   migra automáticamente al directorio de su semilla al arrancar).
   El formato antiguo (`world.dat` único, v1) se migra a archivos
   por chunk y se conserva como `world.dat.legacy`. El formato está
-  versionado con `schemaVersion` (actual: 2): si el mundo es de una
+  versionado con `schemaVersion` (actual: 5): si el mundo es de una
   versión más nueva que el servidor, este se niega a abrirlo en
   lugar de corromperlo.
 - Los chunks lejanos se descargan automáticamente: el servidor

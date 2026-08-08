@@ -1,8 +1,9 @@
 # AGENTS.md — Guía rápida para agentes de IA
 
 Guía compacta de arranque. La guía canónica de convenciones es
-[`CLAUDE.md`](CLAUDE.md); el roadmap por fases y la fase en curso
-están en [`TODO.md`](TODO.md). Léelos.
+[`CLAUDE.md`](CLAUDE.md); el roadmap por fases está en
+[`TODO.md`](TODO.md) y la Fase 12 (prospectiva) en
+[`docs/fase12-spec.md`](docs/fase12-spec.md). Léelos.
 
 ## Qué es
 
@@ -15,7 +16,7 @@ build step desde `public/`. Todo el código, docs y commits en español.
 ```bash
 npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
-node tests/run.js               # 38 unitarios + 4 E2E si hay servidor vivo
+node tests/run.js               # 42 unitarios + 4 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
 PORT=3998 node server.js        # servidor para los E2E, en otra terminal
@@ -59,7 +60,7 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   `tests/audit-fase5.js`.
 - **Regla:** añadir bloque/ítem/herramienta → actualizar AMBOS lados
   y añadir la receta si aplica.
-- **Formato de guardado:** `SCHEMA_VERSION` (actual 3), archivos por
+- **Formato de guardado:** `SCHEMA_VERSION` (actual 5), archivos por
   chunk en `world/<semilla>/chunks/` + `world/<semilla>/world.json`
   (+ copia de seguridad `world.json.bak` en cada guardado).
   Cualquier cambio exige subir versión + migración retrocompatible +
@@ -94,8 +95,12 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   generadas, clima.
 - Optimización prematura (greedy meshing, workers...) salvo que el
   `TODO.md` lo indique.
-- Adelantar trabajo de fases futuras: la **Fase 10** está en curso en
-  `TODO.md`.
+- Adelantar trabajo de fases futuras: las fases 0-11 están cerradas.
+  La **Fase 12** está **en curso** (bloques A+B commiteados: mobs por
+  bioma, mascotas, tridente, templo y naufragio; pendientes los bloques
+  C-D y la auditoría de cierre) y las fases 13 y 14 en `docs/`
+  (`fase13-spec.md` y `fase14-spec.md`); no avanzar su código hasta que
+  `TODO.md` lo marque.
 
 ## Documentación
 

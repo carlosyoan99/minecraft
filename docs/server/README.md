@@ -52,12 +52,13 @@ independiente y testeable en Node (los tests requieren los módulos sin red).
 |---|---|---|
 | `constants.js` | Constantes (IDs de bloques/ítems `B`/`I`, física, mundo), `worldPaths` mutable, curva XP, minería | — |
 | `state.js` | Estado compartido: chunks, players, furnaces, chests, crops, mobs, arrows, dirtyChunks, timeOffset, damageLog | — |
-| `world.js` | Generación por semilla (noise 2D/3D), acceso a bloques, minas, charcos, árboles, minerales, archivos de chunk | constants, state, chests |
-| `save.js` | Persistencia incremental por chunk (gzip), `world.json` (meta, mobs, hornos, cofres, cultivos), migraciones, `switchWorld`, `deleteWorld`, descarga de chunks lejanos | constants, state, world, mobs, crafting, chests |
-| `players.js` | Inventario, salud, hambre, daño (con armadura), XP/curva MC, caídas, respawn, comer, tick del jugador | world, state, constants |
-| `mobs.js` | IA por especie (zombi, esqueleto, creeper, araña, pasivos, abeja), spawn por luz/hora, flechas, cría, drops, zona segura de spawn | constants |
+| `world.js` | Generación por semilla (noise 2D/3D), acceso a bloques, minas, charcos, árboles, minerales, biomas de Fase 11, tamaño de mundo, archivos de chunk | constants, state, chests |
+| `save.js` | Persistencia incremental por chunk (gzip), `world.json` (meta, mobs, hornos, cofres, cultivos, hora del mundo), migraciones, `switchWorld`, `deleteWorld`, descarga de chunks lejanos | constants, state, world, mobs, crafting, chests |
+| `players.js` | Inventario, salud, hambre, daño (con armadura), XP/curva MC, caídas, respawn, comer, quemaduras, tick del jugador | world, state, constants |
+| `mobs.js` | IA por especie (zombi, esqueleto, creeper, araña, pasivos, abeja), spawn por luz/hora, flechas, cría, esquilado, drops, zona segura de spawn | constants |
 | `crafting.js` | Recetas 3×3 + hornos, hot-reload de `recetas.json`, tick de hornos | state, constants |
 | `mining.js` | Sesiones de rotura con progreso (dureza × herramienta), grietas al cliente | constants |
+| `tnt.js` | TNT: mechas, explosión con cráter, reacciones en cadena, knockback (Fase 10) | state, constants |
 | `chests.js` | Cofres (estado + snapshot), loot de minas abandonadas | state, constants |
 | `commands.js` | Comandos de chat (`/help`, `/tp`, `/give`, `/time`, `/gamemode`), reloj del mundo | constants |
 | `net.js` | HTTP + WebSocket, `sendInit`, handler de mensajes, `mainLoop` (tick 20 Hz), métricas | todos |
@@ -81,13 +82,22 @@ cliente **interpola** entre ticks para que el render vaya a más FPS.
 ## Persistencia (save.js)
 
 - **Incremental por chunk:** cada chunk `cx,cz` se escribe gzip en
-  `world/<semilla>/chunks/<cx>_<cz>.json.gz` (solo los sucios, cada 30 s).
+  `world/<semilla>/chunks/<cx>_<cz>.json` (extensión `.json` sin
+  cambio; la lectura detecta la cabecera gzip y descomprime — los
+  mundos viejos en JSON plano siguen leyéndose sin migración).
 - **Meta global:** `world/<semilla>/world.json` guarda mobs, hornos,
-  cofres, cultivos, `gamemode` y `schemaVersion`.
+  cofres, cultivos, `gamemode`, hora del mundo (`timeOffset`, Fase 10)
+  y `schemaVersion`.
 - **Escritura atómica:** fichero temporal + `rename`, para que un corte de
   luz no deje un chunk a medias (ver skill `save-systems`).
-- **Versión de esquema (`SCHEMA_VERSION = 3`)** con migraciones
-  retrocompatibles (`migrateWorldLayout`, `migrateLegacyWorld`).
+- **Backup `.bak`:** `world.json` se copia a `world.json.bak` antes de
+  sobrescribir; `loadWorld` restaura desde el backup si el principal es
+  ilegible (Fase 9.5).
+- **Versión de esquema (`SCHEMA_VERSION = 5`)** con migraciones
+  retrocompatibles (`migrateWorldLayout`, `migrateLegacyWorld`). La v5
+  persiste mascotas (`ownerId/ownerName/sitting`) y el tamaño del slime
+  (`slimeSize`) en `world.json`; un mundo v4 sin esos campos carga igual
+  (mob salvaje, slime grande).
 - **Descarga de chunks lejanos** (>10 chunks del jugador, cada 10 s) para
   acotar la memoria del servidor.
 
@@ -99,28 +109,33 @@ formato de regiones de Minecraft, simplificada.
 
 `world/<semilla>/`. La semilla se cambia en runtime (`switchWorld`):
 persiste el mundo actual, cambia `worldPaths` y regenera. **Cambiar de
-semilla nunca pisa mundos anteriores.** Cada mundo guarda su `name` y su
-`gamemode` (survival/creative) en `world.json`.
+semilla nunca pisa mundos anteriores.** Cada mundo guarda su `name`, su
+`gamemode` (survival/creative) y su `worldSize` (pequeño/medio/grande/
+infinito, Fase 10) en `world.json`.
 
-**Por qué:** permite al menú del cliente listar y abrir mundos (Fase 7) y
-elegir modo de juego por mundo (Fase 9) sin máquinas de estado complejas.
+**Por qué:** permite al menú del cliente listar y abrir mundos (Fase 7),
+elegir modo de juego por mundo (Fase 9) y tamaño de mundo al crearlo
+(Fase 10) sin máquinas de estado complejas.
 
 ## Protocolo WebSocket (resumen)
 
 Eventos **cliente → servidor**: `move`, `block_action`, `attack_mob`,
 `craft`, `grid_set/clear`, `furnace_open/action`, `chest_open/action`,
 `inventory_select`, `eat`, `sleep`, `till`, `plant`, `feed_mob`,
-`equip/unequip_armor`, `chat`, `set_name`, `set_seed`, `settings`,
-`recipe_book`, `worlds_list`, `world_delete`, `creative_fly`, `creative_pick`.
+`shear_mob`, `bonemeal`, `equip/unequip_armor`, `chat`, `set_name`,
+`set_seed`, `settings`, `recipe_book`, `worlds_list`, `world_delete`,
+`creative_fly`, `creative_pick`, `sit_pet`, `throw_trident`.
 
 Eventos **servidor → cliente**: `init`, `chunks_add`, `chunks_unload`,
 `block_update`, `block_break_progress`, `mobs_update`, `arrows_update`,
-`mob_death`, `mob_hit`, `mob_breed`, `health_update`, `food_update`,
+`mob_death`, `mob_hit`, `mob_breed`, `tame_ok`, `health_update`,
+`food_update`,
 `xp_update`, `level_up`, `inventory_update`, `crafting_grid_update`,
 `furnace_state`, `chest_state`, `tool_broke`, `eat_rejected`,
-`sleep_ok/sleep_rejected`, `teleport`, `time_set`, `chat`, `player_leave`,
-`player_rename`, `recipe_book`, `worlds_list`, `world_delete_result`,
-`seed_rejected`, `server_metrics`, `damage_debug`, `textures_reload`.
+`sleep_ok/sleep_rejected`, `teleport`, `time_set`, `chat`,
+`player_join/move/leave`, `player_rename`, `recipe_book`, `worlds_list`,
+`world_delete_result`, `seed_rejected`, `server_metrics`, `damage_debug`,
+`fire_state`, `death`, `tnt_fuse`, `tnt_explode`, `textures_reload`.
 
 **Convenciones:** nombres en `snake_case`; el servidor **sanitiza todo**
 (nombres, semillas, mensajes) antes de usarlo; `WS_MAX_PAYLOAD` limita el

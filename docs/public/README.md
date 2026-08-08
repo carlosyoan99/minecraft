@@ -66,11 +66,12 @@ carga.
 | `mobtextures.js` | Atlas procedural de mobs (una tesela por parte) | DOM (canvas) |
 | `mobs.js` | Meshes de mobs y jugadores remotos (grupos de partes) | THREE |
 | `particles.js` | Partículas de romper/colocar (pool de cubitos) | THREE |
-| `player.js` | Física/movimiento del jugador local (predicción), vuelo creativo | THREE |
-| `input.js` | Teclado (movimiento, hotbar, paneles, libro) y ratón (minar/atacar/colocar) | DOM/THREE |
-| `daynight.js` | Ciclo día/noche visual (extrapola el reloj del servidor) | THREE |
+| `player.js` | Física/movimiento del jugador local (predicción), vuelo creativo, sprint, agacharse | THREE |
+| `input.js` | Teclado (movimiento, hotbar, paneles, libro, picker creativo) y ratón (minar/atacar/colocar/pick-block) | DOM/THREE |
+| `daynight.js` | Ciclo día/noche visual (extrapola el reloj del servidor), niebla submarina | THREE |
 | `sky.js` / `skycolors.js` | Dome procedural (sol, luna, estrellas) + paleta | THREE / **puro** |
-| `audio.js` | Sonido procedural (Web Audio): pasos, roturas, ambiente, comer | DOM |
+| `clouds.js` | Nubes procedurales que se desplazan y siguen al jugador (Fase 10) | THREE |
+| `audio.js` | Sonido procedural (Web Audio): pasos, roturas, ambiente, comer, música por contexto | DOM |
 | `ui.js` | HUD, menús, paneles, libro de recetas, listas de mundos | DOM |
 | `recipeCategories.js` | Categorías del libro de recetas | **puro** |
 | `quality.js` | Perfiles de calidad y clamps de ajustes | **puro** |
@@ -99,7 +100,8 @@ prueban lógica real, no mocks.
    `move` al servidor.
 2. Extrapola el día/noche (`updateDayNight`) y actualiza cielo + luces.
 3. Actualiza LOD (cada 250 ms) y frustum culling de chunks.
-4. Aplica animación de agua/lava (`updateLiquidAnimation`).
+4. Aplica animación de agua/lava (`updateLiquidAnimation`) y nubes
+   (`updateClouds`).
 5. Renderiza.
 
 **Por qué el cliente extrapola:** el servidor manda `dayTime` y la

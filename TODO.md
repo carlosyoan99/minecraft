@@ -2050,6 +2050,162 @@ vitest; aprovechar la fase para organizar y ampliar la cobertura.*
 
 ---
 
+## Fase 12 — Mobs por bioma, estructuras, spawn por bioma y persistencia
+*Objetivo: retomar lo que la Fase 11 dejó pendiente de la auditoría de
+terceros — los 4 mobs por bioma (lobo, slime, ocelote, ahogado) con sus
+mecánicas, las 2 estructuras (templo de jungla con trampa, naufragio con
+cofres), el spawn por bioma en `server/mobs.js`, la persistencia de mascotas
+en `world.json` y el cierre con tests.*
+Especificación: [`docs/fase12-spec.md`](docs/fase12-spec.md). Estado: **bloques A-D ejecutados y auditados** (mobs por bioma con IA completa + templo/naufragio deterministas + ítems 245/246 + spawn por bioma + persistencia de mascotas). Pendiente solo de los E2E nuevos de la spec (e2e-mascotas/e2e-templo) y la verificación en navegador, pospuestos.
+
+> ⚠️ **Nota de proceso:** el trabajo de la **Fase 14** (paridad de valores:
+> drops directos de minerales ORE_DROP, tiers de pico ORE_TIER/
+> PICKAXE_TIER, HP de mobs MC, creeper con daño de TNT, carbón como
+> combustible, conejo asado 5/6 y XP de mobs 5) que una sesión anterior dejó
+> mezclado y sin commitear en el working tree (rompía la suite) quedó
+> guardado aparte en la rama **`fase-14-paridad`** (commit `2c0aa65`), con
+> sus tests actualizados y la suite en verde. Main sigue solo con Fase 12.
+
+### Bloque A — 4 mobs con IA completa ✅ (bloques A+B ejecutados)
+- [x] **Lobo de taiga + domesticación**: domesticable con hueso (~33%), se
+      vuelve aliado (`ownerId`) que sigue al dueño (`tickPet`), ataca su
+      objetivo (`petsJoinAttack`, daño 3, distancia 3D) y se
+      sienta/levanta con clic derecho (`sit_pet`); collar rojo visual
+      (`ownerId` en `mobSnapshot` → cliente pinta el collar)
+- [x] **Slime + división**: salta (`tickSlime`); grande (16 HP) → 2 medianos
+      (4 HP) → 2 pequeños (1 HP, no divide); drop de slimeball solo del
+      pequeño; daño por tamaño (3/2/0); `slimeSize` en `mobSnapshot` →
+      escala 2/1/0.5 en el cliente
+- [x] **Ocelote → gato**: huye al acercarse (`tickOcelot`); domesticable con
+      pescado crudo (~33%) → `type "cat"` que te sigue y espanta creepers
+      (`catNearby` a 6 bloques → creeper en `flee` y cancela el fuse)
+- [x] **Ahogado + tridente**: nada y ataca; arroja tridentes reusando la
+      física de flechas (`shootTrident`, daño 6); drop del tridente (~15%);
+      el jugador lo lanza (`throw_trident`, daño 8) y vuelve a su
+      inventario al impactar o expirar (`returnPlayerTrident`)
+- [x] Modelos 3D y texturas: `MOB_PARTS` nuevos (slime, ocelote/cat,
+      drowned reusa humanoide), teselas + `MOB_SCALE` + variantes de collar
+      del lobo aliado y gato
+
+### Bloque B — Estructuras: templo de jungla y naufragio ✅ (ejecutado)
+- [x] **Templo de jungla**: piedra de musgo (32) + piedra (3), pasadizos en
+      cruz, cámara central con cofre de loot (`templeLootSlots`) y trampa de
+      dispensador de flechas (`tickTempleTraps`, cooldown 3s por templo,
+      reusa `shootArrow` con `from: null`); determinista por semilla
+      (`structCellHash` 2D + validación de bioma: solo en jungla firme,
+      nunca sobre agua)
+- [x] **Naufragio**: casco de madera de abeto (30/31) + viga de jungla (41)
+      en el fondo oceánico, 1-3 cofres de loot marino (`shipwreckLootSlots`,
+      `shipwreckChestCount`); determinista (solo en océano)
+- [x] Sin bloques nuevos (solo reuso) → `SCHEMA_VERSION` no sube por
+      estructuras
+
+### Bloque C — Spawn por bioma + ítems/drops ✅ (ejecutado)
+- [x] `BIOME_SPAWN`: taiga→lobos (noche), pantano→slimes (noche), jungla→
+      ocelotes (día) + `WATER_SPAWN`: ahogados en cualquier columna de agua
+      (océano/río/lago), colocados bajo la superficie (`floorY + 2`, ya no
+      se rechazan por `isLake`); el resto de la tabla sigue igual (sorteo
+      60/40 con remapeo `[0.6,1)→[0,1)` para no sesgar la tabla base);
+      terrestres nunca sobre agua; determinista (un `Math.random` por
+      intento, tests con secuencia fija en `unit-fase12`); el lobo dejó de
+      ser hostil genérico nocturno y es EXCLUSIVO de taiga
+- [x] Ítems nuevos sincronizados: `TRIDENT: 245`, `SLIME_BALL: 246` (ambos
+      lados + iconos + `unit-sync`); drops de slime y ahogado (15%) —
+      dependencia del Bloque A, ya entregados
+
+### Bloque D — Persistencia de mascotas + tests + cierre ✅ (ejecutado)
+- [x] `world.json`: campo opcional `pet: { ownerName, sitting, slimeSize }`
+      (+ ownerId de la sesión) en el snapshot de mobs → `SCHEMA_VERSION` →
+      5 con migración retrocompatible (mundos v4 abren igual, cubierto por
+      `unit-persistencia`); la mascota reconoce a su dueño por NOMBRE al
+      reconectar (`net.js`: re-vinculado con guarda anti-robo entre
+      homónimos conectados; decisión de diseño documentada en el código)
+- [x] `unit-fase12.js`: taming del lobo, división del slime, ocelote/gato
+      espanta creepers, ahogado/tridente, spawn por bioma determinista,
+      templo/naufragio deterministas, persistencia de mascotas + re-
+      vinculado por nombre (97 OK) + `unit-mobs-ia` con mocks de bioma
+- [ ] E2E nuevos de la spec (pospuestos): `e2e-mascotas.js` (hueso → lobo
+      aliado → sigue/sentado), `e2e-templo.js` (`/tp` al templo → trampa
+      dispara, cofre con loot) — el E2E existente (run.js) pasa 4/4
+- [x] **Auditoría de Fase 12:** suite unitaria completa (3368 OK, 0 fallos)
+      + E2E 4/4 contra servidor vivo + `biome check` 0 errores + `node
+      --check`; pendiente solo la verificación en navegador (los 4 mobs,
+      templo/naufragio en su bioma, mascotas persisten tras reinicio)
+
+---
+
+## Fase 13 — Paridad 1.0, rendimiento, POO y tests de paridad
+*Objetivo: ejecutar el reporte comparativo 1:1 contra Minecraft
+(`docs/reporte-paridad.md`) en 4 bloques con el orden acordado: A)
+rendimiento (impacto visible inmediato), B) paridad (corregir valores
+incorrectos + lagunas: arco, puertas, escaleras/losas/vallas, cubo,
+recetas), C) POO completa del servidor, D) tests de paridad + cierre.*
+Especificación: [`docs/fase13-spec.md`](docs/fase13-spec.md) (prospectiva, pendiente de ejecución).
+Reporte: [`docs/reporte-paridad.md`](docs/reporte-paridad.md).
+
+### Bloque A — Rendimiento
+- [ ] **Greedy meshing** (`public/world.js`): fusionar caras coplanares en
+      quads → 3-5× menos vertices/caras; mantener culling/teselas por
+      cara/AO/raycast (`audit-fase4` y CDP en verde)
+- [ ] **Web Workers de chunks**: `buildChunkGeometry` en un worker
+      (Uint16Array transferible) con fallback síncrono; el hilo principal
+      no se bloquea al cargar chunks
+- [ ] **Auditar pool/culling/LOD**: eliminar el doble raycast por
+      pointermove (highlight + retarget comparten 1), bounds obsoletos,
+      cachear esferas de culling por revisión de chunk
+- [ ] **Perfilado servidor** (`net.js`/`mobs.js`): snapshot de mobs 1 vez
+      por tick, dirty flag por broadcast, cachear `getBiome` por celda
+
+### Bloque B — Paridad
+- [ ] **Valores incorrectos** (constantes + tests): salud máxima siempre 20
+      (quitar +1 por nivel), curva de XP por tramos oficiales (2L+7 / 5L−38
+      / 9L−158; total nivel 30 = 1.395), daño de espadas 4/5/6/7 (mano 1),
+      armadura por puntos (cuero 1-3-2-1, hierro 2-6-5-2, diamante 3-8-6-3,
+      reducción min(puntos×4,80)%), durezas (tierra 0.5, grava 0.6),
+      durabilidades 59/131/250/32/1561
+- [ ] **L1 Arco + flechas del jugador**: ítems BOW 247 / ARROW 248 (+ FLINT
+      252 / FEATHER 253, drops de grava/pollo), recetas, disparo con daño 9
+      (reusa `state.arrows`), flechas recogibles
+- [ ] **L2 Puertas**: OAK_DOOR 48 / IRON_DOOR 49, abren/cierran al jugador
+      cercano o clic derecho (`door_state`), no sólidas abiertas
+- [ ] **L3 Escaleras, losas y vallas**: bloques con colisión por forma,
+      colocación orientada por la cara mirada, recetas MC
+- [ ] **L4 Cubo de líquidos**: BUCKET 249 / WATER_BUCKET 250 /
+      LAVA_BUCKET 251; recoger fuente y verter; compatible con la fuente
+      infinita 2×2 de F11
+- [ ] **L5 Recetas faltantes**: arco, flechas, cubo, puertas, escaleras,
+      losas, vallas, portones, armadura oro/malla, compás... — todo ítem
+      colocable/herramienta con receta
+
+### Bloque C — POO completa del servidor
+- [ ] **Capa 1**: `class Mob` (refactor estructural, mismos nombres de
+      propiedades; fachadas compatibles; suite en verde sin cambios)
+- [ ] **Capa 2**: herencia por especie (Zombie, Creeper, Skeleton, Spider,
+      Enderman, Wolf, Slime, Drowned + pasivos y Ocelot) — los `if (type)`
+      del tick central pasan a métodos sobreescritos; `createMob` registra
+      tipo→clase; `unit-mobs-poo.js`
+- [ ] **Capa 3**: `Player`, `World`/`Chunk` e `ItemStack` como clases
+      (fachadas con firma actual; sin cambios de protocolo ni de guardado)
+- [ ] **Capa 4**: limpieza de branching muerto + métricas (reducción de
+      líneas de mobs.js/net.js)
+
+### Bloque D — Tests de paridad y cierre
+- [ ] `tests/unit-paridad.js` (nuevo, en `run.js`): tabla oficial de MC
+      (espadas, armadura, durabilidad, dureza, comida, XP por tramos,
+      minerales por altura, caída) — FALLA si alguien desvía un valor
+- [ ] Tests de las lagunas (arco, puertas, escaleras/losas/vallas, cubo,
+      recetas nuevas) + red de seguridad de la POO (`unit-mobs-poo.js`)
+- [ ] E2E nuevos de mecánicas interactivas (arco, puertas, cubo) contra
+      servidor vivo
+- [ ] **Auditoría de Fase 13:** suite unitaria + E2E + auditorías 3-12 sin
+      regresiones (audit-fase4 culling con greedy meshing, audit-fase5 con
+      valores nuevos, audit-fase7 render CDP), `biome check` 0 errores,
+      `node --check`, métricas de rendimiento antes/después documentadas y
+      verificación manual en navegador (combate MC real, arco, puertas,
+      escaleras, cubo, sin jank al explorar)
+
+---
+
 ## Fuera de alcance (Won't)
 
 Explícitamente descartado por ahora — no implementar sin discutir

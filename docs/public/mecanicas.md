@@ -27,6 +27,14 @@
 - **Actualizaciones:** `setClientBlock` + `rebuildAffectedChunks` /
   `rebuildAround` reconstruyen solo los chunks afectados al recibir
   `block_update`.
+- **AO por vértice (Fase 10):** `vertexAO` hornea oclusión ambiental
+  estilo Minecraft (5 niveles de sombra según los vecinos sólidos en las
+  esquinas) en el color por vértice del terreno opaco — barato, sin
+  shaders.
+- **Agua mejorada (Fase 10):** la cara superior del agua baja a 0.875
+  (14/16, como MC, sin z-fighting), textura de agua dedicada desplazable
+  (`updateLiquidAnimation` mueve el `offset` para la corriente) y pulso de
+  opacidad.
 
 ### Por qué así
 
@@ -164,6 +172,9 @@ skill `performance-optimization`: **no allocar en bucles calientes**.
   alto, conejo con orejas, pollo...
 - **Un solo material por mob** (el atlas completo, base 0xffffff): la
   quema solar y el flash de daño (`flashMob`) tiñen el grupo entero.
+- **Patas animadas** (Fase 10): cada extremidad lleva `userData.limbIndex`
+  y `setMobWalk` las oscila con una fase según la distancia recorrida (y
+  `resetMobWalk` al parar) — los mobs y los jugadores remotos "caminan".
 - El grupo raíz conserva `userData.mobId/mobType` para el raycast de
   combate: `input.js` intersecta los **hijos** y sube al raíz.
 - `updateMobs` sincroniza posiciones/interpolaciones desde `mobs_update`;
@@ -199,6 +210,12 @@ mobs visibles en escena).
   coincida con la validación.
 - **Colisión local:** el cliente comprueba bloques sólidos alrededor del
   jugador para no atravesar el mundo entre ticks (el servidor lo revalida).
+- **Sprint (Fase 10):** doble-tap W → `SPRINT_SPEED` (~1.3×) y el FOV se
+  abre `SPRINT_FOV` grados mientras se corre (solo en suelo, sin nadar ni
+  volar).
+- **Agacharse (Fase 10):** Shift → `SNEAK_SPEED` (30%) y el `tryMove` no
+  avanza si el bloque bajo el siguiente paso no es sólido (protección de
+  bordes, no caerse).
 - **Vuelo creativo** (`creative_fly`, doble Espacio): sube/baja con
   Shift/Espacio; el servidor lo permite solo en gamemode creativo.
 - Envía `move` al servidor en cada cambio; el servidor responde la
@@ -225,6 +242,12 @@ mobs visibles en escena).
   sin depender del tick del servidor.
 - `updateDayNight` interpola colores de cielo (cenit/horizonte),
   luz ambiental, luz del sol y niebla por la fase (día/noche/atardecer).
+- **Niebla submarina (Fase 10):** `setUnderwater` (lo detecta `player.js`
+  con la cámara sumergida) sobreescribe la niebla con azul denso y muy
+  cercano mientras se nada.
+- **Nubes (Fase 10):** `clouds.js` dibuja un campo de sprites
+  procedurales (tinte por vértice día/noche) que se desplazan con el
+  viento y siguen al jugador con offsets cíclicos.
 - `sky.js` pinta un **dome procedural** (BackSide) con shader: degradado,
   banda cálida en atardecer, sol (disco + halo), luna con **fases**
   (máscara según `moonPhase`) y estrellas de noche (hash determinista por
@@ -249,12 +272,14 @@ mobs visibles en escena).
 ### Cómo funciona
 
 - **Teclado:** WASD (movimiento), Espacio (salto/vuelo creativo), Shift
-  (agacharse/bajar en vuelo), E (inventario), B (libro de recetas), F3
-  (debug), 1-9 (hotbar), Enter (chat), Escape (cerrar paneles).
+  (agacharse/bajar en vuelo), doble-tap W (sprint, Fase 10), E
+  (inventario; en creativo abre el **picker de bloques**), B (libro de
+  recetas), F3 (debug), 1-9 (hotbar), Enter (chat), Escape (cerrar
+  paneles).
 - **Ratón (pointer lock):** mirar, clic izquierdo = minar/atacar, clic
-  derecho = colocar/comer/interactuar (cama, cofre, horno, semillas),
-  clic medio = pick-block del bloque apuntado (en creativo, vía
-  `creative_pick`; en survival el pick-block sigue pendiente — Fase 10).
+  derecho = colocar/comer/interactuar (cama, cofre, horno, semillas,
+  tijeras sobre oveja, bonemeal), **clic medio = pick-block** del bloque
+  apuntado en creativo (`creative_pick`, Fase 10).
 - **Raycast de minado/combate:** `input.js` lanza el rayo desde la cámara,
   intersecta bloques y mobs (recursivo por partes, ver §6), y envía
   `block_action` / `attack_mob` al servidor. Incluye telemetría de
@@ -287,8 +312,15 @@ mobs visibles en escena).
 
 - Todo el sonido se **genera al vuelo** con buffers de ruido y
   osciladores (Web Audio API): pasos por material, rotura/colocación,
-  comer, comer crudo, cría, agua, ambiente (viento de día, grillos de
-  noche).
+  comer, comer crudo, cría, agua, salpicaduras, cofres, TNT, hiss del
+  creeper y balido de oveja (Fase 11), ambiente (viento de día, grillos
+  de noche).
+- **Música ambiental generativa (Fase 10):** pad pentatónico procedural
+  (`startMusic`/`padNote`) que varía con el día/noche y con el **contexto**
+  (`setMusicContext`): cueva → notas graves y espaciadas, desierto →
+  brillante, nieve → cristalina.
+- El contexto se detecta en `player.js` (techo encima → cueva; arena/nieve
+  bajo los pies → desierto/frío).
 - El contexto se crea/reanuda en el **primer gesto del usuario**
   (requisito de los navegadores para permitir audio).
 - **Volúmenes por categoría** (master/effects/ambient) en serie hacia el
@@ -348,11 +380,13 @@ mobs visibles en escena).
 | Culling de caras | `world.js` | la mayoría de caras son interiores |
 | Mesh por chunk + 1 material | `world.js` | pocos draw calls |
 | Frustum culling por esfera | `world.js` | no enviar lo invisible al GPU |
+| AO por vértice | `world.js` | sombreado estilo MC barato (Fase 10) |
 | LOD con histéresis | `lod.js` | recorta triángulos lejanos sin popping |
 | Pool de geometrías | `geopool.js` | reutilizar buffers GPU, no allocar |
 | Luz horneada en vértices | `lighting.js` | sombreado barato estilo MC |
 | PRNG determinista en atlas | `textures.js`/`itemicons.js`/`mobtextures.js` | texturas estables y compartidas |
 | Partículas con pool | `particles.js` | sin instantiate/free por evento |
+| Nubes procedurales | `clouds.js` | cielo vivo sin assets ni draw calls caros (Fase 10) |
 | Perfiles de calidad | `quality.js` + `scene.js` | pixelRatio/sombras ajustables |
 
 **Cómo se mide:** el F3 (`debug.js`) muestra FPS, chunks visibles/totales,

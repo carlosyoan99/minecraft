@@ -14,8 +14,8 @@ tocar código.
   desde `public/`, cargado vía `<script type="module">` e
   importmap. No introducir Webpack/Vite/bundlers salvo que se
   discuta explícitamente antes.
-- **Arquitectura modular.** El servidor está en `server/` (~12
-  módulos CJS) y el cliente en `public/` (~20 módulos ES6), cada
+- **Arquitectura modular.** El servidor está en `server/` (13 módulos CJS)
+  y el cliente en `public/` (27 módulos ES6), cada
   uno por responsabilidad (red, mundo/chunks, jugador/física,
   mobs, UI/HUD). `server.js` (1 línea) y `public/client.js` (13
   líneas) son solo entradas. Si un módulo supera ~400-500 líneas,
@@ -64,10 +64,11 @@ npm install                        # primera vez (incluye simplex-noise)
 npm test                           # unitarios + E2E si hay servidor vivo
 node tests/run.js --unit           # solo unitarios
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E contra ese servidor
-node tests/audit-fase3.js          # auditorías por fase (3, 4, 5, 6)
+node tests/audit-fase3.js          # auditorías por fase (3, 4, 5, 6, 7)
 node tests/audit-fase4.js
 node tests/audit-fase5.js
 node tests/audit-fase6.js
+node tests/audit-fase7.js
 ```
 
 - Los E2E requieren un servidor vivo: `PORT=3998 node server.js`
@@ -81,8 +82,9 @@ node tests/audit-fase6.js
 ### Manuales (lo que una IA no puede ver solo con tests)
 
 - **Guardado/carga:** romper/colocar bloques, reiniciar el servidor
-  → la posición, inventario, mobs, hornos y XP se restauran desde
-  `world/chunks/` + `world/world.json` (autosave cada 30s).
+  → la posición, inventario, mobs, hornos, cofres, cultivos y XP se
+  restauran desde `world/<semilla>/chunks/` + `world/<semilla>/world.json`
+  (autosave cada 30s).
 - **Crafteo:** abrir mesa con `E`, colocar 4 tablones en 2x2 → se
   craftea; las herramientas que pasan por el grid conservan su
   durabilidad.
@@ -90,8 +92,12 @@ node tests/audit-fase6.js
   combustible (tronco/tablones/palo) + mineral o comida cruda →
   lingote o comida cocinada.
 - **Mobs:** de noche aparecen hostiles (zombie, creeper, esqueleto,
-  enderman; araña y lobo también de día); en superficie hay
-  pasivos. Atacar → daño, desgaste de espada, drops y XP.
+  enderman, ahogado; araña y lobo también de día); en superficie hay
+  pasivos (cerdo, vaca, oveja, gallina, conejo, ocelote) y el slime
+  aparece en pantanos. Desde la Fase 12 el spawn es **por bioma**
+  (`BIOME_SPAWN`/`WATER_SPAWN`): lobo en taiga, ahogado en agua, etc.
+  Atacar → daño, desgaste de espada, drops y XP. Doma de lobo con
+  hueso (`BONE`), clic derecho sobre el ahogado lanza el tridente.
 - **Red:** abrir dos pestañas → los jugadores se ven entre sí
   (`player_join`/`player_move`), romper un bloque se replica;
   cerrar una pestaña → el servidor sigue corriendo.
@@ -108,15 +114,18 @@ Los IDs son números enteros (ver `constants.js` en el servidor y
 | Rango | Contenido | Ejemplos |
 |---|---|---|
 | `0` | Aire (no es bloque ni ítem) | — |
-| `1`-`19` | Bloques sólidos colocables | tierra=1, piedra=3, tablones=7, horno=16 |
+| `1`-`19` | Bloques sólidos colocables | tierra=1, piedra=3, tablones=7, horno=16, cofre=22 |
 | `20` | Agua (bloque NO sólido: se nada, no se rompe a mano) | `B.WATER` |
-| `21` | Nieve (sólida, rompible a mano) | `B.SNOW` (Fase 4) |
-| `100`-`120` | Ítems puros (no se colocan como bloque) | palo=100, lingote=102, comida 107-119, hilo=120 |
-| `200`-`219` | Herramientas con durabilidad (pico 200-204, hacha 205-209, pala 210-214, espada 215-219) | pico de madera=200, espada de diamante=219 |
+| `21`-`25` | Bloques especiales sólidos/no sólidos | nieve=21 (sólida), antorcha=23, cama=24, lava=25 (no sólidos) |
+| `26`-`43` | Bloques de Fases 9-11 | tierra arada=26, cultivo=27, maderas 28-31/41-42, musgo=32, plantas 33-35, lanas 36-38, grava=39, TNT=40, liana=43 |
+| `100`-`141` | Ítems puros (no se colocan como bloque) | palo=100, lingote=102, comida 107-119, hilo=120, cuero=132, pan=133, pescado=134/135, hueso=136, tintes=137-139, miel=140, tijeras=141 |
+| `200`-`244` | Herramientas y armadura (pico 200-204, hacha 205-209, pala 210-214, espada 215-219, armadura 220-231, azadas 240-244) | pico de madera=200, espada de diamante=219, azada de diamante=244 |
+| `245` | Tridente (arma arrojadiza, Fase 12) | `I.TRIDENT` |
 
-**Regla:** si un ID está fuera de `1`-`21`, NO se coloca como
+**Regla:** si un ID está fuera de `1`-`43`, NO se coloca como
 bloque (es ítem o herramienta). `isSolidBlock(id)` en el servidor
-es la fuente para física/validación: `id !== AIR && id !== WATER`.
+es la fuente para física/validación: NO son sólidos el aire, el
+agua, la lava, las antorchas y las camas.
 
 ## Fuentes de verdad (single source of truth)
 
@@ -138,12 +147,14 @@ mantiene sincronizado manualmente (o lo verifica un test):
   (fundición). Son del servidor; el cliente solo envía el grid.
   Lo valida `tests/unit-recetas.js` (IDs existentes, shapes bien
   formadas y alcanzables — habría detectado el bug `hilo_a_lana`).
-- **Formato de guardado:** `SCHEMA_VERSION` (actual 3), `WORLD_DIR`
+- **Formato de guardado:** `SCHEMA_VERSION` (actual 5), `WORLD_DIR`
   (por semilla: `world/<semilla>/`), `CHUNKS_DIR`, `META_FILE`,
   `LEGACY_FILE` en `constants.js`. La semilla se configura con la
   env var `SEED` (defecto `miSemilla2026`); cada semilla tiene su
   propio mundo y el layout antiguo de `world/` se migra con
-  `save.migrateWorldLayout()`. Lo cubre `tests/unit-persistencia.js`.
+  `save.migrateWorldLayout()`. Los chunks se guardan en `.json`
+  comprimidos con gzip por dentro (mismo nombre, lectura que detecta
+  la cabecera). Lo cubre `tests/unit-persistencia.js`.
 
 **Regla:** si añades un bloque/ítem/herramienta, actualiza AMBOS
 lados y añade la receta si aplica; el CI de tests lo audita.
@@ -201,8 +212,8 @@ lados y añade la receta si aplica; el CI de tests lo audita.
    se tocó `SEED` en `constants.js` (cambiar la semilla altera
    toda la generación y rompe tests como `unit-mundo.js`).
 7. **Chunks que no se guardan/cargan** → verificar que el key
-   `cx,cz` es consistente entre `world.js` y `save.js`, y que
-   `world/chunks/` existe (lo cubre `unit-persistencia.js`).
+`cx,cz` es consistente entre `world.js` y `save.js`, y que
+    `world/<semilla>/chunks/` existe (lo cubre `unit-persistencia.js`).
 
 ## Qué NO hacer sin preguntar
 
@@ -215,5 +226,7 @@ lados y añade la receta si aplica; el CI de tests lo audita.
   ni clima — están explícitamente fuera de alcance (ver "Won't" en
   `TODO.md`).
 - No optimizar prematuramente (greedy meshing, workers, frustum
-  culling, etc.) antes de que el `TODO.md` lo indique — la Fase 10
-  tiene su momento para eso, cada fase tiene su momento.
+  culling ya existe) antes de que el `TODO.md` lo indique — el
+  rendimiento está planificado en la **Fase 13** (greedy meshing,
+  Web Workers de chunks) y en el **bloque C de la Fase 14**, no
+  antes.

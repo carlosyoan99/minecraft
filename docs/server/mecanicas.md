@@ -16,21 +16,31 @@
   los generadores `simplex-noise` 2D/3D (`reinitNoise`). Misma semilla →
   mismo mundo, siempre, entre reinicios.
 - **Biomas por temperatura + montañosidad** (`biomeFrom`): llanura,
-  bosque, desierto, nieve. La altura se compone con varias octavas de
-  ruido (fBm) y un `smoothstep` que aplana valles (`flatBaseHeight`).
+  bosque, desierto, nieve, montaña, tundra y, desde la Fase 11, **taiga**
+  (abetos densos), **pantano** (charcos con `isSwampPoolAt`, robles con
+  lianas), **jungla** (árboles 2×2 de madera de jungla, lianas) y
+  **océano** (terreno bajo el agua, islas, fondo de arena/grava, `isOcean`).
+  La altura se compone con varias octavas de ruido (fBm) y un `smoothstep`
+  que aplana valles (`flatBaseHeight`).
 - **Cuevas 3D** (`caveStrength` + `isCaveBlock`): ruido 3D que resta
   piedra; cerca de la superficie se estrechan para no agujerear el suelo.
 - **Minerales por altura estilo Minecraft** (`noise2D_ore` con el `y` en
   la coordenada): umbrales por profundidad — el diamante solo aparece
   abajo, el carbón en todas partes, etc.
 - **Charcos** (`isPondAt`, `isLavaPondAt`): agua/lava decorativas en
-  superficie, con `nearLake` que hace la transición agua→arena→tierra
-  (playas).
+  superficie (la lava solo en biomas cálidos, no en hielo), con `nearLake`
+  que hace la transición agua→arena→tierra (playas). Los charcos de
+  pantano usan `isSwampPoolAt`.
 - **Estructuras:** minas abandonadas con pasillos y cofres de loot,
-  árboles por bioma (roble, abedul, pino cónico), hierba alta, flores y
-  trigo (bloques no sólidos con drop de tinte).
+  árboles por bioma (roble, abedul, pino, jungla 2×2), hierba alta, flores
+  y trigo (bloques no sólidos con drop de tinte).
+- **Tamaño de mundo** (`WORLD_SIZES`, Fase 10): pequeño 256 / medio 512 /
+  grande 1024 / infinito 8192 por semilla; `generateChunk` devuelve vacío
+  fuera de bordes, `setBlock` rechaza y `inBounds` valida.
 - **Spawn determinista** (`findSpawn`): punto de aparición derivado de la
-  semilla y cacheado (se invalida al cambiar de mundo).
+  semilla y cacheado (se invalida al cambiar de mundo); rechaza TODA
+  columna de agua (lago, río u océano) y busca en espiral la seca más
+  cercana.
 
 ### Por qué así
 
@@ -68,7 +78,14 @@
 - **Colisión con el mundo:** el servidor consulta bloques sólidos vía
   `world.getBlock` y resuelve el desplazamiento por ejes.
 - **Agua y lava:** flotación en agua (el jugador no se hunde del todo) y
-  daño de lava (`LAVA_DAMAGE`) por tick mientras esté en contacto.
+  daño de lava (`LAVA_DAMAGE`) por tick mientras esté en contacto; el
+  fuego (`burning`/`fireUntil`) se extingue al entrar al agua o al poco
+  tiempo y se replica con `fire_state` (overlay de llamas en el HUD).
+- **Agacharse (Shift):** velocidad reducida (`SNEAK_SPEED`) y el servidor
+  **no avanza** si el bloque bajo el siguiente paso no es sólido mientras
+  está agachado (protección de bordes, Fase 10).
+- **Límites del mundo:** el `move` se valida contra los bordes del
+  tamaño de mundo de la semilla (Fase 10); salir devuelve teleport.
 
 ### Por qué así
 
@@ -100,6 +117,15 @@
   al llegar a 0, `tool_broke` y la herramienta desaparece.
 - **Grietas al cliente:** `block_break_progress` con stage 0-9 (y -1 para
   ocultar) para pintar el crack como en Minecraft.
+- **Drop de las menas** (Fase 14, Bloque B): cada mineral suelta
+  DIRECTAMENTE su ítem usable — carbón → `I.COAL`, hierro/oro → lingote,
+  diamante/redstone/esmeralda → gema (`ORE_DROP`); ya no cae el bloque de
+  mena (que no es útilizable).
+- **Tier mínimo por mineral** (Fase 14, Bloque B): `PICKAXE_TIER`
+  (madera 1, piedra 2, hierro 3, oro 1, diamante 4) frente a `ORE_TIER`
+  (carbón 1, hierro/oro 2, redstone/diamante/esmeralda 3). Con pico de
+  tier insuficiente el bloque se rompe pero **no suelta nada** (sin drop
+  ni XP), como en Minecraft.
 
 ### Por qué así
 
@@ -116,7 +142,36 @@
 ### Verificación
 
 `tests/unit-mineria.js`, `tests/unit-crack.js`, `tests/unit-durabilidad.js`,
-`audit-fase5.js` (paridad de durabilidad servidor↔cliente).
+`audit-fase5.js` (paridad de durabilidad servidor↔cliente);
+`tests/unit-paridad.js` y `tests/unit-recetas.js` fijan `ORE_DROP`,
+`PICKAXE_TIER`/`ORE_TIER` y el combustible (Fase 14).
+
+---
+
+## 3.5 Bloques con gravedad y TNT (server/world.js, server/tnt.js)
+
+### Cómo funciona
+
+- **Arena y grava caen** (`GRAVITY_BLOCKS`, Fase 10): `settleColumn` las
+  mueve al `setBlock` si el bloque de debajo no es sólido, y también al
+  generarse (la columna se asienta); el broadcast es `block_update`.
+- **TNT** (Fase 10): `tnt.ignite` arma una mecha (`state.fuses`, ~1.6 s)
+  con `tnt_fuse`; al explotar (`tnt_explode`) hace un cráter por radio con
+  `NOT_MINEABLE` respetado (bedrock/agua/lava intactos), knockback y daño,
+  y puede encender TNT vecino (reacciones en cadena). El creeper también
+  lo enciende. Los cofres con contenido no se rompen.
+
+### Por qué así
+
+- **El servidor decide la física de bloques**: la caída y la explosión
+  mutan el mundo real (el persistido), no una predicción del cliente. La
+  regla de `NOT_MINEABLE` evita que la gravedad o la pólvora destruyan
+  bedrock y contenedores con loot (griefing accidental).
+
+### Verificación
+
+`tests/unit-fase11.js` (sección de mecánicas de Fase 10: grava cae al
+primer soporte, TNT explota con cráter y el bedrock sobrevive).
 
 ---
 
@@ -133,9 +188,11 @@
 - **Hambre y regeneración:** la saturación se consume primero, decae más
   rápido en movimiento; con comida ≥18 el jugador regenera salud; con 0
   muere de inanición (ignora armadura).
-- **XP con curva no lineal estilo MC:** `xpToNext(level) = 7 + floor(level·3.5)`
-  → 7, 10, 14, 17… El nivel suma salud máxima (máx +10). La XP se
-  conserva al morir. El HUD recibe `xpInto`/`xpToNext` para pintar el
+- **XP con la curva OFICIAL de Minecraft** (Fase 13, paridad B2):
+  `xpToNext(level)` por tramos (2L+7 para L<16, 5L−38 para 16..30,
+  9L−158 para L≥31); coste total hasta nivel 30 = **1.395 XP**. La
+  **salud máxima es SIEMPRE 20** (el nivel NO da vida, paridad B1). La XP
+  se conserva al morir. El HUD recibe `xpInto`/`xpToNext` para pintar el
   progreso dentro del nivel.
 - **Muerte y respawn** (`respawnPlayer`): al morir se suelta el inventario,
   se restaura salud/comida, se reaparece en el spawn del mundo (o en la
@@ -149,7 +206,9 @@
   gracia. Medir antes de arreglar.
 - **Curva MC no lineal** da progresión realista: los primeros niveles son
   baratos, luego se encarecen. La lineal simple (100 por nivel) hacía que
-  el nivel 3 fuera tan caro como el 12.
+  el nivel 3 fuera tan caro como el 12. Desde la Fase 13 la curva es la
+  OFICIAL por tramos (paridad con `xpToNext`) y **el nivel no modifica la
+  vida**: la progresión defensiva solo viene de la armadura.
 - **El daño real pasa por armadura** para que la armadura importe como
   progresión defensiva.
 
@@ -181,6 +240,14 @@
 - **Spawn por hora y luz:** de noche (o en zonas oscuras, según fase) se
   spawnan hostiles a ≥24 bloques del jugador; **zona segura de spawn**
   (radio 32) donde no aparecen ni targetean.
+- **Spawn por bioma** (Fase 12, Bloque C): en `spawnMobs` una parte de la
+  reserva sale del POOL del bioma (`BIOME_SPAWN`: taiga → lobos de
+  noche, pantano → slimes de noche, jungla → ocelotes de día) y los
+  ahogados entran solo en columnas de agua (`WATER_SPAWN`, bajo la
+  superficie en lugar de sobre como el resto).
+- **Salud por especie** (Fase 14, Bloque B, paridad MC): zombi/creeper/
+  esqueleto/lobo/drowned 20, **araña 16**, **enderman 40**, **abeja 10**;
+  el creeper explota con el **daño del TNT** (`TNT_DAMAGE`).
 - **Persecución con `stuckTicks`:** si un hostil no avanza pese a
   perseguir, se desvía lateralmente; hay límite de rango con vuelta a
   wander.
@@ -220,6 +287,9 @@
 - **Hornos** (`furnaces` en `state`): combustible, input, progreso por
   tick, output; `furnaceSnapshot` para el wire. Se persisten en
   `world.json` y se restauran al cargar.
+- **Combustibles** (`FUEL_ITEMS`, Fase 14, Bloque B): troncos de las
+  cuatro variedades (roble, abedul, abeto, jungla), tablones, palo y
+  **carbón**.
 - **Validación estructural** (`isValidRecipes`): receta malformada se
   rechaza al cargar, nunca deja el juego a medias.
 
@@ -273,8 +343,9 @@ recetas vía `recipe_book`), `tests/e2e-comer.js`.
   muta el estado y sincroniza con eventos existentes (`teleport`,
   `inventory_update`, `time_set`, `chunks_add`).
 - **Reloj del mundo:** `worldTime(state) = (Date.now() + timeOffset) %
-  DAY_CYCLE_MS`. El `timeOffset` (de `/time set`) no se persiste: al
-  reiniciar el servidor el ciclo vuelve a la hora real.
+  DAY_CYCLE_MS`. El `timeOffset` (de `/time set` o dormir) **se persiste en
+  `world.json`** (Fase 10): la hora del mundo continúa entre sesiones y los
+  mundos nuevos arrancan al amanecer (`dawnOffsetMs`).
 - **Fases lunares** (`moonTime`): ciclo de 8 días de juego
   (`MOON_CYCLE_MS = DAY_CYCLE_MS * 8`) con **offset determinista por
   semilla** (`seedMoonOffsetMs`): mismo mundo → misma fase lunar para
@@ -290,6 +361,35 @@ recetas vía `recipe_book`), `tests/e2e-comer.js`.
 ### Verificación
 
 `tests/unit-commands.js`, `tests/diag-moon.js`.
+
+---
+
+## 8.5 Interacción con el mundo: esquilar, bonemeal y agua infinita (Fase 11)
+
+### Cómo funciona
+
+- **Esquilar ovejas** (`shear_mob` + `applyShear` en `server/mobs.js`):
+  con tijeras (`SHEARS` 141, con durabilidad 238) clic derecho sobre una
+  oveja → 1-3 lana sin dañarla; un bebé no se esquila. El crafteo es
+  2 lingotes de hierro en diagonal.
+- **Bonemeal** (`bonemeal`, harina de hueso 139): sobre trigo madura el
+  cultivo al instante; sobre tierra/césped genera hierba alta o flores.
+- **Fuente de agua infinita** (`countWaterNeighbors` en `world.js`,
+  relleno en `players.js` al romper agua en creative): un hueco de agua
+  con ≥2 fuentes de agua ortogonales adyacentes se rellena solo — la 2×2
+  con 3 fuentes y el canal 1×3 nunca se agotan, como en Minecraft.
+
+### Por qué así
+
+Cierran bucles de recursos baratos (lana sin matar, cultivos instantáneos
+con hueso, agua reutilizable) con **validación server-side** y cada una
+con su test unitario (decisión de la Fase 11: toda mecánica nueva lleva
+test). No requieren bloques nuevos ni tocar el formato de guardado.
+
+### Verificación
+
+`tests/unit-fase11.js` (secciones de esquilado, bonemeal y fuente de agua
+infinita).
 
 ---
 

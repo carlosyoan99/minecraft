@@ -21,7 +21,17 @@ de cada fase.
 | 8 — Caza de bugs | [`fase8-spec.md`](fase8-spec.md) | Prospectiva + resultados | ✅ Completada | 10 bugs del playtest (B1-B10): combate, minería a mano, pérdida de vida, controles, día/noche 20 min, tecla E, LOD, estrellas, sol/luna, mobs multibloque |
 | 9 — Paridad, IA, mundo y menú | [`fase9-spec.md`](fase9-spec.md) | Prospectiva (fuente de verdad de decisiones) | ✅ Completada | Minería funcional (causa raíz del `mcChunks: 0` corregida), gamemode por mundo, borrado de mundos, paridad de mecánicas (curva XP MC, azadas/cultivos), IA por especie (flechas/fuse/quema), estética, mundo/ítems/libro de recetas |
 | 9.5 — Mejoras de skills, docs y `.gitignore` | — (en `TODO.md`) | Retrospectiva | ✅ Completada | Colisión de flechas con bloques (anti-tunneling), clamp de pitch de cámara, backup `.bak` del guardado, variación de pitch en audio, documentación técnica `docs/server/` + `docs/public/`, `.gitignore` completo |
-| 10 — Notas del usuario y paridad avanzada | [`fase10-spec.md`](fase10-spec.md) | Prospectiva | 🔄 En curso | Bugs de las notas (agua, lava, hitbox, `/tp`, hielo, hostiles por luz), tamaño de mundo, pantalla de muerte, `/kill`, `test.log`, gravedad de bloques, TNT, sprint, visuales y audio |
+| 10 — Notas del usuario y paridad avanzada | [`fase10-spec.md`](fase10-spec.md) | Prospectiva | ✅ Completada | Bugs de las notas (agua, lava, hitbox, `/tp`, hielo, hostiles por luz), tamaño de mundo, pantalla de muerte, `/kill`, `test.log`, gravedad de bloques, TNT, sprint, visuales y audio |
+| 11 — Bugs de input y cámara, biomas, paridad y cierre de tests | [`fase11-spec.md`](fase11-spec.md) | Prospectiva | ✅ Completada | Clic roto (pointer lock sobre el canvas) y cámara que da vueltas, 4 biomas nuevos (taiga, pantano, jungla, océano), esquilar, bonemeal, fuente de agua infinita, sonidos de mobs, cierre con tests (`unit-fase11`, `unit-camara`) |
+| 12 — Mobs por bioma, estructuras, spawn por bioma y persistencia | [`fase12-spec.md`](fase12-spec.md) | Prospectiva (entrevista, alcance acordado) | 🔄 En curso | Implementados en el árbol (bloques A-D): lobo de taiga domesticable, slime con división y hop determinista, ocelote→gato que espanta creepers, ahogado con tridente, templo de jungla con trampa, naufragio con cofres; spawn por bioma (`BIOME_SPAWN`/`WATER_SPAWN`), persistencia de mascotas (`SCHEMA_VERSION` 5) y `unit-fase12`/`unit-persistencia`. Pendientes: E2E y auditoría de cierre |
+| 13 — Paridad 1.0, rendimiento, POO y tests de paridad | [`fase13-spec.md`](fase13-spec.md) | Prospectiva (reporte de paridad + entrevista) | 🔄 En curso | La **paridad de valores** (vida 20 fija, curva de XP oficial por tramos, espadas 4/5/6/7, armadura por puntos, durezas, durabilidades reales) está implementada y fijada por `unit-paridad.js`. Pendientes: greedy meshing, Web Workers de chunks, POO completa del servidor y lagunas (arco, puertas, escaleras/losas/vallas, cubo, recetas) |
+| 14 — Auditoría y cierre de Fases 12-13 | [`fase14-spec.md`](fase14-spec.md) | Prospectiva (auditoría) | 🔄 En curso | Bloques A (spawn por bioma, persistencia `SCHEMA_VERSION` 5, tridente contra mobs, slime determinista) y B (drop de menas con `ORE_DROP`, tier de pico por mineral, comida/combustible, salud/XP de mobs, boom de creeper = `TNT_DAMAGE`) implementados y en verde; pendiente el bloque C (rendimiento cliente/servidor) |
+
+## Reporte comparativo 1:1
+
+| Documento | Contenido |
+| --- | --- |
+| [`reporte-paridad.md`](reporte-paridad.md) | Comparativa 1:1 contra Minecraft Java por área (mecánicas, audio, menú, mundo/biomas, mobs, servidor, vida/hambre/XP, minería/crafteo, combate), bugs de paridad (B1-B12), lagunas priorizadas (L1-L5), optimizaciones (P1-P5), diseño de la migración POO y plan de validación |
 
 ## Documentación técnica
 
@@ -40,7 +50,7 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
 
 | Documento | Descripción |
 | --- | --- |
-| [`Notas del usuario.md`](Notas%20del%20usuario.md) | Auditoría manual del usuario: bugs, nuevas características, debug y "valorar implementar" — base de las fases 9 y 10 |
+| [`Notas del usuario.md`](Notas%20del%20usuario.md) | Auditoría manual del usuario: bugs, nuevas características, debug y "valorar implementar" — base de las fases 9, 10 y 11 |
 
 ## Cómo usar estas specs
 
@@ -50,9 +60,13 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
   arquitectura actual y para no romper invariantes (p. ej. paridad de
   `constants.js` auditable por `unit-sync.js`, formato de guardado con
   `SCHEMA_VERSION`, reglas de culling/LOD).
-- **Prospectivas (fases 9-10):** especifican el trabajo pendiente y son la
+- **Prospectivas (fases 9-14):** especifican el trabajo pendiente y son la
   fuente de verdad de las decisiones de diseño; guían la implementación por
-  bloques, cada bloque con su test (convención de `AGENTS.md`).
+  bloques, cada bloque con su test (convención de `AGENTS.md`). Las fases
+  12, 13 y 14 están **en curso**: la 12 con sus bloques A-D implementados
+  (pendiente E2E/auditoría), la 13 con la paridad de valores hecha
+  (`unit-paridad.js`) y la 14 con los bloques A y B implementados y el C
+  (rendimiento) pendiente.
 - El estado real de cada tarea (checkboxes `[ ]`/`[x]`) vive en `TODO.md`;
   al cerrar una fase se marca en el roadmap y se refleja en la columna
   "Estado" de este índice.
