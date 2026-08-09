@@ -460,12 +460,21 @@ function connect() {
 {
 	const p = global.__PLAYER;
 	const ws = global.__WS;
-	const grid = new Array(9).fill(null);
-	grid[4] = { id: B.OAK_LOG, count: 1 }; // un tronco → 4 planks
-	ws.sent.length = 0;
-	ws.emit("message", JSON.stringify({ event: "craft", data: { grid } }));
+	// Auditoría 2026-08-09 (§1.2): la grid de crafteo SOLO se llena vía
+	// grid_set (que descuenta del inventario) — el handler craft ya no acepta
+	// data.grid del wire (un cliente podía reenviar la grid de cualquier
+	// receta y craftear ítems infinitos).
+	p.inventory[0] = { id: B.OAK_LOG, count: 1 };
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "grid_set",
+			data: { fromInventorySlot: 0, toGridSlot: 4 }
+		})
+	);
+	ws.emit("message", JSON.stringify({ event: "craft", data: {} }));
 	check(
-		"craft tronco → planks al inventario",
+		"craft tronco → planks al inventario (tras grid_set legítimo)",
 		p.inventory.some((s) => s && s.id === B.PLANKS && s.count >= 4),
 		JSON.stringify(p.inventory.filter(Boolean).map((s) => [s.id, s.count]))
 	);
@@ -473,6 +482,29 @@ function connect() {
 		"crafting_grid_update con success",
 		ws.events("crafting_grid_update").length >= 1 &&
 			ws.events("crafting_grid_update").at(-1).data.success === true
+	);
+	check(
+		"craft consumió el tronco de la grid",
+		p.craftingGrid.every((c) => !c)
+	);
+}
+
+// Auditoría 2026-08-09 (§1.2): data.grid enviado desde el wire se IGNORA: el
+// servidor craftea con su propia grid (fuente de verdad). Un grid arbitrario
+// sin pasar por grid_set no produce nada.
+{
+	const p = global.__PLAYER;
+	const ws = global.__WS;
+	p.craftingGrid.fill(null);
+	p.inventory = new Array(36).fill(null);
+	ws.sent.length = 0;
+	const fakeGrid = new Array(9).fill(null);
+	fakeGrid[4] = { id: B.OAK_LOG, count: 1 }; // grid inventada por el cliente
+	ws.emit("message", JSON.stringify({ event: "craft", data: { grid: fakeGrid } }));
+	check(
+		"craft con grid del wire inventada no craftea nada (fuente de verdad = servidor)",
+		!p.inventory.some((s) => s && s.id === B.PLANKS),
+		JSON.stringify(p.inventory.filter(Boolean).map((s) => [s.id, s.count]))
 	);
 }
 

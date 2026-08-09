@@ -627,7 +627,12 @@ function handleConnection(ws, req) {
 			}
 
 			case "craft": {
-				p.craftingGrid = Array.isArray(data.grid) ? data.grid : p.craftingGrid;
+				// Auditoría 2026-08-09 (§1.2): la grid SIEMPRE es la del servidor
+				// (p.craftingGrid), que solo se llena vía grid_set/grid_clear —
+				// acciones que descuentan/repongan ítems del inventario real. Antes
+				// se aceptaba data.grid del wire directamente: un cliente podía
+				// reenviar la grid de cualquier receta cada frame y craftear ítems
+				// infinitos sin coste (duplicación de recursos en survival).
 				const recipe = crafting.matchRecipe(p.craftingGrid);
 				if (recipe) {
 					for (let i = 0; i < 9; i++) {
