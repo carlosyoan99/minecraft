@@ -266,7 +266,7 @@ function tickArrows(dtMs) {
 					m.health -= a.damage || ARROW_DAMAGE;
 					if (m.health <= 0) {
 						// El slime se divide antes de morir (como en attack_mob).
-						if (m.type === "slime") splitSlime(m);
+						m.onDeath(); // C2: el slime se divide (hook por especie)
 						m.alive = false;
 						// Si el lanzador es un jugador que está conectado, recibe los
 						// drops y la XP del mob (que es quien aprieta mejor que con la
@@ -599,6 +599,17 @@ class Mob {
 		this.tickSunBurn(isNight);
 		if (!this.alive) return; // murió por el sol: no actúa este tick
 		const { nearest, dist } = this.findNearestPlayer();
+		// Fase 13 (C2): POO — el comportamiento por especie es un método
+		// VIRTUAL (tickSpecies). La clase base lo despacha por tipo (switch)
+		// para compatibilidad con `new Mob(tipo)` de los tests; cada subclase
+		// (Zombie, Creeper, ...) lo sobrescribe con su IA sin el switch.
+		this.tickSpecies(isNight, nearest, dist);
+	}
+
+	// Hook por especie (Fase 13, C2): la base despacha por tipo para que
+	// `new Mob("zombie")` siga comportándose igual; las subclases sobrescriben
+	// este método con su IA propia (ver createMob/MOB_CLASSES al final).
+	tickSpecies(isNight, nearest, dist) {
 		const hostiles = HOSTILE.has(this.type);
 		if (!hostiles) {
 			// Fase 9 (Bloque F): la abeja tiene su propio movimiento volador 3D
@@ -613,59 +624,13 @@ class Mob {
 		}
 		switch (this.type) {
 			case "zombie":
-				if (nearest && (isNight || dist < 6)) {
-					this.state = "chase";
-					this.chase(nearest, 0.035);
-					if (dist < 1.6) this.attack(nearest, 2, 1000);
-				} else {
-					this.state = "idle";
-					this.wander();
-				}
+				this.tickZombie(isNight, nearest, dist);
 				break;
-			case "spider": // Fase 5: hostil rápido y frágil; Fase 9: escala y salta
-				if (nearest && (isNight || dist < 8)) {
-					this.state = "chase";
-					this.chase(nearest, 0.055);
-					// Escalar: si el camino está bloqueado por un sólido y hay hueco
-					// arriba, sube (simplificación: las arañas trepan muros de 1).
-					const front = world.getBlock(
-						Math.floor(this.x + (nearest.x - this.x) * 0.2),
-						Math.floor(this.y + 0.7),
-						Math.floor(this.z + (nearest.z - this.z) * 0.2)
-					);
-					if (isSolidBlock(front)) {
-						const up = world.getBlock(
-							Math.floor(this.x),
-							Math.floor(this.y + 1.8),
-							Math.floor(this.z)
-						);
-						if (!isSolidBlock(up)) this.y += 0.08; // trepa el muro
-					}
-					// Salto de ataque: cerca del objetivo, salta sobre él.
-					if (dist < 3 && Math.floor(this.y) === Math.floor(nearest.y))
-						this.y += 0.45;
-					if (dist < 1.7) this.attack(nearest, 2, 900);
-				} else {
-					this.state = "idle";
-					this.wander();
-				}
+			case "spider":
+				this.tickSpider(isNight, nearest, dist);
 				break;
-			case "wolf": // Fase 5: hostil resistente de la noche; Fase 12: domable
-				// Lobo DOMADO (Fase 12, A1): sigue al dueño, se sienta con clic
-				// derecho y no ataca al dueño (solo a su objetivo — ver net.js
-				// petsJoinAttack). Si está sentado no sigue ni ataca.
-				if (this.ownerId) {
-					this.tickPet(nearest, dist);
-					break;
-				}
-				if (nearest && (isNight || dist < 8)) {
-					this.state = "chase";
-					this.chase(nearest, 0.04);
-					if (dist < 1.8) this.attack(nearest, 3, 1200);
-				} else {
-					this.state = "idle";
-					this.wander();
-				}
+			case "wolf":
+				this.tickWolf(isNight, nearest, dist);
 				break;
 			case "slime": // Fase 12 (A2): salta en vez de caminar y se divide al morir
 				this.tickSlime(isNight, nearest, dist);
@@ -673,87 +638,162 @@ class Mob {
 			case "drowned": // Fase 12 (A4): nada, ataca y lanza tridentes
 				this.tickDrowned(isNight, nearest, dist);
 				break;
-			case "creeper": {
-				// Fase 12 (A3): el GATO domado espanta a los creepers — si hay un
-				// gato aliado a ≤6 bloques, el creeper huye en vez de perseguir o
-				// explotar (decisión E9 del spec).
-				if (catNearby(this.x, this.z, 6)) {
-					this.fuseStart = null;
-					this.state = "flee";
-					if (nearest)
-						this.moveToward(
-							{ x: 2 * this.x - nearest.x, z: 2 * this.z - nearest.z },
-							0.05
-						);
-					else this.wander();
-					break;
-				}
-				// Fase 9 (Bloque D): fuse fiel — se detiene, "silba" (~1.5s) y
-				// explota si el jugador sigue cerca; si se aleja, cancela.
-				if (nearest && dist < 10) {
-					if (dist < 3) {
-						this.state = "fuse";
-						if (!this.fuseStart) this.fuseStart = Date.now();
-						if (Date.now() - this.fuseStart >= 1500) {
-							this.fuseStart = null;
-							this.explode();
-						}
-					} else {
-						this.fuseStart = null;
-						this.state = "chase";
-						this.chase(nearest, 0.045);
-					}
-				} else {
-					this.fuseStart = null;
-					this.state = "idle";
-					this.wander();
-				}
+			case "creeper":
+				this.tickCreeper(isNight, nearest, dist);
 				break;
-			}
-			case "skeleton": {
-				// Fase 9 (Bloque D): el esqueleto mantiene la distancia y dispara
-				// flechas (proyectil con gravedad). No arde (en Minecraft el
-				// esqueleto tampoco arde — solo el zombi); por eso se excluye de
-				// BURNS_IN_SUN en la Fase 9.
-				if (nearest && (isNight || dist < 8)) {
-					this.state = "chase";
-					if (dist < 6)
-						this.chase(
-							{ x: 2 * this.x - nearest.x, z: 2 * this.z - nearest.z },
-							0.03
-						);
-					else if (dist > 12) this.chase(nearest, 0.03);
-					if (dist < 18 && Date.now() > this.shootCooldown) {
-						shootArrow(this, nearest);
-						this.shootCooldown = Date.now() + 2500;
-					}
-				} else {
-					this.state = "idle";
-					this.wander();
-				}
+			case "skeleton":
+				this.tickSkeleton(isNight, nearest, dist);
 				break;
-			}
 			case "enderman":
-				if (
-					nearest &&
-					dist < 16 &&
-					Math.random() < 0.02 &&
-					this.teleportCooldown < Date.now()
-				) {
-					const angle = Math.random() * Math.PI * 2,
-						radius = 2 + Math.random() * 3;
-					this.x = nearest.x + Math.cos(angle) * radius;
-					this.z = nearest.z + Math.sin(angle) * radius;
-					this.y = world.getHeight(Math.floor(this.x), Math.floor(this.z)) + 1;
-					this.teleportCooldown = Date.now() + 3000;
-					this.state = "chase";
-				} else if (nearest && dist < 2.5) {
-					this.attack(nearest, 4, 1500);
-				} else {
-					this.state = "idle";
-					this.wander();
-				}
+				this.tickEnderman(isNight, nearest, dist);
 				break;
+		}
+	}
+
+	// ============================================================
+	// FASE 13 (C2): IA por especie como métodos de instancia. Los cuerpos se
+	// extrajeron del switch del tick central SIN cambiar el comportamiento
+	// (la base los usa vía tickSpecies; las subclases los sobreescriben).
+	// ============================================================
+	tickZombie(isNight, nearest, dist) {
+		if (nearest && (isNight || dist < 6)) {
+			this.state = "chase";
+			this.chase(nearest, 0.035);
+			if (dist < 1.6) this.attack(nearest, 2, 1000);
+		} else {
+			this.state = "idle";
+			this.wander();
+		}
+	}
+
+	tickSpider(isNight, nearest, dist) {
+		// Fase 5: hostil rápido y frágil; Fase 9: escala y salta
+		if (nearest && (isNight || dist < 8)) {
+			this.state = "chase";
+			this.chase(nearest, 0.055);
+			// Escalar: si el camino está bloqueado por un sólido y hay hueco
+			// arriba, sube (simplificación: las arañas trepan muros de 1).
+			const front = world.getBlock(
+				Math.floor(this.x + (nearest.x - this.x) * 0.2),
+				Math.floor(this.y + 0.7),
+				Math.floor(this.z + (nearest.z - this.z) * 0.2)
+			);
+			if (isSolidBlock(front)) {
+				const up = world.getBlock(
+					Math.floor(this.x),
+					Math.floor(this.y + 1.8),
+					Math.floor(this.z)
+				);
+				if (!isSolidBlock(up)) this.y += 0.08; // trepa el muro
+			}
+			// Salto de ataque: cerca del objetivo, salta sobre él.
+			if (dist < 3 && Math.floor(this.y) === Math.floor(nearest.y))
+				this.y += 0.45;
+			if (dist < 1.7) this.attack(nearest, 2, 900);
+		} else {
+			this.state = "idle";
+			this.wander();
+		}
+	}
+
+	tickWolf(isNight, nearest, dist) {
+		// Fase 5: hostil resistente de la noche; Fase 12: domable
+		// Lobo DOMADO (Fase 12, A1): sigue al dueño, se sienta con clic
+		// derecho y no ataca al dueño (solo a su objetivo — ver net.js
+		// petsJoinAttack). Si está sentado no sigue ni ataca.
+		if (this.ownerId) {
+			this.tickPet(nearest, dist);
+			return;
+		}
+		if (nearest && (isNight || dist < 8)) {
+			this.state = "chase";
+			this.chase(nearest, 0.04);
+			if (dist < 1.8) this.attack(nearest, 3, 1200);
+		} else {
+			this.state = "idle";
+			this.wander();
+		}
+	}
+
+	tickCreeper(isNight, nearest, dist) {
+		// Fase 12 (A3): el GATO domado espanta a los creepers — si hay un
+		// gato aliado a ≤6 bloques, el creeper huye en vez de perseguir o
+		// explotar (decisión E9 del spec).
+		if (catNearby(this.x, this.z, 6)) {
+			this.fuseStart = null;
+			this.state = "flee";
+			if (nearest)
+				this.moveToward(
+					{ x: 2 * this.x - nearest.x, z: 2 * this.z - nearest.z },
+					0.05
+				);
+			else this.wander();
+			return;
+		}
+		// Fase 9 (Bloque D): fuse fiel — se detiene, "silba" (~1.5s) y
+		// explota si el jugador sigue cerca; si se aleja, cancela.
+		if (nearest && dist < 10) {
+			if (dist < 3) {
+				this.state = "fuse";
+				if (!this.fuseStart) this.fuseStart = Date.now();
+				if (Date.now() - this.fuseStart >= 1500) {
+					this.fuseStart = null;
+					this.explode();
+				}
+			} else {
+				this.fuseStart = null;
+				this.state = "chase";
+				this.chase(nearest, 0.045);
+			}
+		} else {
+			this.fuseStart = null;
+			this.state = "idle";
+			this.wander();
+		}
+	}
+
+	tickSkeleton(isNight, nearest, dist) {
+		// Fase 9 (Bloque D): el esqueleto mantiene la distancia y dispara
+		// flechas (proyectil con gravedad). No arde (en Minecraft el
+		// esqueleto tampoco arde — solo el zombi); por eso se excluye de
+		// BURNS_IN_SUN en la Fase 9.
+		if (nearest && (isNight || dist < 8)) {
+			this.state = "chase";
+			if (dist < 6)
+				this.chase(
+					{ x: 2 * this.x - nearest.x, z: 2 * this.z - nearest.z },
+					0.03
+				);
+			else if (dist > 12) this.chase(nearest, 0.03);
+			if (dist < 18 && Date.now() > this.shootCooldown) {
+				shootArrow(this, nearest);
+				this.shootCooldown = Date.now() + 2500;
+			}
+		} else {
+			this.state = "idle";
+			this.wander();
+		}
+	}
+
+	tickEnderman(isNight, nearest, dist) {
+		if (
+			nearest &&
+			dist < 16 &&
+			Math.random() < 0.02 &&
+			this.teleportCooldown < Date.now()
+		) {
+			const angle = Math.random() * Math.PI * 2,
+				radius = 2 + Math.random() * 3;
+			this.x = nearest.x + Math.cos(angle) * radius;
+			this.z = nearest.z + Math.sin(angle) * radius;
+			this.y = world.getHeight(Math.floor(this.x), Math.floor(this.z)) + 1;
+			this.teleportCooldown = Date.now() + 3000;
+			this.state = "chase";
+		} else if (nearest && dist < 2.5) {
+			this.attack(nearest, 4, 1500);
+		} else {
+			this.state = "idle";
+			this.wander();
 		}
 	}
 
@@ -973,6 +1013,194 @@ class Mob {
 			this.wander();
 		}
 	}
+
+	// Hook de muerte (C2): sustituye el `if (m.type === "slime") splitSlime(m)`
+	// que los llamadores (tickArrows, net.js) repetían. La base despacha por
+	// tipo (compatibilidad con `new Mob(tipo)` de los tests, igual que
+	// tickSpecies); la subclase Slime lo sobrescribe con su propio hook.
+	onDeath() {
+		if (this.type === "slime" && this.alive) splitSlime(this);
+	}
+}
+
+// ============================================================
+// FASE 13 (C2): HERENCIA POR ESPECIE
+// Subclases de Mob que sobrescriben tickSpecies (y onDeath) con su IA
+// propia, sin el switch del tick central. `createMob(type, x, y, z)` elige
+// la clase por tipo (registro tipo→clase) y se usa en spawnMobs/splitSlime;
+// la clase base conserva el switch en tickSpecies SOLO para compatibilidad
+// con `new Mob(tipo)` de los tests (unit-mobs-ia, unit-fase12, ...).
+// ============================================================
+
+class Zombie extends Mob {
+	constructor(x, y, z) {
+		super("zombie", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickZombie(isNight, nearest, dist);
+	}
+}
+
+class Spider extends Mob {
+	constructor(x, y, z) {
+		super("spider", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickSpider(isNight, nearest, dist);
+	}
+}
+
+class Wolf extends Mob {
+	constructor(x, y, z) {
+		super("wolf", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickWolf(isNight, nearest, dist);
+	}
+}
+
+class Slime extends Mob {
+	constructor(x, y, z) {
+		super("slime", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickSlime(isNight, nearest, dist);
+	}
+	// Al morir se divide (grande → 2 medianos → 2 pequeños); el hook evita
+	// que los llamadores repitan el `if (type === "slime") splitSlime(...)`.
+	onDeath() {
+		if (this.alive) splitSlime(this);
+	}
+}
+
+class Drowned extends Mob {
+	constructor(x, y, z) {
+		super("drowned", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickDrowned(isNight, nearest, dist);
+	}
+}
+
+class Creeper extends Mob {
+	constructor(x, y, z) {
+		super("creeper", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickCreeper(isNight, nearest, dist);
+	}
+}
+
+class Skeleton extends Mob {
+	constructor(x, y, z) {
+		super("skeleton", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickSkeleton(isNight, nearest, dist);
+	}
+}
+
+class Enderman extends Mob {
+	constructor(x, y, z) {
+		super("enderman", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickEnderman(isNight, nearest, dist);
+	}
+}
+
+// Pasivos: el genérico tickPassive (huida/rebaño/sueño) es el común; el
+// ocelote y la abeja conservan su IA propia de la base. El gato domado usa
+// la clase Ocelot con type "cat" (applyTame lo cambia en runtime, como MC).
+class Cow extends Mob {
+	constructor(x, y, z) {
+		super("cow", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickPassive(isNight, nearest, dist);
+	}
+}
+
+class Pig extends Mob {
+	constructor(x, y, z) {
+		super("pig", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickPassive(isNight, nearest, dist);
+	}
+}
+
+class Chicken extends Mob {
+	constructor(x, y, z) {
+		super("chicken", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickPassive(isNight, nearest, dist);
+	}
+}
+
+class Sheep extends Mob {
+	constructor(x, y, z) {
+		super("sheep", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickPassive(isNight, nearest, dist);
+	}
+}
+
+class Rabbit extends Mob {
+	constructor(x, y, z) {
+		super("rabbit", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		this.tickPassive(isNight, nearest, dist);
+	}
+}
+
+class Bee extends Mob {
+	constructor(x, y, z) {
+		super("bee", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		tickBee(this);
+	}
+}
+
+class Ocelot extends Mob {
+	constructor(x, y, z) {
+		super("ocelot", x, y, z);
+	}
+	tickSpecies(isNight, nearest, dist) {
+		// Domado → type "cat" (runtime, ver applyTame): el gato usa tickCat.
+		if (this.type === "cat") this.tickCat(nearest, dist);
+		else this.tickOcelot(nearest, dist);
+	}
+}
+
+// Registro tipo → clase (C2): createMob elige aquí. Los tipos sin clase
+// (p. ej. "cat" solo existe como type runtime de Ocelot) caen en Mob base.
+const MOB_CLASSES = {
+	zombie: Zombie,
+	spider: Spider,
+	wolf: Wolf,
+	slime: Slime,
+	drowned: Drowned,
+	creeper: Creeper,
+	skeleton: Skeleton,
+	enderman: Enderman,
+	cow: Cow,
+	pig: Pig,
+	chicken: Chicken,
+	sheep: Sheep,
+	rabbit: Rabbit,
+	bee: Bee,
+	ocelot: Ocelot
+};
+
+// Crea un mob de la clase correcta según el tipo (fábrica tipo→clase).
+function createMob(type, x, y, z) {
+	const Cls = MOB_CLASSES[type];
+	return Cls ? new Cls(x, y, z) : new Mob(type, x, y, z);
 }
 
 // ============================================================
@@ -1053,7 +1281,7 @@ function splitSlime(mob) {
 			)
 		)
 			continue;
-		const child = new Mob("slime", nx, groundY + 1.05, mob.z);
+		const child = createMob("slime", nx, groundY + 1.05, mob.z);
 		child.slimeSize = childSize;
 		child.health = SLIME_HEALTH[childSize];
 		state.mobs.push(child);
@@ -1198,7 +1426,7 @@ function spawnMobs(isNight) {
 			} else {
 				wy = surfaceH + 1;
 			}
-			const mob = new Mob(type, wx, wy, wz);
+			const mob = createMob(type, wx, wy, wz);
 			// Fase 9 (Bloque D): el punto de origen es el rebaño del pasivo (vuelven a
 			// él si se alejan). Las abejas vuelan alrededor de su panal (el origen).
 			mob.homeX = wx;
@@ -1345,7 +1573,7 @@ function applyFeed(mob, mobs) {
 	partner.loveUntil = 0;
 	mob.cooldownUntil = Date.now() + BREED_COOLDOWN_MS;
 	partner.cooldownUntil = Date.now() + BREED_COOLDOWN_MS;
-	const baby = new Mob(
+	const baby = createMob(
 		mob.type,
 		(mob.x + partner.x) / 2,
 		Math.min(mob.y, partner.y),
@@ -1359,7 +1587,7 @@ function applyFeed(mob, mobs) {
 
 function restoreMobs(list) {
 	return (list || []).map((m) => {
-		const mob = new Mob(m.type, m.x, m.y, m.z);
+		const mob = createMob(m.type, m.x, m.y, m.z);
 		mob.id = m.id;
 		mob.health = m.health;
 		mob.isBaby = !!m.isBaby;
@@ -1397,6 +1625,24 @@ function tickBee(mob) {
 
 module.exports = {
 	Mob,
+	// Fase 13 (C2): herencia por especie — clases y fábrica tipo→clase.
+	Zombie,
+	Spider,
+	Wolf,
+	Slime,
+	Drowned,
+	Creeper,
+	Skeleton,
+	Enderman,
+	Cow,
+	Pig,
+	Chicken,
+	Sheep,
+	Rabbit,
+	Bee,
+	Ocelot,
+	createMob,
+	MOB_CLASSES,
 	spawnMobs,
 	mobSnapshot,
 	restoreMobs,

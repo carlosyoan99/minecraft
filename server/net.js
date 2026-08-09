@@ -1286,11 +1286,11 @@ function handleConnection(ws, req) {
 				// (~4s, dirección contraria) — ver mobs.js mobHit().
 				mobs.Mob.prototype.mobHit.call(mob, p);
 				if (mob.health <= 0) {
-					// Fase 12 (A2/E2): el slime grande/mediano se divide al morir
-					// (2 hijos del tamaño inferior; el pequeño no divide). Debe
-					// ejecutarse ANTES de marcar alive=false: splitSlime rechaza
-					// mobs muertos.
-					mobs.splitSlime(mob);
+					// Fase 13 (C2): hook de muerte por especie — el slime se divide
+					// (grande/mediano → 2 hijos del tamaño inferior; el pequeño no).
+					// Debe ejecutarse ANTES de marcar alive=false: splitSlime
+					// rechaza mobs muertos.
+					mob.onDeath();
 					mob.alive = false;
 					broadcast("mob_death", { id: mob.id });
 					// Drops de comida de animales al morir (directo al atacante)
