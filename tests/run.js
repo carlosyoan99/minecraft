@@ -61,7 +61,9 @@ const UNIT = [
 	"unit-metricas.js",
 	"unit-perf-server.js", // Fase 13 (A4): perfilado servidor — snapshot 1/tick, broadcast solo si cambia, getBiome cacheado
 	"unit-damage.js",
-	"unit-sky.js"
+	"unit-sky.js",
+	"unit-ao.js", // Fase 10 (E1): AO por vértice — sombreado de esquinas internas/bloques empotrados
+	"unit-muerte.js" // Fase 10 (B2): causas de player_die (caída, mob, fuego, ...)
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
