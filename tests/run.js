@@ -24,7 +24,9 @@ const UNIT = [
 	"unit-durabilidad.js",
 	"unit-persistencia.js",
 	"unit-mobs-ia.js",
+	"unit-mobs-poo.js",
 	"unit-poo-entities.js", // Fase 13 (C3): Player/World/Chunk/ItemStack como clases
+	"unit-lagunas.js", // Fase 13 (D2): arco, puertas, escaleras/losas/vallas, cubo y recetas nuevas
 	"unit-red.js",
 	"unit-recetas.js",
 	"unit-recipecats.js", // Fase 9 (F): categorías del libro de recetas (regresión: armadura en su pestaña)
