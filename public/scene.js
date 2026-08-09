@@ -52,6 +52,12 @@ sun.shadow.camera.top = 60;
 sun.shadow.camera.bottom = -60;
 scene.add(ambient);
 scene.add(sun);
+// Auditoría 2026-08-09 (§3.4): las sombras siguen al jugador. El target del
+// sol estaba en el origen y el frustum del shadow map fijo en ±60: al
+// explorar más allá de ~±60 bloques del spawn el volumen quedaba vacío y
+// terreno/mobs dejaban de proyectar sombra. sun.target debe estar en la
+// escena para poder arrastrarlo con la cámara (updateSunFollow, player.js).
+scene.add(sun.target);
 
 // Perfil por defecto al arrancar (después de declarar las luces: applyQuality
 // accede a sun.shadow; antes de esta línea estaría en la zona muerta temporal).

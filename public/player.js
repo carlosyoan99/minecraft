@@ -23,7 +23,7 @@ import {
 } from "./constants.js";
 import { isDoorOpen } from "./network.js"; // Fase 13 (L2): estado local de puertas
 import { setUnderwater, updateDayNight } from "./daynight.js";
-import { camera, controls, renderer, scene } from "./scene.js";
+import { camera, controls, renderer, scene, sun } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
 import {
 	applyFrustumCulling,
@@ -402,6 +402,23 @@ function animate() {
 		lodTimer = 0;
 		updateLod();
 	}
+	// Auditoría 2026-08-09 (§3.4): sombras que siguen al jugador. El shadow
+	// map es un frustum de ±60 bloques alrededor del target del sol; si el
+	// target se queda en el origen, al alejarse del spawn el volumen queda
+	// vacío y no se proyecta sombra. Se arrastra target y luz con la cámara
+	// conservando la dirección del sol (el offset de la luz marca la
+	// dirección ALEJÁNDOSE del target).
+	sun.target.position.set(
+		camera.position.x,
+		camera.position.y,
+		camera.position.z
+	);
+	sun.position.set(
+		camera.position.x + 60,
+		camera.position.y + 90,
+		camera.position.z + 40
+	);
+	sun.target.updateMatrixWorld();
 	renderer.render(scene, camera);
 	updateCoords(
 		camera.position.x,

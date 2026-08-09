@@ -657,15 +657,20 @@ function renderRecipeTab() {
 // Abre/cierra el libro (tecla B). Al abrirlo pide las recetas si no las
 // tiene aún (recipe_book del servidor); el pointer se libera para clicar.
 export function toggleRecipeBook() {
-	const open = recipeBook.classList.toggle("hidden");
-	if (open) {
+	// Auditoría 2026-08-09 (§3.3): classList.toggle devuelve true cuando la
+	// clase QUEDA presente, no cuando el panel se abre. Antes el puntero se
+	// bloqueaba al ABRIR el libro (las pestañas no eran clicables) y se
+	// liberaba al cerrarlo — justo al revés. Se captura el estado previo.
+	const opening = recipeBook.classList.contains("hidden");
+	recipeBook.classList.toggle("hidden");
+	if (opening) {
 		send("recipe_book");
 		showBlocker(false);
 		controls.unlock();
 	} else {
 		controls.lock();
 	}
-	return !open;
+	return opening;
 }
 export function applyArmor(a) {
 	armor =
