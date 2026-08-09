@@ -401,3 +401,74 @@ de la muerte) se eliminó en C2 con el hook `onDeath`.
   celda alta y la puerta seguía sólida. Corregido: si la celda de debajo
 es puerta, el estado siempre vive en la inferior (aplica también al clic
 justo encima de la puerta).
+
+---
+
+## 9. Auditoría transversal (2026-08-09) — auditorías 3/4/6 y E2E en verde
+
+Hallazgo de la auditoría de cierre de esta fase (§8): las auditorías
+reutilizables de fases anteriores (`tests/audit-fase3.js`,
+`tests/audit-fase4.js`, `tests/audit-fase6.js`) llevaban en rojo desde
+F11/F14 — **no eran regresión de la Fase 13** (fallaban idéntico en el
+commit base pre-F13, `7c9f07c`). Se atribuyó cada una con un bisect por
+commits y se corrigieron los tests de auditoría (commit `e23e810`). La
+validación E2E posterior dejó al descubierto y arregló regresiones de los
+commits de seguridad del 2026-08-09 en 4 tests E2E (commit `404b81f`).
+
+### 9.1 Bisect de atribución
+
+| Auditoría | Fallo | Rota desde | Causa raíz |
+|---|---|---|---|
+| `audit-fase3` (balance de hambre) | 4 FAIL: "muerte por inanición nunca" + "respawn resetea saturación a 18" | **F11** | la señal de muerte del test era `p.x === 0.5` (respawn), pero `findSpawn` pasó a esquivar ríos/océano con `columnFloorY` y el respawn ya no cae en x=0.5. El juego SÍ mata por inanición (~40s, como espera el test); el test no lo detectaba y seguía simulando tras el respawn (por eso veía `sat=18`: el decaimiento posterior a reaparecer) |
+| `audit-fase4` (culling/determinismo) | 1 FAIL: "regeneración bit-idéntica → 3 diffs" | **F11** | la generación de árboles/vegetación usa `Math.random()` global: regenerar un chunk consume un tramo DISTINTO de la secuencia y el check de bit-identidad fallaba siempre |
+| `audit-fase6` (LOD/determinismo) | 1 FAIL: "geometría LOD regenerada → quads distintos" | **F14** (merge de la paridad de valores) | mismo síntoma que la 4: la altura de superficie depende de los árboles, así que dos regeneraciones consumen tramos distintos del RNG |
+
+### 9.2 Fix (commit `e23e810`, solo tests de auditoría)
+
+- **`audit-fase3`:** la muerte se detecta por `p.x !== 0 || p.z !== 0` (el
+  respawn SIEMPRE mueve al jugador desde el origen `(0,64,0)`; `findSpawn`
+  nunca devuelve 0 exacto) en vez de `p.x === 0.5`.
+- **`audit-fase4` y `audit-fase6`:** se siembra el MISMO PRNG determinista
+  (Park-Miller LCG, patrón de `tests/unit-arboles.js`) antes de cada
+  regeneración → ambas pasadas consumen la misma secuencia y el check mide
+  el determinismo REAL por coordenadas, no la suerte del RNG global.
+  Validado empíricamente: **0 diffs con LCG sembrado vs 2-4 con RNG real**.
+- El uso de `Math.random` global en la generación es intencional
+  (`unit-arboles.js` lo explota sembrándolo), por eso no se tocó el juego.
+
+### 9.3 Regresiones E2E de los commits de seguridad (commit `404b81f`)
+
+Al re-validar la suite E2E completa contra servidor real (mundo fresco),
+tres regresiones de los commits de seguridad del 2026-08-09 rompían la
+suite. El cliente real no se vio afectado (ya usaba el protocolo nuevo).
+
+- **`abe1bc2` (crafting grid server-side):** `craft` ya no acepta
+  `data.grid` — la grid es siempre la del servidor (`p.craftingGrid`),
+  llenada vía `grid_set` que descuenta ítems REALES del inventario.
+  `e2e-cofre` y `e2e-durabilidad` seguían enviando el grid por el wire →
+  colgaban en fase "craft" esperando un ítem que nunca se crafteaba. Ahora
+  replican el flujo legítimo del cliente (`grid_set` + `craft`); durabilidad
+  además pide los materiales con `/give` (antes crafteaba ítems fantasma) y
+  ya no aborta con `finish(1)` al ver los `inventory_update` intermedios de
+  los grid_set (llegan sin el pico).
+- **`0bc40e8` (rate-limit WS, 30 msgs/s en ventana deslizante de 1s):** la
+  ráfaga de 30 `tame_mob` + `/tp` (31 mensajes en la misma ventana) de
+  `e2e-mascotas` cortaba la conexión justo después de la doma → el test
+  moría sin más `mobs_update`. La ráfaga se espacia en 3 grupos de 10
+  (t=0/500/1100ms): cada ventana tiene ≤11 mensajes y el reset del contador
+  está garantizado (el grupo 3 cae siempre ≥1s tras el primer mensaje).
+- **`e2e-comer`:** el bonus de cazar un pasivo casi nunca ocurre en la
+  suite (e2e-mascotas deja el mundo con el tope de mobs) y esperaba los 90s
+  completos enmascarado por `finish(0)`; ahora termina a los 30s si sigue
+  en fase hunt.
+
+### 9.4 Validación
+
+- `audit-fase3`, `audit-fase4`, `audit-fase6` → **exit=0** (antes 4/1/1
+  FAIL, respectivamente)
+- `audit-fase5` y `audit-fase7` (CDP Chrome headless, tick 35ms) → exit=0
+- Suite unitaria completa → exit=0 (incluye `unit-paridad`, `unit-sync`,
+  `unit-greedy`, `unit-workers`, `unit-lagunas`)
+- Suite E2E contra servidor real (mundo fresco) → **6/6 en 148s**:
+  mascotas 19/19, durabilidad, comer, reload, cofre y templo 6/6, todos
+  sin FAIL
