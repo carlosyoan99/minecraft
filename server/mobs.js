@@ -22,6 +22,14 @@ const {
 	worldPaths
 } = require("./constants.js");
 
+// Auditoría 2026-08-09 (§4.1): XP real del mob al morir. El slime grande (2)
+// da 4 XP y el mediano/pequeño 1 (MC); el resto usa MOB_XP[type]. Antes todo
+// slime daba MOB_XP.slime=1.
+function mobXp(m) {
+	if (m.type === "slime") return m.slimeSize === 2 ? 4 : 1;
+	return MOB_XP[m.type] || 0;
+}
+
 // ============================================================
 // ZONA SEGURA DEL SPAWN (Fase 8, B2)
 // Radio alrededor del punto de aparición del mundo en el que los hostiles
@@ -324,7 +332,8 @@ function tickArrows(dtMs) {
 							const drops = mobDrops(m);
 							if (drops)
 								for (const d of drops) addToInventory(lanzador, d.id, d.count);
-							addXp(lanzador, MOB_XP[m.type] || 0);
+							// auditoría §4.1: mobXp (slime 4/1 por tamaño, MC)
+							addXp(lanzador, mobXp(m));
 						}
 					}
 					hit = true;
@@ -1677,7 +1686,6 @@ function restoreMobs(list) {
 // suelta miel al morir (la miel llega como botín de cofres — simplificación
 // documentada en fase9-spec.md §F1).
 // ============================================================
-const BEE_HEALTH = 5;
 function tickBee(mob) {
 	// Órbita sencilla alrededor del origen (en el aire), con rebote suave.
 	const angle = (Date.now() / 1200 + mob.id.length) % (Math.PI * 2);
@@ -1726,8 +1734,7 @@ module.exports = {
 	arrowSnapshot,
 	shootPlayerArrow,
 	returnPlayerArrow,
-	BEE_HEALTH,
-	// Fase 12 (Bloque A): mobs por bioma y mascotas
+	mobXp, // auditoría §4.1: XP por tamaño (slime)
 	canTame,
 	applyTame,
 	sitPet,

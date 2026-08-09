@@ -188,7 +188,8 @@ export const DURABILITY = {
 	241: 131,
 	242: 250,
 	243: 32,
-	244: 1561
+	244: 1561,
+	141: 238 // tijeras (auditoría 4.2): durabilidad MC 238, no se apilan
 };
 export const XP_PER_LEVEL = 100; // retrocompat: paridad auditada (unit-sync); la curva real usa xpToNext
 // Curva de XP OFICIAL de Minecraft (Fase 13, paridad B2): coste del nivel

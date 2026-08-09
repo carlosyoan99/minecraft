@@ -31,6 +31,10 @@ function seedMoonOffsetMs(seed) {
 // daño de MOBS (lava/caída/hambre siguen doliendo). Da tiempo a orientarse
 // sin morir en el spawn; la zona segura de spawn es la otra mitad del fix.
 const SPAWN_GRACE_MS = 30000;
+// Auditoría 2026-08-09 (§4.3): distancia de despawn de mobs (MC Java: los
+// mobs se eliminan a >128 bloques del jugador). Las mascotas con dueño se
+// excluyen (siguen al jugador esté donde esté).
+const DESPAWN_DIST = 128;
 // Auditoría 2026-08-09 (§3.1): límite de conexiones simultáneas (jugadores +
 // conexiones a medias). Cada conexión genera un radio de chunks al conectar y
 // entra en todos los broadcasts; un tope evita el agotamiento de memoria/CPU
@@ -665,7 +669,11 @@ const TOOL_DURABILITY = {
 	[I.STONE_HOE]: 131,
 	[I.IRON_HOE]: 250,
 	[I.GOLDEN_HOE]: 32,
-	[I.DIAMOND_HOE]: 1561
+	[I.DIAMOND_HOE]: 1561,
+	// Auditoría 2026-08-09 (§4.2): tijeras 238 (MC Java). Al estar aquí las
+	// considera isTool → NO se apilan, llevan durabilidad propia y esquilar
+	// las desgasta (net.js llama applyToolWear tras aplicar el corte).
+	[I.SHEARS]: 238
 };
 // Alias de durabilidad de azadas (para addToInventory/applyToolWear).
 const HOE_DURABILITY = TOOL_DURABILITY;
@@ -1086,6 +1094,7 @@ module.exports = {
 	MOON_CYCLE_MS,
 	seedMoonOffsetMs,
 	SPAWN_GRACE_MS,
+	DESPAWN_DIST,
 	SEED,
 	OPS,
 	EYE_HEIGHT,

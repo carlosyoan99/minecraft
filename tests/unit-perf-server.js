@@ -101,7 +101,12 @@ world.setDiskLoader(() => null);
 		ws,
 		name: "perf",
 		gamemode: "creative",
-		mining: null
+		mining: null,
+		// Posición (auditoría §4.3): el despawn por distancia requiere jugador
+		// con coordenadas; a 0,10,0 los mobs de (10/12,10,10/12) quedan <128.
+		x: 0,
+		y: 10,
+		z: 0
 	});
 	const a = new mobs.Mob("cow", 10, 10, 10);
 	const b = new mobs.Mob("zombie", 12, 10, 12);
@@ -153,6 +158,43 @@ world.setDiskLoader(() => null);
 	// Restaurar la fachada original (limpieza para otros tests del proceso).
 	mobs.mobSnapshot = origSnapshot;
 	state.players.delete("p-perf");
+
+	// --- 4) Despawn por distancia (auditoría §4.3): mobs >128 bloques de todo
+	//     jugador sin dueño se eliminan del tick; los cercanos y las mascotas
+	//     permanecen. ---
+	{
+		state.mobs.length = 0;
+		state.players.clear();
+		state.players.set("p-cull", {
+			id: "p-cull",
+			ws: new FakeWS(),
+			x: 0,
+			y: 64,
+			z: 0
+		});
+		const cerca = new mobs.Mob("cow", 10, 64, 0); // < 128 → sobrevive
+		const lejos = new mobs.Mob("zombie", 400, 64, 0); // > 128 → se va
+		const mascota = new mobs.Mob("wolf", 500, 64, 0); // con dueño → sobrevive
+		mascota.ownerId = "p-cull";
+		for (const m0 of [cerca, lejos, mascota]) m0.tick = () => {};
+		state.mobs.push(cerca, lejos, mascota);
+		net.mainLoop();
+		check(
+			"despawn: mob a >128 bloques sin dueño se elimina",
+			!state.mobs.some((m) => m.id === lejos.id),
+			`vivos=${state.mobs.length}`
+		);
+		check(
+			"despawn: mob <128 bloques permanece",
+			state.mobs.some((m) => m.id === cerca.id)
+		);
+		check(
+			"despawn: la mascota con dueño permanece aunque lejos",
+			state.mobs.some((m) => m.id === mascota.id)
+		);
+		state.mobs.length = 0;
+		state.players.clear();
+	}
 
 	console.log(`${ok} OK, ${fail} FAIL`);
 	process.exit(fail ? 1 : 0);

@@ -14,7 +14,8 @@ const {
 	TICK_MS,
 	VIEW_DISTANCE_CHUNKS,
 	DAY_CYCLE_MS,
-	SPAWN_GRACE_MS,
+SPAWN_GRACE_MS,
+	DESPAWN_DIST,
 	SEED,
 	VOID_Y,
 	JUMP_SPEED,
@@ -32,7 +33,6 @@ const {
 	ARMOR_DURABILITY,
 	SWORD_DAMAGE,
 	TOOL_DAMAGE,
-	MOB_XP,
 	xpToNext,
 	xpIntoLevel
 } = constants;
@@ -1313,6 +1313,9 @@ function handleConnection(ws, req) {
 				if (mobs.canShear(mob, held.id) !== "ok") return;
 				const woolCount = mobs.applyShear(mob);
 				playerHelpers.addToInventory(p, B.WHITE_WOOL, woolCount);
+				// Auditoría 2026-08-09 (§4.2): esquilar desgasta las tijeras
+				// (como MC: -1 por corte). El break/sync lo gestiona applyToolWear.
+				playerHelpers.applyToolWear(p);
 				playerHelpers.sendInventory(p);
 				break;
 			}
@@ -1485,8 +1488,8 @@ function handleConnection(ws, req) {
 					if (drops)
 						for (const d of drops)
 							playerHelpers.addToInventory(p, d.id, d.count);
-					// Fase 5: XP por matar mobs
-					playerHelpers.addXp(p, MOB_XP[mob.type] || 0);
+					// Fase 5: XP por matar mobs (auditoría §4.1: mobXp, slime por tamaño)
+					playerHelpers.addXp(p, mobs.mobXp(mob));
 					playerHelpers.sendInventory(p);
 				} else if (isSword) {
 					// Cada golpe de espada desgasta aunque el mob sobreviva:
@@ -1608,6 +1611,24 @@ function mainLoop() {
 	const t0 = performance.now();
 	const isNight = worldTime() > DAY_CYCLE_MS / 2;
 	for (const m of state.mobs) if (m.alive) m.tick(isNight);
+	// Auditoría 2026-08-09 (§4.3): despawn por distancia como MC — un mob a
+	// >128 bloques de TODO jugador conectado (y sin dueño) se elimina. Antes
+	// los mobs se acumulaban indefinidamente lejos del pueblito (solo morían
+	// de sol/combate), inflando state.mobs sin límite.
+	{
+		const playersArr = [...state.players.values()];
+		if (playersArr.length) {
+			state.mobs = state.mobs.filter((m) => {
+				if (!m.alive) return false; // los muertos se limpian igualmente
+				if (m.ownerId) return true; // las mascotas siguen al jugador
+				return playersArr.some(
+					(pl) =>
+						Math.hypot(m.x - pl.x, m.z - pl.z) <= DESPAWN_DIST &&
+						Math.abs(m.y - pl.y) <= DESPAWN_DIST
+				);
+			});
+		}
+	}
 	state.mobs = state.mobs.filter((m) => m.alive);
 	const mobsData = state.mobs.map(mobs.mobSnapshot);
 	const mobsJson = JSON.stringify(mobsData);
