@@ -472,6 +472,13 @@ function onWorkerMessage(msg) {
 	if (workerPending.get(key) !== id) return; // obsoleto (rebuild/descarga posterior)
 	workerPending.delete(key);
 	if (!chunkStore.has(key)) return; // descargado durante el vuelo
+	// Auditoría 2026-08-09 (§2.2): swap limpio. Si el chunk ya tiene un mesh
+	// (borde completado, rebuild de vecino, cambio de tier), el viejo quedaba
+	// huérfano en la escena: dos geometrías idénticas superpuestas (z-fighting)
+	// y una fuga que unloadChunks no recuperaba (la entrada del Map ya apuntaba
+	// al grupo nuevo). Igual que rebuildChunk, liberar antes de añadir el nuevo:
+	// removeChunkMesh devuelve la geometría anterior al pool.
+	removeChunkMesh(key);
 	const group = groupFromBuffers(buffers);
 	if (group) {
 		scene.add(group);
