@@ -1069,6 +1069,24 @@ export function unloadChunks(keys) {
 			)
 				torchSet.delete(tKey);
 		}
+		// Auditoría 2026-08-09 (§3.6): limpiar las grietas de mina del chunk.
+		// Antes charsquedaban flotando en la escena si se reducía la distancia
+		// de render / se cambiaba de mundo (el crack es un overlay por bloque
+		// en coordenadas de mundo; sin esto no se ocultaba hasta un block_update
+		// o block_break_progress de ese bloque).
+		for (const [k, crack] of [...cracks]) {
+			const [bx, , bz] = k.split(",").map(Number);
+			if (
+				bx >= x0 &&
+				bx < x0 + CHUNK_SIZE &&
+				bz >= z0 &&
+				bz < z0 + CHUNK_SIZE
+			) {
+				scene.remove(crack.mesh);
+				crack.material.dispose(); // material clonado exclusivo del crack
+				cracks.delete(k);
+			}
+		}
 		lightStore.delete(key);
 		chunkStore.delete(key);
 	}

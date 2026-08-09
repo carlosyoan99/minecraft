@@ -16,6 +16,30 @@ import { scene } from "./scene.js";
 const remotePlayers = new Map(); // id -> mesh
 export const mobMeshes = new Map(); // id -> mesh (grupo raíz)
 
+// Auditoría 2026-08-09 (§3.5): libera un mesh y sus recursos GPU de forma
+// robusta. Recorre el grupo, dispose de cada geometría y del material por
+// parte; luego dispose del material compartido (mobs: userData.material;
+// nametag: SpriteMaterial + CanvasTexture). Las flechas NO pasan por aquí:
+// reutilizan geometrías y materiales compartidos del pool (arrowGeo/cone,
+// arrowMaterial), así que solo se desvinculan de la escena.
+function disposeMesh(mesh) {
+	mesh.traverse((o) => {
+		if (o.geometry) {
+			// La geometría de las PARTES es exclusiva del mob (buildPartGroup
+			// crea una por mob); la del nametag también.
+			o.geometry.dispose();
+		}
+		if (o.material && !o.userData?.sharedMaterial) o.material.dispose();
+	});
+	const shared = mesh.userData?.material;
+	if (shared && shared.dispose) shared.dispose();
+	const nt = mesh.userData?.nameTag;
+	if (nt?.tag?.material) {
+		if (nt.tag.material.map?.dispose) nt.tag.material.map.dispose();
+		nt.tag.material.dispose();
+	}
+}
+
 // ============================================================
 // CONSTRUCCIÓN DE UN GRUPO DE PARTES
 // `parts` es el array de MOB_PARTS[type]; `material` es compartido
@@ -165,6 +189,11 @@ export function renameRemotePlayer(id, name) {
 export function removeRemotePlayer(id) {
 	const mesh = remotePlayers.get(id);
 	if (mesh) {
+		// Auditoría 2026-08-09 (§3.5): liberar geometrías/materiales/texturas.
+		// Antes solo se quitaba de la escena: los buffers GPU de las cajas del
+		// humanoid, del Lambert y del CanvasTexture del nametag quedaban
+		// retenidos hasta que el GC los recogiera.
+		disposeMesh(mesh);
 		scene.remove(mesh);
 		remotePlayers.delete(id);
 	}
@@ -317,6 +346,9 @@ export function updateMobs(list) {
 	}
 	for (const [id, mesh] of mobMeshes) {
 		if (!seen.has(id)) {
+			// Auditoría 2026-08-09 (§3.5): liberar geometrías/material del mob
+			// que desaparece (antes quedarían retenidos hasta el GC).
+			disposeMesh(mesh);
 			scene.remove(mesh);
 			mobMeshes.delete(id);
 		}
@@ -326,6 +358,8 @@ export function updateMobs(list) {
 export function removeMob(id) {
 	const mesh = mobMeshes.get(id);
 	if (mesh) {
+		// Auditoría 2026-08-09 (§3.5): liberar recursos del mob eliminado.
+		disposeMesh(mesh);
 		scene.remove(mesh);
 		mobMeshes.delete(id);
 	}
