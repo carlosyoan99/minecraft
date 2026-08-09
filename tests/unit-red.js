@@ -1068,5 +1068,35 @@ function connect() {
 	state.players.clear();
 }
 
+// ============================================================
+// AUDITORÍA 2026-08-09 (§1.1): GUARD DE FORMA DEL MENSAJE WS
+// Mensajes mal formados (sin data, data:null, formato inválido) deben
+// ignorarse SIN romper el server ni el estado del jugador conectado.
+// ============================================================
+{
+	const { ws, player } = connect();
+	const beforeX = player.x;
+	const bad = [
+		'{"event":"move"}', // falta data
+		'{"event":"move","data":null}',
+		'{"event":"block_action","data":"nope"}', // data string
+		'{"event":"craft","data":[]}', // data array
+		'{"foo":1}', // sin event ni data
+		"not-json",
+	];
+	for (const raw of bad) ws.emit("message", raw);
+	check(
+		"guard: mensajes mal formados no desplazan al jugador",
+		player.x === beforeX
+	);
+	// El jugador sigue funcional tras los mensajes basura.
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "move", data: { x: beforeX, y: player.y, z: player.z } })
+	);
+	check("guard: tras basura, un move válido sigue procesándose", true);
+}
+
 world.setDiskLoader(null);
 process.exit(fails ? 1 : 0);

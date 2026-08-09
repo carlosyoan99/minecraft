@@ -357,10 +357,25 @@ function handleConnection(ws, req) {
 		} catch {
 			return;
 		}
+		// Auditoría 2026-08-09 (§1.1): guardia de forma. Un evento sin `data`
+		// (o con `data: null`) reventaba el destructuring del handler con un
+		// TypeError que, al no haber uncaughtException, tiraba el servidor
+		// entero (DoS sin autenticar). También lensa contra mensajes como
+		// `{"event":null}` o arrays.
+		if (
+			!msg ||
+			typeof msg !== "object" ||
+			typeof msg.event !== "string" ||
+			typeof msg.data !== "object" ||
+			!msg.data ||
+			Array.isArray(msg.data)
+		)
+			return;
 		const { event, data } = msg;
 		const p = state.players.get(playerId);
 		if (!p) return;
 
+		try {
 		switch (event) {
 			case "move": {
 				const { x, y, z, yaw, pitch } = data;
@@ -1415,6 +1430,12 @@ function handleConnection(ws, req) {
 				}
 				break;
 			}
+		}
+		} catch (err) {
+			// Auditoría 2026-08-09 (§1.1): ningún error lógico interno de un
+			// mensaje puede derribar el proceso. Se registra y se ignora el
+			// mensaje; el siguiente reintenta normal.
+			console.error(`[net] error en handler de mensaje de ${playerId}:`, err);
 		}
 	});
 
