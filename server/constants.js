@@ -31,6 +31,16 @@ function seedMoonOffsetMs(seed) {
 // daño de MOBS (lava/caída/hambre siguen doliendo). Da tiempo a orientarse
 // sin morir en el spawn; la zona segura de spawn es la otra mitad del fix.
 const SPAWN_GRACE_MS = 30000;
+// Auditoría 2026-08-09 (§3.1): límite de conexiones simultáneas (jugadores +
+// conexiones a medias). Cada conexión genera un radio de chunks al conectar y
+// entra en todos los broadcasts; un tope evita el agotamiento de memoria/CPU
+// por inundación de sockets.
+const MAX_CONNECTIONS = 10;
+// Auditoría 2026-08-09 (§3.1): rate-limit de mensajes por conexión. El
+// protocolo emite ~20 moves/s en juego normal; el máximo admisible (30/s)
+// deja margen a bloqueos del cliente (jitter/tabloss) sin permitir flood.
+// superarlo corta la conexión (el cliente la reintenta).
+const MAX_MSG_RATE = 30;
 // La semilla se configura con la env var SEED (defecto miSemilla2026).
 // Cambiar la SEED genera un mundo TOTALMENTE nuevo: cada semilla tiene su
 // propio directorio de mundo (world/<semilla>/), así nunca se pisan ni se
@@ -1058,6 +1068,8 @@ module.exports = {
 	JUMP_SPEED,
 	GRAVITY,
 	WS_MAX_PAYLOAD,
+	MAX_CONNECTIONS,
+	MAX_MSG_RATE,
 	WORLD_ROOT,
 	seedDir,
 	setWorldSeed,

@@ -1130,5 +1130,56 @@ function connect() {
 	check("guard: tras basura, un move válido sigue procesándose", true);
 }
 
+// ============================================================
+// AUDITORÍA 2026-08-09 (§3.1): RATE-LIMIT POR CONEXIÓN
+// Un socket real (con req de upgrade) que supere MAX_MSG_RATE mensajes en la
+// ventana de 1 s se corta (se marca rateLimited). El FakeWS se adapta para
+// registrar "close" sin romper; handleConnection recibe req truthy.
+// ============================================================
+{
+	const wsR = new FakeWS();
+	wsR.closeCount = 0;
+	wsR.close = (code, reason) => {
+		wsR.closeCount++;
+		wsR.closeCode = code;
+	};
+	state.players.clear();
+	net.handleConnection(wsR, { url: "ws://localhost/?name=rate" }); // socket REAL
+	const pR = [...state.players.values()][0];
+	const flood = JSON.stringify({
+		event: "move",
+		data: { x: pR.x, y: pR.y, z: pR.z }
+	});
+	// El rate-limit exige MAX_MSG_RATE+1 mensajes en la misma ventana (1 s);
+	// sin esperar, todos caen en la misma ventana — el límite debe cortar.
+	for (let i = 0; i < 40; i++) wsR.emit("message", flood);
+	check(
+		"rate-limit: un flood de mensajes salta el límite y cierra la conexión",
+		wsR.rateLimited === true && wsR.closeCount >= 1,
+		`rateLimited=${wsR.rateLimited} close=${wsR.closeCount}`
+	);
+	check(
+		"rate-limit: cierre con código 1008 (policy violation)",
+		wsR.closeCode === 1008
+	);
+	state.players.clear();
+	// Y un jugador FAKE (sin req) no sufre el límite: los tests de la suite
+	// reutilizan el socket con decenas de mensajes sin que se corte.
+	const wsF = new FakeWS();
+	state.players.clear();
+	net.handleConnection(wsF); // sin req → NO es socket real
+	const pF = [...state.players.values()][0];
+	const floodF = JSON.stringify({
+		event: "move",
+		data: { x: pF.x, y: pF.y, z: pF.z }
+	});
+	for (let i = 0; i < 60; i++) wsF.emit("message", floodF);
+	check(
+		"rate-limit: un socket fake (tests) no se corta (no es flood real)",
+		!wsF.rateLimited
+	);
+	state.players.clear();
+}
+
 world.setDiskLoader(null);
 process.exit(fails ? 1 : 0);

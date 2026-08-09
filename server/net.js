@@ -19,6 +19,8 @@ const {
 	VOID_Y,
 	JUMP_SPEED,
 	WS_MAX_PAYLOAD,
+	MAX_CONNECTIONS,
+	MAX_MSG_RATE,
 	B,
 	I,
 	NOT_MINEABLE,
@@ -215,6 +217,24 @@ function nameFromRequest(req) {
 }
 
 function handleConnection(ws, req) {
+	// Auditoría 2026-08-09 (§3.1): el rate-limit de mensajes solo aplica a
+	// conexiones reales (las que llegan con request HTTP de upgrade). Los
+	// sockets fake de los tests unitarios llaman a handleConnection sin req y
+	// reutilizan un mismo objeto para decenas de mensajes en milisegundos (no
+	// son un flood real); exigir req evita que las pruebas disparen el límite.
+	const realSocket = !!req;
+	// Auditoría 2026-08-09 (§3.1): tope de conexiones simultáneas. Cada
+	// conexión dispara ensureChunksAround + sendInit (~25 chunks) y entra en
+	// todos los broadcasts; sin tope, un atacante abriendo cientos de sockets
+	// agota memoria/CPU.
+	if (realSocket && state.players.size >= MAX_CONNECTIONS) {
+		try {
+			ws.close(1013, "server lleno"); // 1013 = try again later
+		} catch {
+			/* ya cerrado */
+		}
+		return;
+	}
 	const playerId = uuidv4();
 	// Spawn sobre tierra firme: si (0,0) es un lago, findSpawn busca la columna
 	// firme más cercana para que el jugador no aparezca nadando (Fase 4).
@@ -374,6 +394,33 @@ function handleConnection(ws, req) {
 		const { event, data } = msg;
 		const p = state.players.get(playerId);
 		if (!p) return;
+
+		// Auditoría 2026-08-09 (§3.1): rate-limit por conexión (solo sockets
+		// reales — los fakes de los tests reutilizan el mismo objeto con decenas
+		// de mensajes en milisegundos y no son un flood). El juego normal emite
+		// ~20 mensajes/s (moves) con picos al chatear/minear; más de 30/s
+		// sostenidos es flood (bots o cliente roto) y se corta la conexión. La
+		// ventana es deslizante (1 s).
+		if (realSocket) {
+			const nowRate = Date.now();
+			if (!ws.rateWindow) {
+				ws.rateWindow = nowRate;
+				ws.rateCount = 0;
+			}
+			if (nowRate - ws.rateWindow >= 1000) {
+				ws.rateWindow = nowRate;
+				ws.rateCount = 0;
+			}
+			if (++ws.rateCount > MAX_MSG_RATE) {
+				try {
+					ws.rateLimited = true;
+					ws.close(1008, "demasiados mensajes"); // 1008 = policy violation
+				} catch {
+					/* ya cerrado */
+				}
+				return;
+			}
+		}
 
 		try {
 		switch (event) {
