@@ -52,10 +52,11 @@ independiente y testeable en Node (los tests requieren los módulos sin red).
 |---|---|---|
 | `constants.js` | Constantes (IDs de bloques/ítems `B`/`I`, física, mundo), `worldPaths` mutable, curva XP, minería | — |
 | `state.js` | Estado compartido: chunks, players, furnaces, chests, crops, mobs, arrows, dirtyChunks, timeOffset, damageLog | — |
-| `world.js` | Generación por semilla (noise 2D/3D), acceso a bloques, minas, charcos, árboles, minerales, biomas de Fase 11, tamaño de mundo, archivos de chunk | constants, state, chests |
+| `world.js` | Generación por semilla (noise 2D/3D), acceso a bloques, minas, charcos, árboles, minerales, biomas de Fase 11, tamaño de mundo, archivos de chunk. **POO (F13):** clases `World`/`Chunk` — el export es una instancia de `World` | constants, state, chests |
 | `save.js` | Persistencia incremental por chunk (gzip), `world.json` (meta, mobs, hornos, cofres, cultivos, hora del mundo), migraciones, `switchWorld`, `deleteWorld`, descarga de chunks lejanos | constants, state, world, mobs, crafting, chests |
-| `players.js` | Inventario, salud, hambre, daño (con armadura), XP/curva MC, caídas, respawn, comer, quemaduras, tick del jugador | world, state, constants |
-| `mobs.js` | IA por especie (zombi, esqueleto, creeper, araña, pasivos, abeja), spawn por luz/hora, flechas, cría, esquilado, drops, zona segura de spawn | constants |
+| `players.js` | Inventario, salud, hambre, daño (con armadura), XP/curva MC, caídas, respawn, comer, quemaduras, tick del jugador. **POO (F13):** clase `Player` + factory `createPlayer` | world, state, constants |
+| `items.js` | **POO (F13):** clase `ItemStack` — los slots de inventario/cofre/drop | — |
+| `mobs.js` | IA por especie (zombi, esqueleto, creeper, araña, pasivos, abeja), spawn por luz/hora, flechas, cría, esquilado, drops, zona segura de spawn. **POO (F13):** subclases por especie + `createMob`/`MOB_CLASSES` | constants |
 | `crafting.js` | Recetas 3×3 + hornos, hot-reload de `recetas.json`, tick de hornos | state, constants |
 | `mining.js` | Sesiones de rotura con progreso (dureza × herramienta), grietas al cliente | constants |
 | `tnt.js` | TNT: mechas, explosión con cráter, reacciones en cadena, knockback (Fase 10) | state, constants |
@@ -78,6 +79,44 @@ en el servidor. Cada tick:
 **Por qué 20 Hz:** es el paso del mundo de Minecraft (20 TPS) y suficiente
 para que la física se sienta bien sin sobrecargar la red ni el CPU. El
 cliente **interpola** entre ticks para que el render vaya a más FPS.
+
+## POO del servidor (Fase 13, C3)
+
+Desde la Fase 13 las entidades del servidor son **clases** con fachadas
+compatibles (el wire y el guardado NO cambian):
+
+- **`ItemStack`** (`server/items.js`): la clase de los slots de
+  inventario/cofre/drop. `JSON.stringify` de una instancia produce el mismo
+  objeto que los literales `{ id, count }` / `{ id, count, durability }`
+  anteriores (solo serializa las propiedades propias). Helpers:
+  `ItemStack.from(slot)` normaliza literal→instancia (para migrar datos del
+  disco/red), `ItemStack.slots(n)` crea n huecos vacíos y `toPlain()`
+  devuelve el shape histórico.
+- **`World`/`Chunk`** (`server/world.js`): `module.exports` es una
+  INSTANCIA de `World`; los ~40 métodos históricos viven en su prototipo
+  (asignados desde `api`). `world.getBlock(...)` funciona igual que antes y
+  los tests que parchean `world.getBlock = ...` siguen funcionando (asignan
+  una propiedad propia sobre la instancia). `world.getChunk(cx, cz)`
+  devuelve un `Chunk` (16×64×16) con `getBlock`/`setBlock` locales, `dirty`
+  y `save()`/`load()` (gzip, mismo formato que `writeChunkFile`).
+- **`Player`** (`server/players.js`): los jugadores conectados (net.js) son
+  instancias de `Player` creadas con `createPlayer({...})`; sus métodos de
+  entidad (`damage`, `heal`, `eat`, `addXp`, `addItem`, `applyToolWear`,
+  ...) delegan en las fachadas históricas (`damagePlayer`, `eatFood`,
+  `addToInventory`, ...).
+- **Mobs por subclase** (`server/mobs.js`): 15 subclases de `Mob`
+  (`Zombie`, `Creeper`, `Skeleton`, `Spider`, `Enderman`, `Wolf`, `Slime`,
+  `Drowned`, pasivos y `Ocelot`) creadas con la fábrica `createMob(type, x,
+  y, z)` (`MOB_CLASSES` tipo→clase). La variación por especie vive en
+  métodos sobreescritos (`tickSpecies`, `onDeath`); la clase base conserva
+  el despacho por tipo para que `new Mob("zombie")` de los tests siga
+  funcionando.
+
+**Por qué así:** dar a las entidades un modelo de objeto (herencia por
+especie, métodos de entidad) sin tocar el protocolo ni el formato de
+Guardado — la promesa de compatibilidad del C3 de la Fase 13. La
+serialización (JSON de una instancia = JSON de un literal) es la clave que
+lo permite.
 
 ## Persistencia (save.js)
 
@@ -148,6 +187,9 @@ node tests/run.js --unit      # unitarios (sin servidor)
 PORT=3998 node server.js      # servidor para E2E (otra terminal)
 WS_URL=ws://localhost:3998 node tests/run.js --e2e
 node tests/audit-fase3.js     # auditorías por fase (3..7)
+node tests/unit-mobs-poo.js   # POO de mobs (subclases por especie + createMob)
+node tests/unit-poo-entities.js  # POO de entidades (ItemStack/World/Chunk/Player)
+node tests/unit-lagunas.js    # lagunas L1-L5 (arco, puertas, escaleras, cubo, recetas)
 ```
 
 Los tests importan los módulos del servidor directamente (CommonJS) y

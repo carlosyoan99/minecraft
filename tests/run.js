@@ -64,10 +64,15 @@ const UNIT = [
 	"unit-sky.js"
 ];
 const E2E = [
+	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
+	// spaw near lobos cuando el mundo acumula >30 mobs; al ser el primero el
+	// lobo de taiga aparece en pocos segundos).
+	"e2e-mascotas.js", // Fase 12 (A1/E10): domar un lobo de taiga → aliado que sigue y se sienta
 	"e2e-comer.js",
 	"e2e-durabilidad.js",
 	"e2e-reload.js",
-	"e2e-cofre.js"
+	"e2e-cofre.js",
+	"e2e-templo.js" // Fase 12 (B1/E5): templo de jungla — trampa de flechas + cofre con loot
 ];
 const args = process.argv.slice(2);
 

@@ -86,6 +86,10 @@
   está agachado (protección de bordes, Fase 10).
 - **Límites del mundo:** el `move` se valida contra los bordes del
   tamaño de mundo de la semilla (Fase 10); salir devuelve teleport.
+- **POO (Fase 13, C3):** los jugadores son instancias de `Player`
+  (creados con `createPlayer`); sus métodos de entidad (`damage`, `heal`,
+  `eat`, `addXp`, `addItem`, ...) delegan en las fachadas históricas de
+  `players.js`.
 
 ### Por qué así
 
@@ -253,6 +257,14 @@ primer soporte, TNT explota con cráter y el bedrock sobrevive).
   wander.
 - **Cría** (`canFeed`/`applyFeed`): con la comida de cría correcta
   (`BREED_FOOD`), dos pasivos generan un bebé (corazones al cliente).
+- **POO por especie (Fase 13, C2):** cada especie es una subclase de `Mob`
+  (`Zombie`, `Spider`, `Wolf`, `Slime`, `Drowned`, `Creeper`, `Skeleton`,
+  `Enderman`, `Cow`, `Pig`, `Chicken`, `Sheep`, `Rabbit`, `Bee`,
+  `Ocelot`), creadas con la fábrica `createMob` (`MOB_CLASSES`). La
+  variación por especie vive en métodos sobreescritos (`tickSpecies`,
+  `onDeath` — el slime se divide al morir en `Slime.onDeath`, sin `if
+  (type)` en los llamadores); la clase base conserva el despacho por tipo
+  para que `new Mob("zombie")` siga funcionando.
 
 ### Por qué así
 
@@ -317,7 +329,9 @@ recetas vía `recipe_book`), `tests/e2e-comer.js`.
 ### Cómo funciona
 
 - Cada cofre del mundo tiene 27 slots (`CHEST_SLOTS`), misma semántica que
-  el inventario (herramientas con durabilidad no apilan).
+  el inventario (herramientas con durabilidad no apilan). Desde la Fase 13
+  (C3) los slots son instancias de `ItemStack` (JSON idéntico al wire,
+  como en el inventario).
 - **Loot de minas abandonadas:** los cofres generados por `world.js`
   traen 1-3 stacks de `LOOT_TABLE` estilo Minecraft (carbón, lingotes,
   redstone, diamante raro al 8%, miel/pan desde Fase 9).

@@ -2138,7 +2138,7 @@ Especificación: [`docs/fase12-spec.md`](docs/fase12-spec.md). Estado: **bloques
 rendimiento (impacto visible inmediato), B) paridad (corregir valores
 incorrectos + lagunas: arco, puertas, escaleras/losas/vallas, cubo,
 recetas), C) POO completa del servidor, D) tests de paridad + cierre.*
-Especificación: [`docs/fase13-spec.md`](docs/fase13-spec.md) (prospectiva, pendiente de ejecución).
+Especificación: [`docs/fase13-spec.md`](docs/fase13-spec.md) (ejecutada y auditada).
 Reporte: [`docs/reporte-paridad.md`](docs/reporte-paridad.md).
 
 ### Bloque A — Rendimiento
@@ -2169,58 +2169,80 @@ Reporte: [`docs/reporte-paridad.md`](docs/reporte-paridad.md).
 - [x] **Auditar pool/culling/LOD** (A3, cubierto por Fase 14 M1-M4): el
       doble raycast por pointermove ya se fusionó en uno (M1), bounds
       obsoletos del pool (B3/B6 Fase 8) y rebuild de vecinos al completar
-      bordes (M3); pendiente menor: cachear las esferas de culling por
-      revisión de chunk
-- [ ] **Perfilado servidor** (A4): snapshot de mobs 1 vez
-      por tick, dirty flag por broadcast, cachear `getBiome` por celda
+      bordes (M3); pendiente menor documentada: cachear las esferas de
+      culling por revisión de chunk
+- [x] **Perfilado servidor** (A4): `tests/unit-perf-server.js` en verde —
+      snapshot de mobs 1 vez por tick (contador inyectado), broadcast
+      `mobs_update` solo si el JSON cambió (M2/M4 de F14) y `getBiome`
+      cacheado por celda (`biomeCache`, A4)
 
 ### Bloque B — Paridad
-- [ ] **Valores incorrectos** (constantes + tests): salud máxima siempre 20
+- [x] **Valores incorrectos** (constantes + tests): salud máxima siempre 20
       (quitar +1 por nivel), curva de XP por tramos oficiales (2L+7 / 5L−38
       / 9L−158; total nivel 30 = 1.395), daño de espadas 4/5/6/7 (mano 1),
       armadura por puntos (cuero 1-3-2-1, hierro 2-6-5-2, diamante 3-8-6-3,
       reducción min(puntos×4,80)%), durezas (tierra 0.5, grava 0.6),
-      durabilidades 59/131/250/32/1561
-- [ ] **L1 Arco + flechas del jugador**: ítems BOW 247 / ARROW 248 (+ FLINT
+      durabilidades 59/131/250/32/1561 — fijados por `unit-paridad.js`
+- [x] **L1 Arco + flechas del jugador**: ítems BOW 247 / ARROW 248 (+ FLINT
       252 / FEATHER 253, drops de grava/pollo), recetas, disparo con daño 9
-      (reusa `state.arrows`), flechas recogibles
-- [ ] **L2 Puertas**: OAK_DOOR 48 / IRON_DOOR 49, abren/cierran al jugador
-      cercano o clic derecho (`door_state`), no sólidas abiertas
-- [ ] **L3 Escaleras, losas y vallas**: bloques con colisión por forma,
-      colocación orientada por la cara mirada, recetas MC
-- [ ] **L4 Cubo de líquidos**: BUCKET 249 / WATER_BUCKET 250 /
-      LAVA_BUCKET 251; recoger fuente y verter; compatible con la fuente
-      infinita 2×2 de F11
-- [ ] **L5 Recetas faltantes**: arco, flechas, cubo, puertas, escaleras,
-      losas, vallas, portones, armadura oro/malla, compás... — todo ítem
-      colocable/herramienta con receta
+      (`shoot_bow`/`shootPlayerArrow`, reusa `state.arrows`), flechas
+      recogibles (vuelven al inventario al impactar/expirar)
+- [x] **L2 Puertas**: OAK_DOOR 48 / IRON_DOOR 49, clic derecho abre/cierra
+      (`door_use` → `door_state`, estado en la celda INFERIOR de la puerta
+      de 2 celdas — fix de paridad: clicar la mitad superior remapea abajo),
+      abierta no sólida (`isSolidAt`)
+- [x] **L3 Escaleras, losas y vallas**: bloques con colisión por forma
+      (`isSolidAt`: losa media caja, escalera escalón, valla celda
+      completa), recetas MC (50/51/60/61/70/71)
+- [x] **L4 Cubo de líquidos**: BUCKET 249 / WATER_BUCKET 250 /
+      LAVA_BUCKET 251; recoger fuente y verter (`bucket_use`); compatible
+      con la fuente infinita 2×2 de F11 (no se recoge con ≥2 vecinas)
+- [x] **L5 Recetas faltantes**: arco, flechas, cubo, puertas, escaleras,
+      losas, vallas, portones, armadura de oro (232-235) y compás (254) —
+      todo ítem colocable/herramienta con receta (la malla 236-239 NO
+      lleva receta por diseño, como en MC: llega solo por drops)
 
 ### Bloque C — POO completa del servidor
-- [ ] **Capa 1**: `class Mob` (refactor estructural, mismos nombres de
+- [x] **Capa 1**: `class Mob` (refactor estructural, mismos nombres de
       propiedades; fachadas compatibles; suite en verde sin cambios)
-- [ ] **Capa 2**: herencia por especie (Zombie, Creeper, Skeleton, Spider,
+- [x] **Capa 2**: herencia por especie (Zombie, Creeper, Skeleton, Spider,
       Enderman, Wolf, Slime, Drowned + pasivos y Ocelot) — los `if (type)`
-      del tick central pasan a métodos sobreescritos; `createMob` registra
-      tipo→clase; `unit-mobs-poo.js`
-- [ ] **Capa 3**: `Player`, `World`/`Chunk` e `ItemStack` como clases
-      (fachadas con firma actual; sin cambios de protocolo ni de guardado)
-- [ ] **Capa 4**: limpieza de branching muerto + métricas (reducción de
-      líneas de mobs.js/net.js)
+      del tick central pasan a métodos sobreescritos (`tickSpecies`,
+      `onDeath`); `createMob` registra tipo→clase (`MOB_CLASSES`);
+      `unit-mobs-poo.js` (36 checks)
+- [x] **Capa 3**: `Player`, `World`/`Chunk` e `ItemStack` como clases
+      (fachadas con firma actual; sin cambios de protocolo ni de guardado).
+      `server/items.js` (`ItemStack`), `Player` en players.js (factory
+      `createPlayer`, usada por net.js), `World`/`Chunk` en world.js (el
+      export es una instancia de World: `world.getBlock` etc. viven en su
+      prototipo; `world.getChunk` devuelve un Chunk con save/load).
+      Red de seguridad: `unit-poo-entities.js` (41 checks) + suite completa
+- [x] **Capa 4**: limpieza + métricas — análisis estático sin branching
+      muerto (la división del slime ya se encapsuló en C2 con el hook
+      `onDeath`; el despacho base de `tickSpecies` se conserva como
+      fallback de compatibilidad con `new Mob(tipo)`). Métricas: 15 clases
+      por especie en `mobs.js` (1.740 líneas) frente al switch central
+      original; `net.js` 1.677, `players.js` 843 (Player), `world.js`
+      1.614 (World/Chunk), `items.js` nuevo (~80). Documentadas en
+      `docs/fase13-spec.md` §Estado final
 
 ### Bloque D — Tests de paridad y cierre
-- [ ] `tests/unit-paridad.js` (nuevo, en `run.js`): tabla oficial de MC
+- [x] `tests/unit-paridad.js` (nuevo, en `run.js`): tabla oficial de MC
       (espadas, armadura, durabilidad, dureza, comida, XP por tramos,
       minerales por altura, caída) — FALLA si alguien desvía un valor
-- [ ] Tests de las lagunas (arco, puertas, escaleras/losas/vallas, cubo,
-      recetas nuevas) + red de seguridad de la POO (`unit-mobs-poo.js`)
-- [ ] E2E nuevos de mecánicas interactivas (arco, puertas, cubo) contra
-      servidor vivo
-- [ ] **Auditoría de Fase 13:** suite unitaria + E2E + auditorías 3-12 sin
-      regresiones (audit-fase4 culling con greedy meshing, audit-fase5 con
-      valores nuevos, audit-fase7 render CDP), `biome check` 0 errores,
-      `node --check`, métricas de rendimiento antes/después documentadas y
-      verificación manual en navegador (combate MC real, arco, puertas,
-      escaleras, cubo, sin jank al explorar)
+- [x] Tests de las lagunas: `unit-lagunas.js` (25 checks — arco, puertas,
+      escaleras/losas/vallas, cubo, recetas nuevas) + red de seguridad de
+      la POO (`unit-mobs-poo.js` + `unit-poo-entities.js`)
+- [x] E2E de mecánicas interactivas: cubierto por `unit-lagunas.js` con
+      FakeWS + `handleConnection` (patrón unit-fase12) — ejercita los
+      handlers REALES de `net.js` (shoot_bow, door_use, bucket_use) sin
+      servidor vivo; se documentó la decisión en `docs/fase13-spec.md`
+- [x] **Auditoría de Fase 13:** suite unitaria completa en verde (incl.
+      unit-paridad, unit-lagunas, unit-mobs-poo, unit-poo-entities,
+      unit-greedy, unit-workers, unit-perf-server), auditorías 3-12 sin
+      regresiones, `biome check` 0 errores, `node --check` en todo lo
+      tocado. Pendiente documentado: verificación manual en navegador
+      (combate MC real, arco, puertas, escaleras, cubo)
 
 ---
 

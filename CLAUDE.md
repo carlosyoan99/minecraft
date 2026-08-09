@@ -14,8 +14,8 @@ tocar código.
   desde `public/`, cargado vía `<script type="module">` e
   importmap. No introducir Webpack/Vite/bundlers salvo que se
   discuta explícitamente antes.
-- **Arquitectura modular.** El servidor está en `server/` (13 módulos CJS)
-  y el cliente en `public/` (27 módulos ES6), cada
+- **Arquitectura modular.** El servidor está en `server/` (14 módulos CJS)
+  y el cliente en `public/` (30 módulos ES6), cada
   uno por responsabilidad (red, mundo/chunks, jugador/física,
   mobs, UI/HUD). `server.js` (1 línea) y `public/client.js` (13
   líneas) son solo entradas. Si un módulo supera ~400-500 líneas,
@@ -187,6 +187,15 @@ lados y añade la receta si aplica; el CI de tests lo audita.
 - Commits en español, una preocupación por commit, formato
   "Fase N: resumen descriptivo" o "área: resumen" (ver
   `CONTRIBUTING.md`).
+- **POO del servidor (Fase 13, C3):** los slots de inventario/cofre/drop
+  son `ItemStack` (`server/items.js`); `world.js` exporta una instancia de
+  `World` (`getChunk` devuelve `Chunk`); los jugadores se crean con
+  `createPlayer` (`Player` en `players.js`) y los mobs con `createMob`
+  (subclases por especie en `mobs.js`). Las clases NO cambian el wire ni el
+  guardado (el JSON de una instancia es idéntico al de los literales
+  anteriores): no reintroducir literales `{id, count, durability}` donde ya
+  hay `ItemStack`, ni romper las fachadas (`world.getBlock`,
+  `new Mob("zombie")` siguen funcionando).
 
 ## Errores frecuentes
 
@@ -225,8 +234,8 @@ lados y añade la receta si aplica; el CI de tests lo audita.
 - No implementar redstone, dimensiones alternas, aldeas generadas
   ni clima — están explícitamente fuera de alcance (ver "Won't" en
   `TODO.md`).
-- No optimizar prematuramente (greedy meshing, workers, frustum
-  culling ya existe) antes de que el `TODO.md` lo indique — el
-  rendimiento está planificado en la **Fase 13** (greedy meshing,
-  Web Workers de chunks) y en el **bloque C de la Fase 14**, no
+- No optimizar prematuramente por tu cuenta: el rendimiento ya está
+  resuelto donde el `TODO.md` lo marcaba (greedy meshing + Web Workers
+  de chunks en la Fase 13, optimizaciones M1-M4 de la Fase 14).
+  Cualquier optimización nueva que no venga del roadmap se pregunta
   antes.

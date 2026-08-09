@@ -16,7 +16,7 @@ build step desde `public/`. Todo el código, docs y commits en español.
 ```bash
 npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
-node tests/run.js               # 42 unitarios + 4 E2E si hay servidor vivo
+node tests/run.js               # 48 unitarios + 6 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
 PORT=3998 node server.js        # servidor para los E2E, en otra terminal
@@ -37,8 +37,18 @@ arrancar el servidor y confirmar que sirve `/`.
 - **Entradas mínimas**: `server.js` solo cablea hooks de broadcast
   (evita ciclos de require) y arranca; `public/client.js` solo importa
   módulos. Toda la lógica vive en módulos por responsabilidad
-  (`net.js`, `world.js`, `save.js`, `players.js`, `mobs.js`, ...).
-  Módulos >~400-500 líneas → dividir.
+  (`net.js`, `world.js`, `save.js`, `players.js`, `mobs.js`, `items.js`,
+  ...). Módulos >~400-500 líneas → dividir.
+- **POO del servidor (Fase 13, C3)**: `ItemStack` (`server/items.js`) es la
+  clase de los slots de inventario/cofre/drop (`{id, count, durability}`,
+  JSON idéntico al wire); `world.js` exporta una INSTANCIA de `World`
+  (métodos en el prototipo; `world.getChunk` devuelve un `Chunk` con
+  `save`/`load`); `players.js` exporta `Player` + la factory
+  `createPlayer` (los jugadores conectados son instancias); `mobs.js`
+  define subclases por especie (`Zombie`, `Creeper`, `Slime`, ...) con
+  hooks `tickSpecies`/`onDeath` y la fábrica `createMob` (`MOB_CLASSES`).
+  Las clases NO cambian el wire ni el guardado: el JSON de una instancia es
+  igual al de los literales anteriores.
 - **Cliente sin build step**: `public/index.html` usa importmap con
   Three.js 0.160 desde unpkg. Si el CDN es inalcanzable, servir
   `three.module.js` local y mapearlo en el importmap.
@@ -95,13 +105,16 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   generadas, clima.
 - Optimización prematura (greedy meshing, workers...) salvo que el
   `TODO.md` lo indique.
-- Adelantar trabajo de fases futuras: las fases 0-12 están cerradas y
-  auditadas. La **Fase 13** está **en curso** (paridad de valores
-  implementada y fijada por `unit-paridad.js`; greedy meshing + worker de
-  chunks en el árbol con sus unit en verde; pendientes POO completa, las
-  lagunas de la spec `fase13-spec.md` y subir el código de la 13) y la
-  **Fase 14** está cerrada y auditada (paridad real + rendimiento). No
-  adelantar su código más allá de lo que `TODO.md` marque.
+- Adelantar trabajo de fases futuras: las fases 0-14 están cerradas y
+  auditadas. La **Fase 13** (paridad 1.0 + rendimiento + POO del servidor)
+  está **completada y auditada**: paridad de valores fijada por
+  `unit-paridad.js`, greedy meshing + worker de chunks
+  (`unit-greedy`/`unit-workers`), lagunas L1-L5 (arco, puertas,
+  escaleras/losas/vallas, cubo, recetas — `unit-lagunas.js`) y POO
+  completa (`ItemStack`/`World`/`Chunk`/`Player`/`createMob`,
+  `unit-mobs-poo.js` + `unit-poo-entities.js`). La **Fase 14** está cerrada
+  y auditada (paridad real + rendimiento). No adelantar trabajo más allá de
+  lo que `TODO.md` marque.
 
 ## Documentación
 

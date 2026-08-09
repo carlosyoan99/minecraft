@@ -423,6 +423,26 @@ const systemMsgs = (sent) =>
 	state.players.clear();
 }
 
+// --- /kill mobs (Fase 13, cierre): libera el tope de spawn ---
+{
+	const h = makeHarness();
+	state.mobs = [
+		{ id: "m1", type: "zombie", alive: true },
+		{ id: "m2", type: "cow", alive: true },
+		{ id: "m3", type: "slime", alive: false }
+	];
+	commands.executeCommand(h.player, "/kill mobs", h.ctx);
+	check(
+		"/kill mobs: elimina las criaturas vivas",
+		state.mobs.length === 1 && state.mobs[0].id === "m3"
+	);
+	check(
+		"/kill mobs: confirma con mensaje de sistema",
+		systemMsgs(h.sent).some((m) => m.includes("criaturas"))
+	);
+	state.mobs = [];
+}
+
 // --- comando desconocido y no-comando ---
 {
 	const h = makeHarness();

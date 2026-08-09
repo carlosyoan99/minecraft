@@ -108,7 +108,7 @@ const HELP = [
 	"/time set <day|noon|night|midnight|ms> — fija la hora del mundo (0-239999 ms) (solo operadores)",
 	"/gamemode <creative|survival> — cambia el modo de juego (creative: sin hambre ni daño) (solo operadores)",
 	"/op <nombre> — otorga permisos de operador a un jugador conectado (solo operadores)",
-	"/kill [nombre] — mata a un jugador conectado; sin nombre, a ti mismo (solo operadores)",
+	"/kill [nombre|mobs] — mata a un jugador conectado (sin nombre, a ti) o a TODAS las criaturas con «mobs» (solo operadores)",
 	"/reload — recarga recetas (recetas.json, recetas_horno.json) y el atlas del cliente (solo operadores)",
 	"Los comandos con (solo operadores) los ejecuta el host (primer jugador) o la lista OPS (env var OPS)"
 ].join("\n");
@@ -190,7 +190,19 @@ function executeCommand(player, raw, ctx) {
 			// Fase 10 (B3): /kill [nombre] — solo operadores; sin nombre, al emisor.
 			// Usa respawnPlayer directamente (funciona en creative, donde
 			// damagePlayer se ignora) y respeta el respawn por gamemode.
+			// Fase 13 (cierre): `/kill mobs` elimina TODAS las criaturas vivas
+			// (herramienta dev para liberar el tope de spawn de 30 mobs cuando
+			// el mundo se llena; la usa e2e-mascotas para que el lobo de taiga
+			// tenga hueco). El bucle principal difunde el snapshot vacío.
 			const name = (args[0] || "").trim();
+			if (name.toLowerCase() === "mobs") {
+				state.mobs = state.mobs.filter((m) => !m.alive);
+				systemMessage(
+					player,
+					`🧟 ${state.mobs.length === 0 ? "Sin" : state.mobs.length} criaturas vivas en el mundo.`
+				);
+				break;
+			}
 			const target = name
 				? [...state.players.values()].find(
 						(q) => (q.name || "").toLowerCase() === name.toLowerCase()
