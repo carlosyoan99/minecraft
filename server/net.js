@@ -1032,6 +1032,23 @@ function handleConnection(ws, req) {
 			}
 
 			case "world_delete": {
+				// Auditoría 2026-08-09 (§1.3): borrar un mundo borra archivos del
+				// disco, así que es una operación SOLO de operadores (igual que
+				// /give, /tp, /gamemode). Antes cualquier cliente podía eliminar
+				// `world/<semilla>/` de mundos no activos.
+				if (!p.isOp) {
+					ws.send(
+						JSON.stringify({
+							event: "world_delete_result",
+							data: {
+								ok: false,
+								reason: "solo operadores",
+								worlds: save.listWorlds()
+							}
+						})
+					);
+					break;
+				}
 				// Fase 9 (Bloque B): borrar un mundo desde el menú. El servidor es la
 				// fuente de verdad: rechaza el mundo ACTIVO y valida el nombre del
 				// directorio (deleteWorld) antes de tocar el disco. Al terminar se

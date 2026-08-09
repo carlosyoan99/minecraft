@@ -297,6 +297,35 @@ function connect() {
 			result.data.worlds.some((w) => w.seed === "mundo_creativo"),
 		JSON.stringify(result?.data)
 	);
+	check(
+		"el primer jugador (host) con isOp=true puede borrar mundos",
+		player.isOp === true
+	);
+
+	// Auditoría 2026-08-09 (§1.3): un segundo jugador (NO op) no puede borrar:
+	// world_delete exige p.isOp igual que /give, /tp o /gamemode.
+	{
+		const wsNoOp = new FakeWS();
+		net.handleConnection(wsNoOp); // ya hay 1 jugador → primer-op NO aplica
+		const noOpPlayer = [...state.players.values()].find(
+			(pl) => pl.ws === wsNoOp
+		);
+		check(
+			"un jugador que no es el primero NO es operador automático",
+			noOpPlayer && noOpPlayer.isOp !== true,
+			JSON.stringify(noOpPlayer?.isOp)
+		);
+		wsNoOp.emit(
+			"message",
+			JSON.stringify({ event: "world_delete", data: { seed: "mundo_creativo" } })
+		);
+		const denied = wsNoOp.events("world_delete_result").at(-1);
+		check(
+			"world_delete de un NO operador → rechazado (solo operadores)",
+			!!denied && denied.data.ok === false && denied.data.reason === "solo operadores",
+			JSON.stringify(denied?.data)
+		);
+	}
 	state.players.clear();
 }
 
