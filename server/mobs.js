@@ -63,7 +63,11 @@ const MOB_HEALTH = {
 	slime: 16,
 	ocelot: 10,
 	cat: 10,
-	drowned: 20
+	drowned: 20,
+	// Auditoría 2026-08-09 (§3.8): salud de pasivos según MC Java — pollo 4,
+	// oveja 8 (antes caían al default 10; no lo fijaban los tests).
+	chicken: 4,
+	sheep: 8
 };
 // Salud del slime por tamaño (Fase 12, A2): grande 16, mediano 4, pequeño 1.
 const SLIME_HEALTH = { 2: 16, 1: 4, 0: 1 };
@@ -707,7 +711,8 @@ class Mob {
 		if (nearest && (isNight || dist < 6)) {
 			this.state = "chase";
 			this.chase(nearest, 0.035);
-			if (dist < 1.6) this.attack(nearest, 2, 1000);
+			// Auditoría 2026-08-09 (§3.7): daño "normal" de MC (2.5-3) no 2.
+			if (dist < 1.6) this.attack(nearest, 3, 1000);
 		} else {
 			this.state = "idle";
 			this.wander();
@@ -838,7 +843,8 @@ class Mob {
 			this.teleportCooldown = Date.now() + 3000;
 			this.state = "chase";
 		} else if (nearest && dist < 2.5) {
-			this.attack(nearest, 4, 1500);
+			// Auditoría 2026-08-09 (§3.7): enderman 7 (MC Java normal), antes 4.
+			this.attack(nearest, 7, 1500);
 		} else {
 			this.state = "idle";
 			this.wander();

@@ -123,15 +123,15 @@ check(
 	z.x = 0.8; // acercarlo al alcance de ataque (< 1.6)
 	z.tick(true);
 	check(
-		"zombie ataca al jugador cerca (health 18)",
-		p.health === 18,
+		"zombie ataca al jugador cerca (health 17, daño 3 — auditoría §3.7)",
+		p.health === 17,
 		`health=${p.health}`
 	);
 	const cd = z.attackCooldown;
 	z.tick(true);
 	check(
 		"cooldown: no ataca dos ticks seguidos",
-		z.attackCooldown === cd && p.health === 18
+		z.attackCooldown === cd && p.health === 17
 	);
 	const z2 = new mobs.Mob("zombie", 100, 10, 100);
 	z2.tick(false); // de día y lejos

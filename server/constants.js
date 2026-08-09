@@ -788,6 +788,32 @@ const SWORD_DAMAGE = {
 };
 // Las azadas no hacen daño extra (en Minecraft tampoco; sirven para arar).
 
+// Auditoría 2026-08-09 (§3.7): daño cuerpo a cuerpo de herramientas no-espada.
+// En MC Java 1.9+ la HACHA golpea más fuerte (madera 7, piedra 9, hierro 9,
+// diamante 9/10) pero con attack speed lento (~0.8-1.0). ESTE CLON no simula
+// el cooldown de ataque del cliente, así que un hacha a 9 haría cada golpe
+// tan rápido como la espada y rompería la progresión: se iguala el daño del
+// hacha a la espada del mismo material (progresión constante) y picos/palas
+// quedan con su daño MC (2-3 base, hierro 4, diamante 5). La azada sigue en 1
+// (SWORD_DAMAGE[tool] || 1).
+const TOOL_DAMAGE = {
+	[I.WOODEN_AXE]: 4,
+	[I.STONE_AXE]: 5,
+	[I.IRON_AXE]: 6,
+	[I.GOLDEN_AXE]: 4,
+	[I.DIAMOND_AXE]: 7,
+	[I.WOODEN_PICKAXE]: 2,
+	[I.STONE_PICKAXE]: 3,
+	[I.IRON_PICKAXE]: 4,
+	[I.GOLDEN_PICKAXE]: 2,
+	[I.DIAMOND_PICKAXE]: 5,
+	[I.WOODEN_SHOVEL]: 2,
+	[I.STONE_SHOVEL]: 3,
+	[I.IRON_SHOVEL]: 4,
+	[I.GOLDEN_SHOVEL]: 2,
+	[I.DIAMOND_SHOVEL]: 5
+};
+
 // ============================================================
 // EXPERIENCIA Y NIVELES (Fase 5 simple + Fase 9 curva MC + Fase 13 paridad)
 // XP por matar mobs y por minar minerales. La salud máxima es SIEMPRE 20
@@ -1115,6 +1141,7 @@ module.exports = {
 	TOOL_DURABILITY,
 	isTool,
 	SWORD_DAMAGE,
+	TOOL_DAMAGE,
 	ARMOR_SLOTS,
 	ARMOR_POINTS,
 	ARMOR_DURABILITY,

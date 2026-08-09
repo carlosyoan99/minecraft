@@ -31,6 +31,7 @@ const {
 	ARMOR_SLOTS,
 	ARMOR_DURABILITY,
 	SWORD_DAMAGE,
+	TOOL_DAMAGE,
 	MOB_XP,
 	xpToNext,
 	xpIntoLevel
@@ -1442,7 +1443,10 @@ function handleConnection(ws, req) {
 					: 0;
 				// Fase 5: daño de espada por material. Fase 13 (paridad B3): sin
 				// espada el daño es 1 (mano desnuda, como Minecraft Java 1.9+).
-				const dmg = SWORD_DAMAGE[tool] || 1;
+				// Auditoría 2026-08-09 (§3.7): hachas/picos/palas también pegan
+				// (TOOL_DAMAGE); lo que no está en ninguna tabla (azada, mano)
+				// sigue en 1.
+				const dmg = TOOL_DAMAGE[tool] || SWORD_DAMAGE[tool] || 1;
 				mob.health -= dmg;
 				// Fase 12 (A1/E10): los lobos domados del atacante se unen al
 				// golpe (≤12 bloques del objetivo, daño 3 cada uno). Se aplica
