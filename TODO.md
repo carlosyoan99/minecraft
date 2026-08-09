@@ -2318,6 +2318,65 @@ Especificación: [`docs/fase14-spec.md`](docs/fase14-spec.md) (fase completada y
 
 ---
 
+## Fase 15 — Corrección de auditoría y mejoras del usuario
+*Objetivo: cerrar los pendientes de la auditoría de paridad (bugs de
+generación, mejoras visuales/UX del usuario) y registrar los tests que
+faltaban en el runner. El grueso del plan del spec (A1 uuid, A3/A4 WIP de la
+Fase 13, lagunas L1-L5 y POO) se ejecutó junto al cierre documentado de la
+Fase 13; esta fase aporta el adicional A2-D3.*
+Especificación: [`docs/fase15-spec.md`](docs/fase15-spec.md) (fase completada y auditada).
+
+### Bloque A — Bugs y estabilización ✅
+- [x] **A1 uuid crítico** (`server/mobs.js`): `const { v4: uuidv4 } =
+      require("uuid")` devuelto a su propia línea fuera del comentario —
+      los mobs vuelven a crearse (lo cerró la Fase 13)
+- [x] **A2 copas de árboles en bordes de chunk**: las hojas se buferizan en
+      `pendingLeaves` durante el bucle de columnas y se aplican al final
+      (ninguna columna posterior las pisa); los troncos crecen a ≥2 bloques
+      del borde para que la copa 5×5 quepa entera. Test determinista de RNG
+      LCG en `unit-arboles` (copa completa en árboles interiores/aislados y
+      recorte correcto en los pegados al borde)
+- [x] **A3/A4 WIP commitado**: perfilado (biomeCache) + arco commiteados por
+      preocupación en el cierre de la Fase 13; sin comentario duplicado
+
+### Bloque B — Paridad L1-L5 ✅ (cerrado con la Fase 13)
+- [x] **B1 arco**: ítems/recetas, disparo (`shoot_bow`, daño 9), desgaste
+      `BOW_DURABILITY=384`, flechas recogibles al dueño — `unit-lagunas`
+- [x] **B2 puertas**: abrir/cerrar, orientación, recetas
+- [x] **B3 escaleras/losas/vallas**: colisión según forma + recetas
+- [x] **B4 cubo de líquidos**: recoger/verter + fuente infinita 2×2
+- [x] **B5 recetas**: cobertura completa de ítems obtenibles — `unit-recetas`
+
+### Bloque C — POO completa del servidor ✅ (cerrado con la Fase 13)
+- [x] `ItemStack`, `World`/`Chunk`, `Player`/`createPlayer`, subclases de
+      mobs + `createMob` — `unit-mobs-poo`/`unit-poo-entities`
+
+### Bloque D — Mejoras del usuario ✅
+- [x] **D1 nubes semitransparentes y con variedad**: material básico sin
+      iluminación (el Lambert + luz ambiente las oscurecía de noche),
+      `transparent` + `depthWrite:false`, 4-7 cajas por nube, alturas
+      onduladas, velocidad por nube y matices por caja (`public/clouds.js`)
+- [x] **D2 sprint**: ya existía (Fase 10, doble-tap W, +1.3×, FOV, sin
+      agua/flight)
+- [x] **D3 tooltip del hotbar**: sustituye al `title` nativo por un tooltip
+      estilizado con nombre y durabilidad al hover (`public/ui.js` +
+      `#tooltip` + CSS)
+- [x] **D4 esquilar/bonemeal**: ya existía (Fase 11, entradas del usuario)
+- [ ] **D5 alturas −64..+64**: diferido (alto impacto: generación, guardado
+      `SCHEMA_VERSION`, culling, física — requiere estudio propio)
+
+### Cierre y auditoría ✅
+- [x] Suite unitaria completa en verde: **50 unitarios / 0 fallos** con el
+      registro de `unit-ao.js` (AO por vértice, Fase 10 E1) y
+      `unit-muerte.js` (causas de `player_die`, Fase 10 B2)
+- [x] `node --check` sobre los archivos tocados (`world.js`, `run.js`,
+      `unit-arboles`, `unit-ao`, `unit-muerte`, `clouds.js`, `ui.js`)
+- [x] Verificación manual pendiente de D1/D3 en navegador (F3/inventario)
+- [x] Actualizado: `fase15-spec.md` (estado completada + auditoría de
+      cierre), `docs/README.md` (F15 ✅ auditada) y este roadmap
+
+---
+
 ## Fuera de alcance (Won't)
 
 Explícitamente descartado por ahora — no implementar sin discutir

@@ -16,7 +16,7 @@ build step desde `public/`. Todo el código, docs y commits en español.
 ```bash
 npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
-node tests/run.js               # 48 unitarios + 6 E2E si hay servidor vivo
+node tests/run.js               # 50 unitarios + 6 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
 PORT=3998 node server.js        # servidor para los E2E, en otra terminal
@@ -105,7 +105,7 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   generadas, clima.
 - Optimización prematura (greedy meshing, workers...) salvo que el
   `TODO.md` lo indique.
-- Adelantar trabajo de fases futuras: las fases 0-14 están cerradas y
+- Adelantar trabajo de fases futuras: las fases 0-15 están cerradas y
   auditadas. La **Fase 13** (paridad 1.0 + rendimiento + POO del servidor)
   está **completada y auditada**: paridad de valores fijada por
   `unit-paridad.js`, greedy meshing + worker de chunks
@@ -113,8 +113,11 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   escaleras/losas/vallas, cubo, recetas — `unit-lagunas.js`) y POO
   completa (`ItemStack`/`World`/`Chunk`/`Player`/`createMob`,
   `unit-mobs-poo.js` + `unit-poo-entities.js`). La **Fase 14** está cerrada
-  y auditada (paridad real + rendimiento). No adelantar trabajo más allá de
-  lo que `TODO.md` marque.
+  y auditada (paridad real + rendimiento). La **Fase 15** está cerrada y
+  auditada (copas de árboles en bordes de chunk, nubes semitransparentes y
+  tooltip del hotbar — el grueso de su spec se cerró junto a la Fase 13; la
+  suite tiene 50 unitarios). No adelantar trabajo más allá de lo que
+  `TODO.md` marque.
 
 ## Documentación
 

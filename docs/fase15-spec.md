@@ -8,17 +8,24 @@
 > Fecha: 2026-08-09 · Proyecto: clon de Minecraft (servidor Node autoritativo
 > `server/` + cliente Three.js `public/`, todo en español).
 >
-> Estado: **prospectiva, pendiente de ejecución**.
+> Estado: **completada y auditada**. El grueso del plan (A1, A3, A4, Bloque B
+> L1-L5 y Bloque C POO) se ejecutó junto al cierre de la Fase 13; esta fase
+> añadió **A2 (copas de árboles completas en bordes de chunk)**, **D1 (nubes
+> semitransparentes con variedad)** y **D3 (tooltip del hotbar)**, y cerró el
+> registro de los tests `unit-ao.js`/`unit-muerte.js` (suite de 50 unitarios).
 >
-> **Punto de partida (importante):** el árbol de trabajo tiene **13 archivos
+> **Punto de partida (importante):** el árbol de trabajo tenía **13 archivos
 > modificados sin commitear** (Fase 13 A4 de perfilado servidor + Fase 13 L1
 > del arco: ítems BOW/ARROW/FLINT/FEATHER, recetas, `shootPlayerArrow`,
-> `biomeCache`, `unit-perf-server.js`) que **NO están en HEAD**. Ese WIP
-> incluye una **regresión crítica**: `server/mobs.js:5` tiene el
+> `biomeCache`, `unit-perf-server.js`) que **NO estaban en HEAD**. Ese WIP
+> incluía una **regresión crítica**: `server/mobs.js:5` tenía el
 > `require("uuid")` fusionado dentro de un comentario → **ningún mob nuevo
-> puede crearse** (`uuidv4 is not defined`). La suite unitaria está roja por
+> podía crearse** (`uuidv4 is not defined`). La suite unitaria estaba roja por
 > esto. **Primer paso obligatorio:** commitear (o reparar y commitear) ese
 > WIP y volver a la suite en verde antes de tocar nada de la Fase 15.
+> Resuelto en el cierre documentado de la Fase 13 (commits `c208271`,
+> `92352ef`, `a4d2fb2`, `3eac7b3`, `a90a2db`); esta spec quedó como
+> retrospectiva del adicional de la Fase 15.
 
 ---
 
@@ -244,3 +251,36 @@ Prioridad baja (tras A/B/C); solo las marcadas como pendientes:
    reducción documentadas.
 4. **Bloque D:** al menos D1 (nubes) resuelto; D2-D4 si el tiempo lo permite.
 5. Auditorías y E2E en verde; documentación actualizada.
+
+---
+
+## 8. Auditoría de cierre (2026-08-09)
+
+La Fase 15 **completa y auditada**:
+
+- **A1 (uuid crítico)** — resuelto en el cierre de la Fase 13
+  (`utils: server/mobs.js` con `const { v4: uuidv4 }` fuera del comentario).
+- **A2 (copas de árboles)** — fix y test en esta fase: las hojas se
+  buferizan en `pendingLeaves` durante el bucle de columnas y se aplican al
+  final del chunk (`server/world.js`), y los troncos crecen a ≥2 bloques del
+  borde para que la copa 5×5 quepa entera. Test determinista (RNG LCG) en
+  `tests/unit-arboles.js`.
+- **A3/A4 (WIP Fase 13)** — commiteado por preocupación en el cierre de la
+  Fase 13; sin comentario duplicado en `world.js`.
+- **Bloque B (L1-L5)** — arco con desgaste/rotura y flechas recogibles,
+  puertas, escaleras/losas/vallas, cubo de líquidos con fuente infinita y
+  cobertura de recetas: `tests/unit-lagunas.js` (25 checks) + `unit-recetas`.
+- **Bloque C (POO)** — `ItemStack`, `World`/`Chunk`, `Player`/`createPlayer`,
+  subclases de mobs + `createMob`; `unit-mobs-poo.js`/`unit-poo-entities.js`.
+- **Bloque D** — **D1** nubes semitransparentes (material básico sin
+  iluminación que las oscurecía, `depthWrite:false`, más cajas por nube,
+  alturas y velocidades variadas) y **D3** tooltip estilizado del hotbar con
+  nombre y durabilidad al hover (`public/ui.js`, `#tooltip`). D2 (sprint) y
+  D4 (esquilar/bonemeal) ya existían. D5 (alturas −64..+64) queda fuera del
+  alcance (alto impacto, requiere estudio propio).
+- **Suite**: 50 unitarios en verde (`run.js --unit`, exit 0) incluyendo el
+  registro de `unit-ao.js` (AO por vértice, Fase 10 E1) y `unit-muerte.js`
+  (causas de `player_die`, Fase 10 B2).
+
+Commits de esta fase: `57ed016` (A2 árboles), `37773fd` (registro de tests),
+`aa24c12` (spec prospectiva), `4ca3aff` (D1 nubes + D3 tooltip).
