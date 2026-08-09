@@ -94,6 +94,26 @@ export function updateClouds(_dt) {
 	const pz = camera.position.z;
 	const phase = currentPhase();
 	const dayFactor = Math.max(0, Math.sin(phase * Math.PI * 2));
+	// Auditoría 2026-08-09 (§4.6): cuantizar el tinte a pasos de 1/32 e ignorar
+	// el re-upload si el valor cuantizado no cambió desde el último frame. Antes
+	// cada frame reescribía los 24 colores de cada caja y forzaba needsUpdate
+	// (24 × 16 grupos = un BufferAttribute re-subido al GPU a 60 fps aunque el
+	// sol apenas se moviera). Ahora el día/noche se ve igual (el salto es de
+	// ~0.03) pero el upload solo ocurre cuando CLOUD_TINT_STEP lo amerita.
+	const lastTint = updateClouds._lastTint;
+	const tint = 0.35 + dayFactor * 0.65;
+	if (lastTint === undefined || Math.abs(tint - lastTint) >= CLOUD_TINT_STEP) {
+		updateClouds._lastTint = tint;
+		for (const group of clouds) {
+			for (const mesh of group.children) {
+				const c = mesh.geometry.getAttribute("color");
+				const shade = mesh.userData.shade ?? 1;
+				for (let i = 0; i < c.count; i++)
+					c.setXYZ(i, tint * shade, tint * shade, tint * shade);
+				c.needsUpdate = true;
+			}
+		}
+	}
 	for (const group of clouds) {
 		group.position.x =
 			px -
@@ -106,15 +126,9 @@ export function updateClouds(_dt) {
 			FIELD_RADIUS +
 			((group.userData.offsetZ * FIELD_RADIUS * 2) % (FIELD_RADIUS * 2));
 		group.position.y = CLOUD_ALT + group.userData.altBump;
-		// Tinte por vértice: blanco de día → gris azulado de noche (las nubes
-		// se oscurecen como el resto del mundo). El baremo por caja da textura.
-		const tint = 0.35 + dayFactor * 0.65;
-		for (const mesh of group.children) {
-			const c = mesh.geometry.getAttribute("color");
-			const shade = mesh.userData.shade ?? 1;
-			for (let i = 0; i < c.count; i++)
-				c.setXYZ(i, tint * shade, tint * shade, tint * shade);
-			c.needsUpdate = true;
-		}
 	}
 }
+
+// Paso mínimo de tinte que provoca un re-upload de los colores de las nubes
+// (~1/34 del rango 0.35-1.0 → ~8 cambios por ciclo día/noche en lugar de 60/s).
+const CLOUD_TINT_STEP = 0.03;

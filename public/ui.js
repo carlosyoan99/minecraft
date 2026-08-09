@@ -87,51 +87,89 @@ const hotbarEl = document.getElementById("hotbar");
 // Fase 15 (D3): tooltip estilizado del hotbar. Muestra el nombre del ítem y,
 // si tiene durabilidad, el estado actual (igual que la barrita bajo el slot).
 const tooltipEl = document.getElementById("tooltip");
-function attachTooltip(slot, item) {
-	const maxD =
-		DURABILITY[item.id] || ARMOR_DURABILITY[item.id] || BOW_DURABILITY;
+
+// Auditoría 2026-08-09 (§4.5): el hotbar usaba updateHotbarUI → innerHTML = ""
+// y recreaba 9 divs + 2 listeners cada vez que llegaba un inventory_update
+// (más de 18 nodos DOM descartados y re-fabricados por recarga, incluso si
+// solo había cambiado un slot o nada). Ahora los 9 slots se crean UNA vez,
+// se re-renderiza solo el slot cuyo contenido cambió y los eventos se delegan
+// en el contenedor (click/mouseenter/mouseleave con data-i), sin attach por
+// slot en cada refresco.
+const slotEls = Array.from({ length: 9 }, (_, i) => {
+	const s = document.createElement("div");
+	s.className = "hotbar-slot";
+	s.dataset.i = i;
+	hotbarEl.appendChild(s);
+	return s;
+});
+let hoveredSlot = -1; // para no reescribir el tooltip si ya está mostrando este slot
+
+const slotHtml = (i) => {
+	const item = inventory[i];
+	if (!item) return "";
+	let html = `${itemVisual(item.id, 1.5)}<span class="count">${item.count}</span>`;
+	const maxD = DURABILITY[item.id] || ARMOR_DURABILITY[item.id] || BOW_DURABILITY;
+	if (maxD) {
+		const cur = typeof item.durability === "number" ? item.durability : maxD;
+		const pct = Math.max(0, Math.min(100, (cur / maxD) * 100));
+		const color = pct > 50 ? "#5fd34f" : pct > 20 ? "#e8b93f" : "#e8544f";
+		html += `<div class="durbar"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></div>`;
+	}
+	return html;
+};
+
+function updateHotbarUI() {
+	tooltipEl.classList.add("hidden");
+	hoveredSlot = -1;
+	for (let i = 0; i < 9; i++) {
+		const slot = slotEls[i];
+		const item = inventory[i];
+		// Solo tocar el DOM si cambió el contenido o la selección.
+		const nextHtml = slotHtml(i);
+		if (slot.innerHTML !== nextHtml) slot.innerHTML = nextHtml;
+		const cls = `hotbar-slot${i === selectedSlot ? " selected" : ""}`;
+		if (slot.className !== cls) slot.className = cls;
+	}
+}
+
+// Selección por click (delegado en el contenedor, no por slot).
+hotbarEl.addEventListener("click", (ev) => {
+	const slot = ev.target.closest(".hotbar-slot");
+	if (!slot) return;
+	const i = Number(slot.dataset.i);
+	if (i === selectedSlot) return;
+	selectedSlot = i;
+	send("inventory_select", { slot: i });
+	updateHotbarUI();
+});
+
+// Tooltip por hover (delegado; requiere DOM un poco: el texto va al elemento).
+const slotTooltipHtml = (item) => {
+	const maxD = DURABILITY[item.id] || ARMOR_DURABILITY[item.id] || BOW_DURABILITY;
 	let html = `<span class="tt-name">${itemLabel(item.id)}</span>`;
 	if (maxD) {
 		const cur = typeof item.durability === "number" ? item.durability : maxD;
 		html += `<span class="tt-dur">${cur}/${maxD}</span>`;
 	}
-	slot.addEventListener("mouseenter", () => {
-		tooltipEl.innerHTML = html;
-		tooltipEl.classList.remove("hidden");
-	});
-	slot.addEventListener("mouseleave", () => tooltipEl.classList.add("hidden"));
-}
-
-function updateHotbarUI() {
+	return html;
+};
+hotbarEl.addEventListener("mouseover", (ev) => {
+	const slot = ev.target.closest(".hotbar-slot");
+	const i = slot ? Number(slot.dataset.i) : -1;
+	if (i < 0) return;
+	if (i === hoveredSlot && !tooltipEl.classList.contains("hidden")) return;
+	const item = inventory[i];
+	if (!item) return;
+	hoveredSlot = i;
+	tooltipEl.innerHTML = slotTooltipHtml(item);
+	tooltipEl.classList.remove("hidden");
+});
+hotbarEl.addEventListener("mouseout", (ev) => {
+	const slot = ev.target.closest(".hotbar-slot");
+	if (!slot || slot.contains(ev.relatedTarget)) return;
+	hoveredSlot = -1;
 	tooltipEl.classList.add("hidden");
-	hotbarEl.innerHTML = "";
-	for (let i = 0; i < 9; i++) {
-		const item = inventory[i];
-		const slot = document.createElement("div");
-		slot.className = `hotbar-slot${i === selectedSlot ? " selected" : ""}`;
-		if (item) {
-			slot.innerHTML = `${itemVisual(item.id, 1.5)}<span class="count">${item.count}</span>`;
-			// Fase 5/7: barra de durabilidad bajo la herramienta/armadura (verde→rojo)
-			const maxD =
-				DURABILITY[item.id] || ARMOR_DURABILITY[item.id] || BOW_DURABILITY;
-			if (maxD) {
-				const cur =
-					typeof item.durability === "number" ? item.durability : maxD;
-				const pct = Math.max(0, Math.min(100, (cur / maxD) * 100));
-				const color = pct > 50 ? "#5fd34f" : pct > 20 ? "#e8b93f" : "#e8544f";
-				slot.innerHTML += `<div class="durbar"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></div>`;
-			}
-			// Fase 15 (D3): tooltip estilizado al hover en vez del title nativo.
-			attachTooltip(slot, item);
-		}
-		slot.addEventListener("click", () => {
-			selectedSlot = i;
-			send("inventory_select", { slot: i });
-			updateHotbarUI();
-		});
-		hotbarEl.appendChild(slot);
-	}
-}
+});
 function updateHealthUI() {
 	document.getElementById("hp").textContent = health;
 	document.getElementById("maxhp").textContent = maxHealth;
