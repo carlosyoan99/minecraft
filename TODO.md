@@ -2377,13 +2377,15 @@ Especificación: [`docs/fase15-spec.md`](docs/fase15-spec.md) (fase completada y
 
 ---
 
-## Auditoría transversal (2026-08-09): auditorías 3/4/6 en verde
+## Auditoría transversal (2026-08-09): auditorías 3/4/6 y E2E en verde
 
 > Hallazgo de la auditoría de cierre de la Fase 13: las auditorías
 > reutilizables de fases anteriores (`tests/audit-fase3.js`, `audit-fase4.js`,
 > `audit-fase6.js`) llevaban en rojo desde F11/F14 — **no eran regresión de
 > la Fase 13** (fallaban idéntico en el commit base pre-F13). Se hizo un
-> bisect por commits para atribuirlos y se corrigieron los tests.
+> bisect por commits para atribuirlos y se corrigieron los tests. La
+> validación E2E posterior destapó y arregló regresiones de los commits de
+> seguridad del mismo día en 4 tests E2E (commit `404b81f`).
 
 ### Bisect de atribución (por qué fallaban)
 
@@ -2415,13 +2417,41 @@ Especificación: [`docs/fase15-spec.md`](docs/fase15-spec.md) (fase completada y
 - El uso de `Math.random` global en la generación es intencional
   (`unit-arboles.js` lo explota sembrándolo), por eso no se tocó el juego.
 
+### Regresiones E2E de los commits de seguridad (commit `404b81f`)
+
+Al re-validar la suite E2E completa contra servidor real (mundo fresco),
+tres regresiones de los commits de seguridad del 2026-08-09 rompían la
+suite. El cliente real no se vio afectado (ya usaba el protocolo nuevo).
+
+- **`abe1bc2` (crafting grid server-side)** — `craft` ya no acepta
+  `data.grid`: la grid es siempre la del servidor (`p.craftingGrid`),
+  llenada vía `grid_set` que descuenta ítems REALES del inventario.
+  `e2e-cofre` y `e2e-durabilidad` seguían enviando el grid por el wire →
+  colgaban en fase "craft" esperando un ítem que nunca se crafteaba. Ahora
+  replican el flujo legítimo del cliente (`grid_set` + `craft`); durabilidad
+  además pide los materiales con `/give` (antes crafteaba ítems fantasma) y
+  ya no aborta con `finish(1)` al ver los `inventory_update` intermedios de
+  los grid_set (llegan sin el pico).
+- **`0bc40e8` (rate-limit WS, 30 msgs/s en ventana deslizante de 1s)** — la
+  ráfaga de 30 `tame_mob` + `/tp` (31 mensajes en la misma ventana) de
+  `e2e-mascotas` cortaba la conexión justo después de la doma → el test
+  moría sin más `mobs_update`. La ráfaga se espacia en 3 grupos de 10
+  (t=0/500/1100ms): cada ventana tiene ≤11 mensajes y el reset del contador
+  está garantizado (el grupo 3 cae siempre ≥1s tras el primer mensaje).
+- **`e2e-comer`** — el bonus de cazar un pasivo casi nunca ocurre en la
+  suite (e2e-mascotas deja el mundo con el tope de mobs) y esperaba los 90s
+  completos enmascarado por `finish(0)`; ahora termina a los 30s si sigue
+  en fase hunt.
+
 ### Validación
 
 - [x] `audit-fase3`, `audit-fase4`, `audit-fase6` → **exit=0**
 - [x] `audit-fase5` y `audit-fase7` (CDP Chrome headless) sin regresión → exit=0
 - [x] Suite unitaria completa en verde (incluye `unit-paridad`, `unit-sync`,
       `unit-greedy`, `unit-workers`, `unit-lagunas`)
-- [x] Suite E2E contra servidor real: exit=0 (mascotas 19/19, templo 6/6)
+- [x] Suite E2E contra servidor real (mundo fresco) → **6/6 en 148s**:
+      mascotas 19/19, durabilidad, comer, reload, cofre y templo 6/6,
+      todos sin FAIL
 
 ---
 
