@@ -33,6 +33,7 @@ de cada fase.
 | Documento | Contenido |
 | --- | --- |
 | [`reporte-paridad.md`](reporte-paridad.md) | Comparativa 1:1 contra Minecraft Java por área (mecánicas, audio, menú, mundo/biomas, mobs, servidor, vida/hambre/XP, minería/crafteo, combate), bugs de paridad (B1-B12), lagunas priorizadas (L1-L5), optimizaciones (P1-P5), diseño de la migración POO y plan de validación |
+| [`auditoria-2026-08-09.md`](auditoria-2026-08-09.md) | Auditoría técnica integral (errores, seguridad, rendimiento y paridad): hallazgos verificados en el código priorizados por gravedad (críticos → bajos), falsos positivos descartados y estado de corrección |
 
 ## Documentación técnica
 
