@@ -2377,6 +2377,54 @@ Especificación: [`docs/fase15-spec.md`](docs/fase15-spec.md) (fase completada y
 
 ---
 
+## Auditoría transversal (2026-08-09): auditorías 3/4/6 en verde
+
+> Hallazgo de la auditoría de cierre de la Fase 13: las auditorías
+> reutilizables de fases anteriores (`tests/audit-fase3.js`, `audit-fase4.js`,
+> `audit-fase6.js`) llevaban en rojo desde F11/F14 — **no eran regresión de
+> la Fase 13** (fallaban idéntico en el commit base pre-F13). Se hizo un
+> bisect por commits para atribuirlos y se corrigieron los tests.
+
+### Bisect de atribución (por qué fallaban)
+
+- **`audit-fase3` (balance de hambre)** — rota desde **F11**: la señal de
+  muerte del test era `p.x === 0.5` (respawn), pero `findSpawn` pasó a
+  esquivar ríos/océano con `columnFloorY` y el respawn ya no cae en x=0.5.
+  El juego SÍ mata por inanición (~40s, como espera el test); el test solo
+  no lo detectaba y seguía simulando tras el respawn (por eso veía
+  `sat=18`: el decaimiento posterior al reaparecer).
+- **`audit-fase4` (culling/determinismo)** — rota desde **F11**: la
+  generación de árboles/vegetación usa `Math.random()` global, así que
+  regenerar un chunk consume un tramo DISTINTO de la secuencia y el check
+  "regeneración bit-idéntica" fallaba siempre (3 diffs).
+- **`audit-fase6` (LOD/determinismo)** — rota desde **F14** (merge de la
+  paridad de valores): mismo síntoma que la 4 — la altura de superficie
+  depende de los árboles y el check de geometría LOD regenerada fallaba
+  (quads distintos entre dos regeneraciones).
+
+### Fix (commit `e23e810`, solo tests de auditoría)
+
+- **`audit-fase3`**: la muerte se detecta por `p.x !== 0 || p.z !== 0`
+  (el respawn SIEMPRE mueve al jugador desde el origen `(0,64,0)`; findSpawn
+  nunca devuelve 0 exacto) en vez de `p.x === 0.5`.
+- **`audit-fase4` y `audit-fase6`**: se siembra el MISMO PRNG determinista
+  (Park-Miller LCG, patrón de `tests/unit-arboles.js`) antes de cada
+  regeneración → ambas pasadas consumen la misma secuencia y el check mide
+  el determinismo REAL por coordenadas, no la suerte del RNG global.
+  Validado empíricamente: **0 diffs con LCG sembrado vs 2-4 con RNG real**.
+- El uso de `Math.random` global en la generación es intencional
+  (`unit-arboles.js` lo explota sembrándolo), por eso no se tocó el juego.
+
+### Validación
+
+- [x] `audit-fase3`, `audit-fase4`, `audit-fase6` → **exit=0**
+- [x] `audit-fase5` y `audit-fase7` (CDP Chrome headless) sin regresión → exit=0
+- [x] Suite unitaria completa en verde (incluye `unit-paridad`, `unit-sync`,
+      `unit-greedy`, `unit-workers`, `unit-lagunas`)
+- [x] Suite E2E contra servidor real: exit=0 (mascotas 19/19, templo 6/6)
+
+---
+
 ## Fuera de alcance (Won't)
 
 Explícitamente descartado por ahora — no implementar sin discutir
