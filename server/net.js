@@ -37,6 +37,7 @@ const state = require("./state.js");
 const world = require("./world.js");
 const save = require("./save.js");
 const playerHelpers = require("./players.js");
+const { ItemStack } = require("./items.js"); // Fase 13 (C3): slots como clase
 const crafting = require("./crafting.js");
 const chests = require("./chests.js");
 const mobs = require("./mobs.js");
@@ -235,7 +236,11 @@ function handleConnection(ws, req) {
 	// cualquiera en la lista OPS (env var OPS="Nombre1,Nombre2"). Permiso para
 	// /tp /give /time /gamemode /reload /op (ver commands.js).
 	const playerName = nameFromRequest(req) || `Jugador-${playerId.slice(0, 4)}`;
-	const player = {
+	// Fase 13 (C3): POO — el jugador es una instancia de Player (clase de
+	// players.js) construida desde los mismos campos planos de siempre. El
+	// resto del servidor lo sigue tratando por propiedades; los métodos de
+	// entidad (damage/eat/respawn/...) quedan disponibles en la instancia.
+	const player = playerHelpers.createPlayer({
 		id: playerId,
 		ws,
 		name: playerName, // Fase 7: nombre visible
@@ -290,7 +295,7 @@ function handleConnection(ws, req) {
 		vyObs: 0, // diagnóstico (última velocidad vertical observada, no se consume)
 		airTimeMs: 0,
 		fallVy: 0
-	};
+	});
 	state.players.set(playerId, player);
 	// Fase 14 (M2, fix de revisión): al entrar un jugador NUEVO, el snapshot de
 	// mobs debe llegarle aunque nada haya cambiado desde el último mobs_update
@@ -393,17 +398,13 @@ function handleConnection(ws, req) {
 				}
 				// El agua no es sólida: nadar (estar dentro de un bloque de agua) es
 				// legítimo. Solo se rechaza si el jugador está dentro de un sólido.
-				const feet = world.getBlock(
-					Math.floor(x),
-					Math.floor(y),
-					Math.floor(z)
-				);
-				const head = world.getBlock(
-					Math.floor(x),
-					Math.floor(y + 1.5),
-					Math.floor(z)
-				);
-				if (isSolidBlock(feet) || isSolidBlock(head)) {
+				// Fase 13 (L2/L3): la validación usa world.isSolidAt (COLISIÓN POR
+				// FORMA), no isSolidBlock puro: una losa solo es sólida en su mitad
+				// inferior, una escalera en su escalón, y una puerta abierta no
+				// bloquea (state.doors). Sin esto, el servidor rechazaría al
+				// jugador parado sobre una losa (media caja) o dentro de una
+				// puerta abierta.
+				if (world.isSolidAt(x, y, z) || world.isSolidAt(x, y + 1.5, z)) {
 					ws.send(
 						JSON.stringify({
 							event: "teleport",
@@ -645,11 +646,12 @@ function handleConnection(ws, req) {
 				if (p.craftingGrid[toGridSlot]) return; // celda ocupada
 				// Conservar la durabilidad al pasar una herramienta por la mesa
 				// (evita "repararla" gratis y, por tanto, duplicar usos)
-				p.craftingGrid[toGridSlot] = {
-					id: item.id,
-					count: 1,
-					durability: item.durability
-				};
+				// Fase 13 (C3): el slot es un ItemStack (JSON idéntico al wire).
+				p.craftingGrid[toGridSlot] = new ItemStack(
+					item.id,
+					1,
+					item.durability
+				);
 				item.count -= 1;
 				if (item.count <= 0) p.inventory[fromInventorySlot] = null;
 				playerHelpers.sendInventory(p);
@@ -743,12 +745,7 @@ function handleConnection(ws, req) {
 					if (target === -1) target = c.findIndex((s) => !s);
 					if (target === -1) return; // cofre lleno
 					if (c[target]) c[target].count += item.count;
-					else
-						c[target] = {
-							id: item.id,
-							count: item.count,
-							durability: item.durability
-						};
+					else c[target] = new ItemStack(item.id, item.count, item.durability);
 					p.inventory[invSlot] = null;
 					playerHelpers.sendInventory(p);
 				} else if (data.action === "take") {
@@ -992,15 +989,15 @@ function handleConnection(ws, req) {
 					)
 				)
 					break;
-				p.inventory[p.selectedSlot] = {
+				p.inventory[p.selectedSlot] = new ItemStack(
 					id,
-					count: isToolOrArmor ? 1 : 64,
-					durability: isToolOrArmor
+					isToolOrArmor ? 1 : 64,
+					isToolOrArmor
 						? (constants.TOOL_DURABILITY[id] ??
 							constants.ARMOR_DURABILITY[id] ??
 							constants.HOE_DURABILITY[id])
 						: undefined
-				};
+				);
 				playerHelpers.sendInventory(p);
 				break;
 			}
@@ -1045,13 +1042,13 @@ function handleConnection(ws, req) {
 				// Devolver la pieza actual al MISMO slot si el hueco se queda libre;
 				// si no había pieza, el slot del inventario queda vacío.
 				p.inventory[slotIdx] = prev
-					? { id: prev.id, count: 1, durability: prev.durability }
+					? new ItemStack(prev.id, 1, prev.durability)
 					: null;
-				p.armor[slotName] = {
-					id: item.id,
-					count: 1,
-					durability: item.durability ?? ARMOR_DURABILITY[item.id]
-				};
+				p.armor[slotName] = new ItemStack(
+					item.id,
+					1,
+					item.durability ?? ARMOR_DURABILITY[item.id]
+				);
 				playerHelpers.sendInventory(p);
 				break;
 			}
@@ -1067,6 +1064,79 @@ function handleConnection(ws, req) {
 					return; // inventario lleno: no se pierde la pieza
 				p.armor[slotName] = null;
 				playerHelpers.sendInventory(p);
+				break;
+			}
+
+			case "bucket_use": {
+				// Fase 13 (L4): cubo de líquidos. Clic derecho: con el cubo VACÍO
+				// sobre una fuente de agua/lava (B.WATER/B.LAVA) la recoge (deja
+				// aire y devuelve WATER_BUCKET/LAVA_BUCKET); con el cubo LLENO
+				// vierte el líquido donde se mira (deja BUCKET vacío). Compatible
+				// con la fuente infinita 2×2 de la Fase 11: al recoger, si quedan
+				// ≥2 fuentes ortogonales adyacentes, la celda se rellena sola.
+				const { x, y, z } = data;
+				if (Math.hypot(x - p.x, y - p.y, z - p.z) > 7) break;
+				const held = p.inventory[p.selectedSlot];
+				if (!held) break;
+				const block = world.getBlock(x, y, z);
+				// RECOGER: cubo vacío sobre una fuente.
+				if (held.id === I.BUCKET) {
+					if (block === B.WATER || block === B.LAVA) {
+						// Fuente infinita 2×2 (Fase 11): con ≥2 fuentes adyacentes la
+						// celda se rellena sola (el patrón nunca se agota).
+						if (block === B.WATER && world.countWaterNeighbors(x, y, z) >= 2)
+							break; // no recoger: la 2×2 queda intacta (se puede sacar de ella)
+						world.setBlock(x, y, z, B.AIR);
+						playerHelpers.removeFromInventory(p, I.BUCKET, 1);
+						playerHelpers.addToInventory(
+							p,
+							block === B.WATER ? I.WATER_BUCKET : I.LAVA_BUCKET,
+							1
+						);
+						playerHelpers.sendInventory(p);
+					}
+					break;
+				}
+				// VERTER: cubo lleno → el líquido se coloca donde se mira si es aire
+				// (y la celda está dentro del mundo). Devuelve el cubo vacío.
+				if (held.id === I.WATER_BUCKET || held.id === I.LAVA_BUCKET) {
+					if (block !== B.AIR) break;
+					world.setBlock(x, y, z, held.id === I.WATER_BUCKET ? B.WATER : B.LAVA);
+					playerHelpers.removeFromInventory(p, held.id, 1);
+					playerHelpers.addToInventory(p, I.BUCKET, 1);
+					playerHelpers.sendInventory(p);
+				}
+				break;
+			}
+
+			case "door_use": {
+				// Fase 13 (L2): abrir/cerrar una puerta o portón con clic derecho.
+				// El servidor alterna el estado (state.doors) y hace broadcast
+				// door_state para que todos los jugadores vean el cambio. La
+				// puerta cerrada es sólida; la abierta se atraviesa (la valida
+				// world.isSolidAt en el move).
+				let bx = data.x,
+					by = data.y,
+					bz = data.z;
+				if (Math.hypot(bx - p.x, by - p.y, bz - p.z) > 7) break;
+				let block = world.getBlock(bx, by, bz);
+				// La puerta ocupa 2 celdas (ambas son bloque de puerta): el
+				// estado de apertura vive SIEMPRE en la celda INFERIOR. Si el
+				// clic cae en la mitad superior (también bloque de puerta) o
+				// justo encima de la puerta, se remapea a la celda inferior —
+				// fix de paridad: antes el remapeo exigía que la celda clicada
+				// NO fuera puerta, así que clicar la mitad superior abría un
+				// estado distinto en la celda alta (y la puerta seguía sólida).
+				if (constants.isDoor(world.getBlock(bx, by - 1, bz))) {
+					by = by - 1;
+					block = world.getBlock(bx, by, bz);
+				}
+				if (!constants.isDoor(block)) break;
+				const key = `${bx},${by},${bz}`;
+				const cur = state.doors.get(key) || { open: false };
+				const open = !cur.open;
+				state.doors.set(key, { open });
+				broadcast("door_state", { x: bx, y: by, z: bz, open });
 				break;
 			}
 
@@ -1256,6 +1326,23 @@ function handleConnection(ws, req) {
 				// se retira del inventario, vuela con la física de proyectiles y
 				// vuelve al inventario al impactar o expirar (mobs.tickArrows).
 				if (mobs.throwPlayerTrident(p)) playerHelpers.sendInventory(p);
+				break;
+			}
+
+			case "shoot_bow": {
+				// Fase 13 (L1): el jugador dispara su arco (clic derecho). El
+				// servidor valida que la mano es un arco y que HAY flechas en el
+				// inventario; consume 1 flecha, lanza el proyectil (daño 9) y
+				// desgasta el arco (BOW_DURABILITY, solo al disparar).
+				const held = p.inventory[p.selectedSlot];
+				if (!held || held.id !== constants.I.BOW) break;
+				if (playerHelpers.countInInventory(p, constants.I.ARROW) < 1) break;
+				if (mobs.shootPlayerArrow(p)) {
+					const broke = playerHelpers.applyBowWear(p);
+					playerHelpers.sendInventory(p);
+					if (broke)
+						p.ws.send(JSON.stringify({ event: "tool_broke", data: {} }));
+				}
 				break;
 			}
 

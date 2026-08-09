@@ -6,6 +6,7 @@
 const WebSocket = require("ws");
 const world = require("./world.js");
 const state = require("./state.js");
+const { ItemStack } = require("./items.js"); // Fase 13 (C3): slots como clase
 const { findSpawn } = world;
 const {
 	B,
@@ -42,15 +43,17 @@ function addToInventory(player, itemId, count = 1, durability) {
 	if (isTool(itemId) || isArmor(itemId)) {
 		const empty = player.inventory.findIndex((s) => !s);
 		if (empty === -1) return false;
-		player.inventory[empty] = {
-			id: itemId,
-			count: 1,
-			durability:
-				durability ??
+		// Fase 13 (C3): los slots del inventario son instancias de ItemStack
+		// (misma forma al serializar que los literales anteriores).
+		player.inventory[empty] = new ItemStack(
+			itemId,
+			1,
+			durability ??
 				TOOL_DURABILITY[itemId] ??
 				ARMOR_DURABILITY[itemId] ??
-				HOE_DURABILITY[itemId]
-		};
+				HOE_DURABILITY[itemId] ??
+				(isBow(itemId) ? BOW_DURABILITY : undefined)
+		);
 		return true;
 	}
 	// Apilar en un slot existente del mismo tipo (sin límite de stack, simplificado)
@@ -62,7 +65,7 @@ function addToInventory(player, itemId, count = 1, durability) {
 	}
 	const empty = player.inventory.findIndex((s) => !s);
 	if (empty === -1) return false;
-	player.inventory[empty] = { id: itemId, count };
+	player.inventory[empty] = new ItemStack(itemId, count);
 	return true;
 }
 
@@ -726,6 +729,94 @@ function tickPlayer(player, dtMs) {
 	}
 }
 
+// ============================================================
+// PLAYER (Fase 13, C3): entidad del jugador como clase
+// Encapsula los campos planos del estado (id, x/y/z, health, inventory,
+// armor, ...) que net.js crea al conectar y que el resto del servidor ya
+// leía. Los métodos de entidad delegan en las fachadas del módulo (misma
+// implementación y firma): el wire, el guardado y los tests no cambian.
+// La fábrica createPlayer construye la instancia desde los campos; net.js
+// la usa para el jugador nuevo y save.js para restaurar al reconectar.
+// ============================================================
+class Player {
+	constructor(fields = {}) {
+		Object.assign(this, fields);
+	}
+
+	// --- Inventario (Fase 13, C3) ---
+	addItem(itemId, count = 1, durability) {
+		return addToInventory(this, itemId, count, durability);
+	}
+	removeItem(itemId, count = 1) {
+		return removeFromInventory(this, itemId, count);
+	}
+	countItem(itemId) {
+		return countInInventory(this, itemId);
+	}
+
+	// --- Salud / daño ---
+	damage(amount, opts = {}) {
+		return damagePlayer(this, amount, opts);
+	}
+	heal(amount) {
+		const max = this.maxHealth || 20;
+		if (this.health >= max) return false;
+		this.health = Math.min(max, this.health + amount);
+		sendHealth(this);
+		return true;
+	}
+	applyFallDamage(vyObs = 0) {
+		return applyFallDamage(this, vyObs);
+	}
+
+	// --- Comida / hambre ---
+	eat(itemId) {
+		return eatFood(this, itemId);
+	}
+	canEat(itemId) {
+		return canEat(this, itemId);
+	}
+
+	// --- Ciclo de vida ---
+	tick(dtMs) {
+		return tickPlayer(this, dtMs);
+	}
+	respawn(cause) {
+		return respawnPlayer(this, cause);
+	}
+	addXp(amount) {
+		return addXp(this, amount);
+	}
+
+	// --- Desgaste ---
+	applyToolWear(onlySwords = false) {
+		return applyToolWear(this, onlySwords);
+	}
+	applyBowWear() {
+		return applyBowWear(this);
+	}
+
+	// --- Sincronización con el cliente ---
+	sendInventory() {
+		return sendInventory(this);
+	}
+	sendHealth() {
+		return sendHealth(this);
+	}
+	sendFood() {
+		return sendFood(this);
+	}
+	sendXp() {
+		return sendXp(this);
+	}
+}
+
+// Fábrica del jugador nuevo: construye un Player desde los campos planos
+// (los crea net.js en handleConnection con el literal de siempre).
+function createPlayer(fields) {
+	return new Player(fields);
+}
+
 module.exports = {
 	addToInventory,
 	removeFromInventory,
@@ -738,11 +829,15 @@ module.exports = {
 	eatFood,
 	canEat,
 	applyToolWear,
+	applyBowWear,
 	addXp,
 	sendXp,
 	finishMining,
 	setBroadcastHandler,
 	respawnPlayer,
 	fallDamage,
-	applyFallDamage
+	applyFallDamage,
+	// Fase 13 (C3): POO del servidor
+	Player,
+	createPlayer
 };

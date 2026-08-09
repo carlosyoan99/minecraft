@@ -58,6 +58,23 @@ let noise2D_pond, noise2D_pond_region, noise2D_lava;
 // — se declara ANTES de reinitNoise porque esta lo invalida al cambiar de
 // semilla (los ruidos de bioma/agua de structCenterAt son del seed).
 const structCellCache = new Map();
+// Fase 13 (A4): caché de bioma POR CELDA. getBiome es puro y determinista
+// (3 ruidos 2D por llamada) y se consulta mucho en el tick de mobs y en el
+// spawn; los valores por celda (Math.floor) no cambian entre consultas, así
+// que cachearlos ahorra los ruidos. Se invalida al cambiar de semilla
+// (reinitNoise) igual que structCellCache. Tope de tamaño con clear simple:
+// si se supera, se descarta entera (los biomas se re-computan al vuelo).
+// Declarada ANTES de reinitNoise (que la limpia y se ejecuta al cargar el
+// módulo, antes de llegar a getBiome).
+const MAX_BIOME_CACHE = 65536;
+const biomeCache = new Map();
+let biomeComputations = 0; // contador de cómputos REALES (perfilado/tests)
+
+// Estadísticas de la caché de bioma (Fase 13, A4): cuántos cómputos REALES
+// se hicieron (las consultas cacheadas no cuentan). Para tests de perfilado.
+function biomeCacheStats() {
+	return { computations: biomeComputations, size: biomeCache.size };
+}
 function reinitNoise(seed) {
 	noise2D = createNoise2D(seededNoise(seed));
 	noise2D_detail = createNoise2D(seededNoise(`${seed}_detail`));
@@ -96,6 +113,10 @@ function reinitNoise(seed) {
 	// Fase 12 (Bloque B): las estructuras dependen del bioma/agua del centro
 	// de la celda (ruidos del seed) → cache inválido al cambiar de semilla.
 	structCellCache.clear();
+	// Fase 13 (A4): el bioma depende del seed → la caché de getBiome también
+	// se invalida al cambiar de semilla (mismo ciclo de vida que la de
+	// estructuras).
+	biomeCache.clear();
 }
 reinitNoise(constants.SEED); // al arrancar, la SEED de la env var
 const SEA_LEVEL = 5; // bloques de agua: y ∈ (LAKE_FLOOR, SEA_LEVEL)
@@ -252,12 +273,20 @@ function biomeFrom(temp, mnt, swamp) {
 }
 
 function getBiome(wx, wz) {
-	return biomeFrom(
+	const key = `${Math.floor(wx)},${Math.floor(wz)}`;
+	const cached = biomeCache.get(key);
+	if (cached !== undefined) return cached;
+	biomeComputations++;
+	if (biomeCache.size >= MAX_BIOME_CACHE) biomeCache.clear();
+	const b = biomeFrom(
 		noise2D(wx * 0.005, wz * 0.005),
 		noise2D_mountain(wx * 0.008, wz * 0.008),
 		noise2D_swamp(wx * 0.005, wz * 0.005)
 	);
+	biomeCache.set(key, b);
+	return b;
 }
+
 
 function heightFrom(temp, wMnt, wx, wz) {
 	const h = noise2D(wx * 0.02, wz * 0.02) * 0.5 + 0.5;
@@ -1410,16 +1439,87 @@ function ensureChunksAround(wx, wz, radius) {
 	return generated;
 }
 
-module.exports = {
+// ============================================================
+// POO (Fase 13, C3): clases Chunk y World
+// ============================================================
+// CHUNK: envoltura de un chunk (16×64×16) con serialización y dirty.
+// Los datos en memoria siguen siendo Uint8Array en state.chunks (todos los
+// consumidores —save, net, tests— los indexan directamente); esta clase
+// añade la API orientada a objetos sin cambiar el almacenamiento.
+// ============================================================
+class Chunk {
+	constructor(cx, cz, data = null) {
+		this.cx = cx;
+		this.cz = cz;
+		this.data =
+			data || new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+		this.dirty = false;
+	}
+
+	get key() {
+		return `${this.cx},${this.cz}`;
+	}
+
+	// Coordenadas LOCALES (0..15): acceso directo al dato.
+	getBlock(x, y, z) {
+		return this.data[idx(x, y, z)];
+	}
+	setBlock(x, y, z, v) {
+		this.data[idx(x, y, z)] = v;
+		this.dirty = true;
+	}
+	markDirty() {
+		this.dirty = true;
+	}
+
+	// Persistencia: mismo formato gzip que writeChunkFile (Fase 7).
+	save() {
+		writeChunkFile(this.key, this.data);
+		this.dirty = false;
+	}
+
+	// Carga desde disco; null si no existe o es ilegible.
+	static load(cx, cz) {
+		const data = loadChunkFromDisk(cx, cz);
+		return data ? new Chunk(cx, cz, data) : null;
+	}
+
+	// Envuelve el chunk en memoria; null si no está generado.
+	static fromMemory(cx, cz) {
+		const data = chunks.get(`${cx},${cz}`);
+		return data ? new Chunk(cx, cz, data) : null;
+	}
+}
+
+// Devuelve el chunk (cx, cz) como objeto Chunk: el de memoria si existe, si
+// no se genera (y se cachea en state.chunks) y se envuelve.
+function getChunk(cx, cz) {
+	const c = Chunk.fromMemory(cx, cz);
+	return c || new Chunk(cx, cz, generateChunk(cx, cz));
+}
+
+// ============================================================
+// WORLD: el mundo como clase (Fase 13, C3)
+// La clase declara los métodos de instancia que ya exponía el módulo como
+// funciones sueltas; se enlazan al prototipo debajo desde `api` para no
+// duplicar firmas a mano. El singleton `world` (module.exports) es una
+// instancia: `world.getBlock(...)` funciona igual que antes y los tests que
+// parchean `world.getBlock = ...` siguen funcionando (asignan una propiedad
+// propia sobre la instancia, como hacían sobre el objeto de exports).
+// ============================================================
+class World {}
+
+// API del módulo (funciones sueltas de siempre, ahora métodos de World).
+const api = {
 	getBiome,
+	biomeCacheStats,
 	getHeight,
+	isSolidAt,
 	findSpawn,
 	generateChunk,
 	mineshaftAt,
 	mineshaftDepth,
 	msLootSpot,
-	MS_TUNNEL_H,
-	// Fase 12 (Bloque B): estructuras deterministas
 	structureAt,
 	templeTrapAt,
 	placeTempleColumn,
@@ -1427,6 +1527,7 @@ module.exports = {
 	templeBlockAt,
 	isPondAt,
 	isLavaPondAt,
+	isSwampPoolAt,
 	getBlock,
 	setBlock,
 	ensureChunksAround,
@@ -1448,12 +1549,24 @@ module.exports = {
 	isOcean,
 	oceanFloorY,
 	columnFloorY,
+	torchSupported,
+	cleanUnsupportedTorches,
+	countWaterNeighbors,
+	getChunk
+};
+for (const name of Object.keys(api)) World.prototype[name] = api[name];
+
+const world = new World();
+// Constantes públicas que los tests/servidor leían desde el módulo, ahora
+// propiedades de la instancia (misma API).
+Object.assign(world, {
+	World,
+	Chunk,
 	SEA_LEVEL,
 	LAKE_FLOOR,
 	SNOW_TEMP,
 	MOUNTAIN_THRESHOLD,
 	MOUNTAIN_SNOW_LINE,
-	torchSupported,
-	cleanUnsupportedTorches,
-	countWaterNeighbors
-};
+	MS_TUNNEL_H
+});
+module.exports = world;

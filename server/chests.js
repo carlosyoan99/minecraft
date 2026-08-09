@@ -13,6 +13,7 @@
 // ============================================================
 const state = require("./state.js");
 const { I } = require("./constants.js");
+const { ItemStack } = require("./items.js"); // Fase 13 (C3): loot como clase
 
 const { chests } = state;
 const CHEST_SLOTS = 27; // 3 filas de 9, como el cofre pequeño de Minecraft
@@ -63,7 +64,12 @@ function lootSlotsFrom(table) {
 	const n = 1 + Math.floor(Math.random() * 3); // 1..3 stacks
 	for (let i = 0; i < n; i++) {
 		const [id, min, max] = table[Math.floor(Math.random() * table.length)];
-		slots[i] = { id, count: min + Math.floor(Math.random() * (max - min + 1)) };
+		// Fase 13 (C3): los slots de loot son ItemStack (misma forma al
+		// serializar que los literales anteriores).
+		slots[i] = new ItemStack(
+			id,
+			min + Math.floor(Math.random() * (max - min + 1))
+		);
 	}
 	return slots;
 }
