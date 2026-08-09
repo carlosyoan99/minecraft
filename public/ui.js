@@ -83,7 +83,27 @@ function itemVisual(id, scale = 1) {
 // HOTBAR Y SALUD
 // ============================================================
 const hotbarEl = document.getElementById("hotbar");
+
+// Fase 15 (D3): tooltip estilizado del hotbar. Muestra el nombre del ítem y,
+// si tiene durabilidad, el estado actual (igual que la barrita bajo el slot).
+const tooltipEl = document.getElementById("tooltip");
+function attachTooltip(slot, item) {
+	const maxD =
+		DURABILITY[item.id] || ARMOR_DURABILITY[item.id] || BOW_DURABILITY;
+	let html = `<span class="tt-name">${itemLabel(item.id)}</span>`;
+	if (maxD) {
+		const cur = typeof item.durability === "number" ? item.durability : maxD;
+		html += `<span class="tt-dur">${cur}/${maxD}</span>`;
+	}
+	slot.addEventListener("mouseenter", () => {
+		tooltipEl.innerHTML = html;
+		tooltipEl.classList.remove("hidden");
+	});
+	slot.addEventListener("mouseleave", () => tooltipEl.classList.add("hidden"));
+}
+
 function updateHotbarUI() {
+	tooltipEl.classList.add("hidden");
 	hotbarEl.innerHTML = "";
 	for (let i = 0; i < 9; i++) {
 		const item = inventory[i];
@@ -100,10 +120,9 @@ function updateHotbarUI() {
 				const pct = Math.max(0, Math.min(100, (cur / maxD) * 100));
 				const color = pct > 50 ? "#5fd34f" : pct > 20 ? "#e8b93f" : "#e8544f";
 				slot.innerHTML += `<div class="durbar"><i style="width:${pct.toFixed(0)}%;background:${color}"></i></div>`;
-				slot.title = `${itemLabel(item.id)} (${cur}/${maxD})`;
-			} else {
-				slot.title = itemLabel(item.id);
 			}
+			// Fase 15 (D3): tooltip estilizado al hover en vez del title nativo.
+			attachTooltip(slot, item);
 		}
 		slot.addEventListener("click", () => {
 			selectedSlot = i;

@@ -988,6 +988,37 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	transition: width 0.15s;
 }
 
+/* Tooltip estilizado del hotbar (Fase 15, D3): nombre y durabilidad del ítem
+   al pasar el puntero por encima de un slot. Reemplaza al tooltip nativo del
+   navegador (que tardaba en aparecer y no podía estilizar). */
+#tooltip {
+	position: fixed;
+	left: 50%;
+	top: 8px;
+	transform: translateX(-50%);
+	background: #1a1a1a;
+	color: #fff;
+	padding: 4px 10px;
+	border: 2px solid;
+	border-color: #c6c6c6 #4b4b4b #4b4b4b #c6c6c6;
+	font-size: 13px;
+	pointer-events: none;
+	z-index: 50;
+	white-space: nowrap;
+	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8);
+}
+#tooltip.hidden {
+	display: none;
+}
+#tooltip .tt-name {
+	font-weight: bold;
+}
+#tooltip .tt-dur {
+	margin-left: 8px;
+	font-size: 11px;
+	color: #9f9f9f;
+}
+
 .panel {
 	position: absolute;
 	top: 50%;
