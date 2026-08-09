@@ -18,6 +18,7 @@ const {
 	WORLD_HEIGHT,
 	MOB_XP, // Fase 12 (A4): XP del mob asesinado con un proyectil
 	TNT_DAMAGE, // Fase 14 (Bloque B): el creeper explota con el daño del TNT
+	BOW_DAMAGE, // Fase 13 (L1): daño de la flecha del jugador (9, paridad MC)
 	worldPaths
 } = require("./constants.js");
 
@@ -188,6 +189,48 @@ function returnPlayerTrident(a) {
 	if (owner?.inventory) addToInventory(owner, I.TRIDENT, 1);
 }
 
+// Fase 13 (L1): el JUGADOR dispara una flecha con su arco (clic derecho)
+// hacia donde mira. Consume 1 ARROW del inventario y lanza el proyectil con
+// la MISMA física de las flechas del esqueleto (state.arrows) pero con daño
+// 9 (BOW_DAMAGE) y la marca `playerArrow: true` para que, al impactar o
+// agotar su vida, la flecha vuelva a su inventario (recogible, como el
+// tridente). Devuelve true si se disparó (el llamador desgasta el arco).
+function shootPlayerArrow(player) {
+	const held = player.inventory?.[player.selectedSlot || 0];
+	if (!held || held.id !== I.BOW) return false;
+	const yaw = player.yaw || 0;
+	const pitch = player.pitch || 0;
+	const cp = Math.cos(pitch);
+	const dx = -Math.sin(yaw) * cp;
+	const dy = Math.sin(pitch);
+	const dz = -Math.cos(yaw) * cp;
+	removeFromInventory(player, I.ARROW, 1);
+	state.arrows.push({
+		x: player.x,
+		y: player.y + 1.4,
+		z: player.z,
+		vx: dx * ARROW_SPEED,
+		vy: dy * ARROW_SPEED,
+		vz: dz * ARROW_SPEED,
+		life: ARROW_LIFE_MS,
+		from: player.id,
+		kind: "arrow",
+		damage: BOW_DAMAGE,
+		playerArrow: true
+	});
+	return true;
+}
+
+// Devuelve la flecha del JUGADOR a su inventario al impactar/expirar (la
+// recogida del suelo se simplifica igual que con el tridente: no hay
+// entidades de item en el suelo en este clon). Las flechas del esqueleto
+// (sin playerArrow) no vuelven a nadie.
+function returnPlayerArrow(a) {
+	if (a.kind !== "arrow" || !a.playerArrow || !a.from) return;
+	const owner = players.get(a.from);
+	if (owner?.inventory) addToInventory(owner, I.ARROW, 1);
+}
+
 // Avanza las flechas (dtMs) y aplica daño al primer jugador que intersecten.
 // Devuelve las flechas vivas para el broadcast (arrows_update).
 function tickArrows(dtMs) {
@@ -200,6 +243,7 @@ function tickArrows(dtMs) {
 		// item en el suelo en este clon, así que la "recogida" es automática.
 		if (a.life <= 0) {
 			returnPlayerTrident(a);
+			returnPlayerArrow(a);
 			continue;
 		}
 		// Posición previa: necesaria para el barrido anti-tunneling (la flecha a
@@ -306,7 +350,11 @@ function tickArrows(dtMs) {
 		}
 		// Fase 12: el tridente del jugador que impacta (o expira) vuelve a su
 		// inventario (no hay entidades de item en el suelo en este clon).
-		if (hit || a.life <= 0) returnPlayerTrident(a);
+		// Fase 13 (L1): las flechas del jugador también vuelven (recogibles).
+		if (hit || a.life <= 0) {
+			returnPlayerTrident(a);
+			returnPlayerArrow(a);
+		}
 		if (!hit) alive.push(a);
 	}
 	state.arrows = alive;
@@ -1482,7 +1530,13 @@ const OTHER_DROPS = {
 	spider: { id: I.STRING, min: 0, max: 2 },
 	cow: { id: I.LEATHER, min: 0, max: 2 },
 	rabbit: { id: I.LEATHER, min: 0, max: 1 },
-	skeleton: { id: I.BONE, min: 0, max: 2 },
+	skeleton: [
+		{ id: I.BONE, min: 0, max: 2 },
+		// Fase 13 (L1): el esqueleto también suelta flechas (0-2, como MC).
+		{ id: I.ARROW, min: 0, max: 2 }
+	],
+	// Fase 13 (L1): el pollo suelta plumas (material de las flechas, como MC).
+	chicken: { id: I.FEATHER, min: 0, max: 2 },
 	// Fase 12 (Bloque A): slime → slimeball (0-1, solo el pequeño lo suelta)
 	// y ahogado → tridente (~15%, roll explícito en mobDrops — la tabla
 	// 0..1 daría 50%).
@@ -1499,7 +1553,15 @@ function mobDrops(mob) {
 	// mediano se dividen, no dropean — como Minecraft).
 	if (mob.type === "slime" && mob.slimeSize !== 0) return null;
 	const drops = [];
-	for (const table of [FOOD_DROPS[mob.type], OTHER_DROPS[mob.type]]) {
+	// Fase 13 (L1): OTHER_DROPS puede ser una tabla única o un ARRAY de
+	// tablas (el esqueleto suelta huesos Y flechas) — se normaliza aquí.
+	const tables = [
+		FOOD_DROPS[mob.type],
+		...(Array.isArray(OTHER_DROPS[mob.type])
+			? OTHER_DROPS[mob.type]
+			: [OTHER_DROPS[mob.type]])
+	];
+	for (const table of tables) {
 		if (!table) continue;
 		// Fase 12 (A4): el tridente del ahogado cae ~15% (roll explícito; el
 		// rango 0..1 de la tabla daría 50%).
@@ -1656,6 +1718,8 @@ module.exports = {
 	setSpawnSafeRadius,
 	tickArrows,
 	arrowSnapshot,
+	shootPlayerArrow,
+	returnPlayerArrow,
 	BEE_HEALTH,
 	// Fase 12 (Bloque A): mobs por bioma y mascotas
 	canTame,

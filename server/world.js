@@ -14,6 +14,7 @@ const {
 	SCHEMA_VERSION,
 	B,
 	isSolidBlock,
+	isDoor, // Fase 13 (L2): puertas/portones (estado de apertura)
 	GRAVITY_BLOCKS
 } = constants;
 const state = require("./state.js");
@@ -1195,6 +1196,47 @@ function getBlock(wx, wy, wz) {
 	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 	return chunk[idx(x, wy, z)];
+}
+
+// ============================================================
+// COLISIÓN POR FORMA (Fase 13, L2/L3)
+// isSolidBlock(id) sigue siendo la función pura por ID (losas, escaleras,
+// puertas y vallas devuelven true: SON bloques sólidos). La FORMA real la
+// resuelve isSolidAt(wx, wy, wz) consultando el bloque y su geometría:
+//  - LOSA (60/61): solo la mitad inferior de la celda es sólida (media caja)
+//    → un jugador puede estar de pie sobre ella (y+0.5) y no puede
+//    atravesarla; también puede saltar a media altura.
+//  - ESCALERA (50/51): sólida en el escalón inferior (y+0.5); el escalón
+//    superior se puede pisar (subir escaleras caminando es posible con salto).
+//  - PUERTA/PORTÓN (48/49/71): la solidez depende del estado (state.doors):
+//    cerrada = sólida, abierta = se atraviesa (como MC).
+//  - VALLA (70): sólida en toda la celda (no se atraviesa; visualmente se
+//    ve a través — es una simplificación del render, la colisión es real).
+// El punto consultado es una posición de MUNDO flotante: la Y fraccionaria
+// decide dentro de la celda. La usan net.js (validación de move) y la
+// física de mobs para no caminar a través de las formas.
+// ============================================================
+function isSolidAt(wx, wy, wz) {
+	const b = getBlock(Math.floor(wx), Math.floor(wy), Math.floor(wz));
+	if (!isSolidBlock(b)) return false;
+	// Puertas/portones: la celda de la puerta es sólida solo si está cerrada.
+	if (isDoor(b)) {
+		const d = state.doors.get(
+			`${Math.floor(wx)},${Math.floor(wy)},${Math.floor(wz)}`
+		);
+		return !d || !d.open;
+	}
+	// Losa: media caja inferior (la Y fraccionaria del punto decide).
+	if (b === B.OAK_SLAB || b === B.STONE_SLAB) {
+		const fy = wy - Math.floor(wy);
+		return fy < 0.5;
+	}
+	// Escalera: escalón inferior sólido, el superior se pisa (como MC).
+	if (b === B.OAK_STAIRS || b === B.STONE_STAIRS) {
+		const fy = wy - Math.floor(wy);
+		return fy < 0.5;
+	}
+	return true; // valla y resto de sólidos: celda completa
 }
 
 // Hook que conecta la red (broadcast de block_update) desde la entrada del

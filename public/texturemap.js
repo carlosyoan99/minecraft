@@ -16,7 +16,7 @@
 // ============================================================
 
 export const COLS = 8; // teselas por fila en el atlas
-export let TILE_COUNT = 55; // nº total de teselas (55 en la Fase 13)
+export let TILE_COUNT = 63; // nº total de teselas (63 en la Fase 13: +8 de L2/L3)
 
 // textures.js fija el recuento real de teselas (TILES.length) al cargar.
 export function setTileCount(n) {
@@ -68,7 +68,17 @@ const BLOCK_TEX = {
 	40: { all: 50 }, // TNT (Fase 10, D2)
 	41: { top: 52, bottom: 52, side: 51 }, // tronco de jungla (Fase 11, B)
 	42: { all: 53 }, // hojas de jungla
-	43: { all: 54 } // liana (cross)
+	43: { all: 54 }, // liana (cross)
+	// Fase 13 (L2/L3): puertas (48/49), escaleras (50/51), losas (60/61),
+	// valla (70) y portón (71) — teselas 55-62 del atlas.
+	48: { all: 55 }, // puerta de roble
+	49: { all: 56 }, // puerta de hierro
+	50: { all: 57 }, // escaleras de roble
+	51: { all: 58 }, // escaleras de piedra
+	60: { all: 59 }, // losa de roble
+	61: { all: 60 }, // losa de piedra
+	70: { all: 61 }, // valla de roble
+	71: { all: 62 } // portón de roble
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

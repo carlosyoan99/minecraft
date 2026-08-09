@@ -21,6 +21,7 @@ import {
 	TORCH,
 	WATER
 } from "./constants.js";
+import { isDoorOpen } from "./network.js"; // Fase 13 (L2): estado local de puertas
 import { setUnderwater, updateDayNight } from "./daynight.js";
 import { camera, controls, renderer, scene } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
@@ -92,14 +93,21 @@ function solidAt(x, y, z) {
 	const b = getClientBlock(Math.floor(x), Math.floor(y), Math.floor(z));
 	// El agua, la lava, la antorcha y las plantas (hierba/flores/trigo) no son
 	// sólidas: se pueden atravesar (la lava daña — lo gestiona el servidor).
-	return (
+	const solid =
 		b !== 0 &&
 		b !== -1 &&
 		b !== WATER &&
 		b !== LAVA &&
 		b !== TORCH &&
-		!NON_SOLID_PLANTS.has(b)
-	);
+		!NON_SOLID_PLANTS.has(b);
+	if (!solid) return false;
+	// Fase 13 (L2/L3): COLISIÓN POR FORMA (paridad con server/world.isSolidAt).
+	// Puerta/portón abiertos → se atraviesan.
+	if (b === 48 || b === 49 || b === 71) return !isDoorOpen(Math.floor(x), Math.floor(y), Math.floor(z));
+	// Losas y escaleras: solo la mitad inferior de la celda es sólida (media
+	// caja / escalón). La Y flotante decide dentro de la celda.
+	if (b === 60 || b === 61 || b === 50 || b === 51) return y - Math.floor(y) < 0.5;
+	return true; // valla (70) y resto: celda completa
 }
 
 // ============================================================

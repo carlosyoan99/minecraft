@@ -566,6 +566,86 @@ function drawVines(ctx, rng) {
 	px(ctx, 10, 13, "#4a9a40");
 }
 
+// Fase 13 (L2/L3): teselas de puertas, escaleras, losas, valla y portón.
+// Simplificación visual documentada: los bloques con colisión por forma se
+// dibujan con su tesela característica (puerta con bisagras, escalera con
+// peldaños, losa a media altura, valla con travesaños) aunque la geometría
+// del chunk los renderice como caja completa; la COLISIÓN sí respeta la
+// forma (world.isSolidAt en el servidor, solidAt en el cliente).
+function drawDoorOak(ctx, rng) {
+	drawPlanks(ctx, rng); // base de tablones
+	// Marco vertical central (listón de la puerta)
+	for (let y = 1; y <= 14; y++) {
+		px(ctx, 7, y, "#5a3d1e");
+		px(ctx, 8, y, "#5a3d1e");
+	}
+	// Bisagras (arriba y abajo)
+	px(ctx, 5, 2, "#3a2a12");
+	px(ctx, 5, 13, "#3a2a12");
+	// Tirador
+	px(ctx, 10, 7, "#c9a46b");
+	px(ctx, 10, 8, "#c9a46b");
+}
+function drawDoorIron(ctx, rng) {
+	for (let y = 0; y < 16; y++)
+		for (let x = 0; x < 16; x++) px(ctx, x, y, "#8a8a90");
+	// Panel central empotrado
+	for (let y = 3; y <= 12; y++)
+		for (let x = 4; x <= 11; x++) px(ctx, x, y, "#6a6a72");
+	// Remaches
+	px(ctx, 4, 3, "#b0b0b8");
+	px(ctx, 11, 3, "#b0b0b8");
+	px(ctx, 4, 12, "#b0b0b8");
+	px(ctx, 11, 12, "#b0b0b8");
+}
+function drawStairsOak(ctx, rng) {
+	drawPlanks(ctx, rng); // base
+	// Peldaños: bandas horizontales alternas (el dibujo sugiere la forma)
+	for (let y = 8; y <= 11; y++)
+		for (let x = 2; x <= 13; x++) px(ctx, x, y, "#5a3d1e");
+	for (let y = 12; y <= 15; y++)
+		for (let x = 2; x <= 13; x++) px(ctx, x, y, "#4a3018");
+	// Borde del peldaño superior
+	for (let x = 2; x <= 13; x++) px(ctx, x, 8, "#c9a46b");
+}
+function drawStairsStone(ctx, rng) {
+	drawStone(ctx, rng); // base
+	for (let y = 8; y <= 11; y++)
+		for (let x = 2; x <= 13; x++) px(ctx, x, y, "#666666");
+	for (let y = 12; y <= 15; y++)
+		for (let x = 2; x <= 13; x++) px(ctx, x, y, "#555555");
+	for (let x = 2; x <= 13; x++) px(ctx, x, 8, "#9a9a9a");
+}
+function drawSlabOak(ctx, rng) {
+	drawPlanks(ctx, rng);
+	// La losa ocupa la mitad inferior: oscurecer la parte superior
+	for (let y = 0; y < 8; y++)
+		for (let x = 0; x < 16; x++) px(ctx, x, y, "#3a2a14");
+}
+function drawSlabStone(ctx, rng) {
+	drawStone(ctx, rng);
+	for (let y = 0; y < 8; y++)
+		for (let x = 0; x < 16; x++) px(ctx, x, y, "#4a4a4a");
+}
+function drawFenceOak(ctx, rng) {
+	drawPlanks(ctx, rng);
+	// Travesaños horizontales + postes (la valla se ve a través)
+	for (let x = 0; x < 16; x++) {
+		px(ctx, x, 5, "#5a3d1e");
+		px(ctx, x, 10, "#5a3d1e");
+	}
+	for (let y = 0; y < 16; y++) {
+		px(ctx, 2, y, "#4a3018");
+		px(ctx, 13, y, "#4a3018");
+	}
+}
+function drawFenceGate(ctx, rng) {
+	drawFenceOak(ctx, rng);
+	// Barra central del portón
+	for (let y = 0; y < 16; y++) px(ctx, 7, y, "#c9a46b");
+	for (let y = 0; y < 16; y++) px(ctx, 8, y, "#c9a46b");
+}
+
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
 	drawDirt, // 0  tierra
@@ -622,7 +702,16 @@ const TILES = [
 	drawJungleLogSide, // 51 tronco de jungla (lado) (Fase 11, B)
 	drawJungleLogTop, // 52 tronco de jungla (arriba/abajo)
 	drawJungleLeaves, // 53 hojas de jungla
-	drawVines // 54 liana (cross)
+	drawVines, // 54 liana (cross)
+	// Fase 13 (L2/L3): puertas, escaleras, losas, valla y portón
+	drawDoorOak, // 55 puerta de roble
+	drawDoorIron, // 56 puerta de hierro
+	drawStairsOak, // 57 escaleras de roble
+	drawStairsStone, // 58 escaleras de piedra
+	drawSlabOak, // 59 losa de roble
+	drawSlabStone, // 60 losa de piedra
+	drawFenceOak, // 61 valla de roble
+	drawFenceGate // 62 portón de roble
 ];
 
 // El mapa de teselas por bloque/cara (BLOCK_TEX) y los rectángulos UV viven en

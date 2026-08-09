@@ -220,7 +220,16 @@ const B = {
 	// Fase 11 (Bloque B): bloques de los biomas nuevos — jungla y pantano
 	JUNGLE_LOG: 41, // tronco de jungla (árboles de jungla)
 	JUNGLE_LEAVES: 42, // hojas de jungla
-	VINES: 43 // liana (no sólida, decorativa; cuelga de las copas)
+	VINES: 43, // liana (no sólida, decorativa; cuelga de las copas)
+	// Fase 13 (L2/L3): puertas, escaleras, losas y vallas (paridad MC)
+	OAK_DOOR: 48, // puerta de madera (se abre con clic derecho; 2 celdas de alto)
+	IRON_DOOR: 49, // puerta de hierro (solo clic derecho)
+	OAK_STAIRS: 50, // escaleras de madera (colisión por forma: 2 escalones)
+	STONE_STAIRS: 51, // escaleras de piedra
+	OAK_SLAB: 60, // losa de madera (media caja: se puede estar encima y pasar por debajo no)
+	STONE_SLAB: 61, // losa de piedra
+	OAK_FENCE: 70, // valla de madera (colisión central + laterales, se ve a través)
+	OAK_FENCE_GATE: 71 // portón de valla (se abre/cierra como una puerta)
 };
 
 // Bloques con gravedad (Fase 10, D1): caen si el bloque de debajo no es
@@ -278,6 +287,19 @@ const I = {
 	DIAMOND_CHESTPLATE: 229,
 	DIAMOND_LEGGINGS: 230,
 	DIAMOND_BOOTS: 231,
+	// Fase 13 (L5): armadura de oro (232-235) y de malla (236-239) — mismas
+	// formas que el resto de materiales. Oro: puntos/durabilidad de MC Java
+	// (2-5-3-1 / 77-112-105-91). Malla: puntos de MC (2-5-4-1) y durabilidad
+	// de hierro. Como en Minecraft, la malla NO tiene receta de crafteo (se
+	// obtiene de drops/cofres); los ítems quedan para creative/commands.
+	GOLD_HELMET: 232,
+	GOLD_CHESTPLATE: 233,
+	GOLD_LEGGINGS: 234,
+	GOLD_BOOTS: 235,
+	CHAIN_HELMET: 236,
+	CHAIN_CHESTPLATE: 237,
+	CHAIN_LEGGINGS: 238,
+	CHAIN_BOOTS: 239,
 	WOODEN_PICKAXE: 200,
 	STONE_PICKAXE: 201,
 	IRON_PICKAXE: 202,
@@ -312,7 +334,25 @@ const I = {
 	TRIDENT: 245,
 	// SLIME_BALL: material del slime — drop de los slimes pequeños (0-1). Sin
 	// recetas en esta fase (material de colección, como el hilo de la araña).
-	SLIME_BALL: 246
+	SLIME_BALL: 246,
+	// Fase 13 (L1): arco y flechas del jugador (paridad MC). El arco es una
+	// herramienta con durabilidad propia (384, no se apila) que dispara
+	// flechas (daño 9) consumiendo ARROW; las flechas impactadas/expiradas
+	// vuelven al inventario (recogibles, como el tridente). FLINT cae de la
+	// grava (~10%) y FEATHER del pollo — materiales de la receta de flechas.
+	BOW: 247,
+	ARROW: 248,
+	// Fase 13 (L4): cubo de líquidos — recoger agua/lava de una fuente y
+	// verterla donde se mira (clic derecho). El cubo vacío es reutilizable:
+	// recoger devuelve WATER_BUCKET/LAVA_BUCKET y verter devuelve BUCKET.
+	BUCKET: 249,
+	WATER_BUCKET: 250,
+	LAVA_BUCKET: 251,
+	FLINT: 252,
+	FEATHER: 253,
+	// Fase 13 (L5): compás — crafteable (4 lingotes de hierro + redstone) como
+	// en MC. Ítem de colección sin mecánica propia (sin brújula funcional).
+	COMPASS: 254
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -360,6 +400,15 @@ const NON_SOLID_PLANTS = new Set([
 ]);
 // Sólido para física/validación: el agua no es sólida (se nada en ella), la
 // antorcha/cama tampoco (se atraviesan) y las plantas (Fase 9) tampoco.
+// Fase 13 (L2/L3): bloques con COLISIÓN POR FORMA (la física consulta la
+// forma real, no la celda completa):
+//  - losa: sólida solo en la mitad inferior de la celda (media caja);
+//  - escalera: sólida solo en el escalón inferior (el superior se sube);
+//  - valla: sólida en la celda (no se atraviesa) aunque visualmente se vea
+//    a través (como en MC).
+//  - puerta/portón: la SOLIDEZ depende del estado (cerrada sólida, abierta
+//    no) — lo resuelve world.isSolidAt/state.doors, no esta función pura.
+const SHAPED_SOLIDS = new Set([B.OAK_SLAB, B.STONE_SLAB, B.OAK_STAIRS, B.STONE_STAIRS]);
 const isSolidBlock = (id) =>
 	id !== B.AIR &&
 	id !== B.WATER &&
@@ -367,6 +416,9 @@ const isSolidBlock = (id) =>
 	id !== B.TORCH &&
 	id !== B.BED &&
 	!NON_SOLID_PLANTS.has(id);
+// Fase 13 (L2/L3): puertas y portones (el estado de apertura decide la
+// solidez; ver state.doors y world.isSolidAt).
+const isDoor = (id) => id === B.OAK_DOOR || id === B.IRON_DOOR || id === B.OAK_FENCE_GATE;
 const FUEL_ITEMS = new Set([
 	B.OAK_LOG,
 	B.BIRCH_LOG,
@@ -456,7 +508,17 @@ const BLOCK_HARDNESS = {
 	[B.GOLD_ORE]: 3.0,
 	[B.REDSTONE_ORE]: 3.0,
 	[B.EMERALD_ORE]: 3.0,
-	[B.DIAMOND_ORE]: 3.0
+	[B.DIAMOND_ORE]: 3.0,
+	// Fase 13 (L2/L3): durezas estilo MC — puertas 3 (madera) / 5 (hierro),
+	// escaleras 2 (madera) / 2 (piedra), losas 2, vallas 2, portón 2.
+	[B.OAK_DOOR]: 3.0,
+	[B.IRON_DOOR]: 5.0,
+	[B.OAK_STAIRS]: 2.0,
+	[B.STONE_STAIRS]: 2.0,
+	[B.OAK_SLAB]: 2.0,
+	[B.STONE_SLAB]: 2.0,
+	[B.OAK_FENCE]: 2.0,
+	[B.OAK_FENCE_GATE]: 2.0
 };
 // Velocidad por material (multiplicador sobre la dureza): madera 2x,
 // piedra 4x, hierro 6x, oro 12x (rápida pero frágil), diamante 8x.
@@ -506,7 +568,17 @@ const BLOCK_CATEGORY = {
 	[B.DIRT]: "dirt",
 	[B.FARMLAND]: "dirt",
 	[B.SAND]: "sand",
-	[B.SNOW]: "snow"
+	[B.SNOW]: "snow",
+	// Fase 13 (L2/L3): las puertas se rompen mejor con hacha (madera) o pico
+	// (hierro); simplificado: hacha para las de madera, pico para hierro.
+	[B.OAK_DOOR]: "wood",
+	[B.IRON_DOOR]: "stone",
+	[B.OAK_STAIRS]: "wood",
+	[B.STONE_STAIRS]: "stone",
+	[B.OAK_SLAB]: "wood",
+	[B.STONE_SLAB]: "stone",
+	[B.OAK_FENCE]: "wood",
+	[B.OAK_FENCE_GATE]: "wood"
 };
 const toolCategoryOf = (id) =>
 	isPickaxe(id)
@@ -587,7 +659,11 @@ const TOOL_DURABILITY = {
 };
 // Alias de durabilidad de azadas (para addToInventory/applyToolWear).
 const HOE_DURABILITY = TOOL_DURABILITY;
-const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id);
+// Fase 13 (L1): el arco es una "herramienta" a efectos de inventario (no se
+// apila y lleva su durabilidad BOW_DURABILITY), pero su desgaste NO va por
+// applyToolWear al minar/atacar: lo gestiona applyBowWear al disparar
+// (players.js). Por eso no está en TOOL_DURABILITY.
+const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id) || id === I.BOW;
 
 // ============================================================
 // ARMADURA (Fase 7): reducción de daño por pieza y material.
@@ -615,7 +691,16 @@ const ARMOR_POINTS = {
 	[I.DIAMOND_HELMET]: 3,
 	[I.DIAMOND_CHESTPLATE]: 8,
 	[I.DIAMOND_LEGGINGS]: 6,
-	[I.DIAMOND_BOOTS]: 3
+	[I.DIAMOND_BOOTS]: 3,
+	// Fase 13 (L5): oro y malla (valores oficiales de MC Java)
+	[I.GOLD_HELMET]: 2,
+	[I.GOLD_CHESTPLATE]: 5,
+	[I.GOLD_LEGGINGS]: 3,
+	[I.GOLD_BOOTS]: 1,
+	[I.CHAIN_HELMET]: 2,
+	[I.CHAIN_CHESTPLATE]: 5,
+	[I.CHAIN_LEGGINGS]: 4,
+	[I.CHAIN_BOOTS]: 1
 };
 const ARMOR_DURABILITY = {
 	[I.LEATHER_HELMET]: 55,
@@ -629,9 +714,30 @@ const ARMOR_DURABILITY = {
 	[I.DIAMOND_HELMET]: 363,
 	[I.DIAMOND_CHESTPLATE]: 528,
 	[I.DIAMOND_LEGGINGS]: 495,
-	[I.DIAMOND_BOOTS]: 429
+	[I.DIAMOND_BOOTS]: 429,
+	// Fase 13 (L5): oro (77-112-105-91) y malla (igual que el hierro, como MC)
+	[I.GOLD_HELMET]: 77,
+	[I.GOLD_CHESTPLATE]: 112,
+	[I.GOLD_LEGGINGS]: 105,
+	[I.GOLD_BOOTS]: 91,
+	[I.CHAIN_HELMET]: 165,
+	[I.CHAIN_CHESTPLATE]: 240,
+	[I.CHAIN_LEGGINGS]: 225,
+	[I.CHAIN_BOOTS]: 195
 };
 const isArmor = (id) => !!ARMOR_POINTS[id];
+
+// ============================================================
+// ARCO Y FLECHAS (Fase 13, L1): valores oficiales de Minecraft Java.
+// BOW_DURABILITY 384 (el arco no está en TOOL_DURABILITY: no se desgasta al
+// minar — solo al disparar). BOW_DAMAGE 9 es el daño de la flecha del
+// jugador (la flecha del esqueleto hace 3, ARROW_DAMAGE en mobs.js).
+// Mantener en sincronía con public/constants.js (lo verifica unit-sync).
+// ============================================================
+const BOW_DURABILITY = 384;
+const BOW_DAMAGE = 9;
+const isBow = (id) => id === I.BOW;
+const isArrow = (id) => id === I.ARROW;
 
 // Reduce el daño según la armadura del jugador: desgasta las piezas (-1 por
 // cada 4 de daño bruto, mínimo 1) y devuelve el daño real. Las piezas que
@@ -816,6 +922,15 @@ const CREATIVE_ITEMS = [
 	B.JUNGLE_LOG,
 	B.JUNGLE_LEAVES,
 	B.VINES,
+	// Fase 13 (L2/L3): puertas, escaleras, losas, vallas y portón
+	B.OAK_DOOR,
+	B.IRON_DOOR,
+	B.OAK_STAIRS,
+	B.STONE_STAIRS,
+	B.OAK_SLAB,
+	B.STONE_SLAB,
+	B.OAK_FENCE,
+	B.OAK_FENCE_GATE,
 	// Minerales y materiales
 	B.COAL_ORE,
 	B.IRON_ORE,
@@ -840,11 +955,29 @@ const CREATIVE_ITEMS = [
 	I.SHEARS,
 	// Fase 12 (Bloque A): ítems nuevos en el inventario creativo
 	I.TRIDENT,
-	I.SLIME_BALL
+	// Fase 13 (L5): armadura de oro y malla + compás
+	I.GOLD_HELMET,
+	I.GOLD_CHESTPLATE,
+	I.GOLD_LEGGINGS,
+	I.GOLD_BOOTS,
+	I.CHAIN_HELMET,
+	I.CHAIN_CHESTPLATE,
+	I.CHAIN_LEGGINGS,
+	I.CHAIN_BOOTS,
+	I.COMPASS,
+	I.SLIME_BALL,
+	// Fase 13 (L1/L4): arco, flechas, materiales y cubos en el creativo
+	I.BOW,
+	I.ARROW,
+	I.FLINT,
+	I.FEATHER,
+	I.BUCKET,
+	I.WATER_BUCKET,
+	I.LAVA_BUCKET
 ];
 // Todos los ítems/armas/herramientas del juego (para el picker creativo).
 const ALL_TOOLS_AND_ARMOR = [
-	...Object.values(I).filter((v) => v >= 200 && v <= 231),
+	...Object.values(I).filter((v) => v >= 200 && v <= 239), // herramientas + armadura (incl. oro/malla, Fase 13 L5)
 	...Object.values(I).filter((v) => v >= 240 && v <= 244) // azadas (Fase 9, Bloque C)
 ];
 
@@ -950,6 +1083,8 @@ module.exports = {
 	B,
 	I,
 	NOT_MINEABLE,
+	isDoor,
+	SHAPED_SOLIDS,
 	GRAVITY_BLOCKS,
 	TNT_FUSE_MS,
 	TNT_RADIUS,
@@ -971,6 +1106,11 @@ module.exports = {
 	ARMOR_SLOTS,
 	ARMOR_POINTS,
 	ARMOR_DURABILITY,
+	BOW_DURABILITY,
+	BOW_DAMAGE,
+	isBow,
+	isArrow,
+	isBucket: (id) => id === I.BUCKET || id === I.WATER_BUCKET || id === I.LAVA_BUCKET,
 	WORLD_SIZES,
 	worldHalfExtent,
 	worldSizeBlocks,

@@ -56,6 +56,16 @@ import {
 let playerId = null;
 let playerName = "";
 
+// Fase 13 (L2): estado local de puertas/portones (Map "x,y,z" → open). Lo
+// alimenta el broadcast door_state del servidor; lo consulta la física
+// (solidAt en player.js) para la colisión por forma: puerta abierta se
+// atraviesa, cerrada bloquea. No se persiste (efímero, como el servidor).
+const doorStates = new Map();
+// Se registra en el init el estado inicial (door_state se manda al colocar).
+export function isDoorOpen(x, y, z) {
+	return !!doorStates.get(`${x},${y},${z}`);
+}
+
 // Fase 10 (A2): llamarada del jugador (quemadura residual de lava). El
 // servidor la manda con `fire_state` cuando cambia; el init la replica al
 // reconectar. Se pinta con un overlay CSS (viñeta naranja parpadeante).
@@ -260,6 +270,19 @@ socket.addEventListener("message", (e) => {
 		case "chest_state":
 			applyChestState(data);
 			break; // Fase 6: slots del cofre abierto
+		case "door_state":
+			// Fase 13 (L2): apertura/cierre de una puerta/portón — el estado
+			// afecta a la colisión local (solidAt). La puerta ocupa 2 celdas:
+			// el estado aplica a la inferior (la que manda el servidor) y a la
+			// superior (se comprueba al clicar/atravesar cualquiera de las dos).
+			if (data.open) {
+				doorStates.set(`${data.x},${data.y},${data.z}`, true);
+				doorStates.set(`${data.x},${data.y + 1},${data.z}`, true);
+			} else {
+				doorStates.delete(`${data.x},${data.y},${data.z}`);
+				doorStates.delete(`${data.x},${data.y + 1},${data.z}`);
+			}
+			break;
 		case "tnt_fuse": {
 			// Fase 10 (D2/F2): mecha encendida — sonido de chisporroteo y un
 			// fogonazo de partículas en el bloque (feedback del "clic derecho").

@@ -591,6 +591,18 @@ function handleConnection(ws, req) {
 					// Minecraft — no se pueden colocar flotando en el aire. El agua y
 					// otra antorcha no dan soporte (isSolidBlock las excluye).
 					if (itemId === B.TORCH && !world.torchSupported(x, y, z)) return;
+					// Fase 13 (L2): puertas y portones ocupan 2 celdas de alto — se
+					// colocan solo si hay hueco arriba (y + 1 libre) y necesitan un
+					// bloque de apoyo debajo (no flotar).
+					if (constants.isDoor(itemId)) {
+						if (world.getBlock(x, y + 1, z) !== B.AIR) return;
+						if (!isSolidBlock(world.getBlock(x, y - 1, z))) return;
+						world.setBlock(x, y, z, itemId);
+						world.setBlock(x, y + 1, z, itemId);
+						playerHelpers.removeFromInventory(p, itemId, 1);
+						playerHelpers.sendInventory(p);
+						break;
+					}
 					world.setBlock(x, y, z, itemId);
 					playerHelpers.removeFromInventory(p, itemId, 1);
 					playerHelpers.sendInventory(p);

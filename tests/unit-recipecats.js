@@ -32,9 +32,10 @@ const check = (_name, okVal, _extra = "") => {
 	for (const id of [1, 17, 27, 36, 38])
 		check(`bloque ${id} → 'bloques'`, recipeCategory(id) === "bloques");
 
-	// Armadura: 220-231 (casco/pechera/pantalones/botas × cuero/hierro/diamante).
+	// Armadura: 220-239 (casco/pechera/pantalones/botas ×
+	// cuero/hierro/diamante/oro/malla).
 	// REGRESIÓN: la armadura debe caer en su pestaña, NO en herramientas.
-	for (const id of [220, 221, 222, 223, 224, 228, 231])
+	for (const id of [220, 221, 222, 223, 224, 228, 231, 232, 235, 236, 239])
 		check(
 			`armadura ${id} → 'armadura' (no 'herramientas')`,
 			recipeCategory(id) === "armadura"
@@ -66,13 +67,8 @@ const check = (_name, okVal, _extra = "") => {
 		recipeCategory(219) === "herramientas" && recipeCategory(220) === "armadura"
 	);
 	check(
-		"armadura 231 vs 232: 231 es armadura, 232 es material",
-		recipeCategory(231) === "armadura" && recipeCategory(232) === "materiales"
-	);
-	check(
-		"azada 239 vs 240: 239 es material, 240 es herramienta",
-		recipeCategory(239) === "materiales" &&
-			recipeCategory(240) === "herramientas"
+		"armadura 239 vs 240: 239 es armadura (malla), 240 es herramienta",
+		recipeCategory(239) === "armadura" && recipeCategory(240) === "herramientas"
 	);
 
 	console.log(`${ok} OK, ${fail} FAIL`);

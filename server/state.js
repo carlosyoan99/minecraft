@@ -30,6 +30,11 @@ const damageLog = [];
 // "cx,cz" del centro del templo → timestamp del último disparo (evita que
 // un jugador parado en el pasillo reciba un aluvión de flechas por tick).
 const templeTrapCooldowns = new Map();
+// Fase 13 (L2): estado de las PUERTAS (y portones) — clave "x,y,z" →
+// { open: bool }. La puerta cerrada es sólida; la abierta no (como MC).
+// No se persiste: al recargar, las puertas vuelven a estar cerradas
+// (simplificación documentada: el estado visual es efímero).
+const doors = new Map();
 
 module.exports = {
 	chunks,
@@ -39,6 +44,7 @@ module.exports = {
 	crops,
 	mobs,
 	arrows,
+	doors,
 	dirtyChunks,
 	timeOffset,
 	damageLog,

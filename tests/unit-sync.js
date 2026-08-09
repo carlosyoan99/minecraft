@@ -289,4 +289,29 @@ check(
 		`cliente tiene ${Object.keys(clientItems || {}).length} ítems`
 	);
 }
+// --- 11) Fase 13 (L1): arco y flechas sincronizados ---
+// El wire del inventario y el HUD dependen de los IDs y de BOW_DURABILITY;
+// si divergen, el arco no dispara o la barra de durabilidad se rompe.
+{
+	const clientItems = parseObj("ITEM_NAMES");
+	check(
+		"Fase 13: arco (247), flecha (248), pedernal (252) y pluma (253) con nombre",
+		!!clientItems &&
+			clientItems[server.I.BOW] &&
+			clientItems[server.I.ARROW] &&
+			clientItems[server.I.FLINT] &&
+			clientItems[server.I.FEATHER]
+	);
+	const m = src.match(/export const BOW_DURABILITY = (\d+);/);
+	check(
+		"BOW_DURABILITY cliente == servidor (384)",
+		!!m && Number(m[1]) === server.BOW_DURABILITY,
+		m ? `cliente=${m[1]} servidor=${server.BOW_DURABILITY}` : "no exportado"
+	);
+	check(
+		"BOW en ITEM_NAMES del servidor como ítem no apilable (isTool)",
+		server.isTool(server.I.BOW),
+		"isTool(BOW) debe ser true (durabilidad propia, no apila)"
+	);
+}
 process.exit(fails ? 1 : 0);

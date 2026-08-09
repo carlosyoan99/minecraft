@@ -27,6 +27,9 @@ const {
 	applyArmorDamageReduction,
 	SWORD_DAMAGE,
 	HOE_DURABILITY,
+	BOW_DURABILITY,
+	isBow,
+	isDoor, // Fase 13 (L2): limpieza al romper puertas/portones
 	levelFromXp,
 	xpToNext,
 	xpIntoLevel
@@ -89,6 +92,13 @@ function finishMining(player, x, y, z, block, opts = {}) {
 	// juego no hay entidades de item en el suelo — simplificación documentada
 	// en TODO.md). Se hace ANTES del camino creative (que no dropea).
 	if (block === B.CHEST) state.chests.delete(`${x},${y},${z}`);
+	// Fase 13 (L2): al romper la celda inferior de una puerta/portón se rompe
+	// también la superior (2 celdas de alto) y se limpia su estado de
+	// apertura (state.doors).
+	if (isDoor(block)) {
+		state.doors.delete(`${x},${y},${z}`);
+		if (world.getBlock(x, y + 1, z) === block) world.setBlock(x, y + 1, z, B.AIR);
+	}
 	// Cama rota: los jugadores que tenían ahí su punto de reaparición vuelven
 	// a reaparecer en el spawn inicial (como en Minecraft).
 	if (block === B.BED) {
@@ -131,6 +141,9 @@ function finishMining(player, x, y, z, block, opts = {}) {
 		let drop = block;
 		if (block === B.STONE) drop = B.COBBLESTONE;
 		if (block === B.GRASS) drop = B.DIRT;
+		// Fase 13 (L1): la grava suelta pedernal ~10% (material de las
+		// flechas), como en Minecraft; el resto de las veces cae grava.
+		if (block === B.GRAVEL) drop = Math.random() < 0.1 ? I.FLINT : B.GRAVEL;
 		// Fase 14 (Bloque B): los minerales sueltan su gema/lingote/carbón
 		// directamente (no el bloque de mena, que no es un ítem utilizable).
 		if (ORE_DROP[block]) drop = ORE_DROP[block];
@@ -181,6 +194,25 @@ function applyToolWear(player, onlySwords = false) {
 	if (next <= 0) {
 		// Se rompe a mitad de la acción: se elimina aquí, de forma atómica con el
 		// resto de la acción (romper/atacar), sin duplicar items (ver auditoría).
+		player.inventory[player.selectedSlot] = null;
+		return true;
+	}
+	slot.durability = next;
+	return false;
+}
+
+// ============================================================
+// ARCO (Fase 13, L1): desgaste al DISPARAR. El arco no se desgasta al minar
+// ni al atacar con él (solo consume flechas): su durabilidad se descuenta
+// por disparo (applyBowWear), como en Minecraft. Devuelve true si el arco
+// se rompió (para que el llamador envíe tool_broke).
+// ============================================================
+function applyBowWear(player) {
+	const slot = player.inventory[player.selectedSlot];
+	if (!slot || !isBow(slot.id)) return false;
+	const cur = typeof slot.durability === "number" ? slot.durability : BOW_DURABILITY;
+	const next = Math.max(0, cur - 1);
+	if (next <= 0) {
 		player.inventory[player.selectedSlot] = null;
 		return true;
 	}

@@ -7,6 +7,7 @@ import { defaultName, send, setStoredName } from "./connection.js";
 import {
 	ARMOR_DURABILITY,
 	ARMOR_SLOT_NAMES,
+	BOW_DURABILITY,
 	DURABILITY,
 	itemLabel
 } from "./constants.js";
@@ -91,7 +92,8 @@ function updateHotbarUI() {
 		if (item) {
 			slot.innerHTML = `${itemVisual(item.id, 1.5)}<span class="count">${item.count}</span>`;
 			// Fase 5/7: barra de durabilidad bajo la herramienta/armadura (verde→rojo)
-			const maxD = DURABILITY[item.id] || ARMOR_DURABILITY[item.id];
+			const maxD =
+				DURABILITY[item.id] || ARMOR_DURABILITY[item.id] || BOW_DURABILITY;
 			if (maxD) {
 				const cur =
 					typeof item.durability === "number" ? item.durability : maxD;

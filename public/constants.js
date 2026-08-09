@@ -67,7 +67,17 @@ export const BLOCK_COLORS = {
 	// Fase 11 (Bloque B): bloques de los biomas nuevos
 	41: 0x7a4a1f, // tronco de jungla (marrón oscuro tropical)
 	42: 0x2f7a2a, // hojas de jungla (verde denso)
-	43: 0x3f8f3a // liana (verde colgante)
+	43: 0x3f8f3a, // liana (verde colgante)
+	// Fase 13 (L2/L3): puertas (48/49), escaleras (50/51), losas (60/61),
+	// valla (70) y portón (71) — colores para el LOD/fallback
+	48: 0x8a6a3a,
+	49: 0x9a9a9a,
+	50: 0x8a6a3a,
+	51: 0x7a7a7a,
+	60: 0x8a6a3a,
+	61: 0x7a7a7a,
+	70: 0x8a6a3a,
+	71: 0x8a6a3a
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -113,7 +123,16 @@ export const BLOCK_NAMES = {
 	// Fase 11 (Bloque B): biomas nuevos
 	41: "Tronco de jungla", // jungla
 	42: "Hojas de jungla", // jungla
-	43: "Liana" // jungla/pantano (no sólida, decorativa)
+	43: "Liana", // jungla/pantano (no sólida, decorativa)
+	// Fase 13 (L2/L3): puertas, escaleras, losas y vallas
+	48: "Puerta de roble",
+	49: "Puerta de hierro",
+	50: "Escaleras de roble",
+	51: "Escaleras de piedra",
+	60: "Losa de roble",
+	61: "Losa de piedra",
+	70: "Valla de roble",
+	71: "Portón de roble"
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
@@ -225,6 +244,14 @@ export const ITEM_NAMES = {
 	229: "Pechera de diamante",
 	230: "Pantalones de diamante",
 	231: "Botas de diamante",
+	232: "Casco de oro",
+	233: "Pechera de oro",
+	234: "Pantalones de oro",
+	235: "Botas de oro",
+	236: "Casco de malla",
+	237: "Pechera de malla",
+	238: "Pantalones de malla",
+	239: "Botas de malla",
 	200: "Pico de madera",
 	201: "Pico de piedra",
 	202: "Pico de hierro",
@@ -252,7 +279,17 @@ export const ITEM_NAMES = {
 	244: "Azada de diamante",
 	// Fase 12 (Bloque A): ítems de los mobs por bioma
 	245: "Tridente", // drop del ahogado; arma arrojadiza (clic derecho lanza)
-	246: "Bola de slime" // drop del slime pequeño
+	246: "Bola de slime", // drop del slime pequeño
+	// Fase 13 (L1): arco y flechas del jugador + materiales
+	247: "Arco", // dispara flechas (clic derecho), durabilidad 384
+	248: "Flecha", // consumible del arco; drop del esqueleto y recogible
+	// Fase 13 (L4): cubo de líquidos
+	249: "Cubo", // vacío: recoge agua/lava de una fuente (clic derecho)
+	250: "Cubo de agua", // lleno: vierte agua (clic derecho)
+	251: "Cubo de lava", // lleno: vierte lava (clic derecho)
+	252: "Pedernal", // ~10% de la grava; material de las flechas
+	253: "Pluma", // drop del pollo; material de las flechas
+	254: "Compás" // Fase 13 (L5): 4 lingotes de hierro + redstone
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -265,15 +302,27 @@ export const PLACEABLE_BLOCKS = new Set([
 	// Fase 10 (D1/D2): grava y TNT
 	39, 40,
 	// Fase 11 (Bloque B): jungla y lianas
-	41, 42, 43
+	41, 42, 43,
+	// Fase 13 (L2/L3): puertas, escaleras, losas, vallas y portones
+	48, 49, 50, 51, 60, 61, 70, 71
 ]);
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
 export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43]); // 43 = lianas (Fase 11, B)
 // Armadura equipable (Fase 7): clic derecho con la pieza en mano la equipa.
 // No se apilan (cada pieza con su durabilidad, como las herramientas).
 export const ARMOR_ITEMS = new Set([
-	220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231
-]);
+		220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231,
+		232, 233, 234, 235, 236, 237, 238, 239 // oro y malla (Fase 13, L5)
+	]);
+// Arco (Fase 13, L1): herramienta con durabilidad propia que no se apila.
+export const BOW = 247;
+export const ARROW = 248;
+// Fase 13 (L4): cubo de líquidos.
+export const BUCKET = 249;
+export const WATER_BUCKET = 250;	export const LAVA_BUCKET = 251;
+	export const FLINT = 252;
+	export const FEATHER = 253;
+	export const COMPASS = 254;
 // Durabilidad máxima por pieza (Fase 7). Mantener en sincronía con
 // ARMOR_DURABILITY de constants.js (servidor) — lo verifica unit-sync.js.
 export const ARMOR_DURABILITY = {
@@ -288,8 +337,20 @@ export const ARMOR_DURABILITY = {
 	228: 363,
 	229: 528,
 	230: 495,
-	231: 429
+	231: 429,
+	232: 77,
+	233: 112,
+	234: 105,
+	235: 91,
+	236: 165,
+	237: 240,
+	238: 225,
+	239: 195
 };
+// Durabilidad del arco (Fase 13, L1): paridad con server/constants.js
+// (BOW_DURABILITY, 384). El arco no está en DURABILITY (no se desgasta al
+// minar — solo al disparar); el HUD usa BOW_DURABILITY para su barra.
+export const BOW_DURABILITY = 384;
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)

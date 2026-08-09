@@ -778,5 +778,226 @@
       "id": 141,
       "count": 1
     }
+  },
+  "bow": {
+    "shape": [
+      " #I",
+      "# I",
+      " #I"
+    ],
+    "ingredients": {
+      "#": 100,
+      "I": 120
+    },
+    "result": {
+      "id": 247,
+      "count": 1
+    }
+  },
+  "arrow": {
+    "shape": [
+      "#",
+      "I",
+      "F"
+    ],
+    "ingredients": {
+      "#": 252,
+      "I": 100,
+      "F": 253
+    },
+    "result": {
+      "id": 248,
+      "count": 4
+    }
+  },
+  "oak_door": {
+    "shape": [
+      "##",
+      "##",
+      "##"
+    ],
+    "ingredients": {
+      "#": 7
+    },
+    "result": {
+      "id": 48,
+      "count": 1
+    }
+  },
+  "iron_door": {
+    "shape": [
+      "##",
+      "##",
+      "##"
+    ],
+    "ingredients": {
+      "#": 102
+    },
+    "result": {
+      "id": 49,
+      "count": 1
+    }
+  },
+  "oak_stairs": {
+    "shape": [
+      "#  ",
+      "## ",
+      "###"
+    ],
+    "ingredients": {
+      "#": 7
+    },
+    "result": {
+      "id": 50,
+      "count": 4
+    }
+  },
+  "stone_stairs": {
+    "shape": [
+      "#  ",
+      "## ",
+      "###"
+    ],
+    "ingredients": {
+      "#": 8
+    },
+    "result": {
+      "id": 51,
+      "count": 4
+    }
+  },
+  "oak_slab": {
+    "shape": [
+      "###"
+    ],
+    "ingredients": {
+      "#": 7
+    },
+    "result": {
+      "id": 60,
+      "count": 6
+    }
+  },
+  "stone_slab": {
+    "shape": [
+      "###"
+    ],
+    "ingredients": {
+      "#": 8
+    },
+    "result": {
+      "id": 61,
+      "count": 6
+    }
+  },
+  "oak_fence": {
+    "shape": [
+      "#I#",
+      "#I#"
+    ],
+    "ingredients": {
+      "#": 7,
+      "I": 100
+    },
+    "result": {
+      "id": 70,
+      "count": 3
+    }
+  },
+  "oak_fence_gate": {
+    "shape": [
+      "I#I",
+      "I#I"
+    ],
+    "ingredients": {
+      "#": 7,
+      "I": 100
+    },
+    "result": {
+      "id": 71,
+      "count": 1
+    }
+  },
+  "bucket": {
+    "shape": [
+      "# #",
+      " # "
+    ],
+    "ingredients": {
+      "#": 102
+    },
+    "result": {
+      "id": 249,
+      "count": 1
+    }
+  },
+  "golden_helmet": {
+    "shape": [
+      "###",
+      "# #"
+    ],
+    "ingredients": {
+      "#": 103
+    },
+    "result": {
+      "id": 232,
+      "count": 1
+    }
+  },
+  "golden_chestplate": {
+    "shape": [
+      "# #",
+      "###",
+      "###"
+    ],
+    "ingredients": {
+      "#": 103
+    },
+    "result": {
+      "id": 233,
+      "count": 1
+    }
+  },
+  "golden_leggings": {
+    "shape": [
+      "###",
+      "# #",
+      "# #"
+    ],
+    "ingredients": {
+      "#": 103
+    },
+    "result": {
+      "id": 234,
+      "count": 1
+    }
+  },
+  "golden_boots": {
+    "shape": [
+      "# #",
+      "# #"
+    ],
+    "ingredients": {
+      "#": 103
+    },
+    "result": {
+      "id": 235,
+      "count": 1
+    }
+  },
+  "compass": {
+    "shape": [
+      " # ",
+      "#R#",
+      " # "
+    ],
+    "ingredients": {
+      "#": 102,
+      "R": 105
+    },
+    "result": {
+      "id": 254,
+      "count": 1
+    }
   }
 }

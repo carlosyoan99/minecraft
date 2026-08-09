@@ -100,7 +100,8 @@ const C = {
 	iron: { m: "#d8d8d8", dark: "#9a9a9a", light: "#f4f4f4" },
 	gold: { m: "#e8c547", dark: "#b8860b", light: "#fdf0a0" },
 	diamond: { m: "#5ee0d0", dark: "#2e9a8a", light: "#b0fff2" },
-	leather: { m: "#c9a06b", dark: "#8f6b3e", light: "#e0c090" }
+	leather: { m: "#c9a06b", dark: "#8f6b3e", light: "#e0c090" },
+	chain: { m: "#a7a7ad", dark: "#6b6b71", light: "#d5d5db" } // malla (Fase 13, L5)
 };
 
 // ============================================================
@@ -870,6 +871,127 @@ function drawSlimeBall(g, rng) {
 	set(g, 9, 10, gelDark);
 }
 
+// Fase 13 (L1): iconos del arco, la flecha, el pedernal y la pluma.
+// Arco: curva de madera con cuerda tensada y flecha nockeada (pixel-art 16x16).
+function drawBow(g) {
+	const wood = "#8a5a2b",
+		woodDark = "#6b4226",
+		string = "#e8e0d0";
+	// Madera curva (arco en C): trazos diagonales que dibujan el perfil.
+	line(g, 2, 2, 5, 4, woodDark);
+	line(g, 5, 4, 9, 7, woodDark);
+	line(g, 9, 7, 12, 10, woodDark);
+	line(g, 12, 10, 14, 14, woodDark);
+	line(g, 2, 2, 4, 5, wood);
+	line(g, 4, 5, 8, 8, wood);
+	line(g, 8, 8, 11, 11, wood);
+	line(g, 11, 11, 13, 14, wood);
+	// Cuerda (vertical a la derecha de la madera)
+	vline(g, 13, 2, 14, string);
+	// Flecha nockeada sobre la cuerda
+	line(g, 11, 7, 6, 5, "#cfcfcf");
+	set(g, 5, 4, "#e8e8e8"); // punta
+}
+
+// Cubo (Fase 13, L4): cuerpo metálico con asa; `liquid` (hex o null) pinta
+// el líquido asomando por la boca (agua azul, lava naranja, vacío = aire).
+function drawBucket(g, liquid) {
+	const steel = "#c9c9cf",
+		steelDark = "#8a8a90";
+	// Asa
+	set(g, 4, 3, steelDark);
+	set(g, 5, 2, steel);
+	set(g, 6, 2, steel);
+	set(g, 7, 2, steel);
+	set(g, 8, 2, steel);
+	set(g, 9, 2, steel);
+	set(g, 10, 2, steel);
+	set(g, 11, 2, steel);
+	set(g, 12, 3, steelDark);
+	// Boca del cubo
+	for (let x = 4; x <= 12; x++) set(g, x, 4, steelDark);
+	// Cuerpo (trapecio invertido)
+	for (let y = 5; y <= 12; y++) {
+		const inset = Math.floor((y - 5) / 2);
+		for (let x = 4 + inset; x <= 12 - inset; x++) set(g, x, y, steel);
+	}
+	// Fondo
+	for (let x = 6; x <= 10; x++) set(g, x, 13, steelDark);
+	// Líquido asomando por la boca
+	if (liquid) {
+		set(g, 5, 4, liquid);
+		set(g, 6, 4, liquid);
+		set(g, 7, 4, liquid);
+		set(g, 8, 4, liquid);
+		set(g, 9, 4, liquid);
+		set(g, 10, 4, liquid);
+		set(g, 11, 4, liquid);
+	}
+}
+
+// Flecha: astil diagonal con punta y plumas.
+function drawArrow(g) {
+	const shaft = "#cfc4a8",
+		tip = "#d8d8d8",
+		feather = "#f2e08a";
+	line(g, 5, 14, 11, 4, shaft); // astil
+	line(g, 4, 14, 10, 4, shaft); // grosor
+	// Punta (triángulo en la parte superior)
+	set(g, 10, 3, tip);
+	set(g, 11, 2, tip);
+	set(g, 12, 1, tip);
+	// Plumas (cola, abajo)
+	set(g, 4, 14, feather);
+	set(g, 3, 14, feather);
+	set(g, 5, 15, feather);
+	set(g, 3, 15, feather);
+}
+
+// Pedernal: roca gris oscura con vetas y borde irregular.
+function drawFlint(g) {
+	const rock = "#5a5a5a",
+		rockDark = "#3a3a3a",
+		rockLight = "#8a8a8a";
+	rect(g, 5, 5, 7, 8, rock);
+	// Bordes irregulares
+	set(g, 4, 6, rockDark);
+	set(g, 4, 9, rockDark);
+	set(g, 12, 5, rockDark);
+	set(g, 12, 10, rockDark);
+	set(g, 6, 4, rock);
+	set(g, 9, 4, rock);
+	set(g, 7, 13, rock);
+	set(g, 10, 13, rock);
+	// Vetas
+	set(g, 6, 7, rockLight);
+	set(g, 7, 8, rockLight);
+	set(g, 10, 10, rockLight);
+	set(g, 8, 12, rockDark);
+}
+
+// Pluma: quilla con barbas en diagonal.
+function drawFeather(g) {
+	const quill = "#f0e8d8",
+		barb = "#e8dcc0";
+	line(g, 4, 13, 12, 3, quill); // quilla
+	line(g, 3, 13, 11, 3, quill);
+	// Barbas (trazos diagonales desde la quilla)
+	set(g, 5, 12, barb);
+	set(g, 6, 11, barb);
+	set(g, 7, 10, barb);
+	set(g, 8, 9, barb);
+	set(g, 9, 8, barb);
+	set(g, 10, 7, barb);
+	set(g, 6, 12, barb);
+	set(g, 7, 11, barb);
+	set(g, 8, 10, barb);
+	set(g, 9, 9, barb);
+	set(g, 10, 8, barb);
+	set(g, 11, 7, barb);
+	set(g, 5, 13, barb);
+	set(g, 6, 13, barb);
+}
+
 // ============================================================
 // HERRAMIENTAS Y ARMADURA (plantillas por forma + color por material)
 // Cada forma es un mapa 16x16: 'm' material, 'h' mango, 'd' sombra.
@@ -1038,7 +1160,51 @@ function makeArmorIcon(slot, mat) {
 	return (g) => drawToolFromMap(g, ARMOR_SHAPES[slot], ARMOR_PALS[mat]);
 }
 const ARMOR_SHAPES = [HELMET, CHESTPLATE, LEGGINGS, BOOTS];
-const ARMOR_PALS = [C.leather, C.iron, C.diamond];
+// Fase 13 (L5): oro y malla — índices 3 y 4 del array (ids 232-239).
+const ARMOR_PALS = [C.leather, C.iron, C.diamond, C.gold, C.chain];
+
+// Compás (Fase 13, L5): esfera dorada con aguja roja/blanca apuntando al
+// noreste (la aguja siempre señala el punto de aparición).
+function drawCompass(g) {
+	const body = "#8a7a4a",
+		face = "#e8d9a0",
+		rim = "#b8860b",
+		red = "#c0392b",
+		white = "#f5f5f5";
+	// cuerpo: círculo de radio 6 (borde) y 5 (carátula)
+	for (let dy = -6; dy <= 6; dy++) {
+		for (let dx = -6; dx <= 6; dx++) {
+			const d = dx * dx + dy * dy;
+			if (d > 36) continue;
+			if (d > 25) set(g, 8 + dx, 8 + dy, body);
+		}
+	}
+	for (let dy = -5; dy <= 5; dy++) {
+		for (let dx = -5; dx <= 5; dx++) {
+			const d = dx * dx + dy * dy;
+			if (d > 25) continue;
+			if (d > 9) set(g, 8 + dx, 8 + dy, face);
+		}
+	}
+	// marcas cardinales
+	set(g, 8, 2, rim);
+	set(g, 8, 3, rim);
+	set(g, 8, 13, rim);
+	set(g, 8, 12, rim);
+	set(g, 2, 8, rim);
+	set(g, 3, 8, rim);
+	set(g, 13, 8, rim);
+	set(g, 12, 8, rim);
+	// aguja apuntando al noreste (mitad roja, mitad blanca)
+	line(g, 8, 8, 11, 5, red);
+	line(g, 8, 8, 11, 5, red);
+	line(g, 11, 5, 12, 4, red);
+	line(g, 5, 11, 8, 8, white);
+	set(g, 8, 8, rim);
+	set(g, 7, 7, rim);
+	set(g, 8, 7, rim);
+	set(g, 7, 8, rim);
+}
 
 // Tijeras (Fase 11, C): dos hojas metálicas cruzadas con anillas de dedo
 // (forma de tijeras abiertas, como el icono de Minecraft).
@@ -1077,6 +1243,10 @@ const ICONS = {};
 // lianas — todos con BLOCK_COLORS).
 for (let id = 1; id <= 43; id++)
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 13 (L2/L3): puertas (48/49), escaleras (50/51), losas (60/61), valla
+// (70) y portón (71) — caen al default de drawBlockIcon (cubo con su color).
+for (const id of [48, 49, 50, 51, 60, 61, 70, 71])
+	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Ítems
 ICONS[100] = drawStick;
 ICONS[101] = drawCoal;
@@ -1110,10 +1280,20 @@ ICONS[138] = (g) => drawDye(g, "#e8c547", "#b8860b", "#f5e07a");
 ICONS[139] = (g) => drawDye(g, "#f5f5f0", "#c9c9c0", "#ffffff");
 ICONS[140] = drawHoney;
 // Fase 11 (C): tijeras
-ICONS[141] = drawShears;
-// Fase 12 (A): tridente (245) y bola de slime (246)
-ICONS[245] = drawTrident;
-ICONS[246] = drawSlimeBall;
+ICONS[141] = drawShears;	// Fase 12 (A): tridente (245) y bola de slime (246)
+	ICONS[245] = drawTrident;
+	ICONS[246] = drawSlimeBall;
+	// Fase 13 (L1): arco, flecha, pedernal y pluma
+	ICONS[247] = drawBow;
+	ICONS[248] = drawArrow;
+	ICONS[252] = drawFlint;
+	ICONS[253] = drawFeather;
+	// Fase 13 (L4): cubos (vacío, agua, lava)
+	ICONS[249] = (g) => drawBucket(g, null);
+	ICONS[250] = (g) => drawBucket(g, "#3a6fd8");
+	ICONS[251] = (g) => drawBucket(g, "#e25822");
+	// Fase 13 (L5): compás (4 lingotes de hierro + redstone)
+	ICONS[254] = drawCompass;
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);
@@ -1122,8 +1302,9 @@ for (let id = 200; id <= 219; id++) {
 for (let id = 240; id <= 244; id++) {
 	ICONS[id] = makeToolIcon(4, (id - 240) % 5);
 }
-// Armadura 220..231: (id-220)%4 = slot, (id-220)/4 = material
-for (let id = 220; id <= 231; id++) {
+// Armadura 220..239: (id-220)%4 = slot, (id-220)/4 = material (0 cuero,
+// 1 hierro, 2 diamante, 3 oro, 4 malla — Fase 13, L5).
+for (let id = 220; id <= 239; id++) {
 	ICONS[id] = makeArmorIcon((id - 220) % 4, Math.floor((id - 220) / 4));
 }
 

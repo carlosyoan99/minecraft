@@ -585,6 +585,41 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 		return;
 	}
 
+	// Fase 13 (L1): disparar el arco con clic derecho (flecha hacia donde
+	// mira la cámara). El servidor valida que hay flechas en el inventario,
+	// consume 1, desgasta el arco y la flecha vuelve al impactar/expirar.
+	if (e.button === 2 && held && held.id === 247) {
+		send("shoot_bow", {});
+		return;
+	}
+
+	// Fase 13 (L4): cubo de líquidos con clic derecho. Cubo vacío (249):
+	// recoger la fuente de agua/lava a la que apunta el rayo; cubo lleno
+	// (250/251): verter donde se mira (la celda tras la cara apuntada). Si no
+	// hay bloque apuntado, no se hace nada (el servidor valida el resto).
+	if (e.button === 2 && held && (held.id === 249 || held.id === 250 || held.id === 251)) {
+		if (!hit) return;
+		const bx = Math.floor(hit.point.x);
+		const by = Math.floor(hit.point.y);
+		const bz = Math.floor(hit.point.z);
+		// Cubo lleno: verter en la celda ADYACENTE a la cara mirada (como
+		// colocar); cubo vacío: recoger la celda apuntada (la fuente).
+		const tx =
+			held.id === 249
+				? bx
+				: bx + Math.round(hit.face.normal.x);
+		const ty =
+			held.id === 249
+				? by
+				: by + Math.round(hit.face.normal.y);
+		const tz =
+			held.id === 249
+				? bz
+				: bz + Math.round(hit.face.normal.z);
+		send("bucket_use", { x: tx, y: ty, z: tz });
+		return;
+	}
+
 	if (!hit) return;
 
 	const point = hit.point.clone().addScaledVector(hit.face.normal, -0.5);
@@ -648,6 +683,15 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 			playPlace(TNT);
 			send("block_action", { action: "ignite", x, y, z });
 			return;
+		}
+		// Fase 13 (L2): clic derecho sobre una puerta/portón → abrir/cerrar
+		// (el servidor alterna el estado y hace broadcast door_state).
+		{
+			const doorBlock = getClientBlock(x, y, z);
+			if (doorBlock === 48 || doorBlock === 49 || doorBlock === 71) {
+				send("door_use", { x, y, z });
+				return;
+			}
 		}
 		const nx = x + Math.round(hit.face.normal.x);
 		const ny = y + Math.round(hit.face.normal.y);
