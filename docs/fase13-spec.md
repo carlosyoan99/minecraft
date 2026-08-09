@@ -8,7 +8,8 @@
 > Fecha: 2026-08-07 · Proyecto: clon de Minecraft (servidor Node autoritativo
 > `server/` + cliente Three.js `public/`, todo en español).
 >
-> Estado: **prospectiva, pendiente de ejecución**.
+> Estado: **ejecutada y auditada** (agosto 2026). El detalle de cierre
+> (métricas de la POO y decisiones de validación) está en §Estado final.
 >
 > **Alcance (acordado con el usuario):** la Fase 13 ejecuta el reporte de
 > paridad en 4 bloques con este orden: **A) rendimiento** (impacto visible
@@ -349,3 +350,54 @@ Tabla oficial de MC contra `server/constants.js` (+ paridad cliente via
 - **Salud máxima**: al eliminar el bonus por nivel (B1), los jugadores con
   niveles pierden vida máxima al reiniciar — aceptado (es el comportamiento
   MC real); el HUD y `respawnPlayer` se ajustan a 20.
+
+---
+
+## 8. Estado final (agosto 2026) — cierre de la fase
+
+### 8.1 Métricas de la POO (C4)
+
+La migración por capas quedó completa y la suite unitaria en verde en cada
+commit. Métricas finales del servidor:
+
+| Archivo | Líneas | POO aportada |
+|---|---|---|
+| `server/mobs.js` | 1.740 | `class Mob` + **15 subclases por especie** (Zombie, Spider, Wolf, Slime, Drowned, Creeper, Skeleton, Enderman, Cow, Pig, Chicken, Sheep, Rabbit, Bee, Ocelot), `createMob` + registro `MOB_CLASSES`, hook `onDeath` (la división del slime se encapsuló, eliminando el branching repetido en los llamadores) |
+| `server/net.js` | 1.677 | handler `door_use` con remapeo a la celda inferior de la puerta (fix de paridad L2: clicar la mitad superior abría un estado distinto en la celda alta) |
+| `server/players.js` | 843 | `class Player` + factory `createPlayer` (la usa `net.js` para el jugador nuevo; los métodos de entidad `damage/heal/eat/addItem/respawn/addXp/applyFallDamage/tick` delegan en las fachadas) |
+| `server/world.js` | 1.614 | `class World` (el export es una instancia: los métodos de siempre viven en su prototipo, las constantes públicas cuelgan de ella) + `class Chunk` (get/set locales, dirty, `save()`/`load()`) + `world.getChunk` |
+| `server/items.js` | ~80 (nuevo) | `class ItemStack` (`{ id, count, durability }`), `ItemStack.from`, `slots(n)`, `toPlain` — usado en `addToInventory` (inventario/drops) y en el loot de los cofres |
+| `server/chests.js` | 119 | loot de cofres/templo/naufragio como `ItemStack` |
+
+**Branching muerto:** el análisis estático (`function` declaradas sin
+referencias) no encontró código muerto en `mobs.js`/`net.js`/`players.js`/
+`world.js`/`crafting.js`/`commands.js`. El despacho base de `tickSpecies`
+y el `onDeath` base se conservan a propósito: son el fallback de
+compatibilidad para `new Mob(tipo)` que usan los tests (regla dura C5:
+fachadas compatibles). La limpieza real que la OOP dejó al descubierto
+(repetición del `if (type === "slime") splitSlime(...)` en los llamadores
+de la muerte) se eliminó en C2 con el hook `onDeath`.
+
+### 8.2 Decisiones de validación (D2)
+
+- **Mecánicas interactivas (arco, puertas, cubo):** se cubren en
+  `tests/unit-lagunas.js` (25 checks) con FakeWS + `net.handleConnection`
+  (patrón de `unit-fase12`), que ejercita los handlers REALES de `net.js`
+  (`shoot_bow`, `door_use`, `bucket_use`) sin servidor vivo. Se descartó
+  duplicarlo en E2E contra servidor: el coste de la suite (≈4 min y
+  sensibilidad a la acumulación de mobs del mundo) no aportaba cobertura
+  nueva, ya que el camino de código es idéntico al de un E2E con WS real.
+- **`isSolidAt` y parcheo del mundo:** las funciones internas de `world.js`
+  leen el `getBlock` del cierre del módulo, no la propiedad de la instancia
+  — los tests que parchean `world.getBlock = ...` solo afectan a los
+  handlers de `net.js`. Por eso las pruebas de colisión por forma colocan
+  bloques REALES (`world.setBlock`) y restauran el aire al terminar.
+- **La malla (236-239) no tiene receta de crafteo** (decisión de paridad:
+  en Minecraft la malla no se craftea, llega por drops/trading). Se fija
+  como invariante en `unit-lagunas.js`.
+- **Bug real encontrado por los tests (L2):** el handler `door_use` solo
+  remapeaba a la celda inferior si la celda clicada NO era puerta — como
+  ambas mitades lo son, clicar la mitad superior abría un estado en la
+  celda alta y la puerta seguía sólida. Corregido: si la celda de debajo
+es puerta, el estado siempre vive en la inferior (aplica también al clic
+justo encima de la puerta).
