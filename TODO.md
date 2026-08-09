@@ -2058,18 +2058,9 @@ cofres), el spawn por bioma en `server/mobs.js`, la persistencia de mascotas
 en `world.json` y el cierre con tests.*
 Especificación: [`docs/fase12-spec.md`](docs/fase12-spec.md). Estado: **bloques A-D ejecutados y auditados** (mobs por bioma con IA completa + templo/naufragio deterministas + ítems 245/246 + spawn por bioma + persistencia de mascotas). Pendiente solo de los E2E nuevos de la spec (e2e-mascotas/e2e-templo) y la verificación en navegador, pospuestos.
 
-> ✅ **Fase 14 completada y auditada (merge `763dce9` + cierre):** paridad de
-> valores (drops directos de minerales `ORE_DROP`, tiers de pico `ORE_TIER`/
-> `PICKAXE_TIER`, HP de mobs MC: araña 16/enderman 40/abeja 10, creeper con
-> daño de TNT 12, carbón como combustible, conejo asado 5/6, XP de mobs 5)
-> + optimizaciones de rendimiento (M1: un solo raycast recurrente por
-> `pointermove`, M2: broadcast de `mobs_update` solo si el snapshot cambia,
-> M3: rebuild de vecinos al completar bordes de chunk, M4: luz de antorcha
-> stale con `hasTorchNear`, M5/C5: `sendInit` liviano con `INIT_CHUNK_RADIUS`
-> y relleno progresivo por anillos). Auditoría de cierre: suite unitaria
-> **3666 OK / 0 fallos**, E2E 4/4 contra servidor vivo, `audit-fase7`
-> (Chrome headless/CDP) en verde, biome 0 errores. Ver
-> `docs/fase14-spec.md`.
+> ✅ **Fase 14 completada y auditada** — bloquea/C1-C3 de la F12, P1-P6 de
+> paridad real y M1-M5/C5 de rendimiento; auditoría de cierre en verde
+> (ver la [sección de la Fase 14](#fase-14--auditoría-y-cierre-de-fases-12-13)).
 
 ### Bloque A — 4 mobs con IA completa ✅ (bloques A+B ejecutados)
 - [x] **Lobo de taiga + domesticación**: domesticable con hueso (~33%), se
@@ -2230,6 +2221,78 @@ Reporte: [`docs/reporte-paridad.md`](docs/reporte-paridad.md).
       `node --check`, métricas de rendimiento antes/después documentadas y
       verificación manual en navegador (combate MC real, arco, puertas,
       escaleras, cubo, sin jank al explorar)
+
+---
+
+## Fase 14 — Auditoría y cierre de Fases 12-13
+*Objetivo: ejecutar la auditoría integral del 2026-08-08 sobre el estado del
+repositorio (errores C1-C3 heredados por el trabajo Fase 12 sin commitear,
+paridad real P1-P6 y rendimiento/rendering M1-M5) en 3 bloques con el orden
+acordado: A) bugs de la Fase 12, B) paridad real con Minecraft, C)
+rendimiento cliente/servidor. Cierra formalmente la Fase 12 y deja la 14
+auditada.*
+Especificación: [`docs/fase14-spec.md`](docs/fase14-spec.md) (fase completada y auditada).
+
+### Bloque A — Bugs de la Fase 12 en curso ✅
+- [x] **C1 spawn por bioma + `SPAWN_TYPES`**: `BIOME_SPAWN` (taiga→lobo viaje,
+      pantano→slime noche, junção→ocelote día) + `WATER_SPAWN` (drowned en
+      columna de agua, `floorY+2`) — los mobs de la F12 ya spawnean en
+      partida normal; determinista (un `Math.random` por intento, `unit-fase12`)
+- [x] **C2 persistencia `SCHEMA_VERSION` 5**: `buildMeta` guarda
+      `slimeSize/ownerId/ownerName/sitting` → las mascotas dejan de volverse
+      salvajes al reiniciar y la mascota reconoce a su dueño por nombre al
+      reconectar; migración retrocompatible (mundos v4 abren igual,
+      `unit-persistencia`)
+- [x] **C3 tridente que daña mobs**: `bloodArrows`/`tickArrows` colisiona con
+      mobs vivos (distancia < `ARROW_HIT_DIST`), daño 8 del tridente del
+      jugador (6 del ahogado), sin friendly-fire del lanzador ni sus mascotas,
+      XP al lanzador (`unit-fase12`)
+- [x] **C4 hop determinista del slime**: `slimeHopPhase` por-mob (aleatorio al
+      crear, no `Date.now()`) acumulado con `dtMs` — todos los slimes no saltan
+      al unísono y el tick es reproducible
+
+### Bloque B — Paridad real (valores de MC) ✅
+- [x] **P1 drop de menas** (`ORE_DROP`): minar `DIAMOND_ORE/`REDSTONE_ORE/
+      `EMERALD_ORE` suelta la gema; hierro/oro/coal → lingote/carbón (fusión
+      implícita 1.17, decisión documentada en el spec) — diamante/esmeralda ya
+      obtenibles en supervivencia
+- [x] **P2 tier de pico** (`ORE_TIER`/`PICKAXE_TIER`): hierro/oro con pico
+      stone+, diamante/esmeralda con pico hierro+ — ya no se minan con pico de
+      madera
+- [x] **P3 conejo asado** `5/6` (antes 8/12.8, igualado al bistec)
+- [x] **P4 combustible del horno**: `FUEL_ITEMS` acepta `I.COAL` y troncos de
+      todas las variedades (oak/birch/spruce/jungle)
+- [x] **P5 `MOB_XP`**: skeleton/enderman/spider a 5 (MC)
+- [x] **P6 menores**: araña 16 HP, abeja 10, enderman 40; creeper boom =
+      `TNT_DAMAGE` (12)
+
+### Bloque C — Rendimiento (cliente + servidor) ✅
+- [x] **M1 un solo raycast por `pointermove`**: `public/input.js` fusiona el
+      highlight y el retarget de minería (una `intersectObjects`, no dos)
+- [x] **M2 broadcast de mobs solo si cambia**: `server/net.js` compara el
+      snapshot serializado del tick con `lastMobsJson` (se resetea al entrar
+      un jugador nuevo); sin broadcast de 20 Hz incondicional
+- [x] **M3 rebuild de vecinos al completar bordes**: `public/world.js`
+      `loadChunkData` reconstruye los 4 vecinos ortogonales preexistentes
+      (`existingNeighbors`) → sin caras ausentes hasta `updateLod`
+- [x] **M4 luz de antorcha stale**: helper `hasTorchNear(wx,wy,wz)` en
+      `public/world.js`; `block_update` hace `rebuildAround` si hay antorcha
+      cerca (radio `LIGHT_RADIUS`), si no `rebuildAffectedChunks`
+- [x] **M5/C5 init liviano**: `INIT_CHUNK_RADIUS=2` (25 chunks en vez de 169)
+      + relleno progresivo del radio en `mainLoop` a `CHUNK_FILL_PER_TICK=6`
+      por tick/jugador, ordenados por anillo Chebyshev y enviados como
+      `chunks_add` (idempotente con `move`/`ensureChunksAround`)
+
+### Cierre y auditoría ✅
+- [x] Suite unitaria completa: **3666 OK / 0 fallos** (`run.js --unit`)
+- [x] E2E 4/4 contra servidor vivo (comer, durabilidad, reload, cofre)
+- [x] `audit-fase7` (Chrome headless/CDP) en verde: 159 chunks poblados al
+      cierre del muestreo, tick medio 67.57 ms, generación 18.62 ms — el
+      relleno progresivo (C5) no bloquea el bucle
+- [x] `biome check` 0 errores + `node --check` sobre los archivos tocados
+- [x] Actualizado: `fase14-spec.md` (bloques A-C + criterios de cierre),
+      `docs/README.md` (F12/F14 ✅ auditadas) y `AGENTS.md` (fases 0-11 +
+      12 cerradas, 13 en curso)
 
 ---
 
