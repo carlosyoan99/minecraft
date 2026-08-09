@@ -260,9 +260,20 @@ ws.on("message", (d) => {
 	// ============ TP JUNTO AL LOBO → tirar tame_mob ============
 	if (phase === "tp-lobo" && m.event === "teleport") {
 		// Ráfaga de intentos: ~33% por hueso, 30 huesos → éxito casi seguro.
+		// Rate-limit WS (0bc40e8): 30 msgs/s por conexión con ventana deslizante
+		// de 1s — mandar los 30 de golpe (+ el /tp previo en la misma ventana)
+		// supera el límite y el servidor corta la conexión (1008) justo después
+		// de la doma, con lo que el test deja de recibir mobs_update y muere
+		// por timeout. Se espacia en 3 grupos de 10 (t=0, 500ms, 1100ms): el
+		// grupo 3 cae SIEMPRE >=1s tras el primer mensaje de la ventana (aun
+		// con RTT ~0), lo que fuerza el reset del contador y deja cada grupo en
+		// <=11 mensajes por ventana; el éxito de la doma sigue siendo casi
+		// seguro (33% por hueso × 30).
 		for (let i = 0; i < 30; i++) {
-			send("tame_mob", { mobId: wolfId });
-			tameAttempts++;
+			setTimeout(() => {
+				send("tame_mob", { mobId: wolfId });
+				tameAttempts++;
+			}, i < 10 ? 0 : i < 20 ? 500 : 1100);
 		}
 		phase = "domar";
 		return;

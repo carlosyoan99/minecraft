@@ -168,10 +168,31 @@ ws.on("message", (d) => {
 			planks >= 8,
 			`tablones=${planks}`
 		);
-		// Craftear el cofre: ["###","# #","###"] → 8 tablones alrededor del centro
-		const grid = new Array(9).fill(null);
-		for (let i = 0; i < 9; i++) if (i !== 4) grid[i] = { id: PLANKS, count: 1 };
-		send("craft", { grid });
+		// Craftear el cofre: ["###","# #","###"] → 8 tablones alrededor del centro.
+		// Auditoría 2026-08-09 (§1.2): `craft` ya NO acepta data.grid — la grid
+		// es siempre la del servidor (p.craftingGrid), llenada vía grid_set
+		// (descuenta ítems reales del inventario). Se replica el flujo del
+		// cliente: 8 grid_set (celdas 0,1,2,3,5,6,7,8) + craft.
+		const planksSlot = m.data.inventory.findIndex((s) => s && s.id === PLANKS);
+		// grid_set descuenta de un SOLO slot; si los 8 tablones están repartidos
+		// en varios slots (mundo reutilizado), la grid quedaría incompleta y el
+		// craft nunca dispararía — fallar claro en vez de un timeout mudo.
+		if (
+			planksSlot === -1 ||
+			(m.data.inventory[planksSlot].count || 0) < 8
+		) {
+			check(
+				"hay 8 tablones en un solo slot para la grid del cofre",
+				false,
+				`slot=${planksSlot}`
+			);
+			finish(1);
+			return;
+		}
+		for (let i = 0; i < 9; i++)
+			if (i !== 4)
+				send("grid_set", { fromInventorySlot: planksSlot, toGridSlot: i });
+		send("craft", {});
 		phase = "craft";
 		return;
 	}

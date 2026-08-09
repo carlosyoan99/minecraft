@@ -93,6 +93,14 @@ ws.on("message", (d) => {
 		lastFood = m.data.food;
 		lastSat = m.data.saturation;
 		phase = "hunt";
+		// El bonus de cazar un pasivo es OPCIONAL: si no aparece ninguno a <4
+		// bloques del spawn en 30s, se termina con los checks de comida (todos
+		// OK) en vez de esperar los 90s completos. El bonus casi nunca ocurre
+		// en la suite porque e2e-mascotas corre antes y deja el mundo con el
+		// tope de mobs (>30), que frena el spawn de pasivos cercanos.
+		setTimeout(() => {
+			if (phase === "hunt") finish(0);
+		}, 30000);
 		return;
 	}
 

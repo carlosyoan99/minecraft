@@ -297,14 +297,47 @@ ws.on("message", (d) => {
 		cur = { x: d.spawnX, y: d.spawnY, z: d.spawnZ };
 		for (const [key, arr] of Object.entries(d.chunkData))
 			worldMap.set(key, arr);
-		// Craftear pico de madera: patrón ["###"," I "," I "] (planks 7 + sticks 100).
-		// El servidor no valida la procedencia de las celdas (lo hace el cliente
-		// vía grid_set); aquí se envía el grid directamente como bootstrap del test.
-		const grid = new Array(9).fill(null);
-		for (const i of [0, 1, 2]) grid[i] = { id: PLANKS, count: 1 };
-		grid[4] = { id: STICK, count: 1 };
-		grid[7] = { id: STICK, count: 1 };
-		ws.send(JSON.stringify({ event: "craft", data: { grid } }));
+		// Craftear pico de madera: patrón ["###"," I "," I "] (3 planks 7 + 2 sticks 100).
+		// Auditoría 2026-08-09 (§1.2): `craft` ya NO acepta data.grid — la grid
+		// es siempre la del servidor (p.craftingGrid), llenada vía grid_set que
+		// descuenta ítems REALES del inventario. Antes este test enviaba la grid
+		// como bootstrap sin tener los materiales; ahora los pide con /give y
+		// replica el flujo legítimo del cliente (grid_set + craft).
+		ws.send(JSON.stringify({ event: "chat", data: { message: "/give 7 3" } }));
+		ws.send(JSON.stringify({ event: "chat", data: { message: "/give 100 2" } }));
+		phase = "give-materiales";
+		return;
+	}
+
+	// ============ GIVE MATERIALES → GRID_SET + CRAFT DEL PICO ============
+	if (phase === "give-materiales" && m.event === "inventory_update") {
+		const planks = m.data.inventory.reduce(
+			(acc, s) => acc + (s && s.id === PLANKS ? s.count : 0),
+			0
+		);
+		const sticks = m.data.inventory.reduce(
+			(acc, s) => acc + (s && s.id === STICK ? s.count : 0),
+			0
+		);
+		if (planks < 3 || sticks < 2) return; // esperar a que lleguen ambos /give
+		const planksSlot = m.data.inventory.findIndex((s) => s && s.id === PLANKS);
+		const sticksSlot = m.data.inventory.findIndex((s) => s && s.id === STICK);
+		// grid_set descuenta 1 unidad real por mensaje; 3+2 celdas del patrón.
+		for (const i of [0, 1, 2])
+			ws.send(
+				JSON.stringify({
+					event: "grid_set",
+					data: { fromInventorySlot: planksSlot, toGridSlot: i }
+				})
+			);
+		for (const i of [4, 7])
+			ws.send(
+				JSON.stringify({
+					event: "grid_set",
+					data: { fromInventorySlot: sticksSlot, toGridSlot: i }
+				})
+			);
+		ws.send(JSON.stringify({ event: "craft", data: {} }));
 		phase = "craft";
 		return;
 	}
@@ -333,15 +366,15 @@ ws.on("message", (d) => {
 		const pickIdx = m.data.inventory.findIndex(
 			(s) => s && s.id === WOODEN_PICKAXE
 		);
+		// Los grid_set del bootstrap responden con inventory_update SIN el pico
+		// todavía (uno por celda, con el material descontado); esperar al del
+		// craft, que es el primero que ya incluye el pico crafteado.
+		if (pickIdx === -1) return;
 		check(
 			"el pico se craftea con durabilidad plena (59)",
-			pickIdx !== -1 && m.data.inventory[pickIdx].durability === DURABILITY,
-			`slot=${pickIdx} dur=${pickIdx !== -1 ? m.data.inventory[pickIdx].durability : "?"}`
+			m.data.inventory[pickIdx].durability === DURABILITY,
+			`slot=${pickIdx} dur=${m.data.inventory[pickIdx].durability}`
 		);
-		if (pickIdx === -1) {
-			finish(1);
-			return;
-		}
 		pickSlot = pickIdx;
 		ws.send(
 			JSON.stringify({ event: "inventory_select", data: { slot: pickSlot } })
