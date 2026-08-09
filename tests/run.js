@@ -57,6 +57,7 @@ const UNIT = [
 	"unit-itemicons.js",
 	"unit-ajustes.js",
 	"unit-metricas.js",
+	"unit-perf-server.js", // Fase 13 (A4): perfilado servidor — snapshot 1/tick, broadcast solo si cambia, getBiome cacheado
 	"unit-damage.js",
 	"unit-sky.js"
 ];
