@@ -2,13 +2,12 @@
 // ALMACÉN DE MUNDO EN CLIENTE (chunks + geometría, culling entre chunks)
 // ============================================================
 import * as THREE from "three";
+import { buildChunkGeometryData } from "./chunkGeometry.js";
 import {
 	BLOCK_COLORS,
 	CHUNK_SIZE,
-	LAVA,
 	NON_SOLID_PLANTS,
 	TORCH,
-	WATER,
 	WORLD_HEIGHT
 } from "./constants.js";
 import { createGeometryPool, setOrReuseAttribute } from "./geopool.js";
@@ -35,12 +34,6 @@ export const lodMeshes = new Map(); // "cx,cz" -> THREE.Group (LOD: heightmap si
 // ============================================================
 const torchSet = new Map();
 const lightStore = new Map();
-
-// Ganancia de la luz de antorcha en el color por vértice: v = 1 + luz*G.
-// De noche la luz global total es ~0.33, así una celda a luz 1 queda en
-// 2.4 * 0.33 ≈ 0.79 (claramente iluminada); de día la luz global satura y
-// las antorchas apenas se notan (como en Minecraft).
-const TORCH_LIGHT_GAIN = 1.4;
 
 // ============================================================
 // DISTANCIA DE RENDER (Fase 7, ajustable desde el menú de Ajustes)
@@ -227,492 +220,105 @@ export function updateLiquidAnimation() {
 	waterTexture.offset.y = (waterTexture.offset.y + 0.0008) % 1;
 }
 
-// Geometrías de una única cara (evita crear cubos completos por cara expuesta).
-// `uvs` mapea cada esquina a la tesela del atlas (v arriba = textura vertical correcta).
-const FACES = [
-	{
-		dir: [1, 0, 0],
-		corners: [
-			[1, 0, 0],
-			[1, 1, 0],
-			[1, 1, 1],
-			[1, 0, 1]
-		],
-		uvs: [
-			[0, 0],
-			[0, 1],
-			[1, 1],
-			[1, 0]
-		]
-	}, // +X
-	{
-		dir: [-1, 0, 0],
-		corners: [
-			[0, 0, 1],
-			[0, 1, 1],
-			[0, 1, 0],
-			[0, 0, 0]
-		],
-		uvs: [
-			[0, 0],
-			[0, 1],
-			[1, 1],
-			[1, 0]
-		]
-	}, // -X
-	{
-		dir: [0, 1, 0],
-		corners: [
-			[0, 1, 0],
-			[0, 1, 1],
-			[1, 1, 1],
-			[1, 1, 0]
-		],
-		uvs: [
-			[0, 0],
-			[0, 1],
-			[1, 1],
-			[1, 0]
-		]
-	}, // +Y
-	{
-		dir: [0, -1, 0],
-		corners: [
-			[0, 0, 1],
-			[0, 0, 0],
-			[1, 0, 0],
-			[1, 0, 1]
-		],
-		uvs: [
-			[0, 0],
-			[0, 1],
-			[1, 1],
-			[1, 0]
-		]
-	}, // -Y
-	{
-		dir: [0, 0, 1],
-		corners: [
-			[1, 0, 1],
-			[1, 1, 1],
-			[0, 1, 1],
-			[0, 0, 1]
-		],
-		uvs: [
-			[0, 0],
-			[0, 1],
-			[1, 1],
-			[1, 0]
-		]
-	}, // +Z
-	{
-		dir: [0, 0, -1],
-		corners: [
-			[0, 0, 0],
-			[0, 1, 0],
-			[1, 1, 0],
-			[1, 0, 0]
-		],
-		uvs: [
-			[0, 0],
-			[0, 1],
-			[1, 1],
-			[1, 0]
-		]
-	} // -Z
-];
-
-function buildChunkGeometry(cx, cz) {
-	const chunk = chunkStore.get(`${cx},${cz}`);
-	if (!chunk) return null;
-	const baseX = cx * CHUNK_SIZE,
-		baseZ = cz * CHUNK_SIZE;
-
-	// Luz de antorcha del chunk (Fase 6): se hornea ANTES de empujar caras
-	// (los colores por vértice dependen de ella).
-	bakeChunkLight(cx, cz);
-
-	// Buffers separados: terreno (opaco), agua (translúcida), lava y antorchas.
-	const positions = [],
-		normals = [],
-		uvs = [],
-		colors = [];
-	const waterPositions = [],
-		waterNormals = [],
-		waterUvs = [],
-		waterColors = [];
-	const lavaPositions = [],
-		lavaNormals = [],
-		lavaUvs = [],
-		lavaColors = [];
-	const torchPositions = [],
-		torchNormals = [],
-		torchUvs = [],
-		torchColors = [];
-
-	// wx/wy/wz se pasan como parámetros: se declaran con const DENTRO del bucle
-	// (block-scoped), así que una función definida fuera no puede capturarlos.
-	// Bug de la Fase 4 (ReferenceError: wx is not defined → ningún chunk se
-	// renderizaba); corregido al pasar las coordenadas explícitamente.
-	// Fase 10 (E1): AO (oclusión ambiental) por vértice estilo Minecraft. Para
-	// cada esquina de la cara se miran los 2 vecinos del plano de la cara + el
-	// diagonal: si la esquina está "encerrada" por bloques vecinos se oscurece
-	// (0.5), si tiene un solo lado ocupado se atenúa (0.7/0.75) y si está al
-	// aire queda a 1.0 — esto suaviza las esquinas de cuevas y relieves sin
-	// coste por frame (se hornea en el color por vértice, como la antorcha).
-	const isOccluder = (bx, by, bz) => {
-		const b = getClientBlock(bx, by, bz);
-		return (
-			b !== 0 &&
-			b !== WATER &&
-			b !== LAVA &&
-			b !== TORCH &&
-			!NON_SOLID_PLANTS.has(b)
-		);
-	};
-	const vertexAO = (wx, wy, wz, corner, dir) => {
-		// Ejes del plano de la cara (los 2 donde la normal es 0): el AO se
-		// calcula en el plano de la cara, alrededor de la esquina.
-		const axes = [];
-		for (let i = 0; i < 3; i++) if (dir[i] === 0) axes.push(i);
-		const a = axes[0],
-			b = axes[1];
-		// Offset de la esquina hacia FUERA del bloque (0 → -1, 1 → +1)
-		const off = (axis) => (corner[axis] === 1 ? 1 : -1);
-		const oa = [0, 0, 0];
-		oa[a] = off(a);
-		const ob = [0, 0, 0];
-		ob[b] = off(b);
-		const s1 = isOccluder(
-			wx + corner[0] + oa[0],
-			wy + corner[1] + oa[1],
-			wz + corner[2] + oa[2]
-		);
-		const s2 = isOccluder(
-			wx + corner[0] + ob[0],
-			wy + corner[1] + ob[1],
-			wz + corner[2] + ob[2]
-		);
-		const diag = isOccluder(
-			wx + corner[0] + oa[0] + ob[0],
-			wy + corner[1] + oa[1] + ob[1],
-			wz + corner[2] + oa[2] + ob[2]
-		);
-		// Curva AO clásica: dos lados → 0.5, un lado → 0.7 (0.55 si además el
-		// diagonal), ninguno → 1.0 (0.85 si solo el diagonal).
-		if (s1 && s2) return 0.5;
-		if (s1 || s2) return diag ? 0.55 : 0.7;
-		return diag ? 0.85 : 1.0;
-	};
-	const pushFace = (block, fi, target, wx, wy, wz) => {
-		// Fase 10 (E2): el agua usa su textura DEDICADA (buildWaterTexture) con
-		// RepeatWrapping, así que sus UVs son la tesela completa (0..1), no la
-		// porción del atlas. El offset que desplaza updateLiquidAnimation
-		// recorre la textura sin costuras.
-		const [u0, v0, u1, v1] =
-			block === WATER ? [0, 0, 1, 1] : tex.tileRect(tex.tileForFace(block, fi));
-		const corners = FACES[fi].corners;
-		const verts = corners.map((cor) => [wx + cor[0], wy + cor[1], wz + cor[2]]);
-		// Fase 10 (E2): superficie del agua MÁS BAJA (0.875 = 14/16, como MC) —
-		// la cara superior no coincide con la caja del bloque, lo que evita el
-		// z-fighting con bloques adyacentes y da el "hundido" característico.
-		if (block === WATER && fi === 2) {
-			for (const vert of verts) vert[1] = wy + 0.875;
-		}
-		const face = FACES[fi];
-		// Luz de antorcha en la celda de AIRE fuera de la cara (la celda que
-		// "mira" la cara). Color por vértice: 1 = sin antorcha, más = más luz.
-		const light = chunkLightAt(
-			wx + face.dir[0],
-			wy + face.dir[1],
-			wz + face.dir[2]
-		);
-		const baseV = 1 + light * TORCH_LIGHT_GAIN;
-		// AO por vértice: solo en el terreno opaco (el agua translúcida y la
-		// lava incandescente no se sombrean — como en Minecraft).
-		const useAO = target.pos === positions;
-		const ao = corners.map((cor) =>
-			useAO ? vertexAO(wx, wy, wz, cor, face.dir) : 1
-		);
-		// dos triángulos (a,b,c) y (a,c,d)
-		for (const [i, j, k] of [
-			[0, 1, 2],
-			[0, 2, 3]
-		]) {
-			for (const idx of [i, j, k]) {
-				target.pos.push(...verts[idx]);
-				target.norm.push(...face.dir);
-				const [uu, vv] = face.uvs[idx];
-				target.uv.push(u0 + uu * (u1 - u0), v0 + vv * (v1 - v0));
-				const v = baseV * ao[idx];
-				target.col.push(v, v, v);
-			}
-		}
-	};
-
-	// Antorcha (Fase 6): dos planos cruzados (estilo Minecraft) de 0.5x0.6
-	// bloques con la tesela 29 (palo + llama, fondo transparente). Se dibujan
-	// SIEMPRE (DoubleSide): son diminutas y no ocluyen; la luz horneada en su
-	// propio color las hace brillar de noche (su celda está a luz 1).
-	// Fase 9 (F): las plantas (hierba alta, flores, trigo) usan el MISMO
-	// sistema de planos cruzados con su tesela (fondo transparente).
-	const TORCH_W = 0.25,
-		TORCH_H = 0.6;
-	const PLANT_W = 0.32,
-		PLANT_H = 0.8;
-	const torchLight = 1 + TORCH_LIGHT_GAIN;
-	const [tu0, tv0, tu1, tv1] = tex.tileRect(tex.tileForFace(TORCH, 0));
-	const QUAD_UVS = [
-		[0, 0],
-		[1, 0],
-		[1, 1],
-		[0, 1]
-	];
-	// Planos cruzados de una tesela (antorcha o planta). Los 4 vértices del
-	// quad (a,b,c,d) se dan explícitos; los UVs fijos (0,0)-(1,0)-(1,1)-(0,1)
-	// se mapean al rect `uv` [u0,v0,u1,v1] de la tesela en el atlas.
-	const pushCrossQuad = (
-		ax,
-		ay,
-		az,
-		bx,
-		by,
-		bz,
-		cx2,
-		cy,
-		cz2,
-		dx,
-		dy,
-		dz,
-		nx,
-		ny,
-		nz,
-		uv
-	) => {
-		const verts = [
-			[ax, ay, az],
-			[bx, by, bz],
-			[cx2, cy, cz2],
-			[dx, dy, dz]
-		];
-		const [e0, f0, e1, f1] = uv;
-		for (const [i, j, k] of [
-			[0, 1, 2],
-			[0, 2, 3]
-		]) {
-			for (const idx of [i, j, k]) {
-				torchPositions.push(...verts[idx]);
-				torchNormals.push(nx, ny, nz);
-				const [uu, vv] = QUAD_UVS[idx];
-				torchUvs.push(e0 + uu * (e1 - e0), f0 + vv * (f1 - f0));
-				torchColors.push(torchLight, torchLight, torchLight);
-			}
-		}
-	};
-	const pushTorch = (wx, wy, wz) => {
-		const uv = [tu0, tv0, tu1, tv1];
-		// Plano 1: diagonal x=z (normal (-.707, 0, .707))
-		pushCrossQuad(
-			wx - TORCH_W,
-			wy,
-			wz - TORCH_W,
-			wx + TORCH_W,
-			wy,
-			wz + TORCH_W,
-			wx + TORCH_W,
-			wy + TORCH_H,
-			wz + TORCH_W,
-			wx - TORCH_W,
-			wy + TORCH_H,
-			wz - TORCH_W,
-			-Math.SQRT1_2,
-			0,
-			Math.SQRT1_2,
-			uv
-		);
-		// Plano 2: diagonal x=-z (normal (-.707, 0, -.707))
-		pushCrossQuad(
-			wx + TORCH_W,
-			wy,
-			wz - TORCH_W,
-			wx - TORCH_W,
-			wy,
-			wz + TORCH_W,
-			wx - TORCH_W,
-			wy + TORCH_H,
-			wz + TORCH_W,
-			wx + TORCH_W,
-			wy + TORCH_H,
-			wz - TORCH_W,
-			-Math.SQRT1_2,
-			0,
-			-Math.SQRT1_2,
-			uv
-		);
-	};
-	// Planta (Fase 9, F): dos planos cruzados más anchos y altos que la
-	// antorcha, con la tesela de la planta (hierba/flor/trigo).
-	const pushPlant = (wx, wy, wz, block) => {
-		const uv = tex.tileRect(tex.tileForFace(block, 0));
-		pushCrossQuad(
-			wx - PLANT_W,
-			wy,
-			wz - PLANT_W,
-			wx + PLANT_W,
-			wy,
-			wz + PLANT_W,
-			wx + PLANT_W,
-			wy + PLANT_H,
-			wz + PLANT_W,
-			wx - PLANT_W,
-			wy + PLANT_H,
-			wz - PLANT_W,
-			-Math.SQRT1_2,
-			0,
-			Math.SQRT1_2,
-			uv
-		);
-		pushCrossQuad(
-			wx + PLANT_W,
-			wy,
-			wz - PLANT_W,
-			wx - PLANT_W,
-			wy,
-			wz + PLANT_W,
-			wx - PLANT_W,
-			wy + PLANT_H,
-			wz + PLANT_W,
-			wx + PLANT_W,
-			wy + PLANT_H,
-			wz - PLANT_W,
-			-Math.SQRT1_2,
-			0,
-			-Math.SQRT1_2,
-			uv
-		);
-	};
-
-	for (let x = 0; x < CHUNK_SIZE; x++) {
-		for (let y = 0; y < WORLD_HEIGHT; y++) {
-			for (let z = 0; z < CHUNK_SIZE; z++) {
-				const block = chunk[cIdx(x, y, z)];
-				if (block === 0) continue;
-				const wx = baseX + x,
-					wy = y,
-					wz = baseZ + z;
-				const isWater = block === WATER;
-				const isLava = block === LAVA;
-				// Antorcha: geometría cruzada, sin caras de cubo.
-				if (block === TORCH) {
-					pushTorch(wx, wy, wz);
-					continue;
-				}
-				// Plantas (hierba alta, flores, trigo): planos cruzados; no
-				// ocluyen al vecino (los bloques de debajo siguen visibles).
-				if (NON_SOLID_PLANTS.has(block)) {
-					pushPlant(wx, wy, wz, block);
-					continue;
-				}
-				for (let fi = 0; fi < FACES.length; fi++) {
-					const face = FACES[fi];
-					const nx = wx + face.dir[0],
-						ny = wy + face.dir[1],
-						nz = wz + face.dir[2];
-					const neighbor = getClientBlock(nx, ny, nz);
-					// Agua/lava: solo caras contra aire confirmado (superficie/orilla).
-					// Sólido: caras contra aire O agua (el lecho del lago se ve bajo la
-					// superficie; la lava es opaca, pero el culling compartido evita que
-					// las caras enterradas del charco generen geometría invisible) O
-					// plantas no sólidas (Fase 9: hierba alta/flores/trigo se dibujan
-					// como planos cruzados translúcidos, así que el bloque de debajo
-					// debe seguir viéndose — sin esto el suelo bajo cada planta queda
-					// con huecos).
-					if (isWater || isLava) {
-						if (neighbor !== 0) continue;
-					} else {
-						if (
-							neighbor !== 0 &&
-							neighbor !== WATER &&
-							!NON_SOLID_PLANTS.has(neighbor)
-						)
-							continue;
-					}
-					const target = isWater
-						? {
-								pos: waterPositions,
-								norm: waterNormals,
-								uv: waterUvs,
-								col: waterColors
-							}
-						: isLava
-							? {
-									pos: lavaPositions,
-									norm: lavaNormals,
-									uv: lavaUvs,
-									col: lavaColors
-								}
-							: { pos: positions, norm: normals, uv: uvs, col: colors };
-					pushFace(block, fi, target, wx, wy, wz);
-				}
-			}
+// ============================================================
+// CONSTRUCCIÓN DE GEOMETRÍA (Fase 13, A1/A2: greedy meshing + worker)
+// La generación de atributos (posiciones, UVs, colores, AO) vive en
+// chunkGeometry.js, un módulo puro (sin three): aquí solo se hornea la luz
+// de antorcha, se reúnen los datos del chunk y sus vecinos 3x3 y se crean
+// los meshes con el pool. Dos caminos producen el MISMO resultado:
+//   - síncrono: buildChunkGeometry() — ediciones de bloques, LOD, hot-reload;
+//   - worker:   el lote de loadChunkData se envía a chunkWorker.js y la
+//     respuesta se aplica con groupFromBuffers() (el pool, los materiales y
+//     el culling se quedan en el hilo principal, como pide la spec A2).
+// ============================================================
+function collectChunkData(cx, cz) {
+	// Datos del chunk + vecinos 3x3 (bloques y luz horneada) en coordenadas
+	// relativas "dx,dz" — el formato que consume buildChunkGeometryData.
+	const chunks = new Map();
+	const light = new Map();
+	for (let dx = -1; dx <= 1; dx++) {
+		for (let dz = -1; dz <= 1; dz++) {
+			const key = `${cx + dx},${cz + dz}`;
+			const arr = chunkStore.get(key);
+			if (!arr) continue;
+			chunks.set(`${dx},${dz}`, arr);
+			light.set(`${dx},${dz}`, lightStore.get(key) || null);
 		}
 	}
+	return { chunks, light };
+}
 
-	if (
-		positions.length === 0 &&
-		waterPositions.length === 0 &&
-		lavaPositions.length === 0 &&
-		torchPositions.length === 0
-	)
+// Convierte los buffers del greedy (Float32Array por atributo) en el
+// THREE.Group del chunk (un mesh por categoría con su material y el pool de
+// geometrías). Lo usan el camino síncrono y el worker.
+function groupFromBuffers(buffers) {
+	if (!buffers.terrain && !buffers.water && !buffers.lava && !buffers.torch)
 		return null;
-
 	const group = new THREE.Group();
-	if (positions.length > 0) {
+	if (buffers.terrain) {
 		const geo = geometryPool.acquire("terrain");
 		setOrReuseAttribute(
 			geo,
 			"position",
-			positions,
+			buffers.terrain.pos,
 			3,
 			THREE.Float32BufferAttribute
 		);
 		setOrReuseAttribute(
 			geo,
 			"normal",
-			normals,
+			buffers.terrain.norm,
 			3,
 			THREE.Float32BufferAttribute
 		);
-		setOrReuseAttribute(geo, "uv", uvs, 2, THREE.Float32BufferAttribute);
-		setOrReuseAttribute(geo, "color", colors, 3, THREE.Float32BufferAttribute);
+		setOrReuseAttribute(
+			geo,
+			"uv",
+			buffers.terrain.uv,
+			2,
+			THREE.Float32BufferAttribute
+		);
+		setOrReuseAttribute(
+			geo,
+			"color",
+			buffers.terrain.col,
+			3,
+			THREE.Float32BufferAttribute
+		);
 		const mesh = new THREE.Mesh(geo, terrainMaterial);
 		mesh.castShadow = true;
 		mesh.receiveShadow = true;
 		mesh.userData.isTerrain = true;
-		mesh.userData.poolCat = "terrain"; // categoría del pool al liberar
+		mesh.userData.poolCat = "terrain";
 		group.add(mesh);
 	}
-	if (waterPositions.length > 0) {
+	if (buffers.water) {
 		const geo = geometryPool.acquire("water");
 		setOrReuseAttribute(
 			geo,
 			"position",
-			waterPositions,
+			buffers.water.pos,
 			3,
 			THREE.Float32BufferAttribute
 		);
 		setOrReuseAttribute(
 			geo,
 			"normal",
-			waterNormals,
+			buffers.water.norm,
 			3,
 			THREE.Float32BufferAttribute
 		);
-		setOrReuseAttribute(geo, "uv", waterUvs, 2, THREE.Float32BufferAttribute);
+		setOrReuseAttribute(
+			geo,
+			"uv",
+			buffers.water.uv,
+			2,
+			THREE.Float32BufferAttribute
+		);
 		setOrReuseAttribute(
 			geo,
 			"color",
-			waterColors,
+			buffers.water.col,
 			3,
 			THREE.Float32BufferAttribute
 		);
@@ -722,27 +328,33 @@ function buildChunkGeometry(cx, cz) {
 		mesh.userData.poolCat = "water";
 		group.add(mesh);
 	}
-	if (lavaPositions.length > 0) {
+	if (buffers.lava) {
 		const geo = geometryPool.acquire("water"); // misma categoría: geometría translúcida
 		setOrReuseAttribute(
 			geo,
 			"position",
-			lavaPositions,
+			buffers.lava.pos,
 			3,
 			THREE.Float32BufferAttribute
 		);
 		setOrReuseAttribute(
 			geo,
 			"normal",
-			lavaNormals,
+			buffers.lava.norm,
 			3,
 			THREE.Float32BufferAttribute
 		);
-		setOrReuseAttribute(geo, "uv", lavaUvs, 2, THREE.Float32BufferAttribute);
+		setOrReuseAttribute(
+			geo,
+			"uv",
+			buffers.lava.uv,
+			2,
+			THREE.Float32BufferAttribute
+		);
 		setOrReuseAttribute(
 			geo,
 			"color",
-			lavaColors,
+			buffers.lava.col,
 			3,
 			THREE.Float32BufferAttribute
 		);
@@ -752,27 +364,33 @@ function buildChunkGeometry(cx, cz) {
 		mesh.userData.poolCat = "water";
 		group.add(mesh);
 	}
-	if (torchPositions.length > 0) {
+	if (buffers.torch) {
 		const geo = geometryPool.acquire("torch");
 		setOrReuseAttribute(
 			geo,
 			"position",
-			torchPositions,
+			buffers.torch.pos,
 			3,
 			THREE.Float32BufferAttribute
 		);
 		setOrReuseAttribute(
 			geo,
 			"normal",
-			torchNormals,
+			buffers.torch.norm,
 			3,
 			THREE.Float32BufferAttribute
 		);
-		setOrReuseAttribute(geo, "uv", torchUvs, 2, THREE.Float32BufferAttribute);
+		setOrReuseAttribute(
+			geo,
+			"uv",
+			buffers.torch.uv,
+			2,
+			THREE.Float32BufferAttribute
+		);
 		setOrReuseAttribute(
 			geo,
 			"color",
-			torchColors,
+			buffers.torch.col,
 			3,
 			THREE.Float32BufferAttribute
 		);
@@ -786,7 +404,113 @@ function buildChunkGeometry(cx, cz) {
 	return group;
 }
 
-// ============================================================
+// Camino síncrono (ediciones, LOD, hot-reload, fallback sin worker).
+function buildChunkGeometry(cx, cz) {
+	workerPending.delete(`${cx},${cz}`); // un build síncrono invalida jobs en vuelo
+	bakeChunkLight(cx, cz);
+	const { chunks, light } = collectChunkData(cx, cz);
+	const buffers = buildChunkGeometryData({
+		cx,
+		cz,
+		chunks,
+		light,
+		tileForFaceFn: tex.tileForFace,
+		tileRectFn: tex.tileRect
+	});
+	if (!buffers) return null;
+	return groupFromBuffers(buffers);
+}
+
+// ---- Gestor del worker (Fase 13, A2) ----
+// Se crea perezosamente la primera vez que hay un lote grande que construir;
+// si el entorno no tiene Worker (o el worker falla), workerBroken=true y el
+// juego usa para siempre el camino síncrono (misma función pura → mismo
+// resultado). workerPending + token detectan respuestas obsoletas (el chunk
+// se reconstruyó o descargó mientras el worker trabajaba).
+let chunkWorker = null;
+let workerBroken = false;
+const workerPending = new Map(); // "cx,cz" → token del job en vuelo
+let workerToken = 0;
+
+function tryGetWorker() {
+	if (workerBroken) return null;
+	if (chunkWorker) return chunkWorker;
+	try {
+		chunkWorker = new Worker(new URL("./chunkWorker.js", import.meta.url), {
+			type: "module"
+		});
+		window.__mcChunkWorker = true; // diagnóstico F3/auditoría: el worker está activo
+		chunkWorker.onmessage = (e) => onWorkerMessage(e.data);
+		chunkWorker.onerror = () => {
+			workerBroken = true;
+			window.__mcChunkWorker = false; // diagnóstico: ya no se usa el worker
+			if (chunkWorker) {
+				try {
+					chunkWorker.terminate();
+				} catch {
+					/* noop */
+				}
+			}
+			chunkWorker = null;
+			// Los pendientes se reconstruyen de forma síncrona (fallback).
+			for (const key of [...workerPending.keys()]) {
+				if (chunkStore.has(key) && !lodMeshes.has(key) && !chunkMeshes.has(key))
+					rebuildChunk(key);
+			}
+			workerPending.clear();
+		};
+	} catch {
+		workerBroken = true;
+		chunkWorker = null;
+	}
+	return chunkWorker;
+}
+
+function onWorkerMessage(msg) {
+	if (msg?.type !== "chunk_built") return;
+	const { id, key, buffers } = msg;
+	if (workerPending.get(key) !== id) return; // obsoleto (rebuild/descarga posterior)
+	workerPending.delete(key);
+	if (!chunkStore.has(key)) return; // descargado durante el vuelo
+	const group = groupFromBuffers(buffers);
+	if (group) {
+		scene.add(group);
+		chunkMeshes.set(key, group);
+	}
+}
+
+function workerJobFor(cx, cz) {
+	// FIX revisión F13-A2: hornear SIEMPRE la luz antes de recolectarla — el
+	// camino del worker no pasa por buildChunkGeometry (que hornea en el
+	// síncrono) y sin esto lightStore estaría vacío y las antorchas no
+	// iluminarían en los chunks construidos por el worker. Barato: sin
+	// antorchas relevantes bakeChunkLight deja el chunk a null y retorna.
+	bakeChunkLight(cx, cz);
+	const { chunks, light } = collectChunkData(cx, cz);
+	const chunkKeys = [...chunks.keys()];
+	const chunkData = chunkKeys.map((k) => chunks.get(k).slice()); // copia transferible
+	const lightKeys = [...light.keys()];
+	const lightData = lightKeys.map((k) => {
+		const a = light.get(k);
+		return a ? a.slice() : null;
+	});
+	return { cx, cz, chunkKeys, chunkData, lightKeys, lightData };
+}
+
+function enqueueWorkerBatch(keys) {
+	const w = chunkWorker;
+	for (const key of keys) {
+		const [cx, cz] = key.split(",").map(Number);
+		const id = ++workerToken;
+		workerPending.set(key, id);
+		const job = workerJobFor(cx, cz);
+		const transfer = [];
+		for (const a of job.chunkData) transfer.push(a.buffer);
+		for (const a of job.lightData) if (a) transfer.push(a.buffer);
+		w.postMessage({ type: "build", id, key, job }, transfer);
+	}
+}
+
 // FRUSTUM CULLING (Fase 6)
 // Marca visible=false los chunks cuya esfera envolvente queda fuera del campo
 // de visión: se evita el draw call (y el paso de la geometría al renderer).
@@ -851,6 +575,7 @@ function distToChunkCenter(key, px, pz) {
 // del jugador (con histéresis respecto al tier que ya tenía). Se usa tanto al
 // cargar como al editar bloques (rebuildAffectedChunks) y en updateLod.
 export function rebuildChunk(key) {
+	workerPending.delete(key); // un rebuild síncrono invalida cualquier job de worker en vuelo
 	const [cx, cz] = key.split(",").map(Number);
 	const current = lodMeshes.has(key) ? "lod" : "full";
 	removeChunkMesh(key);
@@ -1178,18 +903,9 @@ function bakeChunkLight(cx, cz) {
 }
 
 // Luz de antorcha (0..1) de una celda de mundo; 0 si el chunk no está
-// horneado aún (los vecinos se hornean al construirse; si llega un update de
-// luz cruzando un borde, rebuildAround re-hornea el 3x3).
-function chunkLightAt(wx, wy, wz) {
-	if (wy < 0 || wy >= WORLD_HEIGHT) return 0;
-	const cx = Math.floor(wx / CHUNK_SIZE),
-		cz = Math.floor(wz / CHUNK_SIZE);
-	const arr = lightStore.get(`${cx},${cz}`);
-	if (!arr) return 0;
-	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	return arr[(wy * CHUNK_SIZE + z) * CHUNK_SIZE + x];
-}
+// horneado aún. El muestreo de luz en el build de geometría lo hace ahora
+// chunkGeometry.js (Fase 13, A1): aquí solo se hornea (bakeChunkLight) y se
+// conserva el array en lightStore para el camino del worker.
 
 // Reconstruye el vecindario 3x3 de chunks alrededor de un bloque: lo usa la
 // red cuando cambia una antorcha (el radio de luz cruza los bordes de chunk,
@@ -1241,6 +957,7 @@ export function loadChunkData(chunkData) {
 	// en cascada durante un init masivo (todos nuevos) se evitan: solo se
 	// reconstruyen los que YA estaban en chunkStore al empezar el lote.
 	const existingNeighbors = new Set(chunkStore.keys());
+	const batch = []; // claves a construir (nuevas + vecinos previos afectados)
 	for (const [key, arr] of Object.entries(chunkData)) {
 		// Fase 7: no construir chunks fuera de la distancia de render elegida
 		const [cx, cz] = key.split(",").map(Number);
@@ -1258,10 +975,10 @@ export function loadChunkData(chunkData) {
 				torchSet.set(`${wx},${ly},${wz}`, [wx, ly, wz]);
 			}
 		}
-		rebuildChunk(key);
+		batch.push(key);
 		// Fase 14 (M3): reconstruir el vecino previo para que reaparezcan las
 		// caras del borde que miraba al hueco (mismo orden Chebyshev con el que
-		// el cliente geura/filtra; las diagonales no comparten cara).
+		// el cliente carga/filtra; las diagonales no comparten cara).
 		for (const [dx, dz] of [
 			[1, 0],
 			[-1, 0],
@@ -1269,9 +986,27 @@ export function loadChunkData(chunkData) {
 			[0, -1]
 		]) {
 			const nk = `${cx + dx},${cz + dz}`;
-			if (existingNeighbors.has(nk)) rebuildChunk(nk);
+			if (existingNeighbors.has(nk)) batch.push(nk);
 		}
 	}
+	if (batch.length === 0) return;
+	// Fase 13 (A2): el lote se construye en el Web Worker (el hilo principal
+	// no se bloquea al cargar el mundo); los chunks de tier LOD (lejanos) y
+	// los entornos sin worker usan el camino síncrono — misma función pura,
+	// mismo resultado.
+	const unique = [...new Set(batch)];
+	const px = camera.position.x,
+		pz = camera.position.z;
+	const workerKeys = [];
+	for (const key of unique) {
+		if (workerPending.has(key)) continue; // ya en vuelo
+		const current = lodMeshes.has(key) ? "lod" : "full";
+		const tier = lodTierFor(distToChunkCenter(key, px, pz), current);
+		if (tier === "lod") rebuildChunk(key);
+		else workerKeys.push(key);
+	}
+	if (workerKeys.length > 0 && tryGetWorker()) enqueueWorkerBatch(workerKeys);
+	else for (const key of workerKeys) rebuildChunk(key);
 }
 
 // Hot-reload del atlas (Fase 6): re-importa textures.js con cache-busting
@@ -1285,6 +1020,10 @@ export async function hotReloadTextures() {
 	} catch (_e) {
 		return null;
 	}
+	// Nota F13 (A1): tileForFace/tileRect se re-exportan desde texturemap.js
+	// (instancia compartida, sin cache-busting), así que el hot-reload
+	// refresca los PÍXELES del atlas (TILES) pero no la lógica de mapeo
+	// tesela/cara — el layout del atlas casi nunca cambia, es aceptable.
 	const newAtlas = mod.buildTerrainAtlas();
 	// Liberar la textura anterior (el atlas se comparte entre los materiales;
 	// dispose es idempotente si apuntan a la misma).

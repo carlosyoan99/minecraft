@@ -35,6 +35,8 @@ const UNIT = [
 	"unit-mineria.js",
 	"unit-lod.js",
 	"unit-geopool.js",
+	"unit-greedy.js", // Fase 13 (A1): greedy meshing — menos caras + identidad con la referencia per-celda
+	"unit-workers.js", // Fase 13 (A2): worker de chunks — geometría idéntica al camino síncrono
 	"unit-raycast.js", // Fase 8 (B3): bounds obsoletos en el pool → raycast de minería
 	"unit-mobray.js", // Fase 8 (B9): raycast de mobs multibloque (grupo de partes)
 	"unit-camara.js", // Fase 11 (A2): fix del clamp de pitch — PLC r160 limita ±90° sin vueltas
