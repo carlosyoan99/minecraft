@@ -19,6 +19,17 @@ const { B, isSolidBlock, NON_SOLID_PLANTS, CHUNK_SIZE, WORLD_HEIGHT } = require(
 const world = require(path.join(ROOT, "server", "world.js"));
 const state = require(path.join(ROOT, "server", "state.js"));
 
+// PRNG determinista (Park-Miller LCG, patrón de unit-arboles): la generación
+// de árboles/vegetación usa Math.random global (F11), así que dos
+// regeneraciones con la secuencia real consumen tramos distintos y el check
+// de determinismo daba falsos fallos. Sembrando el MISMO LCG antes de cada
+// pasada, ambas consumen la misma secuencia → el check mide el determinismo
+// real de la generación (caves/lagos/árboles por coordenadas), no el RNG.
+function lcg(seed) {
+	let s = seed >>> 0;
+	return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+}
+
 let fails = 0;
 const check = (_n, ok, _extra) => {
 	if (!ok) fails++;
@@ -296,12 +307,23 @@ for (let i = 0; i < c00.length; i++) if (c00[i] !== B.AIR) _blocks++;
 		`${mbArea4.toFixed(1)} MB`
 	);
 
-	// Determinismo: regenerar y comparar (caves + lagos son función pura de coordenadas).
-	const first = state.chunks.get("2,2");
-	const snap = Array.from(first);
-	state.chunks.delete("2,2");
-	world.generateChunk(2, 2);
+	// Determinismo: regenerar y comparar (caves + lagos son función pura de
+	// coordenadas). La generación usa Math.random global (árboles, F11): se
+	// siembra el MISMO LCG antes de cada pasada para que ambas consuman la
+	// misma secuencia — así el check mide el determinismo por coordenadas,
+	// no la suerte del RNG global (patrón de unit-arboles).
+	const realRandom = Math.random;
+	Math.random = lcg(20260809);
+	state.chunks.clear();
+	for (let cx = -R; cx <= R; cx++)
+		for (let cz = -R; cz <= R; cz++) world.generateChunk(cx, cz);
+	const snap = Array.from(state.chunks.get("2,2"));
+	Math.random = lcg(20260809); // misma semilla → misma secuencia
+	state.chunks.clear();
+	for (let cx = -R; cx <= R; cx++)
+		for (let cz = -R; cz <= R; cz++) world.generateChunk(cx, cz);
 	const second = Array.from(state.chunks.get("2,2"));
+	Math.random = realRandom;
 	let diffs = 0;
 	for (let i = 0; i < snap.length; i++) if (snap[i] !== second[i]) diffs++;
 	check(

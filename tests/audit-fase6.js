@@ -35,6 +35,17 @@ const { B, CHUNK_SIZE, WORLD_HEIGHT } = require(
 const world = require(path.join(ROOT, "server", "world.js"));
 const state = require(path.join(ROOT, "server", "state.js"));
 
+// PRNG determinista (Park-Miller LCG, patrón de unit-arboles): la altura de
+// superficie depende de los árboles, que usan Math.random global (F11). Con
+// la secuencia real, dos regeneraciones consumen tramos DISTINTOS y el check
+// de determinismo daba falsos fallos. Sembrando el MISMO LCG antes de cada
+// pasada, ambas consumen la misma secuencia → el check mide el determinismo
+// real de la geometría LOD, no la suerte del RNG global.
+function lcg(seed) {
+	let s = seed >>> 0;
+	return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+}
+
 let fails = 0;
 const check = (_n, ok, _extra) => {
 	if (!ok) fails++;
@@ -345,16 +356,21 @@ check(
 	.then(() => {
 		// El LOD es función pura de la altura de superficie: regenerar un chunk
 		// debe dar la MISMA geometría LOD (muros y tapas idénticos). Se regenera
-		// DOS veces y se comparan ENTRE SÍ: los árboles usan Math.random sin
-		// semilla, así que comparar contra el chunk del bucle inicial (otro punto
-		// de la secuencia) sería frágil con semillas distintas; dos regeneraciones
-		// consecutivas consumen la misma continuación → bit-idénticas.
+		// DOS veces y se comparan ENTRE SÍ. La altura de superficie depende de
+		// los árboles, que usan Math.random global (F11): sembrando el MISMO LCG
+		// antes de cada pasada ambas consumen la misma secuencia → bit-idénticas
+		// (patrón de unit-arboles; con la secuencia real el check daba falsos
+		// fallos porque cada regeneración consumía un tramo distinto).
+		const realRandom = Math.random;
+		Math.random = lcg(20260809);
 		state.chunks.delete("2,2");
 		world.generateChunk(2, 2);
 		const lodA = countLodQuads(2, 2);
+		Math.random = lcg(20260809); // misma semilla → misma secuencia
 		state.chunks.delete("2,2");
 		world.generateChunk(2, 2);
 		const lodB = countLodQuads(2, 2);
+		Math.random = realRandom;
 		check(
 			"Gen: la geometría LOD de un chunk regenerado es idéntica (sin costuras)",
 			lodA === lodB,

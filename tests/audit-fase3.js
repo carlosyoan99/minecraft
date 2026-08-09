@@ -64,10 +64,13 @@ const fmt = (x) =>
 		t += TICK;
 		if (p.saturation === 0 && sat0 === null) sat0 = t;
 		if (p.food < 20 && foodBaja === null) foodBaja = t;
-		if (p.x === 0.5 && muere === null) {
+		// respawn = muerte. Señal robusta: el respawn SIEMPRE mueve al jugador
+		// (findSpawn desde F11 esquiva ríos/océano con columnFloorY, así que ya
+		// no cae siempre en x=0.5; el mock arranca en (0,64,0)).
+		if ((p.x !== 0 || p.z !== 0) && muere === null) {
 			muere = t;
 			break;
-		} // respawn = muerte
+		}
 	}
 	check(
 		"A: la comida aguanta >=8 min parado antes de bajar (amortiguador generoso)",
@@ -92,7 +95,7 @@ const fmt = (x) =>
 		playersMod.tickPlayer(p, TICK);
 		t += TICK;
 		if (p.food < 20 && foodBaja === null) foodBaja = t;
-		if (p.x === 0.5 && muere === null) {
+		if ((p.x !== 0 || p.z !== 0) && muere === null) {
 			muere = t;
 			break;
 		}
@@ -183,7 +186,7 @@ const fmt = (x) =>
 	while (t < 120 * 1000) {
 		playersMod.tickPlayer(p, TICK);
 		t += TICK;
-		if (p.x === 0.5 && muere === null) {
+		if ((p.x !== 0 || p.z !== 0) && muere === null) {
 			muere = t;
 			break;
 		}
