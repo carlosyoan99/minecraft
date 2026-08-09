@@ -6,6 +6,13 @@
 // Invariante: la base de cada tronco (OAK_LOG sin otro OAK_LOG debajo) tiene
 // debajo un bloque sólido —césped en bosque/llanura—, nunca aire ni agua.
 // Con el bug, la base quedaba en height+1 y debajo había aire (árbol flotante).
+//
+// Fase 15 (A2): COPA COMPLETA. Con un RNG determinista disperso (LCG), cada
+// árbol interior y aislado debe tener su copa 5×5 completa y simétrica en los
+// 4 lados. El bug pisaba las hojas de +x/+z al regenerar las columnas
+// posteriores (copa recortada). Se verifica por árbol aislado (|±x|,|±z|≤1)
+// y de forma agregada (ratio de masa ±x/±z en rango). También se mide que la
+// densidad no baje perceptiblemente (observado ≥ 0.5 × esperado por bioma).
 // ============================================================
 const world = require("../server/world.js");
 const { CHUNK_SIZE, WORLD_HEIGHT, B } = require("../server/constants.js");
@@ -19,19 +26,255 @@ function check(_name, ok, _info) {
 	}
 }
 
-// Generación fresca (sin leer disco) y RNG determinista: con Math.random = 0
-// TODA columna de bosque/llanura genera un árbol (de altura 4). Así el test
-// encuentra muchos troncos sin depender de la suerte.
+// PRNG determinista (Park-Miller LCG): secuencia reproducible → el test no
+// depende de la suerte de Math.random. Produce una densidad REALISTA de
+// árboles (no el modo denso de la segunda sección).
+function lcg(seed) {
+	let s = seed >>> 0;
+	return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+}
+const isLog = (b) =>
+	b === B.OAK_LOG ||
+	b === B.BIRCH_LOG ||
+	b === B.SPRUCE_LOG ||
+	b === B.JUNGLE_LOG;
+const isLeaf = (b) =>
+	b === B.OAK_LEAVES ||
+	b === B.BIRCH_LEAVES ||
+	b === B.SPRUCE_LEAVES ||
+	b === B.JUNGLE_LEAVES;
+// Vegetación decorativa que cubre el césped (no cuenta como superficie).
+const VEG = new Set([B.TALL_GRASS, B.POPPY, B.DANDELION, B.VINES]);
+// Probabilidad de árbol por bioma (constantes de generación en world.js).
+const THRESH = {
+	forest: 0.05,
+	plains: 0.012,
+	swamp: 0.02,
+	taiga: 0.03,
+	snow: 0.02,
+	mountain: 0.02,
+	jungle: 0.09,
+};
+
 world.setDiskLoader(() => null);
 const realRandom = Math.random;
-Math.random = () => 0;
 
 try {
+	// ================== SECCIÓN 1 (Fase 15 A2): copa completa ==================
+	// Zona central [-3,3] con LCG: árboles dispersos, verificables por copa.
+	Math.random = lcg(12345);
+	for (let cx = -3; cx <= 3; cx++)
+		for (let cz = -3; cz <= 3; cz++) world.generateChunk(cx, cz);
+
+	// Recolectar bases de tronco en el área interior [-2,2] (margen de 1 chunk
+	// para que las copas de los árboles de análisis no queden fuera del área).
 	const bases = [];
+	for (let cx = -2; cx <= 2; cx++)
+		for (let cz = -2; cz <= 2; cz++)
+			for (let x = 0; x < CHUNK_SIZE; x++)
+				for (let z = 0; z < CHUNK_SIZE; z++) {
+					const wx = cx * CHUNK_SIZE + x,
+						wz = cz * CHUNK_SIZE + z;
+					for (let y = 1; y < WORLD_HEIGHT; y++) {
+						if (isLog(world.getBlock(wx, y, wz))) {
+							const below = world.getBlock(wx, y - 1, wz);
+							if (!isLog(below)) bases.push({ wx, y, z: wz });
+						}
+					}
+				}
+
+	// Árbol "válido": el área 5×5 de su copa no cubre un charco/lago (la copa
+	// se omite ahí deliberadamente) y el tronco está entero.
+	const validos = bases.filter((b) => {
+		let topY = -1;
+		for (let y = b.y; y < WORLD_HEIGHT; y++) {
+			if (isLog(world.getBlock(b.wx, y, b.z))) topY = y;
+			else break;
+		}
+		if (topY < 0) return false;
+		for (let dx = -2; dx <= 2; dx++)
+			for (let dz = -2; dz <= 2; dz++) {
+				const wx = b.wx + dx,
+					wz = b.z + dz;
+				if (
+					world.isPondAt(wx, wz) ||
+					world.isLavaPondAt(wx, wz) ||
+					world.isRiver(wx, wz) ||
+					world.isLake(wx, wz) ||
+					world.isSwampPoolAt(wx, wz)
+				)
+					return false;
+			}
+		return true;
+	});
+
+	check(
+		"hay árboles válidos en la zona A2 (condición del test)",
+		validos.length > 0,
+		`${validos.length} válidos de ${bases.length} bases`
+	);
+
+	// --- 1a) Simetría AGREGADA: masa de hojas a ±x y ±z sobre todos los válidos.
+	let pX = 0,
+		mX = 0,
+		pZ = 0,
+		mZ = 0;
+	for (const b of validos) {
+		let topY = -1;
+		for (let y = b.y; y < WORLD_HEIGHT; y++) {
+			if (isLog(world.getBlock(b.wx, y, b.z))) topY = y;
+			else break;
+		}
+		const ymin = topY - 2,
+			ymax = topY + 2;
+		for (const [dx, dz, k] of [
+			[1, 0, "px"],
+			[-1, 0, "mx"],
+			[0, 1, "pz"],
+			[0, -1, "mz"],
+		]) {
+			for (let d = 1; d <= 2; d++) {
+				const wx = b.wx + dx * d,
+					wz = b.z + dz * d;
+				for (let y = ymin; y <= ymax && y < WORLD_HEIGHT; y++)
+					if (isLeaf(world.getBlock(wx, y, wz))) {
+						if (k === "px") pX++;
+						else if (k === "mx") mX++;
+						else if (k === "pz") pZ++;
+						else mZ++;
+					}
+			}
+		}
+	}
+	// El bug dejaba +x y +z en ~19% del lado opuesto; el fix los iguala (~1.0).
+	const rX = pX / mX,
+		rZ = pZ / mZ;
+	check(
+		"masa de hojas simétrica en ±x (0.7–1.43)",
+		rX >= 0.7 && rX <= 1.43,
+		`+x=${pX} -x=${mX} ratio=${rX.toFixed(2)}`
+	);
+	check(
+		"masa de hojas simétrica en ±z (0.7–1.43)",
+		rZ >= 0.7 && rZ <= 1.43,
+		`+z=${pZ} -z=${mZ} ratio=${rZ.toFixed(2)}`
+	);
+
+	// --- 1b) Por árbol AISLADO: la copa completa en los 4 lados.
+	// Aislado = sin otro tronco en radio 5 (las copas no se fusionan). Para
+	// cada árbol, contar hojas adyacentes en los 4 lados (±x, ±z a 1-2 bloques
+	// en el rango de copa). El bug anulaba por completo +x/+z (0 vs ~6); el
+	// fix los iguala. Tolerancia amplia (ratio ≥ 0.5 y ≥1 hoja por lado) para
+	// absorber pendientes y la esquina aleatoria del pino (no detectar falsos).
+	const aislados = validos.filter(
+		(b) =>
+			!validos.some(
+				(o) =>
+					o !== b && Math.abs(o.wx - b.wx) <= 5 && Math.abs(o.z - b.z) <= 5
+			)
+	);
+	check(
+		"hay árboles aislados para la verificación por copa",
+		aislados.length > 0,
+		`${aislados.length} aislados`
+	);
+	const asimetricos = aislados.filter((b) => {
+		let topY = -1;
+		for (let y = b.y; y < WORLD_HEIGHT; y++) {
+			if (isLog(world.getBlock(b.wx, y, b.z))) topY = y;
+			else break;
+		}
+		const cnt = { px: 0, mx: 0, pz: 0, mz: 0 };
+		const ymin = topY - 2,
+			ymax = topY + 2;
+		for (const [dx, dz, k] of [
+			[1, 0, "px"],
+			[-1, 0, "mx"],
+			[0, 1, "pz"],
+			[0, -1, "mz"],
+		]) {
+			for (let d = 1; d <= 2; d++) {
+				const wx = b.wx + dx * d,
+					wz = b.z + dz * d;
+				for (let y = ymin; y <= ymax && y < WORLD_HEIGHT; y++)
+					if (isLeaf(world.getBlock(wx, y, wz))) cnt[k]++;
+			}
+		}
+		const bajos = (a, b2) =>
+			a === 0 || b2 === 0 || Math.min(a, b2) < 0.5 * Math.max(a, b2);
+		return bajos(cnt.px, cnt.mx) || bajos(cnt.pz, cnt.mz);
+	});
+	check(
+		"todo árbol aislado tiene la copa completa en los 4 lados",
+		asimetricos.length === 0,
+		asimetricos.length > 0
+			? `ej. x=${asimetricos[0].wx} z=${asimetricos[0].z}`
+			: `${aislados.length} copas completas`
+	);
+
+	// --- 1c) Densidad: no baja perceptiblemente (observado ≥ 0.5 × esperado).
+	// El esperado es la suma de probabilidades por bioma sobre las columnas
+	// arbolables (césped firme, en margen, sin charco). Con el fix el ratio
+	// observado/esperado se mantiene ≥ ~1.7 (verificado en varias semillas).
+	let observado = 0,
+		esperado = 0,
+		arbolables = 0;
+	for (let cx = -2; cx <= 2; cx++)
+		for (let cz = -2; cz <= 2; cz++)
+			for (let x = 0; x < CHUNK_SIZE; x++)
+				for (let z = 0; z < CHUNK_SIZE; z++) {
+					const wx = cx * CHUNK_SIZE + x,
+						wz = cz * CHUNK_SIZE + z;
+					const bm = world.getBiome(wx, wz);
+					if (!THRESH[bm]) continue;
+					let surf = B.AIR;
+					for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+						const b = world.getBlock(wx, y, wz);
+						if (b === B.WATER) break;
+						if (b !== B.AIR && !VEG.has(b)) {
+							surf = b;
+							break;
+						}
+					}
+					const enMargen =
+						x >= 2 && x <= CHUNK_SIZE - 3 && z >= 2 && z <= CHUNK_SIZE - 3;
+					const sinAgua =
+						!world.isPondAt(wx, wz) &&
+						!world.isLavaPondAt(wx, wz) &&
+						!world.isRiver(wx, wz) &&
+						!world.isLake(wx, wz) &&
+						!world.isSwampPoolAt(wx, wz);
+					for (let y = 1; y < WORLD_HEIGHT; y++)
+						if (isLog(world.getBlock(wx, y, wz))) {
+							observado++;
+							break;
+						}
+					if (surf === B.GRASS && enMargen && sinAgua) {
+						arbolables++;
+						esperado += THRESH[bm];
+					}
+				}
+	check(
+		"la densidad de árboles no baja perceptiblemente",
+		observado >= 0.5 * esperado,
+		`observado=${observado} esperado=${esperado.toFixed(1)} ratio=${(
+			observado / esperado
+		).toFixed(2)} (${arbolables} columnas arbolables)`
+	);
+
+	// ============ SECCIÓN 2 (regresión): árboles sobre el suelo ============
+	// Modo denso (Math.random = 0): TODA columna de bosque/llanura genera un
+	// árbol (de altura 4). Zona lejana [8,12] para no chocar con el caché de
+	// la sección 1 (generada con otra RNG). Así el test encuentra muchos
+	// troncos sin depender de la suerte y verifica el invariante de no-flote.
+	Math.random = () => 0;
+	for (let cx = 8; cx <= 12; cx++)
+		for (let cz = 8; cz <= 12; cz++) world.generateChunk(cx, cz);
+
+	const densas = [];
 	let forestPlains = 0;
-	for (let cx = -1; cx <= 1; cx++) {
-		for (let cz = -1; cz <= 1; cz++) {
-			world.generateChunk(cx, cz);
+	for (let cx = 9; cx <= 11; cx++) {
+		for (let cz = 9; cz <= 11; cz++) {
 			const baseX = cx * CHUNK_SIZE,
 				baseZ = cz * CHUNK_SIZE;
 			for (let x = 0; x < CHUNK_SIZE; x++) {
@@ -43,7 +286,7 @@ try {
 							const below = world.getBlock(baseX + x, y - 1, baseZ + z);
 							// Base de tronco = tronco sin otro tronco debajo
 							if (below !== B.OAK_LOG)
-								bases.push({ x: baseX + x, y, z: baseZ + z, below });
+								densas.push({ x: baseX + x, y, z: baseZ + z, below });
 						}
 					}
 				}
@@ -58,12 +301,12 @@ try {
 	);
 	check(
 		"se generaron troncos en la zona de prueba",
-		bases.length > 0,
-		`${bases.length} bases de tronco`
+		densas.length > 0,
+		`${densas.length} bases de tronco`
 	);
 
 	// Invariante principal del fix: ninguna base flota (debajo nunca aire/agua)
-	const floating = bases.filter(
+	const floating = densas.filter(
 		(b) => b.below === B.AIR || b.below === B.WATER
 	);
 	check(
@@ -71,11 +314,11 @@ try {
 		floating.length === 0,
 		floating.length > 0
 			? `ej. x=${floating[0].x} y=${floating[0].y} z=${floating[0].z} debajo=${floating[0].below}`
-			: `${bases.length} troncos sobre superficie`
+			: `${densas.length} troncos sobre superficie`
 	);
 
 	// Más fuerte: en bosque/llanura la base descansa sobre el césped (height-1)
-	const notGrass = bases.filter((b) => b.below !== B.GRASS);
+	const notGrass = densas.filter((b) => b.below !== B.GRASS);
 	check(
 		"las bases descansan sobre césped (height-1)",
 		notGrass.length === 0,

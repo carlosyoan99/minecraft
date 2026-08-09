@@ -867,6 +867,12 @@ function generateChunk(cx, cz) {
 	const baseX = cx * CHUNK_SIZE,
 		baseZ = cz * CHUNK_SIZE;
 
+	// Fase 15 (A2): las copas de los árboles se buferizan durante el bucle de
+	// columnas y se aplican al final. Escribirlas dentro del bucle hacía que
+	// las columnas generadas después pisaran las hojas en +x/+z, dejando las
+	// copas recortadas de forma asimétrica (causa raíz del bug de bordes).
+	const pendingLeaves = [];
+
 	for (let x = 0; x < CHUNK_SIZE; x++) {
 		for (let z = 0; z < CHUNK_SIZE; z++) {
 			const wx = baseX + x,
@@ -1040,8 +1046,14 @@ function generateChunk(cx, cz) {
 				!struct &&
 				surfaceBlock === B.GRASS;
 
+			// Fase 15 (A2): el tronco debe estar a ≥2 bloques del borde del chunk
+			// para que la copa 5×5 (radio 2) quepa entera — así ningún árbol queda
+			// con la copa recortada por el borde (el vecino no coloca esas hojas).
+			const treeFits =
+				x >= 2 && x <= CHUNK_SIZE - 3 && z >= 2 && z <= CHUNK_SIZE - 3;
+
 			const treeRoll = Math.random();
-			if (canGrowTree && biome === "jungle" && treeRoll < 0.09) {
+			if (canGrowTree && treeFits && biome === "jungle" && treeRoll < 0.09) {
 				// Árbol de jungla (Fase 11, B): tronco alto (5-8) y copa ancha y
 				// densa con lianas colgando del envés — el sello de la selva.
 				const treeHeight = 5 + Math.floor(Math.random() * 4);
@@ -1069,17 +1081,22 @@ function generateChunk(cx, cz) {
 							)
 								continue;
 							const y = height + dy;
-							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR) {
-								data[idx(lx, y, lz)] = B.JUNGLE_LEAVES;
-								// Lianas bajo el borde de la copa (donde hay aire debajo).
-								if (Math.abs(dx) === 2 || Math.abs(dz) === 2)
-									hangVines(data, lx, y, lz, height);
-							}
+							if (y < WORLD_HEIGHT)
+								pendingLeaves.push({
+									lx,
+									y,
+									lz,
+									block: B.JUNGLE_LEAVES,
+									// Lianas bajo el borde de la copa (donde hay aire debajo).
+									vines: Math.abs(dx) === 2 || Math.abs(dz) === 2,
+									height,
+								});
 						}
 					}
 				}
 			} else if (
 				canGrowTree &&
+				treeFits &&
 				(biome === "forest" || biome === "plains" || biome === "swamp") &&
 				treeRoll <
 					(biome === "forest" ? 0.05 : biome === "swamp" ? 0.02 : 0.012)
@@ -1117,20 +1134,24 @@ function generateChunk(cx, cz) {
 							)
 								continue;
 							const y = height + dy;
-							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR) {
-								data[idx(lx, y, lz)] = leaves;
-								// Pantano (Fase 11, B): lianas del borde de la copa.
-								if (
-									biome === "swamp" &&
-									(Math.abs(dx) === 2 || Math.abs(dz) === 2)
-								)
-									hangVines(data, lx, y, lz, height);
-							}
+							if (y < WORLD_HEIGHT)
+								pendingLeaves.push({
+									lx,
+									y,
+									lz,
+									block: leaves,
+									// Pantano (Fase 11, B): lianas del borde de la copa.
+									vines:
+										biome === "swamp" &&
+										(Math.abs(dx) === 2 || Math.abs(dz) === 2),
+									height,
+								});
 						}
 					}
 				}
 			} else if (
 				canGrowTree &&
+				treeFits &&
 				(biome === "taiga" || biome === "snow" || biome === "mountain") &&
 				treeRoll < (biome === "taiga" ? 0.03 : 0.02)
 			) {
@@ -1166,8 +1187,15 @@ function generateChunk(cx, cz) {
 							)
 								continue;
 							const y = height + dy;
-							if (y < WORLD_HEIGHT && data[idx(lx, y, lz)] === B.AIR)
-								data[idx(lx, y, lz)] = B.SPRUCE_LEAVES;
+							if (y < WORLD_HEIGHT)
+								pendingLeaves.push({
+									lx,
+									y,
+									lz,
+									block: B.SPRUCE_LEAVES,
+									vines: false,
+									height,
+								});
 						}
 					}
 				}
@@ -1207,6 +1235,20 @@ function generateChunk(cx, cz) {
 			}
 		}
 	}
+
+	// Fase 15 (A2): aplicar las copas buferizadas. Como se escribe tras
+	// rellenar todas las columnas, el chequeo de aire se hace contra el chunk
+	// completo y ninguna columna posterior pisa las hojas. La comprobación de
+	// charcos ya se hizo al buferizar (leafWx/leafWz), así que aquí basta el
+	// aire: las hojas no caen sobre troncos, terreno ni estructuras.
+	for (const leaf of pendingLeaves) {
+		const i = idx(leaf.lx, leaf.y, leaf.lz);
+		if (data[i] === B.AIR) {
+			data[i] = leaf.block;
+			if (leaf.vines) hangVines(data, leaf.lx, leaf.y, leaf.lz, leaf.height);
+		}
+	}
+
 	chunks.set(key, data);
 	markChunkDirty(cx, cz); // la generación usa Math.random (árboles), así que se persiste
 	chunkGenMsAccum += performance.now() - genT0;
