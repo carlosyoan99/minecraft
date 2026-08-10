@@ -2455,6 +2455,19 @@ suite. El cliente real no se vio afectado (ya usaba el protocolo nuevo).
 
 ---
 
+
+## Auditoría integral de seguridad/rendimiento/paridad (2026-08-09)
+
+> Informe completo con ubicaciones y estado de corrección por hallazgo:
+> [`docs/auditoria-2026-08-09.md`](docs/auditoria-2026-08-09.md).
+
+- [x] CRÍTICO 1.1 — guard de forma del mensaje WS + try/catch (`net.js`)
+- [x] CRÍTICO 1.2 — crafteo solo con la grid server-side (`grid_set`)
+- [x] CRÍTICO 1.3 — `world_delete` solo para operadores
+- [x] 2.x, 3.x y 4.x — resto de hallazgos (ver el informe)
+
+---
+
 ## Fuera de alcance (Won't)
 
 Explícitamente descartado por ahora — no implementar sin discutir
