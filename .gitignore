@@ -24,6 +24,7 @@ tmp-*
 
 # --- Entorno de agentes (skills de tooling, no parte del juego) ---
 .agents/
+skills-lock.json
 
 # --- Sistema operativo ---
 .DS_Store

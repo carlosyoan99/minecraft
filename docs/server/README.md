@@ -52,7 +52,7 @@ independiente y testeable en Node (los tests requieren los módulos sin red).
 |---|---|---|
 | `constants.js` | Constantes (IDs de bloques/ítems `B`/`I`, física, mundo), `worldPaths` mutable, curva XP, minería | — |
 | `state.js` | Estado compartido: chunks, players, furnaces, chests, crops, mobs, arrows, dirtyChunks, timeOffset, damageLog | — |
-| `world.js` | Generación por semilla (noise 2D/3D), acceso a bloques, minas, charcos, árboles, minerales, biomas de Fase 11, tamaño de mundo, archivos de chunk. **POO (F13):** clases `World`/`Chunk` — el export es una instancia de `World` | constants, state, chests |
+| `world.js` | Generación por semilla (noise 2D/3D), acceso a bloques, minas, charcos, árboles, minerales, biomas de Fase 11, tamaño de mundo, mundo de 128 bloques (Y ∈ −64..+63, `DESIGN_OFFSET`, Fase 15 D5), archivos de chunk. **POO (F13):** clases `World`/`Chunk` — el export es una instancia de `World` | constants, state, chests |
 | `save.js` | Persistencia incremental por chunk (gzip), `world.json` (meta, mobs, hornos, cofres, cultivos, hora del mundo), migraciones, `switchWorld`, `deleteWorld`, descarga de chunks lejanos | constants, state, world, mobs, crafting, chests |
 | `players.js` | Inventario, salud, hambre, daño (con armadura), XP/curva MC, caídas, respawn, comer, quemaduras, tick del jugador. **POO (F13):** clase `Player` + factory `createPlayer` | world, state, constants |
 | `items.js` | **POO (F13):** clase `ItemStack` — los slots de inventario/cofre/drop | — |
@@ -97,7 +97,7 @@ compatibles (el wire y el guardado NO cambian):
   (asignados desde `api`). `world.getBlock(...)` funciona igual que antes y
   los tests que parchean `world.getBlock = ...` siguen funcionando (asignan
   una propiedad propia sobre la instancia). `world.getChunk(cx, cz)`
-  devuelve un `Chunk` (16×64×16) con `getBlock`/`setBlock` locales, `dirty`
+  devuelve un `Chunk` (16×128×16) con `getBlock`/`setBlock` locales, `dirty`
   y `save()`/`load()` (gzip, mismo formato que `writeChunkFile`).
 - **`Player`** (`server/players.js`): los jugadores conectados (net.js) son
   instancias de `Player` creadas con `createPlayer({...})`; sus métodos de
@@ -132,9 +132,13 @@ lo permite.
 - **Backup `.bak`:** `world.json` se copia a `world.json.bak` antes de
   sobrescribir; `loadWorld` restaura desde el backup si el principal es
   ilegible (Fase 9.5).
-- **Versión de esquema (`SCHEMA_VERSION = 5`)** con migraciones
-  retrocompatibles (`migrateWorldLayout`, `migrateLegacyWorld`). La v5
-  persiste mascotas (`ownerId/ownerName/sitting`) y el tamaño del slime
+- **Versión de esquema (`SCHEMA_VERSION = 6`)** con migraciones
+  retrocompatibles (`migrateWorldLayout`, `migrateLegacyWorld` y v5→v6 en
+  `world.js`). La **v6** es el mundo de 128 bloques: los chunks pasan de
+  `16×64×16` a `16×128×16` (Y ∈ −64..+63, el terreno anclado en ~0 con
+  `DESIGN_OFFSET`); un chunk v5 (local y == mundo y, 0..63) se migra subiendo
+  el dato a local 64..127 y rellenando el fondo nuevo con piedra. La **v5**
+  persistía mascotas (`ownerId/ownerName/sitting`) y el tamaño del slime
   (`slimeSize`) en `world.json`; un mundo v4 sin esos campos carga igual
   (mob salvaje, slime grande).
 - **Descarga de chunks lejanos** (>10 chunks del jugador, cada 10 s) para
@@ -186,7 +190,9 @@ tamaño de los mensajes entrantes (anti-DoS).
 node tests/run.js --unit      # unitarios (sin servidor)
 PORT=3998 node server.js      # servidor para E2E (otra terminal)
 WS_URL=ws://localhost:3998 node tests/run.js --e2e
-node tests/audit-fase3.js     # auditorías por fase (3..7)
+node tests/run.js --audit     # auditorías por fase (3-6 + altura)
+node tests/audit-fase7.js     # render CDP con Chrome headless (por separado)
+node tests/audit-altura.js    # auditoría del mundo de 128 bloques (72 checks)
 node tests/unit-mobs-poo.js   # POO de mobs (subclases por especie + createMob)
 node tests/unit-poo-entities.js  # POO de entidades (ItemStack/World/Chunk/Player)
 node tests/unit-lagunas.js    # lagunas L1-L5 (arco, puertas, escaleras, cubo, recetas)

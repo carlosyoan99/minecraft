@@ -57,7 +57,10 @@ carga.
 |---|---|---|
 | `scene.js` | Escena, cámara, renderer, luces, `PointerLockControls`, calidad gráfica | DOM/THREE |
 | `connection.js` | Socket WS, `send()`, nombre de jugador (localStorage) | DOM |
-| `world.js` | Chunks en cliente, geometría (culling de caras), LOD, partículas de grieta, frustum culling | THREE |
+| `world.js` | Chunks en cliente, meshes + LOD, partículas de grieta, frustum culling | THREE |
+| `chunkGeometry.js` | Geometría pura del chunk (greedy meshing 2D por capas, luz de antorcha y AO horneados en la clave de fusión) | **puro** |
+| `chunkWorker.js` | Worker ESM que construye la geometría fuera del hilo principal (Fase 13) | Worker |
+| `texturemap.js` | Selección de tesela del atlas por bloque/cara (`tileForFace`/`tileRect`) | **puro** |
 | `geopool.js` | Pool de `BufferGeometry` (reutilización de buffers GPU) | **puro** |
 | `lod.js` | Decisión de tier LOD/full con histéresis | **puro** |
 | `lighting.js` | Luz de antorcha por celda (horneada en vértices) | **puro** |
@@ -85,12 +88,14 @@ importan con `file://`, patrón `tests/unit-itemicons.js`).
 
 **Por qué la separación puro/impuro:** el proyecto no tiene build step,
 pero sí tests de servidor en Node. La solución es que **toda la lógica de
-decisión** (LOD, luz, pool, iconos, calidad, categorías) viva en módulos
-sin dependencias de navegador; los módulos con THREE/DOM se quedan como
-pegamento fino. Así `tests/unit-lod.js`, `tests/unit-geopool.js`,
-`tests/unit-itemicons.js`, `tests/unit-recipecats.js` y
-`tests/unit-antorchas.js` (bloque B: luz de `lighting.js`) importan y
-prueban lógica real, no mocks.
+decisión** (LOD, luz, pool, iconos, calidad, categorías, geometría del
+chunk) viva en módulos sin dependencias de navegador; los módulos con
+THREE/DOM se quedan como pegamento fino. Así `tests/unit-lod.js`,
+`tests/unit-geopool.js`, `tests/unit-itemicons.js`,
+`tests/unit-recipecats.js`, `tests/unit-antorchas.js` (bloque B: luz de
+`lighting.js`), `tests/unit-greedy.js` (greedy meshing de
+`chunkGeometry.js`) y `tests/unit-workers.js` importan y prueban lógica
+real, no mocks.
 
 ## El bucle de render
 

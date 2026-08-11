@@ -34,6 +34,12 @@
 - **Estructuras:** minas abandonadas con pasillos y cofres de loot,
   árboles por bioma (roble, abedul, pino, jungla 2×2), hierba alta, flores
   y trigo (bloques no sólidos con drop de tinte).
+- **Altura del mundo (Fase 15, D5):** **`WORLD_HEIGHT = 128`** bloques con
+  `WORLD_MIN_Y = −64` .. `WORLD_MAX_Y = +63` (chunks `16×128×16`). La
+  generación sigue trabajando en un espacio de diseño 0..63 (ruidos, biomas,
+  `SEA_LEVEL`) que se re-basa restando `DESIGN_OFFSET = 8`: el terreno queda
+  anclado en y≈0, el mar en `WORLD_SEA_LEVEL = −3`, con 64 bloques de
+  subsuelo minable y 64 de cielo para construir. `SCHEMA_VERSION = 6`.
 - **Tamaño de mundo** (`WORLD_SIZES`, Fase 10): pequeño 256 / medio 512 /
   grande 1024 / infinito 8192 por semilla; `generateChunk` devuelve vacío
   fuera de bordes, `setBlock` rechaza y `inBounds` valida.
@@ -419,8 +425,9 @@ infinita).
 - **Validación de recetas al cargar** y **escritura atómica** de chunks
   (ver §6 y §Persistencia del README).
 - **`SCHEMA_VERSION` + migraciones:** los mundos guardados con versiones
-  anteriores se migran; un mundo de una versión más nueva se rechaza con
-  mensaje claro (no se pisa).
+  anteriores se migran (incluida la **v5→v6** del mundo de 128 bloques:
+  el dato viejo sube a local 64..127 y el fondo se rellena con piedra); un
+  mundo de una versión más nueva se rechaza con mensaje claro (no se pisa).
 
 ### Por qué así
 

@@ -35,16 +35,17 @@ mundo. El cliente predice y dibuja; el servidor decide y corrige.
 
 ```
 mi-minecraft/
-├── server.js              Entrada (1 línea): requiere server/server.js
+├── server.js              Entrada (raíz): solo requiere server/server.js
 ├── server/                Código del servidor Node.js
 │   ├── server.js          Arranque (carga módulos, hooks, hot-reload, guardado)
-│   ├── constants.js       Fuente de verdad de IDs (B/I) y configuración (semilla, tiempos)
+│   ├── constants.js       Fuente de verdad de IDs (B/I) y configuración (semilla, tiempos, altura −64..+63)
 │   ├── state.js           Estado mutable compartido (chunks, players, mobs, furnaces, chests)
-│   ├── world.js           Generación (biomas, cuevas, lagos) y archivos de chunk
+│   ├── world.js           Generación (biomas, cuevas, lagos) y archivos de chunk. POO: clase World/Chunk
+│   ├── items.js           POO (F13): clase ItemStack — slots de inventario/cofre/drop
 │   ├── crafting.js        Recetas de crafteo y hornos (tick de fundición)
 │   ├── chests.js          Cofres: inventario propio por bloque (27 slots, persistidos)
-│   ├── players.js         Inventario, hambre, salud, XP y daño de jugadores
-│   ├── mobs.js            IA de mobs (máquina de estados) y drops
+│   ├── players.js         Inventario, hambre, salud, XP y daño de jugadores. POO: Player/createPlayer
+│   ├── mobs.js            IA de mobs (máquina de estados) y drops. POO: subclases + createMob
 │   ├── save.js            Persistencia incremental por chunk + descarga de chunks
 │   ├── net.js             HTTP/WebSocket, handlers y bucle principal
 │   ├── mining.js          Sesiones de minería con progreso (Fase 6)
@@ -55,7 +56,7 @@ mi-minecraft/
 ├── tests/                 Unitarios + E2E + auditorías (npm test, ver Tests)
 ├── public/                Cliente vanilla + Three.js (módulos ES6, sin build step)
 │   ├── index.html         Entrada: importmap (Three.js CDN), botón Jugar y pantalla de carga
-│   ├── client.js          Bootstrap que cablea los módulos (14 líneas)
+│   ├── client.js          Bootstrap que cablea los módulos (16 líneas)
 │   ├── constants.js       Constantes del cliente (IDs, colores, texturas, durabilidad)
 │   ├── loading.js         Pantalla de carga estilo Minecraft (progreso + consejos)
 │   ├── lod.js             Decisión pura de LOD para chunks lejanos (histéresis)
@@ -63,7 +64,10 @@ mi-minecraft/
 │   ├── debug.js           Visualizador de chunks (F3): bordes + caras para depurar culling
 │   ├── connection.js      Socket WebSocket
 │   ├── network.js         Dispatcher de eventos servidor→cliente
-│   ├── world.js           Chunks: geometría, UVs del atlas, culling, dispose
+│   ├── world.js           Chunks: almacén + meshes, culling, LOD, dispose
+│   ├── chunkGeometry.js   Geometría pura de chunk (greedy meshing 2D por capas + luz/AO horneados)
+│   ├── chunkWorker.js     Worker ESM: construye la geometría fuera del hilo principal (F13)
+│   ├── texturemap.js      Selección de tesela del atlas por bloque/cara y UVs (antes dentro de world.js)
 │   ├── player.js          Física del jugador (gravedad, salto, natación)
 │   ├── scene.js           Escena, cámara, renderer y luces
 │   ├── mobs.js            Render de mobs (texturas por cara + escala por tipo)
@@ -263,13 +267,25 @@ volver a una semilla anterior recupera su mundo).
 - **Fase 15 — Corrección de auditoría y mejoras del usuario** (ver
   `docs/fase15-spec.md`): copas de árboles completas en bordes de chunk
   (`pendingLeaves` + test determinista), nubes semitransparentes con
-  variedad y tooltip estilizado del hotbar.
+  variedad, tooltip estilizado del hotbar y **D5: mundo de 128 bloques
+  (Y ∈ −64..+63, `SCHEMA_VERSION` 6 con migración retrocompatible v5→v6)**
+  auditado por `tests/audit-altura.js`.
 
 ### 🏁 Roadmap completado (fases 0-15)
 
 *(Todas las fases del roadmap están completadas y auditadas. El detalle
 de cada una vive en su spec `docs/faseN-spec.md`; el estado de cada
 tarea, en `TODO.md`.)*
+
+### 🔧 Fase 16 — en curso (prospectiva, sin implementar)
+
+La fase **actual** es la **Fase 16** (`docs/fase16-spec.md`, tareas `[ ]`
+en `TODO.md`): corrección de la auditoría 2026-08-10
+(`docs/auditoria-2026-08-10.md`), bugs de `docs/Notas del usuario.md` y
+paridad restante. **Prerrequisito A1:** commitear el WIP del D5 — la
+implementación del mundo de 128 bloques está en el working tree **sin
+commitear** y la suite tiene 12 unitarios pendientes de recalibración
+(ver `tests/test.log`).
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -489,21 +505,28 @@ en el servidor y `public/network.js` en el cliente).
   - `node tests/audit-fase7.js` — métricas de tick del servidor y FPS en
     Chrome headless vía CDP (con `--regresion` lanza además la suite
     unitaria de fases 0-6) + integridad del guardado tras varios reinicios.
+  - `node tests/audit-altura.js` — auditoría del mundo de 128 bloques
+    (−64..+63, Fase 15 D5): layout, superficie, cuevas, biomas, minerales,
+    agua, estructuras, costuras, migración v5→v6 y geometría del cliente
+    (72 checks; se ejecuta también con `node tests/run.js --audit`).
 
 ### Resultados (agosto 2026)
 
-Suite completa en verde: **40 tests unitarios + 4 E2E** (si hay servidor).
-Última ejecución: todos los unitarios pasan (persistencia, IA de mobs,
-handlers de red, integridad de recetas, sincronización servidor↔cliente,
-hot-reload, minería fina, LOD, cofre, antorchas, cama, armadura, terreno,
+Suite completa: **50 tests unitarios + 6 E2E** (si hay servidor).
+Estado actual del working tree: el mundo de 128 bloques (D5, Fase 15)
+está implementado pero **sin commitear** y **12 unitarios** están
+pendientes de recalibración a las nuevas alturas (mundo −64..+63,
+`tests/test.log`); la suite queda en verde al cerrar el A1 de la Fase 16.
+Los unitarios cubren persistencia, IA de mobs, handlers de red,
+integridad de recetas, sincronización servidor↔cliente, hot-reload,
+minería fina, LOD, cofre, antorchas, cama, armadura, terreno,
 caída/void, anti-cheat, crack, métricas, raycast/pool con three real,
-cámara, biomas de Fase 11 y mecánicas de Fase 11 incluidos), y los E2E
-contra un servidor real con mundo fresco dan durabilidad 124/124,
-reload 4/4, comer 5/5 (el bonus de caza puede omitirse si no aparece un
-animal cercano, quedando 3/3 — los checks base siempre pasan) y cofre 12/12.
-La auditoría de la Fase 5 sigue cubriendo la sincronización de durabilidad
-y la no-duplicación de items; los unitarios transversales amplían la red
-de seguridad a toda la base.
+cámara, biomas de Fase 11, mecánicas de Fase 11 y el mundo de 128
+bloques (`audit-altura.js`, 72 checks). Los E2E contra un servidor real
+con mundo fresco cubren comer, durabilidad, cofre, reload, mascotas y
+templo. La auditoría de la Fase 5 sigue cubriendo la sincronización de
+durabilidad y la no-duplicación de items; los unitarios transversales
+amplían la red de seguridad a toda la base.
 
 ## Cómo contribuir
 
@@ -527,7 +550,7 @@ preocupación por commit, y los commits son en español.
   migra automáticamente al directorio de su semilla al arrancar).
   El formato antiguo (`world.dat` único, v1) se migra a archivos
   por chunk y se conserva como `world.dat.legacy`. El formato está
-  versionado con `schemaVersion` (actual: 5): si el mundo es de una
+  versionado con `schemaVersion` (actual: 6): si el mundo es de una
   versión más nueva que el servidor, este se niega a abrirlo en
   lugar de corromperlo.
 - Los chunks lejanos se descargan automáticamente: el servidor
@@ -535,9 +558,11 @@ preocupación por commit, y los commits son en español.
   avisa al cliente, que hace `dispose()` de su geometría. La
   memoria queda acotada al área activa de los jugadores.
 - El culling de caras es correcto entre chunks (se resolvió el bug
-  original de huecos en los bordes), pero sigue siendo por-cara,
-  no greedy meshing — suficiente para el tamaño actual de mundo,
-  no para mundos grandes (ver Fase 6 en `docs/fase6-spec.md`).
+  original de huecos en los bordes). Desde la Fase 13 la geometría
+  además se construye con **greedy meshing** (fusiona caras coplanares
+  del mismo bloque por capa) en un **Web Worker** (`public/chunkWorker.js`
+  → `chunkGeometry.js`), fuera del hilo principal, con luz de antorcha y
+  AO horneados en la clave de fusión (ver `docs/fase13-spec.md`).
 - Frustum culling por chunk (Fase 6): cada chunk tiene una esfera
   envolvente calculada de su geometría real y el cliente marca
   `visible=false` los que quedan fuera del campo de visión antes

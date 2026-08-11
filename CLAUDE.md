@@ -17,7 +17,7 @@ tocar código.
 - **Arquitectura modular.** El servidor está en `server/` (14 módulos CJS)
   y el cliente en `public/` (30 módulos ES6), cada
   uno por responsabilidad (red, mundo/chunks, jugador/física,
-  mobs, UI/HUD). `server.js` (1 línea) y `public/client.js` (13
+  mobs, UI/HUD). `server.js` (raíz) y `public/client.js` (16
   líneas) son solo entradas. Si un módulo supera ~400-500 líneas,
   es señal de dividirlo.
 - **El servidor es la única fuente de verdad.** Nunca mover lógica
@@ -37,7 +37,10 @@ tocar código.
    `TODO.md` (tracker de tareas) y confirma qué tarea se está atacando;
    el detalle de esa fase (decisiones, mecánicas, auditorías) vive en su
    spec `docs/faseN-spec.md`. No adelantes trabajo de fases futuras sin
-   que se pida explícitamente.
+   que se pida explícitamente. La fase **actual y prospectiva** es la
+   **Fase 16** (`docs/fase16-spec.md`): su prerrequisito A1 es commitear
+   el WIP del D5 (mundo de 128 bloques, `SCHEMA_VERSION` 6) que sigue sin
+   commitear y con 12 unitarios pendientes de recalibración.
 2. **Cambios pequeños y verificables.** Preferir PRs/commits que
    toquen una sola preocupación (ej. "guardado incremental por
    chunk") sobre cambios masivos que mezclen varias fases.
@@ -150,9 +153,11 @@ mantiene sincronizado manualmente (o lo verifica un test):
   (fundición). Son del servidor; el cliente solo envía el grid.
   Lo valida `tests/unit-recetas.js` (IDs existentes, shapes bien
   formadas y alcanzables — habría detectado el bug `hilo_a_lana`).
-- **Formato de guardado:** `SCHEMA_VERSION` (actual 5), `WORLD_DIR`
+- **Formato de guardado:** `SCHEMA_VERSION` (actual 6), `WORLD_DIR`
   (por semilla: `world/<semilla>/`), `CHUNKS_DIR`, `META_FILE`,
-  `LEGACY_FILE` en `constants.js`. La semilla se configura con la
+  `LEGACY_FILE` en `constants.js`. La v6 es el mundo de 128 bloques
+  (Y ∈ −64..+63, chunks 16×128×16) con migración retrocompatible
+  v5→v6. La semilla se configura con la
   env var `SEED` (defecto `miSemilla2026`); cada semilla tiene su
   propio mundo y el layout antiguo de `world/` se migra con
   `save.migrateWorldLayout()`. Los chunks se guardan en `.json`

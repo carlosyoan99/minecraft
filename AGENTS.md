@@ -72,11 +72,14 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   `tests/audit-fase5.js`.
 - **Regla:** añadir bloque/ítem/herramienta → actualizar AMBOS lados
   y añadir la receta si aplica.
-- **Formato de guardado:** `SCHEMA_VERSION` (actual 5), archivos por
+- **Formato de guardado:** `SCHEMA_VERSION` (actual 6), archivos por
   chunk en `world/<semilla>/chunks/` + `world/<semilla>/world.json`
-  (+ copia de seguridad `world.json.bak` en cada guardado).
-  Cualquier cambio exige subir versión + migración retrocompatible +
-  test (modelo: `tests/unit-persistencia.js`).
+  (+ copia de seguridad `world.json.bak` en cada guardado). La **v6**
+  es el mundo de 128 bloques (Y ∈ −64..+63, `DESIGN_OFFSET` ancla el
+  terreno en ~0, chunks 16×128×16) con migración retrocompatible
+  v5→v6 (el dato viejo sube a local 64..127 y el fondo se rellena con
+  piedra). Cualquier cambio exige subir versión + migración
+  retrocompatible + test (modelo: `tests/unit-persistencia.js`).
 
 ## Convenciones
 
@@ -116,10 +119,16 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   completa (`ItemStack`/`World`/`Chunk`/`Player`/`createMob`,
   `unit-mobs-poo.js` + `unit-poo-entities.js`). La **Fase 14** está cerrada
   y auditada (paridad real + rendimiento). La **Fase 15** está cerrada y
-  auditada (copas de árboles en bordes de chunk, nubes semitransparentes y
-  tooltip del hotbar — el grueso de su spec se cerró junto a la Fase 13; la
-  suite tiene 50 unitarios). No adelantar trabajo más allá de lo que
-  `TODO.md` marque.
+  auditada (copas de árboles en bordes de chunk, nubes semitransparentes,
+  tooltip del hotbar y **D5: mundo de 128 bloques −64..+63, `SCHEMA_VERSION`
+  6** auditado por `tests/audit-altura.js`; el grueso de su spec se cerró
+  junto a la Fase 13; la suite tiene 50 unitarios). La **Fase 16** (corrección
+  de la auditoría 2026-08-10, bugs del usuario y paridad restante) es la fase
+  **actual, prospectiva** (spec `docs/fase16-spec.md`, tareas `[ ]` en
+  `TODO.md`): su prerrequisito **A1** es commitear el WIP del D5 — la
+  implementación está en el working tree **sin commitear** y la suite tiene
+  12 unitarios pendientes de recalibración (ver `tests/test.log`). No
+  adelantar trabajo más allá de lo que `TODO.md` marque.
 
 ## Documentación
 

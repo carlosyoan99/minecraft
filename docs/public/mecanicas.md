@@ -10,12 +10,17 @@
 
 ### Cómo funciona
 
-- **Almacén:** `chunkStore` (Map `"cx,cz"` → `Uint8Array(16×64×16)`) con
-  los bloques que llegan del servidor en `chunks_add`.
-- **Geometría con culling de caras:** `rebuildChunk` construye una
-  `BufferGeometry` que solo incluye las caras visibles — no se dibuja una
-  cara si el vecino es sólido (o agua/plantas no sólidas). El culling se
-  aplica **entre chunks vecinos** (los bordes de chunk no dejan huecos).
+- **Almacén:** `chunkStore` (Map `"cx,cz"` → `Uint8Array(16×128×16)`) con
+  los bloques que llegan del servidor en `chunks_add` (mundo de 128
+  bloques, Y ∈ −64..+63, Fase 15 D5).
+- **Geometría con greedy meshing en un worker (Fase 13):**
+  `world.js` encola la reconstrucción en `chunkWorker.js`, que llama a
+  `buildChunkGeometryData` (`chunkGeometry.js`): culling de caras + fusión
+  greedy 2D por capas (quads largos de bloques iguales coplanares, con luz
+  de antorcha y AO horneados en la clave de fusión). Solo se emiten las
+  caras visibles — no se dibuja una cara si el vecino es sólido — y el
+  culling se aplica **entre chunks vecinos** (los bordes de chunk no dejan
+  huecos). La geometría se construye fuera del hilo principal.
 - **Texturas:** cada cara elige su tesela del atlas (`textures.js`:
   `tileForFace` top/bottom/lados; césped con top verde y lados con
   transición) y sus UVs (`tileRect`); `world.js` solo aplica las UVs. Un
@@ -38,10 +43,12 @@
 
 ### Por qué así
 
-- **Culling de caras = el 90% del ahorro.** En un mundo de 64 de alto, la
-  mayoría de caras son interiores (piedra con piedra al lado): dibujarlas
-  sería tirar ~6× más triángulos. El mesh por chunk (en vez de por bloque)
-  es lo que permite compartir un material y mantener pocos draw calls.
+- **Culling de caras + greedy meshing = el 90% del ahorro.** En un mundo de
+  128 de alto, la mayoría de caras son interiores (piedra con piedra al
+  lado): dibujarlas sería tirar ~6× más triángulos. El greedy fusiona las
+  caras coplanares del mismo bloque y el mesh por chunk (en vez de por
+  bloque) es lo que permite compartir un material y mantener pocos draw
+  calls.
 - **Chunks de 16×16** (como Minecraft): frontera natural entre la malla
   estática (que se puede reconstruir solo cuando cambia un bloque) y el
   streaming de distancia.
@@ -51,7 +58,9 @@
 
 ### Verificación
 
-`tests/unit-crack.js` (regeneración al romper), `audit-fase4.js`
+`tests/unit-crack.js` (regeneración al romper), `tests/unit-greedy.js`
+(greedy: fusión de caras, identidad y raycast de losas), `tests/unit-workers.js`
+(swap del mesh en el camino del worker), `audit-fase4.js`
 (culling de caras replicado), `audit-fase7.js` (CDP: chunks visibles,
 triángulos, tick).
 
@@ -377,7 +386,8 @@ mobs visibles en escena).
 
 | Técnica | Dónde | Por qué |
 |---|---|---|
-| Culling de caras | `world.js` | la mayoría de caras son interiores |
+| Culling de caras + greedy meshing | `chunkGeometry.js` | fusiona caras coplanares: la mayoría de caras son interiores |
+| Geometría en Web Worker | `chunkWorker.js` | no bloquear el hilo principal con la malla |
 | Mesh por chunk + 1 material | `world.js` | pocos draw calls |
 | Frustum culling por esfera | `world.js` | no enviar lo invisible al GPU |
 | AO por vértice | `world.js` | sombreado estilo MC barato (Fase 10) |
