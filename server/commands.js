@@ -17,6 +17,8 @@ const {
 	MOON_CYCLE_MS,
 	seedMoonOffsetMs,
 	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y,
 	isTool,
 	NOT_MINEABLE
 } = constants;
@@ -237,14 +239,15 @@ function executeCommand(player, raw, ctx) {
 			let y = ty;
 			const feet = world.getBlock(fx, Math.floor(y), fz);
 			const head = world.getBlock(fx, Math.floor(y + 1.5), fz);
-			if (feet !== B.AIR || head !== B.AIR || y < 1) y = ground; // sólido/agua/void → superficie
+			if (feet !== B.AIR || head !== B.AIR || y < WORLD_MIN_Y + 1)
+			y = ground; // sólido/agua/void → superficie
 			// En un lago, getHeight no conoce el nivel del agua: subir hasta salir
 			// de ella para que el jugador nunca aparezca nadando (como findSpawn).
-			while (
-				world.getBlock(fx, Math.floor(y), fz) === B.WATER &&
-				y < WORLD_HEIGHT - 1
-			)
-				y++;
+		while (
+			world.getBlock(fx, Math.floor(y), fz) === B.WATER &&
+			y < WORLD_MAX_Y
+		)
+			y++;
 			player.x = tx;
 			player.y = y;
 			player.z = tz;

@@ -8,7 +8,9 @@ import {
 	CHUNK_SIZE,
 	NON_SOLID_PLANTS,
 	TORCH,
-	WORLD_HEIGHT
+	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y
 } from "./constants.js";
 import { createGeometryPool, setOrReuseAttribute } from "./geopool.js";
 import { computeChunkLight, LIGHT_RADIUS } from "./lighting.js";
@@ -93,17 +95,19 @@ function cIdx(x, y, z) {
 }
 
 export function getClientBlock(wx, wy, wz) {
-	if (wy < 0 || wy >= WORLD_HEIGHT) return 0;
+	// Fase 15 (D5): el mundo va de WORLD_MIN_Y (−64) a WORLD_MAX_Y (+63).
+	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return 0;
 	const cx = Math.floor(wx / CHUNK_SIZE),
 		cz = Math.floor(wz / CHUNK_SIZE);
 	const chunk = chunkStore.get(`${cx},${cz}`);
 	if (!chunk) return -1; // -1 = desconocido (chunk no cargado): no dibujar cara para evitar huecos falsos
 	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	return chunk[cIdx(x, wy, z)];
+	return chunk[cIdx(x, wy - WORLD_MIN_Y, z)]; // mundo → local
 }
 
 export function setClientBlock(wx, wy, wz, block) {
+	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return -1;
 	const cx = Math.floor(wx / CHUNK_SIZE),
 		cz = Math.floor(wz / CHUNK_SIZE);
 	const key = `${cx},${cz}`;
@@ -114,8 +118,9 @@ export function setClientBlock(wx, wy, wz, block) {
 	}
 	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	const prev = chunk[cIdx(x, wy, z)];
-	chunk[cIdx(x, wy, z)] = block;
+	const wyL = wy - WORLD_MIN_Y; // mundo → local
+	const prev = chunk[cIdx(x, wyL, z)];
+	chunk[cIdx(x, wyL, z)] = block;
 	// Mantener el registro de antorchas (lo usa la iluminación). Devuelve el
 	// bloque anterior para que la red decida si reconstruir el vecindario.
 	const torchKey = `${wx},${wy},${wz}`;
@@ -658,15 +663,18 @@ function pushQuad(
 // cuenta — la lámina de un lago se dibuja a su nivel) y su bloque. Devuelve
 // -1 si la columna está vacía (no debería pasar en el mundo).
 function columnSurface(chunk, x, z, wx, wz) {
-	for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+	// Fase 15 (D5): el índice local ly (0..127) se convierte a Y de MUNDO
+	// (ly + WORLD_MIN_Y) para el return y para muestrear vecinos.
+	for (let ly = WORLD_HEIGHT - 1; ly >= 0; ly--) {
+		const wy = ly + WORLD_MIN_Y;
 		const b =
 			x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE
-				? chunk[cIdx(x, y, z)]
-				: getClientBlock(wx, y, wz);
+				? chunk[cIdx(x, ly, z)]
+				: getClientBlock(wx, wy, wz);
 		// Fase 9 (F): las plantas (hierba/flores/trigo) no cuentan como
 		// superficie — el LOD dibuja la lámina sobre el terreno real, no sobre
 		// el bulto de la planta (evita láminas flotantes de 1 bloque).
-		if (b !== 0 && b !== -1 && !NON_SOLID_PLANTS.has(b)) return { y, block: b };
+		if (b !== 0 && b !== -1 && !NON_SOLID_PLANTS.has(b)) return { y: wy, block: b };
 	}
 	return { y: -1, block: 0 };
 }
@@ -702,7 +710,7 @@ function buildLodGeometry(cx, cz) {
 				wz = baseZ + z;
 			const h = hAt(x, z);
 			if (h < 0) continue;
-			const block = chunk[cIdx(x, h, z)];
+			const block = chunk[cIdx(x, h - WORLD_MIN_Y, z)]; // mundo → local
 			const topColor = BLOCK_COLORS[block] ?? 0x888888;
 			const wallColor = darken(topColor, 0.75);
 			const yTop = h + 1;
@@ -903,6 +911,7 @@ function bakeChunkLight(cx, cz) {
 			cz,
 			CHUNK_SIZE,
 			WORLD_HEIGHT,
+			WORLD_MIN_Y,
 			getClientBlock,
 			relevant
 		)
@@ -977,9 +986,11 @@ export function loadChunkData(chunkData) {
 				const lx = i % CHUNK_SIZE;
 				const lz = Math.floor(i / CHUNK_SIZE) % CHUNK_SIZE;
 				const ly = Math.floor(i / (CHUNK_SIZE * CHUNK_SIZE));
+				// Fase 15 (D5): el índice local es Y de mundo − WORLD_MIN_Y.
+				const wy = ly + WORLD_MIN_Y;
 				const wx = cx * CHUNK_SIZE + lx,
 					wz = cz * CHUNK_SIZE + lz;
-				torchSet.set(`${wx},${ly},${wz}`, [wx, ly, wz]);
+				torchSet.set(`${wx},${wy},${wz}`, [wx, wy, wz]);
 			}
 		}
 		batch.push(key);

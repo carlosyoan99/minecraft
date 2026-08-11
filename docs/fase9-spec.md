@@ -671,3 +671,93 @@ Todos los eventos en `snake_case` (convención).
 9. **Verificación**: `node tests/run.js --unit` exit=0, E2E contra servidor
    vivo exit=0, biome 0 errores, `node --check` en todo, y Fase 9
    documentada en `TODO.md`.
+
+---
+
+## Bugs resueltos (histórico del roadmap)
+
+> Bugs que el roadmap fue registrando con su causa raíz ya corregida.
+
+- [x] **Fase 9: el juego no renderizaba nada en el navegador
+      (`mcChunks: 0`) — el clic "no hacía nada" porque no había
+      mundo que minar.** Causa raíz (confirmada con la auditoría CDP
+      de fase 7): los bloques de Fase 9 F (hierba alta, flores,
+      trigo) llaman a los helpers `vline`/`set` en `public/textures.js`,
+      que **nunca se definieron** → `ReferenceError` al construir el
+      atlas (`buildTerrainAtlas` lanza en `drawTallGrass`) → la
+      `CanvasTexture` no se crea → `buildChunkGeometry` devuelve
+      `null` para todos los chunks → 0 meshes. La auditoría fase 7
+      (CDP) fallaba en "el cliente cargó el mundo" y el diagnóstico
+      con Chrome headless capturó la excepción exacta. **Corregido**:
+      se definió `vline(ctx, x, y0, y1, color)` (línea vertical de 1 px)
+      junto a los helpers existentes y se reemplazaron los 4 usos de
+      `set(...)` (inexistente) por `px(...)` (misma firma: ctx, x, y,
+      color). Verificado: CDP fase 7 OK con 169 chunks, tick ~1 ms y 0
+      excepciones. Nota de proceso: los tests de servidor no ejercitan
+      el render y `node --check` no detecta helpers indefinidos — solo
+      la verificación en navegador lo destapa (patrón de la Fase 4).
+- [x] **Fase 9: huecos en el terreno bajo las plantas no sólidas
+      (trigo, hierba alta, amapola, diente de león).** El culling del
+      cliente (`public/world.js`) solo dibujaba caras contra aire o
+      agua; los bloques nuevos de Fase 9 se dibujan como cross-quads
+      translúcidos, así que el bloque de debajo quedaba sin cara
+      superior → 284 caras visibles sin dibujar (detectado por
+      `audit-fase4`). **Corregido**: el culling de sólidos también
+      dibuja contra `NON_SOLID_PLANTS` (misma regla que el agua) y la
+      auditoría replica la regla exacta. El LOD ya ignoraba las plantas
+      como superficie.
+- [x] **Fase 9: las copas de los árboles nuevos (abedul/pino, más
+      densos) caían sobre los charcos decorativos de agua/lava y los
+      tapaban** → el test de charcos (`unit-terreno`) dejó de ver agua
+      en superficie (no determinista). **Corregido** en `server/world.js`:
+      las hojas no se colocan sobre columnas con charco (la superficie
+      del charco se respeta como borde de copa).
+- [x] **Fase 9: el handler `plant` usaba `I.SEEDS` sin importar `I`
+      en `server/net.js`** → `ReferenceError` al plantar semillas
+      (cultivos rotos en juego). **Corregido**: se importa `I` de
+      constants.
+- [x] **Fase 9: tests y auditorías desactualizados tras los cambios
+      de comportamiento** (la suite daba exit 1 en silencio):
+      `unit-durabilidad.js` y `audit-fase5.js` esperaban la curva de XP
+      lineal (340 XP → nivel 3) y ahora la curva MC no lineal da nivel
+      12; `unit-mobs-ia.js` esperaba la IA genérica (creeper explota al
+      primer tick, esqueleto cuerpo a cuerpo, pasivos huyen por
+      proximidad) y ahora hay IA por especie (fuse 1.5s, flechas,
+      dormir de noche); `unit-red.js` esperaba que el agua nunca se
+      rompiera y en creative sí se rompe la colocada. **Corregidos** a
+      los comportamientos nuevos + nuevo `tests/unit-fase9.js`
+      (gamemode por mundo, world_delete, cultivos, creative_pick/fly,
+      libro de recetas) registrado en `run.js`.
+- [x] **Fase 9 (revisión): el libro de recetas (tecla B) tenía la
+      pestaña "🛡️ Armadura" vacía y las recetas de armadura
+      aparecían en "Herramientas".** Causa: `recipeCategory` en
+      `public/ui.js` comprobaba el rango genérico 200-244 (que
+      incluye las azadas 240-244) ANTES que la rama de armadura
+      (220-231), así que ninguna receta llegaba a su pestaña.
+      **Corregido**: la lógica de categorías se extrae a un módulo
+      puro `public/recipeCategories.js` (armadura 220-231 y azadas
+      ítem 240-244 antes del rango de herramientas) con test de
+      regresión `tests/unit-recipecats.js` registrado en `run.js`
+      (verifica pestañas no vacías para bloques, herramientas,
+      armadura, comida, materiales y fundición).
+- [x] **Fase 9 (revisión): la barra de XP del HUD mostraba el
+      progreso con la curva lineal antigua aunque la Fase 9
+      implementó la curva MC no lineal.** Causa: `updateXpUI` en
+      `public/ui.js` calculaba `(xp % 100) / 100` (nivel = xp/100,
+      `XP_PER_LEVEL`), ignorando que el servidor ya manda
+      `xpInto`/`xpToNext` de `constants.js` (`xpToNext(level) =
+      7 + floor(level·3.5)`). **Corregido**: el HUD usa los campos
+      del servidor con fallback a la curva local, el `init` de
+      `server/net.js` los incluye y `public/network.js` los pasa.
+      El ancho de la barra refleja `xpInto/xpToNext` en vez de un
+      módulo de 100.
+- [x] **Los árboles flotan un bloque por encima del terreno.** En
+      `world.js` el tronco empezaba en `y = height + 1` (bucle `i`
+      desde 1) en vez de en `height`, dejando la base sin tronco.
+      Corregido: el tronco empieza en el primer aire sobre la
+      superficie (`y = height`) y descansa sobre el césped
+      (`y = height - 1`); las hojas bajan una unidad para rodear la
+      copa igual que antes. Aplica a chunks NUEVOS (los guardados
+      conservan su mundo). Regresión cubierta por
+      `tests/unit-arboles.js` (invariante: base de tronco nunca
+      sobre aire/agua)

@@ -47,7 +47,18 @@ const DIRS = [
 ];
 const scratch = new Float32Array(BOX);
 
-function floodInto(out, chunkSize, worldHeight, x0, z0, tx, ty, tz, blockAt) {
+function floodInto(
+	out,
+	chunkSize,
+	worldHeight,
+	worldMinY,
+	x0,
+	z0,
+	tx,
+	ty,
+	tz,
+	blockAt
+) {
 	scratch.fill(0);
 	const center = LIGHT_RADIUS * S * S + LIGHT_RADIUS * S + LIGHT_RADIUS;
 	scratch[center] = 1;
@@ -85,9 +96,11 @@ function floodInto(out, chunkSize, worldHeight, x0, z0, tx, ty, tz, blockAt) {
 		maxZ = Math.min(tz + LIGHT_RADIUS, z0 + chunkSize - 1);
 	for (let wz = minZ; wz <= maxZ; wz++) {
 		const lz = wz - (tz - LIGHT_RADIUS);
+		// Fase 15 (D5): las Y de mundo van de worldMinY (−64) arriba; el índice
+		// del chunk usa local y = mundo y − worldMinY (0..127).
 		for (
-			let wy = Math.max(0, ty - LIGHT_RADIUS);
-			wy <= Math.min(worldHeight - 1, ty + LIGHT_RADIUS);
+			let wy = Math.max(worldMinY, ty - LIGHT_RADIUS);
+			wy <= Math.min(worldMinY + worldHeight - 1, ty + LIGHT_RADIUS);
 			wy++
 		) {
 			const ly = wy - (ty - LIGHT_RADIUS);
@@ -97,7 +110,7 @@ function floodInto(out, chunkSize, worldHeight, x0, z0, tx, ty, tz, blockAt) {
 				if (v <= 0) continue;
 				const x = wx - x0,
 					z = wz - z0;
-				const idx = (wy * chunkSize + z) * chunkSize + x;
+				const idx = ((wy - worldMinY) * chunkSize + z) * chunkSize + x;
 				if (v > out[idx]) out[idx] = v;
 			}
 		}
@@ -113,6 +126,7 @@ export function computeChunkLight(
 	cz,
 	chunkSize,
 	worldHeight,
+	worldMinY,
 	blockAt,
 	torches
 ) {
@@ -127,7 +141,18 @@ export function computeChunkLight(
 			continue;
 		if (tz < z0 - LIGHT_RADIUS || tz > z0 + chunkSize - 1 + LIGHT_RADIUS)
 			continue;
-		floodInto(out, chunkSize, worldHeight, x0, z0, tx, ty, tz, blockAt);
+		floodInto(
+			out,
+			chunkSize,
+			worldHeight,
+			worldMinY,
+			x0,
+			z0,
+			tx,
+			ty,
+			tz,
+			blockAt
+		);
 	}
 	return out;
 }

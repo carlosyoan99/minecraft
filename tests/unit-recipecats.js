@@ -18,9 +18,15 @@ const path = require("node:path");
 
 let ok = 0;
 let fail = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 const check = (_name, okVal, _extra = "") => {
 	if (okVal) ok++;
-	else fail++;
+	else { fail++; failedChecks.push(_name); }
 };
 
 (async () => {

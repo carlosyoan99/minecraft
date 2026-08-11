@@ -34,8 +34,10 @@ tocar código.
 ## Cómo trabajar en este repo
 
 1. **Antes de escribir código**, ubica la fase actual en
-   `TODO.md` y confirma qué tarea se está atacando. No adelantes
-   trabajo de fases futuras sin que se pida explícitamente.
+   `TODO.md` (tracker de tareas) y confirma qué tarea se está atacando;
+   el detalle de esa fase (decisiones, mecánicas, auditorías) vive en su
+   spec `docs/faseN-spec.md`. No adelantes trabajo de fases futuras sin
+   que se pida explícitamente.
 2. **Cambios pequeños y verificables.** Preferir PRs/commits que
    toquen una sola preocupación (ej. "guardado incremental por
    chunk") sobre cambios masivos que mezclen varias fases.
@@ -53,7 +55,8 @@ tocar código.
    completa sin haberla hecho: revisar rendimiento (chunks
    cargados, memory leaks en cliente), integridad del guardado
    tras varios reinicios, y limpieza de código muerto o duplicado
-   introducido durante la fase.
+   introducido durante la fase. El resultado se documenta en la
+   spec de la fase.
 
 ## Cómo ejecutar pruebas
 
@@ -103,8 +106,8 @@ node tests/audit-fase7.js
   cerrar una pestaña → el servidor sigue corriendo.
 - **Render/FPS:** los tests de servidor no ejercitan el render. La
   medición se hace en Chrome headless vía CDP (ver nota de la
-  auditoría de Fase 4 en `TODO.md`; Three.js debe servirse local
-  si el CDN es inalcanzable).
+  auditoría de Fase 4 en `docs/fase4-spec.md`; Three.js debe servirse
+  local si el CDN es inalcanzable).
 
 ## IDs de bloque e ítem
 
@@ -161,6 +164,9 @@ lados y añade la receta si aplica; el CI de tests lo audita.
 
 ## Checklist al abrir una nueva fase en TODO.md
 
+> `TODO.md` solo lleva el estado de las tareas (`[ ]`/`[x]`); el
+> detalle de cada fase (cómo y por qué) va a su spec `docs/faseN-spec.md`.
+
 - [ ] ¿Cada tarea tiene criterio de éxito claro y granularidad de
       ~1-2 días de trabajo?
 - [ ] ¿La fase termina con una tarea de **auditoría** explícita
@@ -172,6 +178,8 @@ lados y añade la receta si aplica; el CI de tests lo audita.
       migración retrocompatible + test de migración.
 - [ ] ¿Esto rompe algo de fases anteriores? → si sí, incluir una
       tarea de regresión explícita.
+- [ ] ¿Se creó/actualizó la spec de la fase en `docs/faseN-spec.md`
+      (fuente de verdad del qué/cómo)? `TODO.md` solo lleva el estado.
 - [ ] ¿Se actualizaron `README.md` (estado/protocolo) y este
       `CLAUDE.md` si cambian las convenciones?
 
@@ -235,7 +243,7 @@ lados y añade la receta si aplica; el CI de tests lo audita.
   ni clima — están explícitamente fuera de alcance (ver "Won't" en
   `TODO.md`).
 - No optimizar prematuramente por tu cuenta: el rendimiento ya está
-  resuelto donde el `TODO.md` lo marcaba (greedy meshing + Web Workers
-  de chunks en la Fase 13, optimizaciones M1-M4 de la Fase 14).
-  Cualquier optimización nueva que no venga del roadmap se pregunta
-  antes.
+  resuelto y documentado en las specs (greedy meshing + Web Workers de
+  chunks en `docs/fase13-spec.md`, optimizaciones M1-M4 en
+  `docs/fase14-spec.md`). Cualquier optimización nueva que no venga del
+  roadmap se pregunta antes.

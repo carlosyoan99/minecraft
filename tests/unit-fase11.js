@@ -25,9 +25,16 @@ function idx(x, y, z) {
 }
 
 let failed = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 const check = (_name, ok, _extra = "") => {
 	if (!ok) {
 		failed++;
+		failedChecks.push(_name);
 		// biome-ignore lint/suspicious/noConsole: resumen del test (convención del repo)
 		console.log(`FAIL: ${_name} | ${_extra}`);
 	}

@@ -7,7 +7,13 @@ const path = require("node:path");
 
 const PORT = process.env.PORT || 3000;
 const CHUNK_SIZE = 16;
-const WORLD_HEIGHT = 64;
+// Fase 15 (D5): mundo de 128 bloques de altura, Y ∈ [WORLD_MIN_Y, WORLD_MAX_Y]
+// (−64..+63). El terreno queda anclado en y≈0: 64 bloques de subsuelo para
+// minar/cuevas y 64 por encima para construir. Mantener en sincronía con
+// public/constants.js (lo audita tests/unit-sync.js).
+const WORLD_HEIGHT = 128;
+const WORLD_MIN_Y = -64; // fondo del mundo (capa de bedrock)
+const WORLD_MAX_Y = WORLD_MIN_Y + WORLD_HEIGHT - 1; // 63
 const TICK_MS = 50; // 20 ticks por segundo
 const SAVE_INTERVAL_MS = 30000; // Guardar cada 30s
 const VIEW_DISTANCE_CHUNKS = 6; // Chunks generados alrededor de cada jugador al conectar
@@ -61,7 +67,7 @@ const EYE_HEIGHT = 1.6;
 const FALL_DAMAGE_FREE_BLOCKS = 3;
 // Caer del mundo (void, Fase 7): por debajo de este y el jugador muere y
 // reaparece (solo lo necesita el servidor: el respawn envía el teleport).
-const VOID_Y = -8;
+const VOID_Y = -72; // por debajo del fondo del mundo (−64) → caída al vacío
 
 // Física del movimiento (Fase 8, mejora anti-cheat): paridad con el cliente
 // (public/player.js, JUMP_SPEED=7/GRAVITY=18). El servidor usa estos valores
@@ -154,7 +160,8 @@ function sanitizeGamemode(raw) {
 	return GAMEMODES.has(raw) ? raw : "survival";
 }
 
-const SCHEMA_VERSION = 5; // versión actual del formato de guardado
+const SCHEMA_VERSION = 6;
+// v6: mundo −64..+63 (chunks 16×128×16; migración de v5)
 // Fase 11 (Bloque B): 3 → 4 — se añadieron bloques nuevos (jungla/pantano),
 // sin cambio de estructura del guardado (los chunks viejos v3 cargan igual:
 // simplemente no contienen los bloques nuevos; se regeneran al explorar).
@@ -1084,6 +1091,8 @@ module.exports = {
 	PORT,
 	CHUNK_SIZE,
 	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y,
 	TICK_MS,
 	SAVE_INTERVAL_MS,
 	VIEW_DISTANCE_CHUNKS,

@@ -16,8 +16,14 @@ const crafting = require(path.join(ROOT, "server", "crafting.js"));
 const world = require(path.join(ROOT, "server", "world.js"));
 
 let fails = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 function check(_name, ok, _extra = "") {
-	if (!ok) fails++;
+	if (!ok) { fails++; failedChecks.push(_name); }
 }
 
 const _OPEN = 1;

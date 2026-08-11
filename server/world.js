@@ -11,6 +11,8 @@ const constants = require("./constants.js");
 const {
 	CHUNK_SIZE,
 	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y,
 	SCHEMA_VERSION,
 	B,
 	isSolidBlock,
@@ -69,6 +71,11 @@ const structCellCache = new Map();
 const MAX_BIOME_CACHE = 65536;
 const biomeCache = new Map();
 let biomeComputations = 0; // contador de cómputos REALES (perfilado/tests)
+// Fase 15 (cierre): caché de isLake POR CELDA entera (ver definición abajo).
+// Declarada ANTES de reinitNoise (que la limpia al arrancar y al cambiar de
+// semilla), igual que structCellCache/biomeCache.
+const MAX_LAKE_CACHE = 65536;
+const lakeCache = new Map();
 
 // Estadísticas de la caché de bioma (Fase 13, A4): cuántos cómputos REALES
 // se hicieron (las consultas cacheadas no cuentan). Para tests de perfilado.
@@ -117,14 +124,48 @@ function reinitNoise(seed) {
 	// se invalida al cambiar de semilla (mismo ciclo de vida que la de
 	// estructuras).
 	biomeCache.clear();
+	// Fase 15 (cierre): isLake depende del seed → la caché por celda también
+	// se invalida al cambiar de semilla.
+	lakeCache.clear();
 }
 reinitNoise(constants.SEED); // al arrancar, la SEED de la env var
-const SEA_LEVEL = 5; // bloques de agua: y ∈ (LAKE_FLOOR, SEA_LEVEL)
+const SEA_LEVEL = 5; // bloques de agua (ESPACIO DE DISEÑO): y ∈ (LAKE_FLOOR, SEA_LEVEL)
+// Fase 15 (D5): re-base del mundo. La generación trabaja en un espacio de
+// diseño 0..63 (superficie 3..27, mar en 5) que se desplaza a las
+// coordenadas de MUNDO (−64..+63) restando DESIGN_OFFSET: el terreno queda
+// anclado en y≈0 (llanuras ~0, cumbres ~11, valles −5) con el mar en −3 y
+// 64 bloques de subsuelo por debajo. El bedrock se coloca aparte en
+// WORLD_MIN_Y (no se deriva del diseño).
+const DESIGN_OFFSET = 8;
+// Nivel del mar en MUNDO (diseño 5 → −3): agua hasta esta Y en columnas de agua.
+const WORLD_SEA_LEVEL = SEA_LEVEL - DESIGN_OFFSET;
 const LAKE_FREQ = 0.012; // frecuencia baja → lagos amplios
 const LAKE_THRESHOLD = 0.65; // calibrado por barrido: ~5% de columnas con lago
 // (0.35 daba ~26% = mundo lleno de charcos)
 const LAKE_FLOOR = 2; // fondo del lago: arena en y=LAKE_FLOOR, piedra debajo
+// Fase 15 (cierre): caché de isLake POR CELDA entera. isLake se consulta
+// mucho más que cualquier otro ruido de agua: generateChunk la llama para
+// el lago de la columna Y nearLake la muestra 25× (ventana 5×5) por cada
+// columna de tierra, y columnFloorY la vuelve a consultar. El valor por
+// celda (Math.floor) no cambia entre consultas, así que cachearlo evita
+// ~25 muestras de noise2D_lake por columna. Se invalida al cambiar de
+// semilla (reinitNoise) como biomeCache/structCellCache; tope con clear
+// simple como la caché de biomas. Solo cachea celdas ENTERAS (el caso
+// caliente de la generación y nearLake); con coordenadas fraccionarias
+// calcula directo (exactitud idéntica a antes, por si un test consulta
+// con floats).
 function isLake(wx, wz) {
+	const cx = Math.floor(wx);
+	const cz = Math.floor(wz);
+	if (cx === wx && cz === wz) {
+		const key = `${cx},${cz}`;
+		const cached = lakeCache.get(key);
+		if (cached !== undefined) return cached;
+		const v = noise2D_lake(wx * LAKE_FREQ, wz * LAKE_FREQ) > LAKE_THRESHOLD;
+		if (lakeCache.size >= MAX_LAKE_CACHE) lakeCache.clear();
+		lakeCache.set(key, v);
+		return v;
+	}
 	return noise2D_lake(wx * LAKE_FREQ, wz * LAKE_FREQ) > LAKE_THRESHOLD;
 }
 
@@ -302,11 +343,15 @@ function heightFrom(temp, wMnt, wx, wz) {
 
 function getHeight(wx, wz) {
 	const mnt = noise2D_mountain(wx * 0.008, wz * 0.008);
-	return heightFrom(
-		noise2D(wx * 0.005, wz * 0.005),
-		smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
-		wx,
-		wz
+	// Fase 15 (D5): Y de MUNDO — el diseño (3..27) se re-basa restando
+	// DESIGN_OFFSET para que la superficie real quede anclada en ~0.
+	return (
+		heightFrom(
+			noise2D(wx * 0.005, wz * 0.005),
+			smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
+			wx,
+			wz
+		) - DESIGN_OFFSET
 	);
 }
 
@@ -325,7 +370,9 @@ function flatSurfaceBlock(temp, j) {
 
 function surfaceBlockFor(wx, wz, height, temp, mnt) {
 	if (mnt > MOUNTAIN_THRESHOLD) {
-		if (height >= MOUNTAIN_SNOW_LINE) return B.SNOW;
+		// `height` es Y de MUNDO (Fase 15 D5): la línea de nieve de diseño (18)
+		// se convierte restando DESIGN_OFFSET (→ cumbres a partir de y=10).
+		if (height >= MOUNTAIN_SNOW_LINE - DESIGN_OFFSET) return B.SNOW;
 		return B.STONE;
 	}
 	return flatSurfaceBlock(temp, noise2D_detail(wx * 0.11, wz * 0.11));
@@ -365,7 +412,7 @@ function findSpawn(wx, wz) {
 		}
 	}
 	// Caso límite (sin tierra firme en el radio): sobre la superficie del agua.
-	return { x: wx + 0.5, z: wz + 0.5, y: SEA_LEVEL + 2 };
+	return { x: wx + 0.5, z: wz + 0.5, y: WORLD_SEA_LEVEL + 2 };
 }
 
 // Devuelve true si (wx, wy, wz) debe excavarse como cueva. Ruido 3D
@@ -378,10 +425,18 @@ const CAVE_FREQ_Y = 0.09; // algo mayor en Y para túneles más horizontales
 const CAVE_FINE_FREQ = 0.2; // octava fina (desvíos)
 const CAVE_THRESHOLD = 0.84; // calibrado por barrido: ~14% del subsuelo excavado,
 // túneles conexos sin queso suizo (0.62 daba ~58%)
+// Fase 15 (cierre): el muestreo fino se salta cuando la octava GRUESA no
+// puede alcanzar el umbral: caveStrength = base*0.6 + fine*0.4 con fine ≤ 1,
+// así que si base*0.6 + 0.4 ≤ 0.84 (= CAVE_THRESHOLD) ningún fine llega al
+// umbral (ni al de superficie 0.91) → la celda NO es cueva. Evita el noise3D
+// fino en ~73% de las celdas de piedra (26K muestras por chunk); el resultado
+// es bit-idéntico (solo se omite un cálculo que no podía cambiar la decisión).
+const CAVE_FINE_MAX_BASE = (CAVE_THRESHOLD - 0.4) / 0.6; // ≈ 0.733
 function caveStrength(wx, wy, wz) {
 	const base =
 		1 -
 		Math.abs(noise3D_cave(wx * CAVE_FREQ, wy * CAVE_FREQ_Y, wz * CAVE_FREQ));
+	if (base <= CAVE_FINE_MAX_BASE) return 0; // ninguna fine alcanza el umbral
 	const fine =
 		1 -
 		Math.abs(
@@ -435,15 +490,18 @@ function mineshaftAt(wx, wz) {
 	const b = noise2D_ms_b(wz * 0.035, -wx * 0.035);
 	return Math.abs(a) < MS_BAND || Math.abs(b) < MS_BAND;
 }
-// Suelo del túnel: `height` es la altura de la superficie. El túnel queda
-// siempre bajo tierra, a MS_BELOW_MIN..+RANGE bloques de profundidad.
+// Suelo del túnel: `height` es la altura de MUNDO de la superficie. El túnel
+// queda siempre bajo tierra, a MS_BELOW_MIN..+RANGE bloques de profundidad.
+// Fase 15 (D5): con el terreno anclado en ~0, el antiguo suelo de 2 bloques
+// (diseño) dejaba las minas SIN espacio bajo la superficie (alturas 0-5): el
+// suelo ahora es el fondo del mundo (nunca toca el bedrock de −64).
 function mineshaftDepth(wx, wz, height) {
 	const below =
 		MS_BELOW_MIN +
 		Math.floor(
 			((noise2D_ms_depth(wx * 0.06, wz * 0.06) + 1) / 2) * MS_BELOW_RANGE
 		);
-	return Math.max(2, height - 1 - below);
+	return Math.max(WORLD_MIN_Y + 1, height - 1 - below);
 }
 // Cofre de loot: ~0.6% de las celdas de pasillo llevan cofre (hash 2D
 // determinista, sin Math.random: estable entre reinicios y por columna).
@@ -574,12 +632,12 @@ function placeTempleColumn(data, x, z, wx, wz, struct, height) {
 	const dz = wz - cz;
 	if (Math.abs(dx) > TEMPLE_HALF || Math.abs(dz) > TEMPLE_HALF) return;
 	// Relleno de soporte si el terreno natural queda bajo el piso del templo.
-	for (let y = Math.max(1, height); y < baseY; y++) {
-		if (y < WORLD_HEIGHT) data[idx(x, y, z)] = B.STONE;
+	for (let y = Math.max(WORLD_MIN_Y + 1, height); y < baseY; y++) {
+		if (y <= WORLD_MAX_Y) data[idx(x, toLocal(y), z)] = B.STONE;
 	}
-	for (let y = baseY; y < WORLD_HEIGHT; y++) {
+	for (let y = baseY; y <= WORLD_MAX_Y; y++) {
 		const block = templeBlockAt(dx, dz, y - baseY);
-		data[idx(x, y, z)] = block;
+		data[idx(x, toLocal(y), z)] = block;
 		// Cofre del tesoro: registrar su estado de loot una sola vez.
 		if (block === B.CHEST) {
 			const key = `${wx},${y},${wz}`;
@@ -617,24 +675,25 @@ function isShipwreckChest(cx, cz, dx, dz) {
 function placeShipwreckColumn(data, x, z, wx, wz, struct) {
 	const cx = Math.floor(struct.cx);
 	const cz = Math.floor(struct.cz);
-	const baseY = oceanFloorY(cx, cz) + 1; // sobre la arena del lecho
+	// Fase 15 (D5): el lecho del océano es Y de MUNDO (diseño − DESIGN_OFFSET).
+	const baseY = oceanFloorY(cx, cz) - DESIGN_OFFSET + 1; // sobre la arena del lecho
 	const dx = wx - cx;
 	const dz = wz - cz;
 	if (Math.abs(dx) > SHIPWRECK_W || Math.abs(dz) > SHIPWRECK_L) return;
 	// Piso del casco: madera de abeto; la fila central es la viga de jungla.
-	if (baseY >= 0 && baseY < WORLD_HEIGHT) {
-		data[idx(x, baseY, z)] = dz === 0 ? B.JUNGLE_LOG : B.SPRUCE_LOG;
+	if (baseY >= WORLD_MIN_Y && baseY <= WORLD_MAX_Y) {
+		data[idx(x, toLocal(baseY), z)] = dz === 0 ? B.JUNGLE_LOG : B.SPRUCE_LOG;
 	}
 	// Costados (1 y 2 sobre el piso): perímetro de madera.
 	for (const dy of [1, 2]) {
 		const y = baseY + dy;
-		if (y >= WORLD_HEIGHT) break;
+		if (y > WORLD_MAX_Y) break;
 		if (Math.abs(dx) === SHIPWRECK_W || Math.abs(dz) === SHIPWRECK_L) {
-			data[idx(x, y, z)] = B.SPRUCE_LOG;
+			data[idx(x, toLocal(y), z)] = B.SPRUCE_LOG;
 		} else if (dy === 1) {
 			// Cofre de loot marino en el interior (sobre el piso del casco).
 			if (isShipwreckChest(cx, cz, dx, dz)) {
-				data[idx(x, y, z)] = B.CHEST;
+				data[idx(x, toLocal(y), z)] = B.CHEST;
 				const key = `${wx},${y},${wz}`;
 				if (!state.chests.has(key))
 					state.chests.set(key, chests.shipwreckLootSlots());
@@ -643,8 +702,8 @@ function placeShipwreckColumn(data, x, z, wx, wz, struct) {
 	}
 	// Puntas del casco (tercera capa): solo los extremos en X.
 	const y3 = baseY + 3;
-	if (y3 < WORLD_HEIGHT && Math.abs(dx) === SHIPWRECK_W && Math.abs(dz) <= 1) {
-		data[idx(x, y3, z)] = B.SPRUCE_LOG;
+	if (y3 <= WORLD_MAX_Y && Math.abs(dx) === SHIPWRECK_W && Math.abs(dz) <= 1) {
+		data[idx(x, toLocal(y3), z)] = B.SPRUCE_LOG;
 	}
 }
 
@@ -703,6 +762,12 @@ function idx(x, y, z) {
 	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
 }
 
+// Y de MUNDO → índice local del chunk (Fase 15 D5): el dato se guarda con
+// local y = mundo y − WORLD_MIN_Y (mundo −64..63 → local 0..127).
+function toLocal(wy) {
+	return wy - WORLD_MIN_Y;
+}
+
 // --- Archivos de chunk (escritura atómica) ---
 // La ruta se lee del holder mutable en tiempo de llamada: si el menú cambia
 // la semilla (save.switchWorld → constants.setWorldSeed), los archivos se
@@ -727,6 +792,10 @@ function atomicWrite(file, data) {
 // plano se siguen leyendo sin migración (retrocompatible, sin bump de schema).
 function writeChunkFile(key, arr) {
 	const [cx, cz] = key.split(",").map(Number);
+	// Fase 15 (D5): defensivo — si llega un array del layout viejo (16×64×16,
+	// p. ej. la migración del world.dat legacy), se convierte a v6 antes de
+	// escribir para que el chunk no quede ilegible al recargar.
+	if (arr.length === CHUNK_SIZE * 64 * CHUNK_SIZE) arr = migrateV5Chunk(arr);
 	const json = JSON.stringify({
 		schemaVersion: SCHEMA_VERSION,
 		cx,
@@ -776,6 +845,20 @@ function readChunkFile(file, origen) {
 		);
 		return null;
 	}
+	// Fase 15 (D5): migración v5 → v6. Los chunks v5 son 16×64×16 (local y =
+	// mundo y, 0..63); el mundo nuevo es −64..+63, así que el dato viejo se
+	// desplaza al nuevo local y 64..127 (mundo 0..63) y el fondo nuevo
+	// (mundo −64..−1) se rellena con bedrock + piedra. Las construcciones de
+	// la superficie se conservan tal cual; solo el subsuelo nuevo queda sin
+	// cuevas (los chunks recién generados con v6 sí las tienen).
+	if (
+		parsed.data.length === CHUNK_SIZE * 64 * CHUNK_SIZE &&
+		(typeof parsed.schemaVersion !== "number" || parsed.schemaVersion < 6)
+	) {
+		parsed.data = Array.from(migrateV5Chunk(Uint8Array.from(parsed.data)));
+		parsed.schemaVersion = SCHEMA_VERSION;
+		return parsed;
+	}
 	if (parsed.data.length !== CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE) {
 		// biome-ignore lint/suspicious/noConsole: aviso de chunk con longitud inesperada
 		console.warn(
@@ -784,6 +867,26 @@ function readChunkFile(file, origen) {
 		return null;
 	}
 	return parsed;
+}
+
+// Migra un chunk v5 (16×64×16, local y == mundo y 0..63) al layout v6
+// (16×128×16, local y = mundo y − WORLD_MIN_Y): el dato viejo sube a local
+// 64..127 y el fondo (local 0..63 = mundo −64..−1) se rellena con bedrock
+// (local 0) y piedra. Determinista y sin estado: mismo input → mismo output.
+function migrateV5Chunk(oldData) {
+	const out = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+	for (let ly = 0; ly < 64; ly++) {
+		const src = ly * CHUNK_SIZE * CHUNK_SIZE;
+		const dst = (ly - WORLD_MIN_Y) * CHUNK_SIZE * CHUNK_SIZE;
+		out.set(oldData.subarray(src, src + CHUNK_SIZE * CHUNK_SIZE), dst);
+	}
+	for (let x = 0; x < CHUNK_SIZE; x++) {
+		for (let z = 0; z < CHUNK_SIZE; z++) {
+			out[idx(x, 0, z)] = B.BEDROCK; // local 0 = mundo −64
+			for (let ly = 1; ly < -WORLD_MIN_Y; ly++) out[idx(x, ly, z)] = B.STONE;
+		}
+	}
+	return out;
 }
 
 function markChunkDirty(cx, cz) {
@@ -841,7 +944,7 @@ function inBounds(wx, wz) {
 function hangVines(data, lx, y, lz, height) {
 	const maxV = Math.max(height, y - 3);
 	for (let v = y - 1; v >= maxV; v--) {
-		const i = idx(lx, v, lz);
+		const i = idx(lx, toLocal(v), lz);
 		if (data[i] !== B.AIR) break;
 		data[i] = B.VINES;
 	}
@@ -893,14 +996,35 @@ function generateChunk(cx, cz) {
 			// triple muestreo en el bucle de generación).
 			const temp = noise2D(wx * 0.005, wz * 0.005);
 			const mnt = noise2D_mountain(wx * 0.008, wz * 0.008);
-			const baseHeight = heightFrom(
-				temp,
-				smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
-				wx,
-				wz
-			);
-			const floorY = columnFloorY(wx, wz) ?? 0; // fondo del agua (columna de agua)
-			const height = waterCol ? floorY : baseHeight;
+			const baseHeight =
+				heightFrom(
+					temp,
+					smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
+					wx,
+					wz
+				) - DESIGN_OFFSET; // diseño (3..27) → MUNDO (terreno anclado en ~0)
+			// Fase 15 (cierre): lecho de la columna de agua derivado de los flags
+			// y ruidos YA muestreados (lake/river/ocean + baseHeight). Antes se
+			// llamaba a columnFloorY(wx, wz), que volvía a muestrear isLake +
+			// isRiver + isOcean y, para ríos, temp + mnt + heightFrom + riverDepth
+			// (~8 ruidos duplicados por columna). El resultado es idéntico
+			// (columnFloorY usa exactamente estos ruidos): mismo mundo, sin
+			// recálculos. Solo aplica a columnas de agua (si no, 0 como antes).
+			let floorY = 0; // Y de MUNDO del lecho
+			if (lake) floorY = lakeFloorY(wx, wz) - DESIGN_OFFSET;
+			else if (river) {
+				// columnFloorY: max(1, min(h − riverDepth, SEA_LEVEL−1)) con
+				// h = heightFrom(...) = baseHeight + DESIGN_OFFSET.
+				floorY =
+					Math.max(
+						1,
+						Math.min(
+							baseHeight + DESIGN_OFFSET - riverDepth(wx, wz),
+							SEA_LEVEL - 1
+						)
+					) - DESIGN_OFFSET;
+			} else if (ocean) floorY = oceanFloorY(wx, wz) - DESIGN_OFFSET;
+			const height = waterCol ? floorY : baseHeight; // Y de MUNDO de la superficie
 			// Fase 11 (Bloque B): el bioma ahora conoce la puerta de pantano
 			// (el ruido de pantano, muestreado a baja frecuencia).
 			const swampNoise = noise2D_swamp(wx * 0.005, wz * 0.005);
@@ -920,46 +1044,73 @@ function generateChunk(cx, cz) {
 			let carvedTop = false;
 			let mouth = false;
 
-			for (let y = 0; y < WORLD_HEIGHT; y++) {
+			// Fase 15 (D5): el bucle recorre el MUNDO (−64..+63). El bedrock va en
+			// WORLD_MIN_Y; el subsuelo baja 64 bloques (cuevas + minerales por
+			// profundidad); la superficie en `height` (≈0) y el aire hasta +63.
+			// Fase 15 (cierre): el aire por encima del contenido ya es 0 en el
+			// Uint8Array (AIR = 0), así que el bucle solo escribe hasta la última
+			// fila CON contenido: la superficie en tierra (height − 1) o la
+			// última fila de agua en columnas de agua (WORLD_SEA_LEVEL − 1).
+			// Antes recorría las ~60 filas de aire vacío por columna (~47% de
+			// las iteraciones sin trabajo útil). Las estructuras/árboles se
+			// escriben después del bucle y no dependen de este límite.
+			const yEnd = waterCol ? WORLD_SEA_LEVEL - 1 : height - 1;
+			for (let y = WORLD_MIN_Y; y <= yEnd; y++) {
 				let block = B.AIR;
-				if (y === 0) block = B.BEDROCK;
+				if (y === WORLD_MIN_Y) block = B.BEDROCK;
 				else if (waterCol) {
-					// Columna de agua (lago o río): piedra bajo el lecho, arena en el
-					// lecho y agua encima hasta SEA_LEVEL. Fase 10 (A4): las CUEVAS
-					// bajo el agua se inundan (cuevas acuáticas) — nunca hay bolsas
-					// de aire bajo el agua (invariante de unit-mundo).
+					// Columna de agua (lago, río u océano): piedra bajo el lecho, arena
+					// en el lecho y agua encima hasta WORLD_SEA_LEVEL. Fase 10 (A4): las
+					// CUEVAS bajo el agua se inundan (cuevas acuáticas) — nunca hay
+					// bolsas de aire bajo el agua (invariante de unit-mundo).
 					if (y < floorY) {
-						if (y > 1 && isCaveBlock(wx, y, wz, false)) block = B.WATER;
+						if (
+							y > WORLD_MIN_Y + 1 &&
+							isCaveBlock(wx, y, wz, false)
+						)
+							block = B.WATER;
 						else block = B.STONE;
 					} else if (y === floorY) block = B.SAND;
-					else if (y < SEA_LEVEL) block = B.WATER;
+					else if (y < WORLD_SEA_LEVEL) block = B.WATER;
 				} else if (y < height - 1) {
 					// Cuevas (Fase 4): el ruido 3D excava la piedra sin tocar el
-					// bedrock (y === 0). Muestreado en coordenadas de mundo → continuo
-					// entre chunks vecinos y determinista. Cerca de la superficie el
-					// umbral sube (nearSurface): los túneles se estrechan y solo los
-					// más fuertes alcanzan la capa superior (boca de cueva).
-					if (y > 1 && isCaveBlock(wx, y, wz, y >= height - 3)) {
+					// bedrock. Muestreado en coordenadas de mundo → continuo entre
+					// chunks vecinos y determinista. Cerca de la superficie el umbral
+					// sube (nearSurface): los túneles se estrechan y solo los más
+					// fuertes alcanzan la capa superior (boca de cueva).
+					if (
+						y > WORLD_MIN_Y + 1 &&
+						isCaveBlock(wx, y, wz, y >= height - 3)
+					) {
 						block = B.AIR;
 						if (y === height - 2) carvedTop = true;
 					} else {
 						block = B.STONE;
-						if (y > 4) {
-							// Fase 9 (Bloque F): minerales por altura estilo Minecraft —
-							// carbón abundante en profundidad media-alta, hierro medio-
-							// bajo, oro bajo, diamante/redstone solo en lo profundo.
+						if (y > WORLD_MIN_Y + 4) {
+							// Fase 15 (D5): minerales por PROFUNDIDAD (mundo −64..+63) —
+							// diamante/redstone solo en lo profundo (y < −12/−20),
+							// oro/esmeralda bajo el mar, hierro/carbón en capas medias.
 							// Segunda octava de ruido para vetas más orgánicas.
+							// Fase 15 (cierre): early-exit — roll = oreRoll*0.7 +
+							// oreFine*0.3 con oreFine ≤ 1, y el umbral MÁS BAJO de
+							// mineral es el carbón (0.86): si oreRoll*0.7 + 0.3 ≤ 0.86
+							// (oreRoll ≤ 0.8) ningún oreFine alcanza NINGÚN mineral →
+							// se omite el noise2D de detalle en ~80% de las celdas
+							// de piedra. Bit-idéntico: solo se salta un cálculo que
+							// no podía cambiar la decisión.
 							const oreRoll =
 								(noise2D_ore(wx * 0.3 + y * 7.1, wz * 0.3) + 1) / 2;
-							const oreFine =
-								(noise2D_detail(wx * 0.15 + y * 3.7, wz * 0.15) + 1) / 2;
-							const roll = oreRoll * 0.7 + oreFine * 0.3;
-							if (y < 14 && roll > 0.978) block = B.DIAMOND_ORE;
-							else if (y < 18 && roll > 0.968) block = B.REDSTONE_ORE;
-							else if (y < 32 && roll > 0.955) block = B.EMERALD_ORE;
-							else if (y < 32 && roll > 0.945) block = B.GOLD_ORE;
-							else if (y < 48 && roll > 0.9) block = B.IRON_ORE;
-							else if (y < 56 && roll > 0.86) block = B.COAL_ORE;
+							if (oreRoll * 0.7 + 0.3 > 0.86) {
+								const oreFine =
+									(noise2D_detail(wx * 0.15 + y * 3.7, wz * 0.15) + 1) / 2;
+								const roll = oreRoll * 0.7 + oreFine * 0.3;
+								if (y < -20 && roll > 0.978) block = B.DIAMOND_ORE;
+								else if (y < -12 && roll > 0.968) block = B.REDSTONE_ORE;
+								else if (y < -4 && roll > 0.955) block = B.EMERALD_ORE;
+								else if (y < -4 && roll > 0.945) block = B.GOLD_ORE;
+								else if (y < 12 && roll > 0.9) block = B.IRON_ORE;
+								else if (y < 28 && roll > 0.86) block = B.COAL_ORE;
+							}
 						}
 					}
 				} else if (y === height - 1) {
@@ -969,7 +1120,7 @@ function generateChunk(cx, cz) {
 					mouth = mouthPeak && carvedTop;
 					block = mouth ? B.AIR : surfaceBlock;
 				}
-				data[idx(x, y, z)] = block;
+				data[idx(x, y - WORLD_MIN_Y, z)] = block;
 			}
 
 			// Pozos decorativos (Fase 7): charco de agua o lava que reemplaza al
@@ -980,23 +1131,25 @@ function generateChunk(cx, cz) {
 			// propios — el mismo ruido de pantano a frecuencia alta decide dónde
 			// hay agua (pozas pantanosas entre la hierba, como en Minecraft).
 			const swampPool = isSwampPoolAt(wx, wz);
+			// Fase 15 (D5): `height` es Y de MUNDO, así que el charco necesita
+			// superficie por encima del nivel del mar de MUNDO (WORLD_SEA_LEVEL).
 			const pond =
 				!waterCol &&
 				!mouth &&
-				height > SEA_LEVEL + 1 &&
+				height > WORLD_SEA_LEVEL + 1 &&
 				(isPondAt(wx, wz) || swampPool);
 			const lavaPond =
 				!pond &&
 				!waterCol &&
 				!mouth &&
-				height > SEA_LEVEL + 1 &&
+				height > WORLD_SEA_LEVEL + 1 &&
 				isLavaPondAt(wx, wz);
 			if (pond) {
-				data[idx(x, height - 1, z)] = B.WATER;
-				data[idx(x, height - 2, z)] = B.SAND;
+				data[idx(x, toLocal(height - 1), z)] = B.WATER;
+				data[idx(x, toLocal(height - 2), z)] = B.SAND;
 			} else if (lavaPond) {
-				data[idx(x, height - 1, z)] = B.LAVA;
-				data[idx(x, height - 2, z)] = B.SAND;
+				data[idx(x, toLocal(height - 1), z)] = B.LAVA;
+				data[idx(x, toLocal(height - 2), z)] = B.SAND;
 			}
 
 			// Fase 12 (Bloque B): estructura de la celda (templo de jungla o
@@ -1009,22 +1162,25 @@ function generateChunk(cx, cz) {
 			// Minas abandonadas (Fase 7): excavar el pasillo horizontal en piedra
 			// (preserva minerales y el techo) a la profundidad del túnel; nunca
 			// rompen la superficie (y < height - 1). Los cofres de loot van en el
-			// suelo del pasillo (raro y determinista).
-			if (mineshaftAt(wx, wz)) {
+			// suelo del pasillo (raro y determinista). Fase 15 (D5): nunca en
+			// columnas de agua — el túnel (hasta 9 bloques bajo la superficie)
+			// caería dentro del lecho del río/océano y dejaría aire bajo el agua.
+			if (mineshaftAt(wx, wz) && !waterCol) {
 				const depth = mineshaftDepth(wx, wz, height);
 				for (
 					let y = depth + 1;
 					y < depth + MS_TUNNEL_H && y < height - 1;
 					y++
 				) {
-					if (data[idx(x, y, z)] === B.STONE) data[idx(x, y, z)] = B.AIR;
+					if (data[idx(x, toLocal(y), z)] === B.STONE)
+						data[idx(x, toLocal(y), z)] = B.AIR;
 				}
 				if (
 					msLootSpot(wx, wz) &&
 					depth + 1 < height - 1 &&
-					data[idx(x, depth + 1, z)] === B.AIR
+					data[idx(x, toLocal(depth + 1), z)] === B.AIR
 				) {
-					data[idx(x, depth + 1, z)] = B.CHEST;
+					data[idx(x, toLocal(depth + 1), z)] = B.CHEST;
 					state.chests.set(`${wx},${depth + 1},${wz}`, chests.lootSlots());
 				}
 			}
@@ -1059,7 +1215,7 @@ function generateChunk(cx, cz) {
 				const treeHeight = 5 + Math.floor(Math.random() * 4);
 				for (let i = 0; i < treeHeight; i++) {
 					const y = height + i;
-					if (y < WORLD_HEIGHT) data[idx(x, y, z)] = B.JUNGLE_LOG;
+					if (y <= WORLD_MAX_Y) data[idx(x, toLocal(y), z)] = B.JUNGLE_LOG;
 				}
 				for (let dx = -2; dx <= 2; dx++) {
 					for (let dz = -2; dz <= 2; dz++) {
@@ -1081,7 +1237,7 @@ function generateChunk(cx, cz) {
 							)
 								continue;
 							const y = height + dy;
-							if (y < WORLD_HEIGHT)
+							if (y <= WORLD_MAX_Y)
 								pendingLeaves.push({
 									lx,
 									y,
@@ -1110,7 +1266,7 @@ function generateChunk(cx, cz) {
 				const treeHeight = 4 + Math.floor(Math.random() * 3);
 				for (let i = 0; i < treeHeight; i++) {
 					const y = height + i;
-					if (y < WORLD_HEIGHT) data[idx(x, y, z)] = log;
+					if (y <= WORLD_MAX_Y) data[idx(x, toLocal(y), z)] = log;
 				}
 				for (let dx = -2; dx <= 2; dx++) {
 					for (let dz = -2; dz <= 2; dz++) {
@@ -1134,7 +1290,7 @@ function generateChunk(cx, cz) {
 							)
 								continue;
 							const y = height + dy;
-							if (y < WORLD_HEIGHT)
+							if (y <= WORLD_MAX_Y)
 								pendingLeaves.push({
 									lx,
 									y,
@@ -1160,7 +1316,7 @@ function generateChunk(cx, cz) {
 				const treeHeight = 5 + Math.floor(Math.random() * 4);
 				for (let i = 0; i < treeHeight; i++) {
 					const y = height + i;
-					if (y < WORLD_HEIGHT) data[idx(x, y, z)] = B.SPRUCE_LOG;
+					if (y <= WORLD_MAX_Y) data[idx(x, toLocal(y), z)] = B.SPRUCE_LOG;
 				}
 				for (let dy = 0; dy < treeHeight - 1; dy++) {
 					const radius = dy < 2 ? 1 : 2;
@@ -1187,7 +1343,7 @@ function generateChunk(cx, cz) {
 							)
 								continue;
 							const y = height + dy;
-							if (y < WORLD_HEIGHT)
+							if (y <= WORLD_MAX_Y)
 								pendingLeaves.push({
 									lx,
 									y,
@@ -1204,11 +1360,11 @@ function generateChunk(cx, cz) {
 			// Fase 9 (Bloque F): estructuras y vegetación sobre césped firme —
 			// hierba alta, flores (amapola/diente de león) y, raramente, un pilar
 			// de piedra con piedra de musgo (estructura decorativa).
-			if (canGrowTree && data[idx(x, height, z)] === B.AIR) {
+			if (canGrowTree && data[idx(x, toLocal(height), z)] === B.AIR) {
 				const veg = Math.random();
-				if (veg < 0.1) data[idx(x, height, z)] = B.TALL_GRASS;
-				else if (veg < 0.12) data[idx(x, height, z)] = B.POPPY;
-				else if (veg < 0.14) data[idx(x, height, z)] = B.DANDELION;
+				if (veg < 0.1) data[idx(x, toLocal(height), z)] = B.TALL_GRASS;
+				else if (veg < 0.12) data[idx(x, toLocal(height), z)] = B.POPPY;
+				else if (veg < 0.14) data[idx(x, toLocal(height), z)] = B.DANDELION;
 			}
 			if (
 				canGrowTree &&
@@ -1219,8 +1375,8 @@ function generateChunk(cx, cz) {
 				const h = 1 + Math.floor(Math.random() * 3);
 				for (let i = 0; i < h; i++) {
 					const y = height + i;
-					if (y < WORLD_HEIGHT && data[idx(x, y, z)] === B.AIR)
-						data[idx(x, y, z)] =
+					if (y <= WORLD_MAX_Y && data[idx(x, toLocal(y), z)] === B.AIR)
+						data[idx(x, toLocal(y), z)] =
 							i === h - 1 ? B.MOSSY_COBBLESTONE : B.COBBLESTONE;
 				}
 			}
@@ -1242,7 +1398,7 @@ function generateChunk(cx, cz) {
 	// charcos ya se hizo al buferizar (leafWx/leafWz), así que aquí basta el
 	// aire: las hojas no caen sobre troncos, terreno ni estructuras.
 	for (const leaf of pendingLeaves) {
-		const i = idx(leaf.lx, leaf.y, leaf.lz);
+		const i = idx(leaf.lx, toLocal(leaf.y), leaf.lz);
 		if (data[i] === B.AIR) {
 			data[i] = leaf.block;
 			if (leaf.vines) hangVines(data, leaf.lx, leaf.y, leaf.lz, leaf.height);
@@ -1256,7 +1412,7 @@ function generateChunk(cx, cz) {
 }
 
 function getBlock(wx, wy, wz) {
-	if (wy < 0 || wy >= WORLD_HEIGHT) return B.AIR;
+	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return B.AIR;
 	const cx = Math.floor(wx / CHUNK_SIZE),
 		cz = Math.floor(wz / CHUNK_SIZE);
 	const chunk = chunks.get(`${cx},${cz}`);
@@ -1266,7 +1422,7 @@ function getBlock(wx, wy, wz) {
 	if (!chunk) return B.AIR;
 	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	return chunk[idx(x, wy, z)];
+	return chunk[idx(x, toLocal(wy), z)];
 }
 
 // ============================================================
@@ -1368,7 +1524,7 @@ function cleanUnsupportedTorches(wx, wy, wz) {
 
 // ¿La posición (wy = pies) tiene el cielo bloqueado (oscuro de día)?
 function isColumnDark(wx, wy, wz) {
-	for (let y = Math.max(0, wy) + 1; y < WORLD_HEIGHT; y++) {
+	for (let y = Math.max(WORLD_MIN_Y, wy) + 1; y <= WORLD_MAX_Y; y++) {
 		const b = getBlock(wx, y, wz);
 		if (b !== B.AIR && b !== B.WATER && b !== B.LAVA) return true;
 	}
@@ -1379,7 +1535,7 @@ function isColumnDark(wx, wy, wz) {
 // (celda de cueva) para spawn de hostiles de día, o null si la columna
 // no tiene cueva (superficie sólida sin excavar).
 function findDarkCaveY(wx, wz, surfaceH) {
-	for (let y = surfaceH - 2; y > 1; y--) {
+	for (let y = surfaceH - 2; y > WORLD_MIN_Y + 1; y--) {
 		if (
 			getBlock(wx, y, wz) === B.AIR &&
 			isSolidBlock(getBlock(wx, y + 1, wz))
@@ -1408,23 +1564,23 @@ function isFallable(b) {
 function settleColumn(wx, wy, wz) {
 	// wy: celda recién cambiada. La gravedad afecta a la propia celda (si se
 	// colocó arena/grava en el aire) y a las de encima (si se rompió su apoyo).
-	for (let y = wy; y < WORLD_HEIGHT - 1; y++) {
+	for (let y = wy; y < WORLD_MAX_Y; y++) {
 		const b = getBlock(wx, y, wz);
 		if (!GRAVITY_BLOCKS.has(b)) break; // solo la primera columna contigua
 		if (!isFallable(getBlock(wx, y - 1, wz))) break; // ya apoyado
 		// Buscar el primer soporte hacia abajo (la celda cae DE UN TIRÓN a
 		// través del hueco; si el hueco es agua/lava, las desplaza hacia arriba).
 		let dest = y - 1;
-		while (dest >= 1 && isFallable(getBlock(wx, dest - 1, wz))) dest--;
+		while (dest > WORLD_MIN_Y && isFallable(getBlock(wx, dest - 1, wz))) dest--;
 		if (dest === y - 1 && !isFallable(getBlock(wx, dest, wz))) break; // sin hueco
 		const cx = Math.floor(wx / CHUNK_SIZE),
 			cz = Math.floor(wz / CHUNK_SIZE);
 		const chunk = generateChunk(cx, cz);
 		const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 		const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-		const displaced = chunk[idx(x, dest, z)]; // lo que había donde cae (aire/líquido)
-		chunk[idx(x, dest, z)] = b;
-		chunk[idx(x, y, z)] = displaced;
+		const displaced = chunk[idx(x, toLocal(dest), z)]; // lo que había donde cae
+		chunk[idx(x, toLocal(dest), z)] = b;
+		chunk[idx(x, toLocal(y), z)] = displaced;
 		markChunkDirty(cx, cz);
 		if (blockChangeHandler) {
 			blockChangeHandler(wx, dest, wz, b); // destino
@@ -1449,7 +1605,7 @@ function countWaterNeighbors(wx, wy, wz) {
 }
 
 function setBlock(wx, wy, wz, blockId) {
-	if (wy < 0 || wy >= WORLD_HEIGHT) return false;
+	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return false;
 	// Fase 10 (B1): no colocar fuera de los límites del mundo.
 	if (!inBounds(wx, wz)) return false;
 	const cx = Math.floor(wx / CHUNK_SIZE),
@@ -1457,7 +1613,7 @@ function setBlock(wx, wy, wz, blockId) {
 	const chunk = generateChunk(cx, cz);
 	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	chunk[idx(x, wy, z)] = blockId;
+	chunk[idx(x, toLocal(wy), z)] = blockId;
 	markChunkDirty(cx, cz);
 	// Fase 10 (D1): después de cambiar el bloque, la gravedad asienta la
 	// columna (la arena/grava de encima cae si perdió el soporte).
@@ -1605,6 +1761,10 @@ Object.assign(world, {
 	World,
 	Chunk,
 	SEA_LEVEL,
+	WORLD_SEA_LEVEL,
+	DESIGN_OFFSET,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y,
 	LAKE_FLOOR,
 	SNOW_TEMP,
 	MOUNTAIN_THRESHOLD,

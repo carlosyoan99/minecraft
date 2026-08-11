@@ -83,14 +83,48 @@ let failed = 0;
 // re-ejecutar la suite).
 const results = [];
 
+// Fase 15 (cierre): la salida de cada test se captura a tests/last-run/
+// para poder inspeccionar qué checks fallaron sin re-ejecutar la suite.
+const LAST_RUN_DIR = path.join(__dirname, "last-run");
+try {
+	fs.mkdirSync(LAST_RUN_DIR, { recursive: true });
+} catch {
+	// no bloquea el runner si no se puede crear el directorio
+}
+
+// Ejecuta un test con banner, captura su salida (stderr incluido) y la
+// guarda en tests/last-run/<test>.log.
 function run(file) {
 	const r = spawnSync(process.execPath, [path.join(__dirname, file)], {
-		stdio: "inherit"
+		stdio: ["inherit", "pipe", "pipe"]
 	});
+	const out = `${r.stdout || ""}${r.stderr || ""}`;
 	const ok = r.status === 0;
 	if (!ok) failed++;
-	results.push({ file, ok });
+	results.push({ file, ok, out });
+	console.log(`${ok ? "✅" : "❌"} ${file}${ok ? "" : ` (exit ${r.status})`}`);
+	try {
+		fs.writeFileSync(path.join(LAST_RUN_DIR, file + ".log"), out);
+	} catch {
+		// no bloquea el runner
+	}
 	return ok;
+}
+
+// Extrae de la salida capturada de un test los nombres de los checks que
+// fallaron. Prioriza el reporte uniforme que los tests instrumentados
+// imprimen al salir (`# checks fallidos: n — a; b; ...`); si no existe,
+// busca líneas con el marcador de fallo del estilo por-check (✗/FAIL).
+function failedChecksFrom(out) {
+	const m = out.match(/# checks fallidos: \d+ — ([^\n]+)/);
+	if (m) return m[1].split("; ").filter(Boolean);
+	const names = [];
+	for (const line of out.split("\n")) {
+		const t = line.trim();
+		if (/^✗/.test(t)) names.push(t.replace(/^✗\s*/, "").split(" — ")[0]);
+		else if (/^FAIL:?/.test(t)) names.push(t.replace(/^FAIL:?\s*/, "").split(" | ")[0]);
+	}
+	return names;
 }
 
 // Fase 10 (C1): `test.log` — persistencia del resultado de la última
@@ -103,7 +137,7 @@ function writeTestLog() {
 		: args.includes("--unit")
 			? "unit"
 			: "full";
-	const failedFiles = results.filter((r) => !r.ok).map((r) => r.file);
+	const failedFiles = results.filter((r) => !r.ok);
 	const entry = `# test.log — resultado de la última ejecución de tests
 fecha: ${new Date().toISOString()}
 modo: ${mode}
@@ -111,7 +145,14 @@ total: ${results.length}
 fallos: ${failedFiles.length}
 ${
 	failedFiles.length
-		? `tests con fallo: ${failedFiles.join(", ")}`
+		? `tests con fallo: ${failedFiles
+				.map((r) => {
+					const checks = failedChecksFrom(r.out);
+					return checks.length
+						? `${r.file} → ${checks.join("; ")}`
+						: r.file;
+				})
+				.join(" | ")}`
 		: "tests con fallo: (ninguno)"
 }
 exit: ${failed ? 1 : 0}
@@ -121,6 +162,22 @@ exit: ${failed ? 1 : 0}
 	} catch {
 		// no bloquea el runner si no se puede escribir el log
 	}
+}
+
+// Resumen final en terminal: qué tests fallaron y qué checks, sin tener que
+// re-ejecutar la suite ni buscar a mano en la salida.
+function printSummary() {
+	const bad = results.filter((r) => !r.ok);
+	if (!bad.length) return;
+	console.error("\n================ RESULTADO ================");
+	console.error(`tests fallidos: ${bad.length}/${results.length}`);
+	for (const r of bad) {
+		const checks = failedChecksFrom(r.out);
+		console.error(`  ❌ ${r.file} (exit ${r.status})`);
+		for (const c of checks) console.error(`       ✗ ${c}`);
+	}
+	console.error("Detalle completo por test en tests/last-run/<test>.log");
+	console.error("============================================");
 }
 
 // ¿Hay un servidor HTTP escuchando en el host/puerto del WS?
@@ -141,17 +198,25 @@ function serverUp(wsUrl) {
 }
 
 (async () => {
-	if (!args.includes("--e2e")) {
-		for (const f of UNIT) run(f);
-	}
+	if (args.includes("--audit")) {
+		// Modo auditoría: solo las auditorías por fase standalone (sin
+		// servidor ni navegador). Lento a propósito (audit-altura genera
+		// radio 16 de chunks); no mezclar con unit/E2E en la misma ejecución.
+		for (const f of AUDIT) run(f);
+	} else {
+		if (!args.includes("--e2e")) {
+			for (const f of UNIT) run(f);
+		}
 
-	if (!args.includes("--unit")) {
+		if (!args.includes("--unit")) {
 		const wsUrl = process.env.WS_URL || "ws://localhost:3998";
 		if (await serverUp(wsUrl)) {
 			for (const f of E2E) run(f);
 		} else {
 		}
 	}
+	}
 	writeTestLog(); // Fase 10 (C1)
+	printSummary(); // Fase 15 (cierre)
 	process.exit(failed ? 1 : 0);
 })();

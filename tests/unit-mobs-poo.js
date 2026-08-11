@@ -13,8 +13,14 @@ const state = require("../server/state.js");
 mobs.setSpawnSafeRadius(0);
 
 let fails = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 const check = (name, ok, extra = "") => {
-	if (!ok) fails++;
+	if (!ok) { fails++; failedChecks.push(name); }
 	console.log(`${ok ? "🟢" : "🔴"} ${name}${extra ? " — " + extra : ""}`);
 };
 

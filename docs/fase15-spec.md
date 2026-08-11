@@ -218,7 +218,7 @@ Prioridad baja (tras A/B/C); solo las marcadas como pendientes:
 | D2 | Sprint (correr): +30% velocidad + FOV + gasto de hambre | ⭐ bajo esfuerzo |
 | D3 | Tooltip con nombre/durabilidad en el hotbar | ⭐ bajo esfuerzo |
 | D4 | Esquilar ovejas (tijeras), hueso/bonemeal | interacciones icónicas |
-| D5 | Alturas -64..+64 (decisión diferida) | alto impacto: generación, guardado (`SCHEMA_VERSION`), culling, física — requiere estudio propio |
+| D5 | Alturas −64..+64 (decisión diferida) | ✅ **IMPLEMENTADO** (ver §9): mundo −64..+63, `SCHEMA_VERSION` 6, rebase con `DESIGN_OFFSET` 8. Auditado por `tests/audit-altura.js` |
 
 ---
 
@@ -229,7 +229,8 @@ Prioridad baja (tras A/B/C); solo las marcadas como pendientes:
 2. `node --check` en todo lo tocado y `biome check` 0 errores.
 3. Auditorías 3-12 sin regresiones (especialmente `audit-fase4` culling con los
    bloques nuevos, `audit-fase5` durabilidad con `BOW_DURABILITY`,
-   `audit-fase7` render CDP con puertas/escaleras/losas/vallas).
+   `audit-fase7` render CDP con puertas/escaleras/losas/vallas, y
+   `node tests/run.js --audit` — auditorías standalone + `audit-altura`).
 4. Verificación manual en navegador: arco (disparar + recoger flecha), puertas,
    escaleras/losas/vallas (colocación y colisión), cubo (recoger/verter + fuente
    2×2), árboles con copa completa en bordes.
@@ -276,11 +277,136 @@ La Fase 15 **completa y auditada**:
   iluminación que las oscurecía, `depthWrite:false`, más cajas por nube,
   alturas y velocidades variadas) y **D3** tooltip estilizado del hotbar con
   nombre y durabilidad al hover (`public/ui.js`, `#tooltip`). D2 (sprint) y
-  D4 (esquilar/bonemeal) ya existían. D5 (alturas −64..+64) queda fuera del
-  alcance (alto impacto, requiere estudio propio).
+  D4 (esquilar/bonemeal) ya existían. **D5 (alturas −64..+63) implementado
+  y auditado** — ver §9.
 - **Suite**: 50 unitarios en verde (`run.js --unit`, exit 0) incluyendo el
   registro de `unit-ao.js` (AO por vértice, Fase 10 E1) y `unit-muerte.js`
   (causas de `player_die`, Fase 10 B2).
 
 Commits de esta fase: `57ed016` (A2 árboles), `37773fd` (registro de tests),
 `aa24c12` (spec prospectiva), `4ca3aff` (D1 nubes + D3 tooltip).
+
+---
+
+## 9. Alturas −64..+63 (D5) y su auditoría
+
+### 9.1 Qué cambió
+
+El mundo pasó de 0..63 a **`WORLD_MIN_Y = −64` .. `WORLD_MAX_Y = +63`** (128
+bloques). La generación sigue trabajando en un *espacio de diseño* 0..63
+(ruidos, biomas, altura de columnas, `columnFloorY`, `SEA_LEVEL = 5`) que se
+re-basa restando **`DESIGN_OFFSET = 8`**: el terreno queda anclado en y≈0, el
+mar en `WORLD_SEA_LEVEL = −3`, con 64 bloques de subsuelo minable y 64 de
+cielo para construir. El formato de guardado sube a **`SCHEMA_VERSION 6`**
+(chunks 16×128×16) con migración retrocompatible v5→v6 (el dato viejo sube a
+local 64..127 y el fondo nuevo se rellena con piedra).
+
+### 9.2 `tests/audit-altura.js` (72 checks)
+
+Auditoría dedicada (patrón `audit-faseN.js`) que verifica que **nada se
+rompió** con el cambio de altura. Ejecutable como `node tests/audit-altura.js`
+o dentro de `node tests/run.js --audit`. Cubre 10 áreas:
+
+1. **Layout** — `WORLD_HEIGHT 128`, `WORLD_MIN_Y −64`, `WORLD_MAX_Y 63`,
+   `WORLD_SEA_LEVEL −3`, `SCHEMA_VERSION 6`, longitud de chunk, bedrock en
+   −64, aire en +63.
+2. **Superficie** — terreno anclado en ~0 (rango [−7, 24], media ≈0), ≥30
+   bloques de cielo, <3% de columnas sin bloque de superficie.
+3. **Cuevas** — 5-25% excavado, componentes conexas navegables (la mayor
+   ≥10 bloques), bocas hacia la superficie, <10% de huecos superficiales,
+   bedrock intacto.
+4. **Biomas** — los 8 presentes, montañas elevan el terreno, cumbres nevadas,
+   llanuras/desierto/taiga/jungla/pantano con su superficie correcta,
+   transiciones suaves (salto máx ≤ 4).
+5. **Minerales por profundidad** — diamante solo y<−20, carbón y<28, … con
+   0 menas fuera de capa.
+6. **Agua** — mar en −3, lechos de arena, sin aire bajo el agua, la línea
+   del mar (−4) nunca es aire/piedra, charcos decorativos válidos, lagos,
+   ríos y océano presentes.
+7. **Estructuras** — templo en jungla (piso, cofre, torre dentro del mundo),
+   naufragio en océano (lecho, casco, dentro de límites) y minas abandonadas
+   que nunca cortan agua ni rompen la superficie.
+8. **Costuras** — regeneración bit-idéntica en chunks de borde (0 diffs).
+9. **Migración v5→v6** — el chunk viejo (16×64×16, local y == mundo y) se
+   migra a 16×128×16 con el dato en local 64..127 y el fondo rellenado;
+   round-trip v6 byte-idéntico; `writeChunkFile` defiende arrays v5.
+10. **Geometría del cliente** — todos los vértices en Y de mundo (índice
+    local → mundo) y la superficie del agua emitida a `wy + 0.875`/`wy + 1`.
+
+> Nota: como `unit-mundo`/`unit-biomas`, los umbrales de PRESENCIA (≥1 templo,
+> ≥1 naufragio, 5-25% excavado, …) están calibrados para la semilla por
+> defecto (`miSemilla2026`); con otra `SEED` pueden variar sin ser un fallo.
+
+### 9.3 Regresiones encontradas y corregidas (2026-08-10)
+
+1. **`server/mobs.js` (bug de juego)** — el **ahogado** spawneaba en el aire:
+   usaba el fondo en *espacio de diseño* (`floorY + 2` → y 3..6) con el agua
+   ahora en −7..−4, y su techo de natación (`SEA_LEVEL − 1` = 4) lo hacía
+   flotar sobre el agua. Corregido: spawn en Y de mundo con clamp bajo la
+   superficie del agua, y natación entre el lecho de su columna y
+   `WORLD_SEA_LEVEL − 1`.
+2. **`tests/e2e-durabilidad.js`** — interpretaba el chunkData con el layout
+   viejo (`WORLD_H 64`, `wy = índice local` → apuntaba a aire). Corregido a
+   v6 (`WORLD_H 128` + conversión local→mundo en `groundY`/`waterTopY`/
+   `stoneNear`).
+3. **`tests/unit-fase12.js`** — expectativa del ahogado alineada al nuevo
+   rebase + mock de `getHeight` coherente.
+
+### 9.4 Estado
+
+Verde: **72/72 checks** de `audit-altura`, 50 unitarios (`run.js --unit`,
+exit 0), 6 E2E (`run.js --e2e`, exit 0) y el modo `node tests/run.js --audit`
+(5/5: audit-fase3/4/5/6 + audit-altura, exit 0). Observaciones sin arreglar:
+`e2e-mascotas` es flaky por azar (cobertura de taiga en el área de spawn;
+verificado con sonda WS que los lobos spawnean) y `e2e-cofre` aún usa el
+layout v5 para sus mapas auxiliares aunque pasa (frágil; convendría alinearlo).
+
+### 9.5 Auditorías previas recalibradas por el mundo más alto
+
+El cambio de altura también dejó descalibrados los presupuestos de dos
+auditorías por fase (su `check` no imprime, así que fallaban en silencio con
+exit 1 hasta integrarlas en `run.js --audit`):
+
+- **`audit-fase4`** — "Perf: generación < 12 ms/chunk": el mundo de 128
+  bloques tiene ~3× celdas de piedra por chunk (subsuelo de ~17 a 64 filas;
+  40.4% de piedra vs ~13% antes), así que la generación pasó de ~12 a
+  **33.47 ms/chunk** medidos (mejor de 3). No es una regresión de lógica
+  (proporcional al trabajo real); el presupuesto sube a **< 45 ms** y, tras
+  la optimización del cierre (ver §9.6), se mide **~27 ms**.
+- **`audit-fase6`** — "Mem: geometría bruta < 30 MB": con más altura hay
+  ~2.4× más caras en el área activa; la medición pasó a **71.48 MB** y el
+  presupuesto sube a **< 90 MB**.
+
+Ambos umbrales llevan comentario en el propio test explicando la escala
+(D5) y siguen siendo holgados para streaming.
+
+### 9.6 Optimización de la generación (2026-08-10)
+
+El perfilado mostró que el tiempo se concentra en los ruidos POR CELDA de
+piedra (26K muestras noise3D de cuevas + 26K noise2D de minerales por
+chunk), no en el overhead del bucle ni en `nearLake`. Cuatro cambios
+**bit-idénticos** (mismo mundo; solo omiten cálculos que no podían cambiar
+la decisión):
+
+1. **Early-exit en cuevas** (`caveStrength`): `base*0.6 + fine*0.4 > 0.84`
+   con `fine ≤ 1` → si `base ≤ 0.733` ningún `fine` alcanza el umbral → se
+   omite el noise3D fino (~73% de las celdas).
+2. **Early-exit en minerales**: `roll = oreRoll*0.7 + oreFine*0.3` con el
+   umbral más bajo en 0.86 (carbón) → si `oreRoll*0.7 + 0.3 ≤ 0.86` ningún
+   mineral es posible → se omite el noise2D de detalle (~80% de las celdas).
+3. **Caché de `isLake` por celda entera** (`lakeCache`, patrón
+   `biomeCache`): `nearLake` muestreaba 25× por columna de tierra; ahora
+   casi todo son hits. Solo cachea coordenadas enteras (floats calculan
+   directo) y se invalida en `reinitNoise`.
+4. **Bucle vertical recortado**: el aire por encima de la superficie ya es 0
+   en el `Uint8Array`, así que el bucle solo escribe hasta `height − 1`
+   (tierra) o `WORLD_SEA_LEVEL − 1` (agua) en vez de las 128 filas
+   (~47% menos iteraciones). Estructuras/árboles/minas/charcos se escriben
+   después y no dependen del límite.
+
+Además, el lecho de la columna de agua se deriva de los ruidos YA
+muestreados (`lake`/`river`/`ocean` + `baseHeight`) en vez de volver a
+llamar a `columnFloorY` (~8 ruidos duplicados por columna). Resultado:
+**33.47 → 27.30 ms/chunk** (mejor de 3, −18%), sin cambiar un solo bloque
+del mundo (72/72 de audit-altura, costuras bit-idénticas, suite unitaria y
+E2E en verde).

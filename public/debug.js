@@ -11,7 +11,13 @@
 // está activo.
 // ============================================================
 import * as THREE from "three";
-import { CHUNK_SIZE, WATER, WORLD_HEIGHT } from "./constants.js";
+import {
+	CHUNK_SIZE,
+	WATER,
+	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y
+} from "./constants.js";
 import { camera, scene } from "./scene.js";
 import { getGamemode } from "./ui.js";
 import { chunkMeshes, getClientBlock, lodMeshes } from "./world.js";
@@ -35,11 +41,12 @@ const borderMaterial = new THREE.LineBasicMaterial({ vertexColors: true });
 // El aire y el agua no cuentan; un chunk desconocido (-1) se trata como
 // vacío (el borde queda a nivel 0 solo en esquinas de zona no cargada).
 function surfaceY(wx, wz) {
-	for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+	// Fase 15 (D5): el mundo va de WORLD_MIN_Y (−64) a WORLD_MAX_Y (+63).
+	for (let y = WORLD_MAX_Y; y >= WORLD_MIN_Y; y--) {
 		const b = getClientBlock(wx, y, wz);
 		if (b !== 0 && b !== -1 && b !== WATER) return y + 1;
 	}
-	return 0;
+	return WORLD_MIN_Y;
 }
 
 // Reconstruye el grid: un cuadrado por chunk siguiendo la superficie del

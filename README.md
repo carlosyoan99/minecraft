@@ -1,7 +1,7 @@
 # Mi Minecraft — Clon Node.js + Three.js
 
 ![Estado de desarrollo](https://img.shields.io/badge/estado-en%20desarrollo-yellow)
-![Fases completadas](https://img.shields.io/badge/fases-11%2F12%20completadas-blue)
+![Fases completadas](https://img.shields.io/badge/fases-0-15%20completadas-blue)
 
 Copia jugable de Minecraft, no idéntica pero fiel a sus mecánicas
 distintivas: mundo por chunks, biomas, cuevas, día/noche, mobs con IA,
@@ -128,7 +128,7 @@ volver a una semilla anterior recupera su mundo).
 
 ## Estado actual
 
-### ✅ Implementado (Fases 0 a 12 completadas)
+### ✅ Implementado (Fases 0 a 15 completadas)
 
 > Especificaciones por fase (diseño, decisiones y estado):
 > [`docs/README.md`](docs/README.md).
@@ -211,7 +211,7 @@ volver a una semilla anterior recupera su mundo).
   de cámara, backup `.bak` del guardado, variación de pitch en audio,
   documentación técnica en `docs/server/` y `docs/public/`, y
   `.gitignore` completo.
-- **Fase 10 — Notas del usuario y paridad avanzada** (ver `TODO.md` y
+- **Fase 10 — Notas del usuario y paridad avanzada** (ver
   `docs/fase10-spec.md`): bugs de las notas resueltos (salir del agua,
   quemadura de lava, `/tp` lejano, biomas de hielo sin lava, lagos
   profundos/ríos/cuevas acuáticas, hostiles en cuevas de día, amanecer
@@ -223,7 +223,7 @@ volver a una semilla anterior recupera su mundo).
   desplazan, música generativa por bioma/cueva y más sonidos (TNT,
   cofres, vidrio).
 - **Fase 11 — Bugs de input y cámara, biomas, paridad y tests** (ver
-  `TODO.md` y `docs/fase11-spec.md`): **causa raíz del clic roto**
+  `docs/fase11-spec.md`): **causa raíz del clic roto**
   (pointer lock sobre `document.body` en vez del canvas — los eventos
   de ratón nunca llegaban a `input.js`; auditado con CDP 6/6), cámara
   sin vueltas (clamp `PITCH_LIMIT` redundante eliminado + test de
@@ -245,32 +245,31 @@ volver a una semilla anterior recupera su mundo).
   ocelotes, océano/ríos→ahogados bajo el agua); persistencia de
   mascotas y `slimeSize` en `world.json` (`SCHEMA_VERSION` 5 con
   migración retrocompatible).
+- **Fase 13 — Paridad 1.0, rendimiento, POO y tests de paridad** (ver
+  `docs/fase13-spec.md`): paridad de valores fijada por
+  `tests/unit-paridad.js` (vida 20, curva XP oficial, espadas 4/5/6/7,
+  armadura por puntos, durezas/durabilidades exactas), lagunas L1-L5
+  (arco, puertas, escaleras/losas/vallas, cubo, recetas —
+  `unit-lagunas.js`), **POO completa del servidor** (`ItemStack`,
+  `World`/`Chunk`, `Player`/`createPlayer`, subclases de mobs +
+  `createMob` — `unit-mobs-poo.js`, `unit-poo-entities.js`) y greedy
+  meshing + worker de chunks (`unit-greedy`, `unit-workers`).
+- **Fase 14 — Auditoría y cierre de las fases 12-13** (ver
+  `docs/fase14-spec.md`): bloques A (spawn por bioma, persistencia
+  `SCHEMA_VERSION` 5, tridente, slime determinista), B (drop de menas con
+  `ORE_DROP`, tier de pico, comida/combustible, salud/XP de mobs) y C
+  (raycast único, `mobs_update` condicional, rebuild de vecinos, luz de
+  antorcha stale, `sendInit` liviano) en verde.
+- **Fase 15 — Corrección de auditoría y mejoras del usuario** (ver
+  `docs/fase15-spec.md`): copas de árboles completas en bordes de chunk
+  (`pendingLeaves` + test determinista), nubes semitransparentes con
+  variedad y tooltip estilizado del hotbar.
 
-### 🚧 En desarrollo
+### 🏁 Roadmap completado (fases 0-15)
 
-*(Fases 0-12 implementadas. En curso:*
-
-- **Fase 13** [`docs/fase13-spec.md`](docs/fase13-spec.md) — la
-  **paridad de valores** está implementada (vida siempre 20, curva de XP
-  oficial por tramos con coste total 1.395 a nivel 30, espadas 4/5/6/7,
-  armadura por puntos, durezas y durabilidades exactas, con la red de
-  seguridad `tests/unit-paridad.js`). Quedan pendientes: rendimiento
-  (greedy meshing, Web Workers de chunks), POO completa del servidor y
-  las lagunas de paridad (arco, puertas, escaleras/losas/vallas, cubo,
-  recetas). Ver [`docs/reporte-paridad.md`](docs/reporte-paridad.md).
-
-- **Fase 14** [`docs/fase14-spec.md`](docs/fase14-spec.md) — auditoría y
-  cierre de las fases 12-13: el **bloque A** (spawn por bioma,
-  persistencia `SCHEMA_VERSION` 5, tridente contra mobs y slime
-  determinista — bugs C1-C3 de la spec) y el **bloque B** (drop de menas
-  con `ORE_DROP`, tier de pico por mineral, comida/combustible y salud/XP
-  de mobs fieles a MC) están implementados y en verde; queda el
-  **bloque C** de rendimiento (el doble raycast de `input.js`, el
-  `mobs_update` condicional, la luz de antorcha stale y el rebuild de
-  vecinos en bordes de chunk).
-
-*No se marcan las fases como completadas hasta ejecutar su auditoría
-final.)*
+*(Todas las fases del roadmap están completadas y auditadas. El detalle
+de cada una vive en su spec `docs/faseN-spec.md`; el estado de cada
+tarea, en `TODO.md`.)*
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -538,7 +537,7 @@ preocupación por commit, y los commits son en español.
 - El culling de caras es correcto entre chunks (se resolvió el bug
   original de huecos en los bordes), pero sigue siendo por-cara,
   no greedy meshing — suficiente para el tamaño actual de mundo,
-  no para mundos grandes (ver Fase 6 en `TODO.md`).
+  no para mundos grandes (ver Fase 6 en `docs/fase6-spec.md`).
 - Frustum culling por chunk (Fase 6): cada chunk tiene una esfera
   envolvente calculada de su geometría real y el cliente marca
   `visible=false` los que quedan fuera del campo de visión antes

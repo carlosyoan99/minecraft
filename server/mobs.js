@@ -16,6 +16,7 @@ const {
 	isSolidBlock,
 	NOT_MINEABLE,
 	WORLD_HEIGHT,
+	WORLD_MAX_Y,
 	MOB_XP, // Fase 12 (A4): XP del mob asesinado con un proyectil
 	TNT_DAMAGE, // Fase 14 (Bloque B): el creeper explota con el daño del TNT
 	BOW_DAMAGE, // Fase 13 (L1): daño de la flecha del jugador (9, paridad MC)
@@ -81,6 +82,9 @@ const MOB_HEALTH = {
 const SLIME_HEALTH = { 2: 16, 1: 4, 0: 1 };
 // Daño del slime por tamaño (MC real): grande 3, mediano 2, pequeño 0.
 const SLIME_DAMAGE = { 2: 3, 1: 2, 0: 0 };
+// Notas del usuario: duración del aggro de los hostiles al ser golpeados
+// (~10s, como el aggro de Minecraft Java).
+const MOB_AGGRO_MS = 10000;
 const state = require("./state.js");
 const world = require("./world.js");
 // Fase 12 (Bloque A): addToInventory/removeFromInventory — el tridente del
@@ -414,6 +418,11 @@ class Mob {
 		// Fase 9 (Bloque D): IA por especie —
 		this.fleeUntil = 0; // pasivos: huir del último atacante hasta esta hora
 		this.fleeFrom = null; // { x, z } dirección opuesta al atacante
+		// Notas del usuario: aggro de los hostiles — al ser golpeados por un
+		// jugador se vuelven agresivos con él (lo persiguen y atacan aunque
+		// sea de día) durante MOB_AGGRO_MS.
+		this.aggroUntil = 0; // fin del aggro (timestamp)
+		this.aggroTarget = null; // id de sesión del jugador que lo golpeó
 		this.wanderPauseUntil = 0; // pasivos: pausa aleatoria al deambular
 		this.homeX = x; // punto de origen (rebaño): vuelven si se alejan
 		this.homeZ = z;
@@ -440,7 +449,20 @@ class Mob {
 		return Math.sqrt(dx * dx + dz * dz);
 	}
 
+	// ¿Tiene aggro activo? (golpeado recientemente por un jugador)
+	isAggroed() {
+		return Date.now() < this.aggroUntil;
+	}
+
 	findNearestPlayer() {
+		// Notas del usuario: el aggro hace objetivo al agresor AUNQUE esté
+		// dentro de la zona segura del spawn (quien ataca se expone): el
+		// hostil lo persigue hasta que expira el aggro.
+		if (this.isAggroed() && this.aggroTarget) {
+			const p = players.get(this.aggroTarget);
+			if (p) return { nearest: p, dist: this.distTo(p) };
+			this.aggroUntil = 0; // el agresor se desconectó: pierde el aggro
+		}
 		let nearest = null,
 			best = Infinity;
 		const safe = spawnSafeRadius > 0 ? getSafeSpawn() : null;
@@ -562,7 +584,9 @@ class Mob {
 	exposedToSky() {
 		const x = Math.floor(this.x),
 			z = Math.floor(this.z);
-		for (let y = Math.floor(this.y + 1.5); y < WORLD_HEIGHT; y++) {
+		// Fase 15 (D5): el cielo llega hasta WORLD_MAX_Y (63), no WORLD_HEIGHT
+		// (128 — ahora es el TAMAÑO del mundo en Y, no su tope).
+		for (let y = Math.floor(this.y + 1.5); y <= WORLD_MAX_Y; y++) {
 			const b = world.getBlock(x, y, z);
 			if (isSolidBlock(b) || b === B.WATER) return false;
 		}
@@ -717,7 +741,9 @@ class Mob {
 	// (la base los usa vía tickSpecies; las subclases los sobreescriben).
 	// ============================================================
 	tickZombie(isNight, nearest, dist) {
-		if (nearest && (isNight || dist < 6)) {
+		// Notas del usuario: agresión diurna ampliada a la visión (16 bloques,
+		// como MC) y aggro al ser golpeado — antes solo atacaba de día a <6.
+		if (nearest && (isNight || dist < 16 || this.isAggroed())) {
 			this.state = "chase";
 			this.chase(nearest, 0.035);
 			// Auditoría 2026-08-09 (§3.7): daño "normal" de MC (2.5-3) no 2.
@@ -729,8 +755,9 @@ class Mob {
 	}
 
 	tickSpider(isNight, nearest, dist) {
-		// Fase 5: hostil rápido y frágil; Fase 9: escala y salta
-		if (nearest && (isNight || dist < 8)) {
+		// Fase 5: hostil rápido y frágil; Fase 9: escala y salta. Notas del
+		// usuario: aggro al ser golpeada (antes no reaccionaba).
+		if (nearest && (isNight || dist < 8 || this.isAggroed())) {
 			this.state = "chase";
 			this.chase(nearest, 0.055);
 			// Escalar: si el camino está bloqueado por un sólido y hay hueco
@@ -767,7 +794,8 @@ class Mob {
 			this.tickPet(nearest, dist);
 			return;
 		}
-		if (nearest && (isNight || dist < 8)) {
+		// Notas del usuario: aggro al ser golpeado (antes no reaccionaba).
+		if (nearest && (isNight || dist < 16 || this.isAggroed())) {
 			this.state = "chase";
 			this.chase(nearest, 0.04);
 			if (dist < 1.8) this.attack(nearest, 3, 1200);
@@ -793,8 +821,9 @@ class Mob {
 			return;
 		}
 		// Fase 9 (Bloque D): fuse fiel — se detiene, "silba" (~1.5s) y
-		// explota si el jugador sigue cerca; si se aleja, cancela.
-		if (nearest && dist < 10) {
+		// explota si el jugador sigue cerca; si se aleja, cancela. Notas del
+		// usuario: aggro al ser golpeado (antes no reaccionaba).
+		if (nearest && (dist < 10 || this.isAggroed())) {
 			if (dist < 3) {
 				this.state = "fuse";
 				if (!this.fuseStart) this.fuseStart = Date.now();
@@ -818,8 +847,8 @@ class Mob {
 		// Fase 9 (Bloque D): el esqueleto mantiene la distancia y dispara
 		// flechas (proyectil con gravedad). No arde (en Minecraft el
 		// esqueleto tampoco arde — solo el zombi); por eso se excluye de
-		// BURNS_IN_SUN en la Fase 9.
-		if (nearest && (isNight || dist < 8)) {
+		// BURNS_IN_SUN en la Fase 9. Notas del usuario: aggro al ser golpeado.
+		if (nearest && (isNight || dist < 8 || this.isAggroed())) {
 			this.state = "chase";
 			if (dist < 6)
 				this.chase(
@@ -838,9 +867,11 @@ class Mob {
 	}
 
 	tickEnderman(isNight, nearest, dist) {
+		// Notas del usuario: aggro al ser golpeado (antes no reaccionaba) —
+		// el enderman teletransporta y ataca al agresor aunque sea de día.
 		if (
 			nearest &&
-			dist < 16 &&
+			(dist < 16 || this.isAggroed()) &&
 			Math.random() < 0.02 &&
 			this.teleportCooldown < Date.now()
 		) {
@@ -929,9 +960,16 @@ class Mob {
 	}
 
 	// Al ser golpeado por un jugador (attack_mob): los pasivos huyen durante
-	// ~4s en dirección contraria al atacante (Fase 9, Bloque D).
+	// ~4s en dirección contraria al atacante (Fase 9, Bloque D). Notas del
+	// usuario: los HOSTILES reaccionan volviéndose agresivos con el atacante
+	// (aggro, MOB_AGGRO_MS): lo persiguen y atacan aunque sea de día, como en
+	// Minecraft — antes no hacían nada al ser golpeados.
 	mobHit(attacker) {
-		if (HOSTILE.has(this.type)) return;
+		if (HOSTILE.has(this.type)) {
+			this.aggroUntil = Date.now() + MOB_AGGRO_MS;
+			this.aggroTarget = attacker.id;
+			return;
+		}
 		this.fleeUntil = Date.now() + 4000;
 		this.fleeFrom = {
 			x: 2 * this.x - attacker.x,
@@ -1020,7 +1058,8 @@ class Mob {
 		// Suelo real: getHeight de la columna (el slime salta sobre el terreno).
 		const groundY = world.getHeight(Math.floor(this.x), Math.floor(this.z)) + 1;
 		this.y = groundY + hop;
-		if (nearest && dist < 10) {
+		// Notas del usuario: aggro al ser golpeado (antes no reaccionaba).
+		if (nearest && (dist < 10 || this.isAggroed())) {
 			// Avanzar hacia el jugador (movimiento horizontal en el aire).
 			const dx = nearest.x - this.x,
 				dz = nearest.z - this.z;
@@ -1046,15 +1085,21 @@ class Mob {
 	// bloques (~50% por intento). No se ahoga (no hay sistema de ahogo de
 	// mobs) y no arde (no está en BURNS_IN_SUN).
 	tickDrowned(_isNight, nearest, dist) {
-		if (nearest && dist < 16) {
+		// Notas del usuario: aggro al ser golpeado (antes no reaccionaba).
+		if (nearest && (dist < 16 || this.isAggroed())) {
 			this.state = "chase";
 			// Nadar: moverse en 3D hacia el jugador — horizontal igual que el
 			// resto de hostiles, vertical hacia la profundidad del objetivo
-			// (sin salirse del agua: techo en SEA_LEVEL - 1).
+			// (sin salirse del agua: techo en WORLD_SEA_LEVEL − 1 = −4, y suelo
+			// en el lecho de su columna — Fase 15 D5: antes usaba SEA_LEVEL de
+			// DISEÑO (5) como Y de MUNDO y flotaba en el aire sobre el agua).
 			this.chase(nearest, 0.04);
+			const bedWy =
+				(world.columnFloorY(Math.floor(this.x), Math.floor(this.z)) ?? 1) -
+				world.DESIGN_OFFSET;
 			const targetY = Math.min(
-				Math.max(1, nearest.y - 1.5),
-				world.SEA_LEVEL - 1
+				Math.max(bedWy + 1, nearest.y - 1.5),
+				world.WORLD_SEA_LEVEL - 1
 			);
 			if (Math.abs(this.y - targetY) > 0.5) {
 				this.y += Math.sign(targetY - this.y) * 0.04;
@@ -1481,7 +1526,16 @@ function spawnMobs(isNight) {
 			// coloca bajo la superficie (wy = fondo + 2, dentro del agua).
 			let wy;
 			if (type === "drowned") {
-				wy = floorY + 2;
+				// Fase 15 (D5): columnFloorY devuelve el fondo en ESPACIO DE DISEÑO
+				// (1..4). La Y de MUNDO del lecho es floorY − DESIGN_OFFSET (−7..−4)
+				// y el ahogado nace 2 bloques sobre él; el clamp al techo del agua
+				// (WORLD_SEA_LEVEL − 1 = −4) garantiza que NUNCA nazca sobre la
+				// superficie aunque el agua sea poco profunda (antes nacía a y 3..6,
+				// en el aire sobre el agua).
+				wy = Math.min(
+					floorY - world.DESIGN_OFFSET + 2,
+					world.WORLD_SEA_LEVEL - 1
+				);
 			} else if (HOSTILE.has(type) && !isNight) {
 				const caveY = world.findDarkCaveY(hx, hz, surfaceH);
 				if (caveY == null) continue; // sin cueva en esta columna: no spawn de día

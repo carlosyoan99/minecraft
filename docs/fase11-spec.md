@@ -627,3 +627,24 @@ cámara.
   (especialmente `audit-fase7` render y `audit-fase4` culling con los
   bloques nuevos), `biome check` 0 errores, `node --check` en todo lo
   tocado, y verificación manual en el navegador del usuario (clic y cámara).
+
+---
+
+## Bugs resueltos (histórico del roadmap)
+
+> Bugs que el roadmap fue registrando con su causa raíz ya corregida.
+
+- [x] **Fase 11: el spawn del diagnóstico (y cualquier spawn pedido en
+      agua) caía en un río de la Fase 10 y el jugador nacía nadando sin
+      bloques minables a ≤7.** Causa raíz: `findSpawn` solo comprobaba
+      `isLake`, no los ríos ni el océano nuevo de la Fase 11.
+      **Corregido**: `findSpawn` rechaza TODA columna de agua
+      (`columnFloorY !== null` — lago, río u océano) y el espiral busca
+      la columna seca más cercana.
+- [x] **Fase 11: flakiness intermitente de `unit-mundo` — la copa de un
+      árbol caía sobre la celda de aire encima de un charco pantanoso
+      nuevo y el charco dejaba de estar "abierto al aire".** Causa
+      raíz: el fix de Fase 9 solo cubría `isPondAt`/`isLavaPondAt`, no
+      los charcos de pantano. **Corregido**: helper `isSwampPoolAt` en
+      `server/world.js` comprobado en las tres copas de árboles (mismo
+      patrón que Fase 9); 6/6 ejecuciones estables.

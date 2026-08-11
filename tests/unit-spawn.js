@@ -6,10 +6,17 @@ const world = require("../server/world.js");
 
 let ok = 0,
 	fail = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 const check = (n, c, x) => {
 	if (c) ok++;
 	else {
 		fail++;
+		failedChecks.push(n);
 		console.log("FAIL: " + n + " " + (x || ""));
 	}
 };

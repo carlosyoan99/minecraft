@@ -356,3 +356,53 @@ Fuentes del alcance: las filas 1-11 proceden de `Notas del usuario.md` (auditor�
    (B1-B10).
 7. **Documentación**: Fase 10 cerrada en `TODO.md` con "Bugs conocidos"
    actualizado.
+
+---
+
+## Bugs resueltos (histórico del roadmap)
+
+> Bugs que el roadmap fue registrando con su causa raíz ya corregida.
+
+- [x] **Inventario: el mouse sigue bloqueado y no se puede
+      craftear/mover items.** Causa real: el bloqueador del menú
+      (`#blocker`, z-index 300) reaparecía en CADA `controls.unlock()`
+      (`public/scene.js`) y tapaba los paneles de crafteo/horno
+      (z-index 200) y el chat (z-index 90), dejándolos inutilizables.
+      Corregido: el handler de `unlock` solo muestra el menú si NO hay
+      un panel/chat abierto; `public/ui.js` oculta el bloqueador
+      explícitamente al abrir paneles o el chat (`showBlocker(false)`,
+      también válido si el pointer lock falla) y `closePanels()`
+      (Escape) re-bloquea el puntero para reanudar el juego
+- [x] **Cambiar la semilla no genera un mundo nuevo.** Corregido con
+      directorios por semilla: `SEED` se configura con la env var
+      `SEED` (defecto `miSemilla2026`) y cada semilla tiene su
+      propio mundo en `world/<semilla>/` (`constants.js` `seedDir`),
+      así al cambiar la SEED se genera un mundo totalmente nuevo sin
+      pisar el anterior (y volver a una semilla recupera su mundo).
+      El layout antiguo (`world.json` + `chunks` en la raíz de
+      `world/`) se migra al arrancar con `save.migrateWorldLayout()`
+      y el formato pasa a v3. Cubierto por
+      `tests/unit-persistencia.js` (seedDir + migrateWorldLayout).
+      Queda pendiente solo la UI del menú (ver Fase 6: "Semilla
+      seleccionable al iniciar el mundo")
+- [x] **Transiciones de bioma bruscas y cuevas sin comunicación con
+      la superficie.** Antes: `getBiome()` cortaba entre biomas por
+      umbrales discretos (acantilados de 4-8 bloques al cruzar una
+      frontera) y las cuevas no rompían la superficie a propósito
+      (`y < height - 2`). Corregido en `world.js` con un **blend
+      continuo**: las alturas se interpolan con afinidades gaussianas
+      por temperatura (`FLAT_AFFINITY`) + una rampa suave de montaña
+      (`MOUNTAIN_RAMP`, `heightFrom`), de modo que cruzar un bioma
+      sube/baja el terreno gradualmente (salto máximo entre columnas
+      adyacentes: 1 bloque, medido por barrido); la superficie
+      conserva la etiqueta dominante (nieve/roca/arena/césped) con
+      fronteras onduladas (jitter de ruido determinista en los
+      umbrales, `surfaceBlockFor`). Las **cuevas ahora abren bocas
+      hacia la superficie**: cerca del techo el umbral sube (túneles
+      que se estrechan, `isCaveBlock nearSurface`) y un pico de ruido
+      extremo abre el bloque de superficie (~1% de columnas, siempre
+      con la capa inferior excavada — entradas reales, sin hoyos
+      aislados). Aplica a chunks NUEVOS (los guardados conservan su
+      mundo). Cubierto por `tests/unit-mundo.js` (bocas presentes y
+      escasas, < 10% de columnas con hueco) y `tests/unit-biomas.js`
+      (altura continua entre columnas adyacentes: salto máx ≤ 4)

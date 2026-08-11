@@ -1,10 +1,12 @@
 # docs/ — Especificaciones por fase
 
 Índice de las especificaciones del proyecto (clon de Minecraft, servidor Node
-autoritativo `server/` + cliente Three.js `public/`, todo en español). La
-fuente canónica del roadmap con el estado de cada tarea es
-[`TODO.md`](../TODO.md); estas specs documentan el **diseño y las decisiones**
-de cada fase.
+autoritativo `server/` + cliente Three.js `public/`, todo en español). Estas
+specs son la **fuente de verdad** de cada fase: qué se hizo, cómo y por qué
+(decisiones, mecánicas, auditorías y bugs con causa raíz).
+[`TODO.md`](../TODO.md) es solo el **tracker de tareas** (estados
+`[ ]`/`[x]`) y no crece con detalle — lo que pasa en una fase se documenta
+aquí.
 
 ## Fases
 
@@ -20,7 +22,7 @@ de cada fase.
 | 7 — Pulido, UX y estética | [`fase7-spec.md`](fase7-spec.md) | Retrospectiva | ✅ Completada y auditada | Menú (nombre, ajustes, mundos, coordenadas), texturas de mobs e iconos, cielo/partículas, caída/void/respawn, métricas, crack sincronizado |
 | 8 — Caza de bugs | [`fase8-spec.md`](fase8-spec.md) | Prospectiva + resultados | ✅ Completada | 10 bugs del playtest (B1-B10): combate, minería a mano, pérdida de vida, controles, día/noche 20 min, tecla E, LOD, estrellas, sol/luna, mobs multibloque |
 | 9 — Paridad, IA, mundo y menú | [`fase9-spec.md`](fase9-spec.md) | Prospectiva (fuente de verdad de decisiones) | ✅ Completada | Minería funcional (causa raíz del `mcChunks: 0` corregida), gamemode por mundo, borrado de mundos, paridad de mecánicas (curva XP MC, azadas/cultivos), IA por especie (flechas/fuse/quema), estética, mundo/ítems/libro de recetas |
-| 9.5 — Mejoras de skills, docs y `.gitignore` | — (en `TODO.md`) | Retrospectiva | ✅ Completada | Colisión de flechas con bloques (anti-tunneling), clamp de pitch de cámara, backup `.bak` del guardado, variación de pitch en audio, documentación técnica `docs/server/` + `docs/public/`, `.gitignore` completo |
+| 9.5 — Mejoras de skills, docs y `.gitignore` | [`fase9.5-spec.md`](fase9.5-spec.md) | Retrospectiva | ✅ Completada | Colisión de flechas con bloques (anti-tunneling), clamp de pitch de cámara, backup `.bak` del guardado, variación de pitch en audio, documentación técnica `docs/server/` + `docs/public/`, `.gitignore` completo |
 | 10 — Notas del usuario y paridad avanzada | [`fase10-spec.md`](fase10-spec.md) | Prospectiva | ✅ Completada | Bugs de las notas (agua, lava, hitbox, `/tp`, hielo, hostiles por luz), tamaño de mundo, pantalla de muerte, `/kill`, `test.log`, gravedad de bloques, TNT, sprint, visuales y audio |
 | 11 — Bugs de input y cámara, biomas, paridad y cierre de tests | [`fase11-spec.md`](fase11-spec.md) | Prospectiva | ✅ Completada | Clic roto (pointer lock sobre el canvas) y cámara que da vueltas, 4 biomas nuevos (taiga, pantano, jungla, océano), esquilar, bonemeal, fuente de agua infinita, sonidos de mobs, cierre con tests (`unit-fase11`, `unit-camara`) |
 | 12 — Mobs por bioma, estructuras, spawn por bioma y persistencia | [`fase12-spec.md`](fase12-spec.md) | Prospectiva (entrevista, alcance acordado) | ✅ Completada y auditada | Lobo de taiga domesticable, slime con división y hop determinista, ocelote→gato que espanta creepers, ahogado con tridente; templo de jungla con trampa, naufragio con cofres; spawn por bioma (`BIOME_SPAWN`/`WATER_SPAWN`), persistencia de mascotas (`SCHEMA_VERSION` 5) y `unit-fase12`/`unit-persistencia` (bloques A-D + migración) |
@@ -71,6 +73,7 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
   con la paridad real + rendimiento del Bloque C. La **15** queda cerrada con
   la corrección de auditoría (copas de árboles, nubes y tooltip) y el
   registro de los tests pendientes, con la suite de 50 unitarios en verde.
-- El estado real de cada tarea (checkboxes `[ ]`/`[x]`) vive en `TODO.md`;
-  al cerrar una fase se marca en el roadmap y se refleja en la columna
-  "Estado" de este índice.
+- El estado real de cada tarea (checkboxes `[ ]`/`[x]`) vive en
+  `TODO.md` (tracker, sin detalle narrativo); el detalle de cada fase se
+  documenta en su spec de este índice. Al cerrar una fase se marcan sus
+  tareas en el tracker y se refleja la columna "Estado" de este índice.

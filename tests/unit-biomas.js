@@ -22,8 +22,14 @@ function idx(x, y, z) {
 }
 
 let failed = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 const check = (_name, ok, _extra = "") => {
-	if (!ok) failed++;
+	if (!ok) { failed++; failedChecks.push(_name); }
 };
 
 // --- 1) Los 5 biomas existen en la semilla ---

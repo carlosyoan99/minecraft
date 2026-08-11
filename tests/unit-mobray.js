@@ -18,10 +18,16 @@ const _os = require("node:os");
 const path = require("node:path");
 
 let failed = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 const check = (name, ok, extra = "") => {
 	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(`${ok ? "OK " : "✗  "}${name}${extra ? ` — ${extra}` : ""}`);
-	if (!ok) failed++;
+	if (!ok) { failed++; failedChecks.push(name); }
 };
 
 // Sube desde el mesh golpeado hasta el grupo raíz con userData.mobId

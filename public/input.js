@@ -171,15 +171,18 @@ function updateHighlight(hit) {
 
 function startMiningAt(x, y, z) {
 	const target = getClientBlock(x, y, z);
-	// Mesa de crafteo/horno/cofre se abren con clic (no se minan así); el agua
-	// no se rompe en survival sin cubo (sin feedback falso), pero EN CREATIVE sí
+	// Mesa de crafteo/horno se abren con clic (no se minan así); el cofre
+	// también, pero agachado (como en Minecraft) SÍ se puede minar/destruir
+	// (Notas del usuario: "los cofres no se pueden eliminar"). El agua no se
+	// rompe en survival sin cubo (sin feedback falso), pero EN CREATIVE sí
 	// (Fase 11, C3: fuente de agua infinita — el servidor rellena las fuentes
 	// con 2+ vecinas, así que el agua colocada en 2x2 nunca se agota).
 	// Bloques desconocidos (-1): no minar.
+	const chestRefused = target === 22 && !move.sneak;
 	if (
 		target === 15 ||
 		target === 16 ||
-		target === 22 ||
+		chestRefused ||
 		(target === WATER && !isCreative()) ||
 		target === -1
 	) {
@@ -665,7 +668,10 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 			openCraftingFromBlock();
 			return;
 		}
-		if (target === 22) {
+		// Notas del usuario: el cofre se abre con clic, pero agachado se
+		// destruye (como en Minecraft) — el `startMiningAt` lo permite solo
+		// si `move.sneak` está activo.
+		if (target === 22 && !move.sneak) {
 			toggleChestUI(true, { x, y, z });
 			return;
 		}

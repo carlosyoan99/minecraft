@@ -25,10 +25,17 @@ const {
 
 let _passed = 0,
 	failed = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 function check(_name, ok, _info) {
 	if (ok) _passed++;
 	else {
 		failed++;
+		failedChecks.push(_name);
 	}
 }
 

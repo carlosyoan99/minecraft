@@ -2,14 +2,16 @@
 
 Gracias por querer mejorar el proyecto. Este archivo resume el
 flujo de trabajo; los detalles de convenciones están en
-[`CLAUDE.md`](CLAUDE.md) (guía para IA y contribuidores) y el
-plan de desarrollo por fases en [`TODO.md`](TODO.md). **Léelos
-antes de tocar código.**
+[`CLAUDE.md`](CLAUDE.md) (guía para IA y contribuidores), el
+tracker de tareas por fase en [`TODO.md`](TODO.md) y la verdad de
+cada fase (qué se hizo y cómo) en las specs de
+[`docs/`](docs/README.md). **Léelos antes de tocar código.**
 
 ## Primeros pasos
 
 1. Lee `README.md` (qué es el proyecto), `CLAUDE.md` (cómo se
-   trabaja aquí) y `TODO.md` (qué fase está en curso).
+   trabaja aquí), `TODO.md` (qué fase está en curso) y la spec de esa
+   fase en `docs/` (el detalle del trabajo).
 2. Confirma qué tarea del `TODO.md` estás atacando. **No se
    adelanta trabajo de fases futuras** sin discutirlo antes.
 3. Instala dependencias y arranca:
@@ -69,7 +71,8 @@ node tests/audit-fase5.js
 
 ## Flujo de trabajo por fases
 
-1. Cada cambio nace de una tarea de `TODO.md`.
+1. Cada cambio nace de una tarea de `TODO.md`; el detalle del
+   cambio se documenta en la spec de su fase, no en el tracker.
 2. Cambios pequeños y verificables: **una preocupación por
    commit** (ej. "guardado incremental por chunk"), nunca mezclar
    varias fases.

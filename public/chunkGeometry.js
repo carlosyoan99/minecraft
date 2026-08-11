@@ -33,7 +33,9 @@ import {
 	NON_SOLID_PLANTS,
 	TORCH,
 	WATER,
-	WORLD_HEIGHT
+	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y
 } from "./constants.js";
 import { tileForFace, tileRect } from "./texturemap.js";
 
@@ -172,30 +174,39 @@ export function buildChunkGeometryData({
 	const baseX = cx * CHUNK_SIZE,
 		baseZ = cz * CHUNK_SIZE;
 
-	// Lectura de bloques en coordenadas de MUNDO cruzando bordes de chunk.
-	// Devuelve 0 fuera del mundo (arriba/abajo), -1 en chunks no cargados
-	// (no dibujar la cara: evitar huecos falsos) — igual que getClientBlock.
-	const sampleBlock = (wx, wy, wz) => {
-		if (wy < 0 || wy >= WORLD_HEIGHT) return 0;
-		const relX = Math.floor(wx / CHUNK_SIZE) - cx;
-		const relZ = Math.floor(wz / CHUNK_SIZE) - cz;
-		const arr = chunks.get(`${relX},${relZ}`);
-		if (!arr) return -1;
-		const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-		const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-		return arr[cIdx(x, wy, z)];
+	// Fase 15 (cierre): vecinos pre-resueltos. El meshing solo consulta
+	// celdas del chunk y su ANILLO inmediato (culling ±1 bloque, AO ±1),
+	// así que los 9 vecinos (dx,dz ∈ -1..1) se resuelven UNA vez en vez de
+	// construir el string "dx,dz" y hacer Map.get en cada una de las ~276K
+	// muestras de sampleBlock/lightAt por chunk (era el coste dominante del
+	// meshing). El lookup es un acceso a array plano; los vecinos ausentes
+	// quedan como null y sampleBlock devuelve -1 como antes.
+	const neighbors = [];
+	for (let dx = -1; dx <= 1; dx++)
+		for (let dz = -1; dz <= 1; dz++) neighbors.push(chunks.get(`${dx},${dz}`));
+	const neighborAt = (relX, relZ) => {
+		// Defensivo: fuera del anillo -1..1 (no debería pasar) se consulta el
+		// Map original; en el camino caliente es un acceso directo al array.
+		if (relX >= -1 && relX <= 1 && relZ >= -1 && relZ <= 1)
+			return neighbors[(relX + 1) * 3 + (relZ + 1)];
+		return chunks.get(`${relX},${relZ}`);
 	};
-	// Luz de antorcha (0..1) de una celda de mundo; 0 si el chunk no tiene
-	// luz horneada (igual que chunkLightAt de world.js).
+	// Luz pre-resuelta igual que los bloques (Map "dx,dz" → Float32Array).
+	const lightNbs = [];
+	for (let dx = -1; dx <= 1; dx++)
+		for (let dz = -1; dz <= 1; dz++) lightNbs.push(light.get(`${dx},${dz}`));
 	const lightAt = (wx, wy, wz) => {
-		if (wy < 0 || wy >= WORLD_HEIGHT) return 0;
+		if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return 0;
 		const relX = Math.floor(wx / CHUNK_SIZE) - cx;
 		const relZ = Math.floor(wz / CHUNK_SIZE) - cz;
-		const arr = light.get(`${relX},${relZ}`);
+		const arr =
+			relX >= -1 && relX <= 1 && relZ >= -1 && relZ <= 1
+				? lightNbs[(relX + 1) * 3 + (relZ + 1)]
+				: light.get(`${relX},${relZ}`);
 		if (!arr) return 0;
 		const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
 		const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-		return arr[cIdx(x, wy, z)];
+		return arr[cIdx(x, wy - WORLD_MIN_Y, z)];
 	};
 
 	// AO por vértice (Fase 10, E1) — copia exacta de world.js: la esquina
@@ -210,6 +221,19 @@ export function buildChunkGeometryData({
 			b !== TORCH &&
 			!NON_SOLID_PLANTS.has(b)
 		);
+	};
+	// sampleBlock con los vecinos pre-resueltos (ver arriba).
+	const sampleBlock = (wx, wy, wz) => {
+		// Fase 15 (D5): el mundo va de WORLD_MIN_Y a WORLD_MAX_Y; el índice usa
+		// local y = mundo y − WORLD_MIN_Y.
+		if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return 0;
+		const relX = Math.floor(wx / CHUNK_SIZE) - cx;
+		const relZ = Math.floor(wz / CHUNK_SIZE) - cz;
+		const arr = neighborAt(relX, relZ);
+		if (!arr) return -1;
+		const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+		const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+		return arr[cIdx(x, wy - WORLD_MIN_Y, z)];
 	};
 	const vertexAO = (wx, wy, wz, corner, dir) => {
 		const axes = [];
@@ -385,13 +409,13 @@ export function buildChunkGeometryData({
 		for (let y = 0; y < WORLD_HEIGHT; y++) {
 			for (let z = 0; z < CHUNK_SIZE; z++) {
 				const block = chunk[cIdx(x, y, z)];
-				if (block === 0) continue;
-				if (block === TORCH) {
-					pushTorch(baseX + x, y, baseZ + z);
+				if (block === 0) continue;				if (block === TORCH) {
+					// Fase 15 (D5): posiciones de MUNDO (local + WORLD_MIN_Y).
+					pushTorch(baseX + x, y + WORLD_MIN_Y, baseZ + z);
 					continue;
 				}
 				if (NON_SOLID_PLANTS.has(block)) {
-					pushPlant(baseX + x, y, baseZ + z, block);
+					pushPlant(baseX + x, y + WORLD_MIN_Y, baseZ + z, block);
 				}
 			}
 		}
@@ -407,8 +431,11 @@ export function buildChunkGeometryData({
 	const SIZE = (axis) => AXIS_SIZE[axis];
 
 	// Empuja UN quad fusionado (4 esquinas → 2 triángulos) con su normal,
-	// UVs de la tesela y color por vértice (luz × AO).
-	const emitQuad = (fi, s, u0, v0, w, h, key) => {
+	// UVs de la tesela y color por vértice (luz × AO). `gridAO` (cache de la
+	// Fase 15) trae el AO de las 4 esquinas de cada celda del grid, ya
+	// calculado durante el llenado; reutilizarlo es bit-idéntico a llamar
+	// vertexAO (el AO de una celda no depende del quad que la usa).
+	const emitQuad = (fi, s, u0, v0, w, h, key, gridAO, W, H) => {
 		const face = FACES[fi];
 		const nAxis = face.nAxis;
 		const uAxis = (nAxis + 1) % 3;
@@ -427,8 +454,9 @@ export function buildChunkGeometryData({
 		const verts = [];
 		for (let c = 0; c < 4; c++) {
 			const cor = face.corners[c];
-			let wy = cornerAt(1) + (cor[1] ? extentAt(1) : 0);
-			if (target === 2 && fi === 2) wy = s + 0.875; // superficie del agua más baja
+			// Fase 15 (D5): la capa s es índice LOCAL; la posición es Y de MUNDO.
+			let wy = cornerAt(1) + (cor[1] ? extentAt(1) : 0) + WORLD_MIN_Y;
+			if (target === 2 && fi === 2) wy = s + 0.875 + WORLD_MIN_Y; // agua
 			const wx = baseX + cornerAt(0) + (cor[0] ? extentAt(0) : 0);
 			const wz = baseZ + cornerAt(2) + (cor[2] ? extentAt(2) : 0);
 			// Celda de esquina del quad: la que aporta color a este vértice
@@ -440,13 +468,16 @@ export function buildChunkGeometryData({
 			const cellWz = baseZ + (nAxis === 2 ? s : uAxis === 2 ? cu : cv);
 			const light = lightAt(
 				cellWx + face.dir[0],
-				cellWy + face.dir[1],
+				cellWy + WORLD_MIN_Y + face.dir[1],
 				cellWz + face.dir[2]
 			);
 			const baseV = 1 + light * TORCH_LIGHT_GAIN;
 			// AO solo en el terreno opaco (agua/lava no se sombrean, como MC).
+			// Desde la caché del grid (3 bits por esquina → índice AO_VALUES).
 			const ao =
-				target === 0 ? vertexAO(cellWx, cellWy, cellWz, cor, face.dir) : 1;
+				target === 0
+					? AO_VALUES[(gridAO[cv * W + cu] >> (c * 3)) & 0x7]
+					: 1;
 			const v = baseV * ao;
 			const [uu, vv] = face.uvs[c];
 			verts.push({
@@ -470,9 +501,7 @@ export function buildChunkGeometryData({
 				buf.col.push(p.c, p.c, p.c);
 			}
 		}
-	};
-
-	for (let fi = 0; fi < FACES.length; fi++) {
+	};		for (let fi = 0; fi < FACES.length; fi++) {
 		const face = FACES[fi];
 		const nAxis = face.nAxis;
 		const uAxis = (nAxis + 1) % 3;
@@ -481,6 +510,19 @@ export function buildChunkGeometryData({
 		const H = SIZE(vAxis);
 		const N = SIZE(nAxis);
 		const grid = new Uint32Array(W * H); // 0 = sin cara; si no, clave+1
+		// Fase 15 (cierre): AO por celda cacheado durante el llenado del grid
+		// (4 índices de 3 bits, mismo formato que aoBits). emitQuad lee estos
+		// valores para los colores de esquina en vez de re-calcular vertexAO
+		// (~90K llamadas menos por chunk) SIN cambiar la geometría: el AO de
+		// una celda no depende del quad que la usa, así que el valor por
+		// esquina es idéntico al recalcularlo.
+		//
+		// NO se resetea por capa (a diferencia de `grid`): una celda con cara
+		// en la capa s pero sin cara en la s+1 conserva un valor stale. Es
+		// seguro porque emitQuad solo lee la celda de esquina de un rectángulo
+		// que EMITE, y toda celda emitida pasó el culling en ESTA capa → su
+		// gridAO se escribió en este mismo llenado (antes de emitir).
+		const gridAO = new Uint32Array(W * H);
 
 		for (let s = 0; s < N; s++) {
 			grid.fill(0);
@@ -501,7 +543,7 @@ export function buildChunkGeometryData({
 					// contra aire; sólidos contra aire, agua o plantas.
 					const nb = sampleBlock(
 						wx + face.dir[0],
-						ly + face.dir[1],
+						ly + WORLD_MIN_Y + face.dir[1],
 						wz + face.dir[2]
 					);
 					if (isWater || isLava) {
@@ -512,16 +554,17 @@ export function buildChunkGeometryData({
 					const tileIdx = isWater ? 0 : tileForFaceFn(block, fi);
 					const lb = lightAt(
 						wx + face.dir[0],
-						ly + face.dir[1],
+						ly + WORLD_MIN_Y + face.dir[1],
 						wz + face.dir[2]
 					);
 					const lightBucket = Math.round(lb * 255);
 					let aoBits = 0;
 					if (target === 0) {
 						for (let c = 0; c < 4; c++) {
-							const ao = vertexAO(wx, ly, wz, face.corners[c], face.dir);
+							const ao = vertexAO(wx, ly + WORLD_MIN_Y, wz, face.corners[c], face.dir);
 							aoBits |= AO_IDX.get(ao) << (c * 3);
 						}
+						gridAO[v * W + u] = aoBits; // cache para emitQuad
 					}
 					const key =
 						target | (tileIdx << 2) | (lightBucket << 8) | (aoBits << 16);
@@ -542,7 +585,7 @@ export function buildChunkGeometryData({
 						}
 						h++;
 					}
-					emitQuad(fi, s, u, v, w, h, raw - 1);
+					emitQuad(fi, s, u, v, w, h, raw - 1, gridAO, W, H);
 					for (let vv = v; vv < v + h; vv++)
 						grid.fill(0, vv * W + u, vv * W + u + w);
 				}

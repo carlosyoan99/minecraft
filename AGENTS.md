@@ -1,9 +1,10 @@
 # AGENTS.md — Guía rápida para agentes de IA
 
 Guía compacta de arranque. La guía canónica de convenciones es
-[`CLAUDE.md`](CLAUDE.md); el roadmap por fases está en
-[`TODO.md`](TODO.md) y la Fase 12 (prospectiva) en
-[`docs/fase12-spec.md`](docs/fase12-spec.md). Léelos.
+[`CLAUDE.md`](CLAUDE.md). El **tracker de tareas por fase** (solo
+estados `[ ]`/`[x]`) está en [`TODO.md`](TODO.md); la **verdad de qué se
+hizo y cómo** vive en las especificaciones de [`docs/`](docs/README.md)
+(`docs/faseN-spec.md`). Léelos.
 
 ## Qué es
 
@@ -18,9 +19,10 @@ npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
 node tests/run.js               # 50 unitarios + 6 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
+node tests/run.js --audit       # solo auditorías por fase standalone (3-6 + altura)
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
 PORT=3998 node server.js        # servidor para los E2E, en otra terminal
-node tests/audit-fase3.js       # auditorías por fase (también 4, 5, 6 y 7; la 7 usa Chrome headless)
+node tests/audit-fase7.js       # render CDP con Chrome headless (por separado; ver abajo)
 ```
 
 Verificación mínima antes de entregar (CLAUDE.md §"Cómo trabajar"):
@@ -103,8 +105,8 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
 
 - BD externa, autenticación/cuentas, redstone, dimensiones, aldeas
   generadas, clima.
-- Optimización prematura (greedy meshing, workers...) salvo que el
-  `TODO.md` lo indique.
+- Optimización prematura (greedy meshing, workers...) salvo que una
+  spec de `docs/` la indique.
 - Adelantar trabajo de fases futuras: las fases 0-15 están cerradas y
   auditadas. La **Fase 13** (paridad 1.0 + rendimiento + POO del servidor)
   está **completada y auditada**: paridad de valores fijada por
@@ -121,8 +123,11 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
 
 ## Documentación
 
-- Especificaciones por fase (diseño, decisiones y estado): `docs/`,
+- Especificaciones por fase (**fuente de verdad** del qué/cómo): `docs/`,
   índice en [`docs/README.md`](docs/README.md).
+- `TODO.md` es SOLO el tracker de tareas por fase (`[ ]`/`[x]`) y no
+  crece con detalle: bugs, decisiones, mecánicas y auditorías se
+  documentan en la spec de su fase.
 - Arquitectura y mecánicas (cómo funciona + por qué):
   [`docs/server/`](docs/server/README.md) y
   [`docs/public/`](docs/public/README.md). Actualízalas cuando una

@@ -3,7 +3,11 @@
 // Nota: los IDs deben mantenerse sincronizados con server.js (B e I).
 // ============================================================
 export const CHUNK_SIZE = 16;
-export const WORLD_HEIGHT = 64;
+// Fase 15 (D5): mundo de 128 bloques, Y ∈ [−64, +63] (terreno anclado en 0).
+// Mantener en sincronía con server-side constants.js (lo audita unit-sync.js).
+export const WORLD_HEIGHT = 128;
+export const WORLD_MIN_Y = -64;
+export const WORLD_MAX_Y = WORLD_MIN_Y + WORLD_HEIGHT - 1; // 63
 // Ciclo día/noche del servidor (20 min como Minecraft: ~10 de día, ~10 de
 // noche, con atardecer/amanecer suaves interpolados por la curva de fase).
 // Mantener en sincronía con DAY_CYCLE_MS de server-side constants.js — el

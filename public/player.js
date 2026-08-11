@@ -247,8 +247,12 @@ function animate() {
 		// feedback auditivo de la inmersión, como en Minecraft.
 		if (inWater && !wasInWater) playSplash();
 		wasInWater = inWater;
-		// Fase 10 (E3): niebla azulada y densa mientras la cámara está sumergida.
-		setUnderwater(inWater);
+		// Fase 10 (E3) + Notas: niebla azulada y densa solo cuando la cámara
+		// está sumergida de verdad, con los ojos a ≥2 bloques bajo la
+		// superficie (nadando en la superficie no debe verse la niebla).
+		let surfaceY = Math.ceil(camera.position.y);
+		while (isWaterAt(camera.position.x, surfaceY, camera.position.z)) surfaceY++;
+		setUnderwater(inWater && surfaceY - camera.position.y >= 2);
 
 		let dx = 0,
 			dz = 0;

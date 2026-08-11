@@ -30,8 +30,14 @@ worldPaths.legacyFile = path.join(worldPaths.worldDir, "world.dat");
 fs.mkdirSync(worldPaths.chunksDir, { recursive: true });
 
 let failed = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 const check = (_name, ok, _extra = "") => {
-	if (!ok) failed++;
+	if (!ok) { failed++; failedChecks.push(_name); }
 };
 
 const IDX = (x, y, z) => (y * 16 + z) * 16 + x;

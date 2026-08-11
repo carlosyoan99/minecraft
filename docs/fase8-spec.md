@@ -791,3 +791,91 @@ espada muere más rápido y se desgasta.
 4. `biome check` con 0 errores en los archivos tocados.
 5. `TODO.md` actualizado con la sección Fase 8 y los bugs en "Bugs conocidos"
    marcados como corregidos.
+
+---
+
+## Bugs resueltos (histórico del roadmap)
+
+> Bugs que el roadmap fue registrando con su causa raíz ya corregida.
+
+- [x] **audit-fase5.js no se podía ejecutar: ruta rota de `net.js`.**
+      La auditoría de la Fase 5 leía `path.join(ROOT, "net.js")` pero el
+      servidor vive en `server/` desde el refactor de la Fase 6 →
+      `ENOENT` al ejecutarla (exit 1, silencioso). **Corregido**: apunta
+      a `server/net.js` y vuelve a pasar.
+- [x] **E2E frágiles contra un mundo ya usado (diagnóstico añadido).**
+      Los E2E (`e2e-comer`, `e2e-durabilidad`, `e2e-reload`, `e2e-cofre`)
+      modifican el mundo (rompen bloques, el autosave los persiste) y
+      dependen del estado del área de spawn: contra un mundo fresco
+      pasan (verificado: `e2e-cofre` 12/12), pero al re-ejecutarlos
+      contra el mismo mundo pueden agotar su timeout interno y fallar.
+      **Corregido**: el timer de los 4 E2E ahora imprime la fase y el
+      estado de los checks al expirar (antes moría sin decir nada, difícil
+      de diagnosticar). Recomendación documentada en el propio código:
+      ejecutarlos contra un servidor desechable (`SEED` nueva).
+- [~] **Falso positivo de la auditoría: los comandos NO se retransmiten
+      al chat global.** Se creyó que el broadcast de `chat` se ejecutaba
+      también para los comandos, pero el handler ya tiene `break` dentro
+      del `if (message.startsWith("/"))` — solo el chat normal se
+      transmite. Sin corrección necesaria; queda documentado para no
+      reintroducirlo al tocar `net.js`.
+- [x] **Comandos de operador sin restricción: cualquiera podía usar
+      `/gamemode`, `/give`, `/tp`, `/time` y `/reload`.** En MP eso era
+      trampa y griefing total (darse todo en creative, teletransportar a
+      otros, cambiar la hora del mundo para todos, recargar el servidor).
+      **Corregido**: gate de operador (`OP_ONLY` en `server/commands.js`):
+      solo los jugadores con `isOp` pueden ejecutarlos; el primer jugador
+      en conectar es operador por defecto y el resto se configura con la
+      env var `OPS` (nombres separados por comas) o con el nuevo comando
+      `/op <nombre>` (solo operadores). `net.js` marca `isOp` en el
+      jugador al conectar y el rechazo avisa por chat (`Puede usar
+      /op <nombre>`). Cubierto por `tests/unit-commands.js` (gate,
+      rechazo a no-op, `/op` da y quita permisos solo desde un op).
+- [x] **`furnace_open`/`furnace_action` sin validación de distancia: un
+      jugador podía abrir y operar cualquier horno del mundo desde
+      cualquier distancia** (meter items en hornos lejanos que quedaban
+      atascados y vaciarlos a distancia). `chest_open` sí validaba 7
+      bloques. **Corregido**: mismo check de alcance (7 bloques) en
+      `furnace_open` y `furnace_action` revalida contra el bloque
+      real y el `openFurnace` del jugador. Cubierto por
+      `tests/unit-red.js` (abrir un horno a 20 bloques se rechaza,
+      operar el horno de otro se rechaza).
+- [x] **`sendInit` reenviaba TODOS los chunks del mundo a cada conexión**
+      (~13 MB de JSON con 795 chunks, creciendo con el mundo y con los
+      jugadores; los joins eran lentos). **Corregido**: el `init` solo
+      incluye los chunks dentro del radio de render del jugador
+      (Chebyshev en chunks, como el filtro del cliente); los que faltan
+      llegan con `chunks_add` al moverse (handler `move`). Cubierto por
+      `tests/unit-red.js` (el init de un jugador con renderDistance 2
+      solo trae los chunks del radio 2, no el mundo entero).
+- [x] **El creeper destruía bedrock, agua, lava y cofres (con todo su
+      contenido).** La explosión (`explode()` en `server/mobs.js`)
+      convertía a aire cualquier bloque del radio 2 sin excepción:
+      podía borrar la roca madre (irrompible en Minecraft), charcos de
+      agua/lava y cofres — y como no hay entidades de item en el suelo
+      (simplificación documentada), el loot se perdía para siempre.
+      **Corregido**: la explosión respeta `NOT_MINEABLE` (bedrock,
+      agua, lava) y no rompe cofres CON contenido (su estado en
+      `state.chests` se conserva); un cofre vacío sí se rompe y se
+      limpia su estado (mismo patrón que `finishMining`) para no dejar
+      entradas huérfanas en la persistencia. Cubierto por
+      `tests/unit-mobs-ia.js` (sección 5b: bedrock/agua/lava/cofre con
+      contenido intactos, cofre vacío roto con estado limpio).
+- [x] **Anti-cheat de vuelo (implementado en el cierre de Fase 8).** El
+      handler `move` de `net.js` ahora valida el ASCENSO contra la
+      parábola del salto (`vy = JUMP_SPEED − GRAVITY·t`, con
+      `JUMP_SPEED=7` y `GRAVITY=18` en ambos `constants.js`): subir más
+      rápido que 1.5×JUMP_SPEED (≈10.5 bloques/s) o subir durante >1s
+      seguido en el aire (`airTimeMs`, dt mínimo de 50ms) se rechaza con
+      teleport al último punto aceptado. El daño de caída usa además la
+      velocidad vertical observada (`fallVy`, `h = v²/(2·GRAVITY)`) para
+      detectar descensos acelerados que la posición no reflejaría.
+      Cubierto por `tests/unit-anticheat.js` y `tests/unit-caida.js`.
+- [x] **maxPayload del WebSocket (implementado en el cierre de Fase 8).**
+      `new WebSocket.Server({ server, maxPayload: WS_MAX_PAYLOAD })` en
+      `net.js` con `WS_MAX_PAYLOAD = 1 MiB` (1·1024·1024): los mensajes
+      reales del protocolo son pequeños, así que 1 MiB impide que un
+      cliente malicioso sature la memoria (ws cierra la conexión con
+      1009). Verificado por `tests/unit-anticheat.js` (valor + cableado).
+
+---

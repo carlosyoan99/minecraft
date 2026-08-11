@@ -16,8 +16,14 @@ const { I, ARMOR_SLOTS, xpToNext } = require("../server/constants.js");
 world.setDiskLoader(() => null); // sin I/O de disco en los tests
 
 let fails = 0;
+const failedChecks = [];
+// Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
+process.on("exit", () => {
+	if (typeof failedChecks !== "undefined" && failedChecks.length)
+		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+});
 const check = (_name, ok, _extra = "") => {
-	if (!ok) fails++;
+	if (!ok) { fails++; failedChecks.push(_name); }
 };
 
 class FakeWS {

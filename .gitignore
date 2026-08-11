@@ -12,6 +12,9 @@ yarn-error.log*
 pnpm-debug.log*
 *.log
 
+# --- Logs de ejecución de tests (Fase 15: captura por test para no re-ejecutar) ---
+tests/last-run/
+
 # --- Datos de mundo generados (por semilla, se regeneran) ---
 world/
 
@@ -32,6 +35,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.code-workspace
+.opencode
 
 # --- Secretos y configuración local ---
 .env
