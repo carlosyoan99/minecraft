@@ -16,7 +16,13 @@ const path = require("node:path");
 const os = require("node:os");
 const zlib = require("node:zlib");
 const constants = require("../server/constants.js");
-const { B, SCHEMA_VERSION, worldPaths } = constants;
+const {
+	B,
+	SCHEMA_VERSION,
+	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	worldPaths
+} = constants;
 const world = require("../server/world.js");
 const state = require("../server/state.js");
 
@@ -73,8 +79,11 @@ for (let wx = -R * 16; wx < R * 16; wx++) {
 		// (profundidad absoluta 6-32 con terrenos de altura 4-9 → túneles en el
 		// aire, sin excavar). Con h=4 (altura mínima) la mina simplemente no
 		// excava: no cabe, comportamiento correcto.
+		// Fase 15 (D5): h y depth son Y de MUNDO (−64..+63); el bedrock vive en
+		// WORLD_MIN_Y y mineshaftDepth está limitado a WORLD_MIN_Y + 1, así que
+		// el túnel nunca lo toca (el check usa la misma cota de 2 bloques).
 		if (h >= 5 && depth + 1 >= h - 1) aboveSurface++;
-		if (depth + 1 < 2) inBedrock++;
+		if (depth + 1 < WORLD_MIN_Y + 2) inBedrock++;
 	}
 }
 check(
@@ -100,7 +109,9 @@ check(
 // gate diga "sí hay charco", lo generamos y comprobamos que el bloque se
 // colocó con su lecho de arena.
 function surfaceAt(data, _cx, _cz, x, z) {
-	for (let y = 63; y >= 0; y--) {
+	// Fase 15 (D5): el chunk es 16×128×16 — barrido completo (la superficie
+	// vive en local 56..88 = mundo −8..+24).
+	for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
 		if (data[IDX(x, y, z)] !== 0) return y;
 	}
 	return -1;
@@ -179,7 +190,7 @@ for (const [key, data] of state.chunks) {
 		_bz = cz * 16;
 	for (let x = 0; x < 16; x++) {
 		for (let z = 0; z < 16; z++) {
-			for (let y = 0; y < 64; y++) {
+			for (let y = 0; y < WORLD_HEIGHT; y++) {
 				if (data[IDX(x, y, z)] === B.CHEST) {
 					chests++;
 					const h = surfaceAt(data, cx, cz, x, z);
@@ -217,8 +228,8 @@ check("isLavaPondAt es determinista", l1 === l2);
 // 2) GZIP: compresión del guardado por chunk
 // ============================================================
 {
-	// Escribir un chunk con bloques reales
-	const arr = new Uint8Array(16 * 64 * 16);
+	// Escribir un chunk con bloques reales (Fase 15 D5: layout 16×128×16)
+	const arr = new Uint8Array(16 * WORLD_HEIGHT * 16);
 	for (let i = 0; i < arr.length; i++) arr[i] = i % 26;
 	arr[1234] = B.CHEST;
 	world.writeChunkFile("3,-2", arr);

@@ -51,6 +51,7 @@ fs.writeFileSync(
 	const {
 		CHUNK_SIZE,
 		WORLD_HEIGHT,
+		WORLD_MIN_Y, // Fase 15 (D5): la geometría emite posiciones en Y de MUNDO
 		WATER,
 		LAVA,
 		TORCH,
@@ -88,13 +89,14 @@ fs.writeFileSync(
 		});
 
 	// Bloque central en (1,5,1); la esquina que sombreamos es la [0,1,0]
-	// de su cara +Y, el vértice del mundo (1,6,1). Sus oclusores:
+	// de su cara +Y. Fase 15 (D5): la geometría emite el vértice en Y de
+	// MUNDO (local 6 → 6 + WORLD_MIN_Y), así que la búsqueda usa ese Y.
 	//   s1  = (0,6,1)   s2 = (1,6,0)   diag = (0,6,0)
 	const X = 1,
 		Y = 5,
 		Z = 1,
 		VX = 1,
-		VY = 6,
+		VY = 6 + WORLD_MIN_Y,
 		VZ = 1;
 	const centerChunk = () => {
 		const c = airChunk();

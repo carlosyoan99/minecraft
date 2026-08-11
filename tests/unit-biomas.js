@@ -12,13 +12,16 @@ const world = require("../server/world.js");
 const state = require("../server/state.js");
 const {
 	CHUNK_SIZE,
+	WORLD_MIN_Y,
 	B,
 	isSolidBlock,
 	NOT_MINEABLE
 } = require("../server/constants.js");
 
+// Fase 15 (D5): el índice local usa Y de MUNDO (local = mundo − WORLD_MIN_Y);
+// getHeight devuelve Y de mundo (−8..+19) y columnFloorY, espacio de diseño.
 function idx(x, y, z) {
-	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
+	return ((y - WORLD_MIN_Y) * CHUNK_SIZE + z) * CHUNK_SIZE + x;
 }
 
 let failed = 0;
@@ -76,14 +79,16 @@ check(
 	maxMountain > maxPlain + 4,
 	`montaña máx ${maxMountain} vs llanura máx ${maxPlain}`
 );
+// Fase 15 (D5): el diseño (máx 15, mín 3) se re-basa restando DESIGN_OFFSET
+// (terreno anclado en ~0): cumbres desde y=7, valles nunca bajo y=−5.
 check(
-	"las montañas tienen terreno alto (máx >= 15)",
-	maxMountain >= 15,
+	"las montañas tienen terreno alto (máx >= 7)",
+	maxMountain >= 15 - world.DESIGN_OFFSET,
 	`máx ${maxMountain}`
 );
 check(
-	"el valle de montaña no es más bajo que el suelo normal (mín >= 3)",
-	minMountain >= 3,
+	"el valle de montaña no es más bajo que el suelo normal (mín >= −5)",
+	minMountain >= 3 - world.DESIGN_OFFSET,
 	`mín ${minMountain}`
 );
 
@@ -111,9 +116,11 @@ for (let cx = -4; cx <= 4; cx++) {
 				const height = world.getHeight(wx, wz);
 				const surf = data[idx(x, height - 1, z)];
 				if (biome === "snow" && surf === B.SNOW) snowSurface++;
+				// Fase 15 (D5): la línea de nieve (diseño 18) en Y de MUNDO es
+				// MOUNTAIN_SNOW_LINE − DESIGN_OFFSET (cumbres desde y=10).
 				if (
 					biome === "mountain" &&
-					height >= world.MOUNTAIN_SNOW_LINE &&
+					height >= world.MOUNTAIN_SNOW_LINE - world.DESIGN_OFFSET &&
 					surf === B.SNOW
 				)
 					snowSurfaceMountain++;
@@ -125,10 +132,13 @@ for (let cx = -4; cx <= 4; cx++) {
 					stoneSurfaceMountain++;
 				if (biome === "plains" && surf === B.GRASS) grassSurface++;
 				if (biome === "desert" && surf === B.SAND) sandSurface++;
-				// Lago: el fondo de arena está en y = LAKE_FLOOR (getHeight no contempla lagos).
+				// Lago: el lecho real es columnFloorY (diseño 1..3) re-basado a Y de
+				// MUNDO (getHeight no contempla lagos; la profundidad es variable).
 				if (
 					world.isLake(wx, wz) &&
-					data[idx(x, world.LAKE_FLOOR, z)] === B.SAND
+					data[
+						idx(x, world.columnFloorY(wx, wz) - world.DESIGN_OFFSET, z)
+					] === B.SAND
 				)
 					waterSurface++;
 			}

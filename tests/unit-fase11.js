@@ -18,10 +18,19 @@ const mobs = require("../server/mobs.js");
 const tnt = require("../server/tnt.js");
 const commands = require("../server/commands.js");
 const players = require("../server/players.js");
-const { CHUNK_SIZE, WORLD_HEIGHT, B, I, SCHEMA_VERSION } = constants;
+const {
+	CHUNK_SIZE,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y,
+	B,
+	I,
+	SCHEMA_VERSION
+} = constants;
 
+// Fase 15 (D5): el índice local usa Y de MUNDO (local = mundo − WORLD_MIN_Y);
+// getHeight devuelve Y de mundo y columnFloorY, espacio de diseño.
 function idx(x, y, z) {
-	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
+	return ((y - WORLD_MIN_Y) * CHUNK_SIZE + z) * CHUNK_SIZE + x;
 }
 
 let failed = 0;
@@ -87,9 +96,10 @@ const mkPlayer = (over = {}) => ({
 
 // 2) SCHEMA_VERSION subió a 4 en la Fase 11 y a 5 en la Fase 12 (Bloque D:
 //    persistencia de mascotas — ownerId/ownerName/sitting en world.json).
+//    Fase 15 (D5): 6 — mundo −64..+63 (chunks 16×128×16; migración v5).
 check(
-	"SCHEMA_VERSION === 5 (Fase 12, Bloque D: persistencia de mascotas)",
-	SCHEMA_VERSION === 5,
+	"SCHEMA_VERSION === 6 (Fase 15 D5: mundo 16×128×16)",
+	SCHEMA_VERSION === 6,
 	`v${SCHEMA_VERSION}`
 );
 
@@ -136,13 +146,14 @@ for (let cx = -12; cx <= 12; cx++) {
 					// bajo el lecho no debe contarse como charco).
 					const floorY = world.columnFloorY(wx, wz);
 					if (floorY != null) continue;
-					const surface = world.getHeight(wx, wz);
+					const surface = world.getHeight(wx, wz); // Y de MUNDO
 					if (data[idx(x, surface - 1, z)] !== B.WATER) continue;
 					swampPools++;
 					const below = data[idx(x, surface - 2, z)];
-					const above = surface < WORLD_HEIGHT ? data[idx(x, surface, z)] : -1;
+					const above =
+						surface < WORLD_MAX_Y ? data[idx(x, surface, z)] : -1;
 					if (
-						surface - 1 < world.SEA_LEVEL ||
+						surface - 1 < world.WORLD_SEA_LEVEL ||
 						below !== B.SAND ||
 						above !== B.AIR
 					)
@@ -173,6 +184,8 @@ for (let cx = -12; cx <= 12; cx++) {
 					const wx = cx * CHUNK_SIZE + x,
 						wz = cz * CHUNK_SIZE + z;
 					if (!world.isOcean(wx, wz)) continue;
+					// columnFloorY devuelve el lecho en ESPACIO DE DISEÑO (1..4); la
+					// Y de MUNDO del lecho es floorY − DESIGN_OFFSET (Fase 15 D5).
 					const floorY = world.columnFloorY(wx, wz);
 					if (floorY == null) {
 						badOcean++;
@@ -180,8 +193,9 @@ for (let cx = -12; cx <= 12; cx++) {
 					}
 					oceanCols++;
 					if (floorY <= 2) oceanDeep++; // profundo (≥3 de agua)
-					if (data[idx(x, floorY, z)] !== B.SAND) badOcean++;
-					for (let y = floorY + 1; y < world.SEA_LEVEL; y++) {
+					const floorW = floorY - world.DESIGN_OFFSET;
+					if (data[idx(x, floorW, z)] !== B.SAND) badOcean++;
+					for (let y = floorW + 1; y < world.WORLD_SEA_LEVEL; y++) {
 						if (data[idx(x, y, z)] !== B.WATER) badOcean++;
 					}
 				}
@@ -338,29 +352,41 @@ for (let cx = -12; cx <= 12; cx++) {
 // C) PENDIENTES DE FASE 10 SIN CUBRIR
 // ============================================================
 // 9) Gravedad de arena/grava (Fase 10, D1): la arena flotante cae hasta el
-//    primer soporte (settleColumn en setBlock).
+//    primer soporte (settleColumn en setBlock). Se monta una columna limpia
+//    con soporte de piedra explícito para que el test no dependa del terreno
+//    generado bajo (140,140) — el mundo D5 tiene superficie en Y negativas.
 {
 	const gx = 140,
 		gz = 140;
-	for (let dy = 0; dy < 8; dy++) world.setBlock(gx, 12 + dy, gz, B.AIR);
+	for (let dy = 3; dy < 20; dy++) world.setBlock(gx, dy, gz, B.AIR);
+	world.setBlock(gx, 4, gz, B.STONE); // soporte firme
 	world.setBlock(gx, 15, gz, B.SAND);
 	check(
 		"la arena flotante cae (ya no está en y=15)",
 		world.getBlock(gx, 15, gz) === B.AIR
 	);
-	let sandBelow = 0;
-	for (let dy = 2; dy < 15; dy++) {
-		if (world.getBlock(gx, dy, gz) === B.SAND) sandBelow++;
+	let sandBelow = 0,
+		sandY = -1;
+	for (let dy = 5; dy < 15; dy++) {
+		if (world.getBlock(gx, dy, gz) === B.SAND) {
+			sandBelow++;
+			sandY = dy;
+		}
 	}
 	check(
-		"la arena aterriza abajo (1 bloque en la columna)",
-		sandBelow === 1,
-		`${sandBelow}`
+		"la arena aterriza sobre el soporte (1 bloque en la columna)",
+		sandBelow === 1 && sandY === 5,
+		`${sandBelow} en y=${sandY}`
 	);
 	// La grava cae igual.
-	for (let dy = 0; dy < 8; dy++) world.setBlock(gx + 2, 12 + dy, gz, B.AIR);
+	for (let dy = 3; dy < 20; dy++) world.setBlock(gx + 2, dy, gz, B.AIR);
+	world.setBlock(gx + 2, 4, gz, B.STONE);
 	world.setBlock(gx + 2, 15, gz, B.GRAVEL);
-	check("la grava también cae", world.getBlock(gx + 2, 15, gz) === B.AIR);
+	check(
+		"la grava también cae sobre su soporte",
+		world.getBlock(gx + 2, 15, gz) === B.AIR &&
+			world.getBlock(gx + 2, 5, gz) === B.GRAVEL
+	);
 }
 
 // 10) TNT (Fase 10, D2): mecha → explosión con cráter; el bedrock sobrevive.

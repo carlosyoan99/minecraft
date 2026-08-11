@@ -2,28 +2,36 @@
 // ============================================================
 // TESTS UNITARIOS DE GENERACIÓN DE MUNDO (Fase 4: cuevas + lagos)
 // Verifica que la generación en world.js:
-//   1. no excava el bedrock (y=0) y solo abre la superficie como bocas de
-//      cueva escasas (fix: cuevas comunicadas con el exterior)
+//   1. no excava el bedrock (WORLD_MIN_Y) y solo abre la superficie como
+//      bocas de cueva escasas (fix: cuevas comunicadas con el exterior)
 //   2. es determinista en la zona subterránea (sin Math.random ahí)
 //   3. es continua entre chunks (sin costuras en los bordes)
 //   4. excava cuevas con fracción razonable y túneles conexos
-//   5. genera lagos: agua solo hasta SEA_LEVEL, arena bajo el agua,
-//      sin aire bajo el fondo, y el agua no es sólida (isSolidBlock)
+//   5. genera lagos: agua solo hasta el nivel del mar (WORLD_SEA_LEVEL),
+//      arena bajo el agua, sin aire bajo el fondo, y el agua no es sólida
 //   6. (Fase 7) los charcos decorativos de superficie son válidos: agua
-//      por encima de SEA_LEVEL solo como bloque de superficie con lecho
-//      de arena, fuera de lagos y abierta al aire
+//      por encima del mar solo como bloque de superficie con lecho de
+//      arena, fuera de lagos y abierta al aire
 // ============================================================
+// Fase 15 (D5): el mundo es 16×128×16 con Y de mundo −64..+63. La
+// generación trabaja en un espacio de diseño 0..63 (SEA_LEVEL=5) que se
+// re-basa restando DESIGN_OFFSET (8) → el mar real está en WORLD_SEA_LEVEL
+// (−3) y la superficie anclada en ~0. Los chunks guardan el dato con índice
+// local = mundo y − WORLD_MIN_Y (patrón de audit-altura.js).
 const world = require("../server/world.js");
 const state = require("../server/state.js");
 const {
 	CHUNK_SIZE,
 	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y,
 	B,
 	isSolidBlock
 } = require("../server/constants.js");
 
-function idx(x, y, z) {
-	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
+// Índice con local y = mundo y − WORLD_MIN_Y (layout v6).
+function idx(x, wy, z) {
+	return ((wy - WORLD_MIN_Y) * CHUNK_SIZE + z) * CHUNK_SIZE + x;
 }
 
 // Generación fresca: no leer los chunks viejos del disco (sin cuevas ni lagos).
@@ -40,12 +48,12 @@ const check = (_name, ok, _extra = "") => {
 	if (!ok) { failed++; failedChecks.push(_name); }
 };
 
-// Superficie efectiva de una columna: en un lago/río el terreno se hunde
-// hasta su fondo real (profundidad variable, Fase 10 A4); getHeight no
-// contempla lagos ni ríos, por eso se ajusta aquí con columnFloorY.
+// Superficie efectiva de una columna (Y de MUNDO del bloque de superficie):
+// en un lago/río/océano el terreno se hunde hasta su fondo real (columnFloorY
+// devuelve el fondo en ESPACIO DE DISEÑO → se re-basa a mundo).
 function columnSurface(wx, wz) {
 	const floorY = world.columnFloorY(wx, wz);
-	return floorY != null ? floorY : world.getHeight(wx, wz);
+	return floorY != null ? floorY - world.DESIGN_OFFSET : world.getHeight(wx, wz);
 }
 
 // --- 1) Generar una zona de 7x7 chunks y medir invariantes básicas ---
@@ -81,39 +89,39 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 				const lake = world.isLake(wx, wz);
 				const river = world.isRiver(wx, wz);
 				const floorY = world.columnFloorY(wx, wz);
-				const surface = floorY != null ? floorY : world.getHeight(wx, wz);
+				const surface = floorY != null ? floorY - world.DESIGN_OFFSET : world.getHeight(wx, wz);
 				columns++;
 				// Fase 10 (A4): métricas de ríos y de profundidad variable de lagos.
 				if (floorY != null) {
 					if (river) riverWaterCells++;
-					if (lake) lakeFloors.add(floorY);
+					if (lake) lakeFloors.add(floorY - world.DESIGN_OFFSET);
 				}
-				for (let y = 1; y < surface - 1; y++) {
+				for (let y = WORLD_MIN_Y + 1; y < surface - 1; y++) {
 					stoneTotal++;
 					if (data[idx(x, y, z)] === B.AIR) carved++;
 				}
-				if (data[idx(x, 0, z)] !== B.BEDROCK) bedrockBroken++;
+				if (data[idx(x, WORLD_MIN_Y, z)] !== B.BEDROCK) bedrockBroken++;
 				// Boca de cueva: el bloque de superficie (surface-1) abierto al aire
 				// es una entrada visible hacia el exterior (fix de la tarea).
 				if (data[idx(x, surface - 1, z)] === B.AIR) mouthCount++;
 				// Los 2 bloques superiores pueden tener huecos SOLO como bocas de
 				// cueva escasas: túneles que rompen la superficie ocasionalmente.
 				let topHoles = 0;
-				for (let y = Math.max(0, surface - 2); y < surface; y++) {
+				for (let y = Math.max(WORLD_MIN_Y, surface - 2); y < surface; y++) {
 					if (data[idx(x, y, z)] === B.AIR) topHoles++;
 				}
 				if (topHoles > 0) surfaceHoles++;
 				// agua: invariantes de lago/río + charcos decorativos (Fase 7)
-				for (let y = 1; y < WORLD_HEIGHT; y++) {
+				for (let y = WORLD_MIN_Y + 1; y <= WORLD_MAX_Y; y++) {
 					if (data[idx(x, y, z)] === B.WATER) {
 						waterCells++;
-						if (y >= world.SEA_LEVEL) {
+						if (y >= world.WORLD_SEA_LEVEL) {
 							// Agua sobre el nivel del mar = charco decorativo de superficie
 							// (Fase 7): debe ser el bloque de superficie de una columna
 							// NO lago, con lecho de arena justo debajo.
 							waterAboveSea++;
 							const below = data[idx(x, y - 1, z)];
-							const above = y + 1 < WORLD_HEIGHT ? data[idx(x, y + 1, z)] : 0;
+							const above = y + 1 <= WORLD_MAX_Y ? data[idx(x, y + 1, z)] : 0;
 							if (
 								lake ||
 								y !== surface - 1 || // no es la superficie
@@ -127,9 +135,9 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 						// (el lecho es arena; las cuevas bajo el agua se inundan).
 						const below = data[idx(x, y - 1, z)];
 						if (below === B.AIR) airUnderWater++;
-						// Lecho del lago/río: el bloque del fondo real (columnFloorY) es
-						// arena. El agua en y = floorY + 1 descansa sobre él.
-						if (floorY != null && y === floorY + 1 && below !== B.SAND)
+						// Lecho del lago/río: el bloque del fondo real (columnFloorY en
+						// mundo) es arena. El agua en y = floorYMundo + 1 descansa sobre él.
+						if (floorY != null && y === floorY - world.DESIGN_OFFSET + 1 && below !== B.SAND)
 							badWaterFloor++;
 					}
 				}
@@ -144,7 +152,7 @@ const holePct = columns ? (surfaceHoles / columns) * 100 : 0;
 // defecto (miSemilla2026); con otra SEED podrían variar (los tests de la
 // suite ya son seed-específicos por diseño: los 5 biomas, la montaña, etc.).
 check(
-	"bedrock intacto (y=0 siempre BEDROCK)",
+	"bedrock intacto (WORLD_MIN_Y siempre BEDROCK)",
 	bedrockBroken === 0,
 	`${bedrockBroken} violaciones`
 );
@@ -169,7 +177,7 @@ check(
 	`${waterCells} celdas de agua`
 );
 check(
-	"el agua por encima de SEA_LEVEL es charco válido (superficie + arena)",
+	"el agua por encima del mar es charco válido (superficie + arena)",
 	badPond === 0,
 	`${badPond} charcos inválidos (${waterAboveSea} celdas de agua alta)`
 );
@@ -212,7 +220,7 @@ let diffs = 0,
 for (let x = 0; x < CHUNK_SIZE; x++) {
 	for (let z = 0; z < CHUNK_SIZE; z++) {
 		const surface = columnSurface(x, z);
-		for (let y = 2; y < surface - 2; y++) {
+		for (let y = WORLD_MIN_Y + 2; y < surface - 2; y++) {
 			underground++;
 			if (a[idx(x, y, z)] !== b[idx(x, y, z)]) diffs++;
 		}
@@ -243,7 +251,7 @@ for (const key of ["1,0", "0,1", "1,1"]) {
 	for (let x = 0; x < CHUNK_SIZE; x++) {
 		for (let z = 0; z < CHUNK_SIZE; z++) {
 			const surface = columnSurface(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
-			for (let y = 2; y < surface - 2; y++) {
+			for (let y = WORLD_MIN_Y + 2; y < surface - 2; y++) {
 				seamTotal++;
 				if (first[idx(x, y, z)] !== second[idx(x, y, z)]) seamDiffs++;
 			}
@@ -262,7 +270,7 @@ const visited = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
 let largest = 0,
 	count3 = 0;
 for (let x = 0; x < CHUNK_SIZE; x++) {
-	for (let y = 1; y < WORLD_HEIGHT - 1; y++) {
+	for (let y = WORLD_MIN_Y + 1; y < WORLD_MAX_Y; y++) {
 		for (let z = 0; z < CHUNK_SIZE; z++) {
 			const i = idx(x, y, z);
 			if (visited[i] || chunk[i] !== B.AIR) continue;
@@ -288,8 +296,8 @@ for (let x = 0; x < CHUNK_SIZE; x++) {
 					if (
 						nx < 0 ||
 						nx >= CHUNK_SIZE ||
-						ny < 1 ||
-						ny >= WORLD_HEIGHT - 1 ||
+						ny <= WORLD_MIN_Y ||
+						ny >= WORLD_MAX_Y ||
 						nz < 0 ||
 						nz >= CHUNK_SIZE
 					)

@@ -47,8 +47,14 @@ fs.writeFileSync(
 	const { tileForFace, tileRect, TILE_COUNT } = await import(
 		`file://${path.join(tmp, "texturemap.js")}`
 	);
-	const { CHUNK_SIZE, WORLD_HEIGHT, WATER, TORCH, NON_SOLID_PLANTS } =
-		await import(`file://${path.join(tmp, "constants.js")}`);
+	const {
+		CHUNK_SIZE,
+		WORLD_HEIGHT,
+		WORLD_MIN_Y, // Fase 15 (D5): el greedy emite posiciones en Y de MUNDO
+		WATER,
+		TORCH,
+		NON_SOLID_PLANTS
+	} = await import(`file://${path.join(tmp, "constants.js")}`);
 
 	const cIdx = (x, y, z) => (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
 	const airChunk = () => new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
@@ -243,17 +249,20 @@ fs.writeFileSync(
 		const water = { pos: [], norm: [], uv: [], col: [] };
 		const lava = { pos: [], norm: [], uv: [], col: [] };
 		const torch = { pos: [], norm: [], uv: [], col: [] };
+		// Fase 15 (D5): la referencia replica el greedy ACTUAL, que emite las
+		// posiciones en Y de MUNDO (local y + WORLD_MIN_Y). wy aquí es local
+		// (se usa para muestrear bloques); la emisión suma WORLD_MIN_Y.
 		const pushFace = (block, fi, target, wx, wy, wz) => {
 			const [u0, v0, u1, v1] =
 				block === WATER ? [0, 0, 1, 1] : tileRect(tileForFace(block, fi));
 			const corners = FACES[fi].corners;
 			const verts = corners.map((cor) => [
 				wx + cor[0],
-				wy + cor[1],
+				wy + cor[1] + WORLD_MIN_Y,
 				wz + cor[2]
 			]);
 			if (block === WATER && fi === 2) {
-				for (const vert of verts) vert[1] = wy + 0.875;
+				for (const vert of verts) vert[1] = wy + 0.875 + WORLD_MIN_Y;
 			}
 			const face = FACES[fi];
 			const light = lightAt(
@@ -330,20 +339,23 @@ fs.writeFileSync(
 				}
 			}
 		};
+		// Y de emisión en MUNDO (D5): las posiciones de antorchas/plantas del
+		// greedy real salen con local + WORLD_MIN_Y (chunkGeometry.js).
 		const pushTorch = (wx, wy, wz) => {
 			const uv = [tu0, tv0, tu1, tv1];
+			const wyW = wy + WORLD_MIN_Y;
 			pushCrossQuad(
 				wx - TORCH_W,
-				wy,
+				wyW,
 				wz - TORCH_W,
 				wx + TORCH_W,
-				wy,
+				wyW,
 				wz + TORCH_W,
 				wx + TORCH_W,
-				wy + TORCH_H,
+				wyW + TORCH_H,
 				wz + TORCH_W,
 				wx - TORCH_W,
-				wy + TORCH_H,
+				wyW + TORCH_H,
 				wz - TORCH_W,
 				-Math.SQRT1_2,
 				0,
@@ -352,16 +364,16 @@ fs.writeFileSync(
 			);
 			pushCrossQuad(
 				wx + TORCH_W,
-				wy,
+				wyW,
 				wz - TORCH_W,
 				wx - TORCH_W,
-				wy,
+				wyW,
 				wz + TORCH_W,
 				wx - TORCH_W,
-				wy + TORCH_H,
+				wyW + TORCH_H,
 				wz + TORCH_W,
 				wx + TORCH_W,
-				wy + TORCH_H,
+				wyW + TORCH_H,
 				wz - TORCH_W,
 				-Math.SQRT1_2,
 				0,
@@ -371,18 +383,19 @@ fs.writeFileSync(
 		};
 		const pushPlant = (wx, wy, wz, block) => {
 			const uv = tileRect(tileForFace(block, 0));
+			const wyW = wy + WORLD_MIN_Y;
 			pushCrossQuad(
 				wx - PLANT_W,
-				wy,
+				wyW,
 				wz - PLANT_W,
 				wx + PLANT_W,
-				wy,
+				wyW,
 				wz + PLANT_W,
 				wx + PLANT_W,
-				wy + PLANT_H,
+				wyW + PLANT_H,
 				wz + PLANT_W,
 				wx - PLANT_W,
-				wy + PLANT_H,
+				wyW + PLANT_H,
 				wz - PLANT_W,
 				-Math.SQRT1_2,
 				0,
@@ -391,16 +404,16 @@ fs.writeFileSync(
 			);
 			pushCrossQuad(
 				wx + PLANT_W,
-				wy,
+				wyW,
 				wz - PLANT_W,
 				wx - PLANT_W,
-				wy,
+				wyW,
 				wz + PLANT_W,
 				wx - PLANT_W,
-				wy + PLANT_H,
+				wyW + PLANT_H,
 				wz + PLANT_W,
 				wx + PLANT_W,
-				wy + PLANT_H,
+				wyW + PLANT_H,
 				wz - PLANT_W,
 				-Math.SQRT1_2,
 				0,
@@ -460,20 +473,21 @@ fs.writeFileSync(
 		`greedy=${gv} verts vs naive=${nv} verts`
 	);
 	// La tapa superior (16×16) debe quedar fusionada en UN quad: localizarlo
-	// por sus 6 vértices a y=11 (tapa de la losa) con el rectángulo completo.
+	// por sus 6 vértices a y = 11 + WORLD_MIN_Y (tapa de la losa, Y de MUNDO).
 	const cornerOf = (buf, q, vi) => {
 		const o = q * 18 + [0, 1, 2, 5][vi] * 3; // orden v0,v1,v2,v0,v2,v3
 		return [buf[o], buf[o + 1], buf[o + 2]];
 	};
+	const TOP_Y = 11 + WORLD_MIN_Y;
 	const topQuads = [];
 	for (let q = 0; q < greedy.terrain.pos.length / 18; q++) {
 		const cs = [0, 1, 2, 3].map((vi) => cornerOf(greedy.terrain.pos, q, vi));
-		if (cs.every((c) => Math.abs(c[1] - 11) < 1e-6)) topQuads.push(cs);
+		if (cs.every((c) => Math.abs(c[1] - TOP_Y) < 1e-6)) topQuads.push(cs);
 	}
 	check(
 		"1. la tapa 16×16 queda fusionada en UN quad",
 		topQuads.length === 1,
-		`${topQuads.length} quads a y=11`
+		`${topQuads.length} quads a y=${TOP_Y}`
 	);
 	if (topQuads.length === 1) {
 		const xs = topQuads[0].map((c) => c[0]);
@@ -489,7 +503,7 @@ fs.writeFileSync(
 	}
 
 	// ----------------------------------------------------------
-	// 2) AGUA: la superficie 16×16 se fusiona en UN quad a y=0.875
+	// 2) AGUA: la superficie 16×16 se fusiona en UN quad (Y de MUNDO)
 	// ----------------------------------------------------------
 	const pond = airChunk();
 	for (let x = 0; x < CHUNK_SIZE; x++)
@@ -498,17 +512,18 @@ fs.writeFileSync(
 			setBlock(pond, x, 4, z, WATER); // agua
 		}
 	const pondG = build(0, 0, pond);
-	// La superficie 16×16 se fusiona en UN quad a y=4.875 (las 4 caras
-	// laterales del borde del chunk suman sus propios quads a y=4..5).
+	// La superficie 16×16 se fusiona en UN quad a 4.875 + WORLD_MIN_Y (las
+	// 4 caras laterales del borde del chunk suman sus propios quads).
+	const SURF_Y = 4.875 + WORLD_MIN_Y;
 	const surf = [];
 	for (let q = 0; q < pondG.water.pos.length / 18; q++) {
 		const cs = [0, 1, 2, 3].map((vi) => cornerOf(pondG.water.pos, q, vi));
-		if (cs.every((c) => Math.abs(c[1] - 4.875) < 1e-6)) surf.push(cs);
+		if (cs.every((c) => Math.abs(c[1] - SURF_Y) < 1e-6)) surf.push(cs);
 	}
 	check(
-		"2. superficie de agua = 1 quad fusionado a y=4.875",
+		"2. superficie de agua = 1 quad fusionado (Y de mundo)",
 		surf.length === 1,
-		`${surf.length} quads a 4.875 de ${pondG.water.pos.length / 18} totales`
+		`${surf.length} quads a ${SURF_Y} de ${pondG.water.pos.length / 18} totales`
 	);
 	if (surf.length === 1) {
 		const xs = surf[0].map((c) => c[0]);
@@ -650,12 +665,14 @@ fs.writeFileSync(
 	);
 	const mesh = new THREE.Mesh(geo);
 	const raycaster = new THREE.Raycaster();
+	// Fase 15 (D5): la tapa de la losa está en Y de MUNDO (11 + WORLD_MIN_Y);
+	// el rayo baja desde arriba (y=40 queda sobre −53).
 	raycaster.set(new THREE.Vector3(8.5, 40, 8.5), new THREE.Vector3(0, -1, 0));
 	raycaster.far = 100;
 	const hits = raycaster.intersectObject(mesh, false);
 	check(
-		"5. raycast acierta la tapa de la losa (y=11)",
-		hits.length > 0 && Math.abs(hits[0].point.y - 11) < 0.01,
+		"5. raycast acierta la tapa de la losa (Y de mundo)",
+		hits.length > 0 && Math.abs(hits[0].point.y - (11 + WORLD_MIN_Y)) < 0.01,
 		`hits=${hits.length}, y=${hits[0]?.point.y}`
 	);
 

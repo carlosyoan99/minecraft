@@ -7,8 +7,8 @@
 //     prototipo; las constantes públicas (SEA_LEVEL, ...) cuelgan de la
 //     instancia. Los tests que parchean `world.getBlock = ...` siguen
 //     funcionando (propiedad propia sobre la instancia).
-//   - `Chunk` envuelve un chunk (16×64×16) con get/set locales, dirty y
-//     serialización (gzip, mismo formato que writeChunkFile).
+//   - `Chunk` envuelve un chunk (16×128×16, Fase 15 D5) con get/set
+//     locales, dirty y serialización (gzip, mismo formato que writeChunkFile).
 //   - `ItemStack` es la clase de los slots de inventario/cofre/drop; su
 //     JSON es idéntico a los literales { id, count, durability } previos
 //     (el wire y el guardado no cambian).
@@ -92,8 +92,8 @@ const check = (_name, ok, _extra = "") => {
 		c.data === world.getChunk(7, 3).data
 	);
 	check(
-		"dimensiones 16×64×16",
-		c.data.length === 16 * 64 * 16
+		"dimensiones 16×128×16 (Fase 15 D5)",
+		c.data.length === 16 * 128 * 16
 	);
 	// Escritura local + dirty.
 	const cc = new world.Chunk(1, 1);

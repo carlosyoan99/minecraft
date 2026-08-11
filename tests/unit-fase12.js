@@ -835,10 +835,11 @@ const mkPlayer = (over = {}) => ({
 	world.columnFloorY = () => null;
 	world.getHeight = () => 63;
 	world.findDarkCaveY = () => 50;
-	// Garantizar chunks cargados en el radio del mock.
+	// Garantizar chunks cargados en el radio del mock (Fase 15 D5: chunks
+	// de 16×128×16).
 	for (let cx = -4; cx <= 4; cx++) {
 		for (let cz = -4; cz <= 4; cz++) {
-			state.chunks.set(`${cx},${cz}`, new Uint8Array(16 * 64 * 16));
+			state.chunks.set(`${cx},${cz}`, new Uint8Array(16 * 128 * 16));
 		}
 	}
 	// r<0.6 → mob propio; el valor r (0.3) cae en el pool de taiga → wolf.
@@ -860,15 +861,23 @@ const mkPlayer = (over = {}) => ({
 		base.length === 0 || base.every((m) => m.type !== "wolf"),
 		`creados: ${base.map((m) => m.type).join(",") || "ninguno"}`
 	);
-	// Agua → ahogado: columnFloorY no null → WATER_SPAWN.
+	// Agua → ahogado: columnFloorY no null → WATER_SPAWN. Fase 15 (D5):
+	// columnFloorY devuelve el fondo en ESPACIO DE DISEÑO (1..4); el ahogado
+	// nace en min(floorY − DESIGN_OFFSET + 2, WORLD_SEA_LEVEL − 1) — siempre
+	// bajo la superficie del agua (Y de mundo ≤ −4), nunca sobre ella.
 	state.mobs = [];
-	world.columnFloorY = () => 40; // columna de agua con fondo en 40
+	world.columnFloorY = () => 3; // fondo de lago en diseño (agua poco profunda)
 	Math.random = () => 0.3;
 	const wet = mobs.spawnMobs(true);
 	Math.random = rnd;
 	check(
 		"spawnMobs sobre agua elige ahogado y lo coloca bajo la superficie",
-		wet.some((m) => m.type === "drowned" && m.y >= 41 && m.y < 63),
+		wet.some(
+			(m) =>
+				m.type === "drowned" &&
+				m.y <= world.WORLD_SEA_LEVEL - 1 &&
+				m.y >= world.WORLD_MIN_Y + 1
+		),
 		`creados: ${wet.map((m) => `${m.type}@${m.y}`).join(",") || "ninguno"}`
 	);
 	state.mobs = [];

@@ -15,7 +15,7 @@
 // densidad no baje perceptiblemente (observado ≥ 0.5 × esperado por bioma).
 // ============================================================
 const world = require("../server/world.js");
-const { CHUNK_SIZE, WORLD_HEIGHT, B } = require("../server/constants.js");
+const { CHUNK_SIZE, WORLD_MIN_Y, WORLD_MAX_Y, B } = require("../server/constants.js");
 
 let _passed = 0,
 	failed = 0;
@@ -75,6 +75,8 @@ try {
 
 	// Recolectar bases de tronco en el área interior [-2,2] (margen de 1 chunk
 	// para que las copas de los árboles de análisis no queden fuera del área).
+	// Fase 15 (D5): el barrido recorre la Y de MUNDO (−64..+63); los árboles
+	// viven anclados en y≈0 (getHeight devuelve Y de mundo, −8..+19).
 	const bases = [];
 	for (let cx = -2; cx <= 2; cx++)
 		for (let cz = -2; cz <= 2; cz++)
@@ -82,7 +84,7 @@ try {
 				for (let z = 0; z < CHUNK_SIZE; z++) {
 					const wx = cx * CHUNK_SIZE + x,
 						wz = cz * CHUNK_SIZE + z;
-					for (let y = 1; y < WORLD_HEIGHT; y++) {
+					for (let y = WORLD_MIN_Y + 1; y <= WORLD_MAX_Y; y++) {
 						if (isLog(world.getBlock(wx, y, wz))) {
 							const below = world.getBlock(wx, y - 1, wz);
 							if (!isLog(below)) bases.push({ wx, y, z: wz });
@@ -94,7 +96,7 @@ try {
 	// se omite ahí deliberadamente) y el tronco está entero.
 	const validos = bases.filter((b) => {
 		let topY = -1;
-		for (let y = b.y; y < WORLD_HEIGHT; y++) {
+		for (let y = b.y; y <= WORLD_MAX_Y; y++) {
 			if (isLog(world.getBlock(b.wx, y, b.z))) topY = y;
 			else break;
 		}
@@ -128,7 +130,7 @@ try {
 		mZ = 0;
 	for (const b of validos) {
 		let topY = -1;
-		for (let y = b.y; y < WORLD_HEIGHT; y++) {
+		for (let y = b.y; y <= WORLD_MAX_Y; y++) {
 			if (isLog(world.getBlock(b.wx, y, b.z))) topY = y;
 			else break;
 		}
@@ -143,7 +145,7 @@ try {
 			for (let d = 1; d <= 2; d++) {
 				const wx = b.wx + dx * d,
 					wz = b.z + dz * d;
-				for (let y = ymin; y <= ymax && y < WORLD_HEIGHT; y++)
+				for (let y = ymin; y <= ymax && y <= WORLD_MAX_Y; y++)
 					if (isLeaf(world.getBlock(wx, y, wz))) {
 						if (k === "px") pX++;
 						else if (k === "mx") mX++;
@@ -187,7 +189,7 @@ try {
 	);
 	const asimetricos = aislados.filter((b) => {
 		let topY = -1;
-		for (let y = b.y; y < WORLD_HEIGHT; y++) {
+		for (let y = b.y; y <= WORLD_MAX_Y; y++) {
 			if (isLog(world.getBlock(b.wx, y, b.z))) topY = y;
 			else break;
 		}
@@ -203,7 +205,7 @@ try {
 			for (let d = 1; d <= 2; d++) {
 				const wx = b.wx + dx * d,
 					wz = b.z + dz * d;
-				for (let y = ymin; y <= ymax && y < WORLD_HEIGHT; y++)
+				for (let y = ymin; y <= ymax && y <= WORLD_MAX_Y; y++)
 					if (isLeaf(world.getBlock(wx, y, wz))) cnt[k]++;
 			}
 		}
@@ -235,7 +237,7 @@ try {
 					const bm = world.getBiome(wx, wz);
 					if (!THRESH[bm]) continue;
 					let surf = B.AIR;
-					for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+					for (let y = WORLD_MAX_Y; y >= WORLD_MIN_Y; y--) {
 						const b = world.getBlock(wx, y, wz);
 						if (b === B.WATER) break;
 						if (b !== B.AIR && !VEG.has(b)) {
@@ -251,7 +253,7 @@ try {
 						!world.isRiver(wx, wz) &&
 						!world.isLake(wx, wz) &&
 						!world.isSwampPoolAt(wx, wz);
-					for (let y = 1; y < WORLD_HEIGHT; y++)
+					for (let y = WORLD_MIN_Y + 1; y <= WORLD_MAX_Y; y++)
 						if (isLog(world.getBlock(wx, y, wz))) {
 							observado++;
 							break;
@@ -288,7 +290,7 @@ try {
 				for (let z = 0; z < CHUNK_SIZE; z++) {
 					const biome = world.getBiome(baseX + x, baseZ + z);
 					if (biome === "forest" || biome === "plains") forestPlains++;
-					for (let y = 1; y < WORLD_HEIGHT; y++) {
+					for (let y = WORLD_MIN_Y + 1; y <= WORLD_MAX_Y; y++) {
 						if (world.getBlock(baseX + x, y, baseZ + z) === B.OAK_LOG) {
 							const below = world.getBlock(baseX + x, y - 1, baseZ + z);
 							// Base de tronco = tronco sin otro tronco debajo

@@ -247,7 +247,9 @@ check(
 	check("luz: piedra bloquea la luz", isLightPassable(B.STONE) === false);
 	check("luz: tierra bloquea la luz", isLightPassable(B.DIRT) === false);
 
-	// 7) computeChunkLight: BFS con atenuación y oclusión
+	// 7) computeChunkLight: BFS con atenuación y oclusión. Fase 15 (D5): la
+	// firma pasó a (cx, cz, chunkSize, worldHeight, worldMinY, blockAt,
+	// torches). Este chunk sintético usa worldMinY = 0 (local == mundo).
 	const CS = 16,
 		WH = 64;
 	const chunk = new Uint8Array(CS * WH * CS); // todo aire
@@ -262,7 +264,7 @@ check(
 	};
 	const torches = [[8, 30, 8]]; // antorcha en el centro del chunk 0,0
 
-	const out = computeChunkLight(0, 0, CS, WH, blockAt, torches);
+	const out = computeChunkLight(0, 0, CS, WH, 0, blockAt, torches);
 	check("luz: el array cubre todo el chunk", out.length === CS * WH * CS);
 
 	// Celda de la antorcha: luz máxima (1)
@@ -302,6 +304,7 @@ check(
 		0,
 		CS,
 		WH,
+		0,
 		(wx, wy, wz) => {
 			if (wy < 0 || wy >= WH) return B.STONE;
 			const cx = Math.floor(wx / CS),
@@ -322,7 +325,7 @@ check(
 	);
 
 	// Una antorcha FUERA del chunk no hace trabajo en él (pero sí la caja de radio)
-	const out3 = computeChunkLight(0, 0, CS, WH, blockAt, [
+	const out3 = computeChunkLight(0, 0, CS, WH, 0, blockAt, [
 		[8, 30, 8],
 		[300, 30, 300]
 	]);

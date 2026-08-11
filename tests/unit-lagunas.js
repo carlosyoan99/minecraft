@@ -265,14 +265,20 @@ const connect = (name) => {
 	const origCWN = world.countWaterNeighbors;
 	world.setBlock = () => true; // el handler escribe en el mundo: no interesa aquí
 	// RECOGER: cubo vacío sobre una fuente de agua → se retira el agua y el
-	// cubo se llena (WATER_BUCKET).
+	// cubo se llena (WATER_BUCKET). La fuente se coloca CERCA del jugador
+	// (Fase 15 D5: el spawn está en y≈2, no en 10 — el handler valida
+	// distancia ≤ 7).
 	const { ws, player } = connect("cubo");
 	playerHelpers.addToInventory(player, I.BUCKET, 1);
-	world.getBlock = (x, y, z) => (x === 2 && y === 10 && z === 0 ? B.WATER : B.AIR);
+	const ax = Math.floor(player.x),
+		ay = Math.floor(player.y),
+		az = Math.floor(player.z);
+	world.getBlock = (x, y, z) =>
+		x === ax + 2 && y === ay && z === az ? B.WATER : B.AIR;
 	world.countWaterNeighbors = () => 0;
 	ws.emit(
 		"message",
-		JSON.stringify({ event: "bucket_use", data: { x: 2, y: 10, z: 0 } })
+		JSON.stringify({ event: "bucket_use", data: { x: ax + 2, y: ay, z: az } })
 	);
 	check(
 		"recoger agua: BUCKET se consume y WATER_BUCKET entra al inventario",
@@ -286,7 +292,7 @@ const connect = (name) => {
 	player.selectedSlot = wbSlot;
 	ws.emit(
 		"message",
-		JSON.stringify({ event: "bucket_use", data: { x: 3, y: 10, z: 0 } })
+		JSON.stringify({ event: "bucket_use", data: { x: ax + 3, y: ay, z: az } })
 	);
 	check(
 		"verter agua: WATER_BUCKET se consume y BUCKET vuelve",
@@ -297,11 +303,12 @@ const connect = (name) => {
 	// (tras el vertido el jugador tiene 1 BUCKET; se añade otro → 2).
 	playerHelpers.addToInventory(player, I.BUCKET, 1);
 	player.selectedSlot = player.inventory.findIndex((s) => s && s.id === I.BUCKET);
-	world.getBlock = (x, y, z) => (x === 2 && y === 10 && z === 0 ? B.WATER : B.AIR);
+	world.getBlock = (x, y, z) =>
+		x === ax + 2 && y === ay && z === az ? B.WATER : B.AIR;
 	world.countWaterNeighbors = () => 2; // patrón 2×2 con 3 fuentes
 	ws.emit(
 		"message",
-		JSON.stringify({ event: "bucket_use", data: { x: 2, y: 10, z: 0 } })
+		JSON.stringify({ event: "bucket_use", data: { x: ax + 2, y: ay, z: az } })
 	);
 	check(
 		"la fuente infinita 2×2 no se recoge (siguen los 2 BUCKET)",

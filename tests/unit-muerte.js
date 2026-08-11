@@ -145,7 +145,10 @@ const countSent = (ws) => {
 	p.y = 10;
 	p.z = 0;
 	broadcasts.length = 0;
-	ws.emit("message", JSON.stringify({ event: "move", data: { x: 0, y: -30, z: 0 } }));
+	// Fase 15 (D5): el mundo va de WORLD_MIN_Y (−64) a WORLD_MAX_Y (63);
+	// VOID_Y = −72 (por debajo del fondo). El move debe ir por debajo de
+	// VOID_Y para morir por void (antes −30 caía bajo el mundo de 0..63).
+	ws.emit("message", JSON.stringify({ event: "move", data: { x: 0, y: -80, z: 0 } }));
 	check(
 		"void: move con y<VOID_Y → player_die con cause=void",
 		lastDie()?.cause === "void",
