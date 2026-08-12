@@ -518,16 +518,21 @@ check(
 	);
 }
 // La luna comparte timeOffset con el día: subir el reloj del mundo un día
-// (DAY_CYCLE_MS) avanza moonTime exactamente un día dentro del ciclo lunar.
+// (DAY_CYCLE_MS) avanza moonTime un día dentro del ciclo lunar. moonTime se
+// basa en Date.now(), así que entre las dos lecturas el reloj real avanza unos
+// milisegundos (ε): la igualdad exacta es flaky bajo carga. Se acepta un
+// deriva de hasta 1 s (el delta nunca puede ser negativo: Date.now() es
+// monótono y DAY_CYCLE_MS < MOON_CYCLE_MS, no hay wrap del módulo).
 {
 	const off0 = state.timeOffset;
 	const mt0 = commands.moonTime(state);
 	state.timeOffset = off0 + DAY_CYCLE_MS; // +1 día de juego
 	const mt1 = commands.moonTime(state);
+	const delta = (mt1 - mt0 + MOON_CYCLE_MS) % MOON_CYCLE_MS;
 	check(
 		"moonTime avanza 1 día con timeOffset (+DAY_CYCLE_MS)",
-		(mt1 - mt0 + MOON_CYCLE_MS) % MOON_CYCLE_MS === DAY_CYCLE_MS,
-		`delta=${(mt1 - mt0 + MOON_CYCLE_MS) % MOON_CYCLE_MS}`
+		delta >= DAY_CYCLE_MS && delta <= DAY_CYCLE_MS + 1000,
+		`delta=${delta}`
 	);
 	state.timeOffset = off0; // restaurar
 }
