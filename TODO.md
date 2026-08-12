@@ -650,9 +650,10 @@
 - [ ] Bloque D — Refactor a convenciones CLAUDE.md (módulos >~500 líneas,
       empezando por `server/net.js` 2282 → ...); sin cambiar protocolo WS,
       IDs B/I ni formato de guardado
+- [x] E-1 Recalibrar `audit-fase3/4/6/7` al mundo v6 y documentarlo
+      (`6fa7851`: `--audit` 6/6 con presupuestos medidos y comentados)
 - [x] E-2 Biome 0 errores (`bd49412`): `npx biome check .` → 0 errores
       (169 warnings/16 infos tolerados), suite en verde
-- [ ] E-1 Recalibrar `audit-fase3/4/6/7` al mundo v6 y documentar
 - [ ] Bloque F — Documentación al día (F-1..F-3)
 - [ ] Bloque G — Cierre: todo verde, auditoría final de fase obligatoria
 

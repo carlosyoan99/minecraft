@@ -9,7 +9,8 @@
 > Fecha: 2026-08-12 · Proyecto: clon de Minecraft.
 > Estado: **prospectiva (sin implementar)** — progreso 2026-08-12: **A1
 > cerrado** (WIP de la auditoría 2026-08-11 commiteado: `db1c366`, `17deb8c`,
-> `5303e73`) y **E-2 bioma 0 errores cerrado** (commit `bd49412`).
+> `5303e73`), **E-2 bioma 0 errores cerrado** (commit `bd49412`) y **E-1
+> auditorías recalibradas cerrado** (commit `6fa7851`, `--audit` 6/6).
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -480,6 +481,23 @@
 - **Criterio:** `node tests/run.js --audit` → **6/6 en verde** (fase3, fase4,
   fase5, fase6, fase7, altura 72/72), con los nuevos presupuestos
   documentados en cada archivo.
+- **Estado (2026-08-12): ✅ CERRADO** — commit `6fa7851`, `node
+  tests/run.js --audit` → **6/6, exit 0**. Detalle:
+  - `audit-fase3`, `audit-fase5`, `audit-altura` ya estaban en verde.
+  - `audit-fase4`: presupuesto de generación < 12 → **< 80 ms/chunk**
+    (medido mejor-de-3 ~26-41 ms) y ratio caras/bloques < 2.2 → **< 8**
+    (medido ~5.747 estable). Documentado en el propio archivo: el mundo v6
+    (128 de alto) + cuevas grandes (F17 B5) + vegetación densa exponen cada
+    piedra a aire en ~5.7 caras; el ratio ya no mide "menos geometría".
+  - `audit-fase6`: memoria bruta < 30 → **< 800 MB** (medido ~619 MB con
+    LOD, 2.79 GB sin LOD, ratio 0.22 / −78 %; geometría bruta pre-greedy).
+  - `audit-fase7`: **bug real corregido** — el índice local del chunk
+    usaba la Y absoluta (v5); con mundo v6 el cofre "no persistía". Ahora
+    `localY = sy − 1 − WORLD_MIN_Y`. Umbrales CDP < 100 → **< 1000 ms tick /
+    < 800 ms gen** (medidos 246-580 / 156-386 ms en máquina de desarrollo
+    bajo carga; la ventana de 6 s mide el relleno inicial, coste no
+    optimizado, diferido a la fase de rendimiento).
+  - Umbrales documentados también en `docs/tests.md` §"Umbrales y política".
 
 ### E-2 — Biome: 0 errores (obligatorio)
 

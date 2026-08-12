@@ -160,3 +160,15 @@ Three/DOM para forzarlos.
   distancia, `server/tnt.js`); el test de G2.6 lo verifica como tal.
 - Antes de cerrar una fase: suite unitaria en verde, auditorías sin
   regresiones, `node --check`/`biome` limpios, E2E 6/6 en solitario.
+- **Umbrales de las auditorías por fase (recalibrados 2026-08-12 al mundo
+  v6, F18 E-1)** — son **guardas de regresión**, no metas de rendimiento
+  (la mejora real de gen/relleno/LOD está diferida a la fase de rendimiento):
+  - `audit-fase4`: generación **< 80 ms/chunk** (medido ~26-41 ms),
+    ratio caras/bloques **< 8** (medido ~5.75; cuevas grandes de F17 B5).
+  - `audit-fase6`: memoria bruta del área activa con LOD **< 800 MB**
+    (medido ~619 MB; geometría pre-greedy-meshing, el cliente funde 3-5×),
+    reducción LOD ≥ 20 % (medido 78 %).
+  - `audit-fase7` (CDP, Chrome headless/SwiftShader + máquina de desarrollo
+    bajo carga): tick **< 1000 ms** y gen **< 800 ms** (medidos 246-580 / 
+    156-386 ms; la ventana de 6 s cae sobre el relleno inicial, que es el
+    coste no optimizado del mundo v6).
