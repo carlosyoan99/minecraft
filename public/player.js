@@ -21,17 +21,18 @@ import {
 	TORCH,
 	WATER
 } from "./constants.js";
-import { isDoorOpen } from "./network.js"; // Fase 13 (L2): estado local de puertas
 import { setUnderwater, updateDayNight } from "./daynight.js";
-import { shouldUnderwaterFog } from "./waterfog.js"; // Fase 16 (B1): niebla con inmersión real
+import { isDoorOpen } from "./network.js"; // Fase 13 (L2): estado local de puertas
 import { camera, controls, renderer, scene, sun } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
+import { shouldUnderwaterFog } from "./waterfog.js"; // Fase 16 (B1): niebla con inmersión real
 import {
 	applyFrustumCulling,
 	chunkMeshes,
 	geoPoolStats,
 	getClientBlock,
 	lodMeshes,
+	tickChunkWatchdog, // Fase 17 (B3): auto-cura mallas huérfanas
 	updateLiquidAnimation,
 	updateLod
 } from "./world.js";
@@ -104,10 +105,12 @@ function solidAt(x, y, z) {
 	if (!solid) return false;
 	// Fase 13 (L2/L3): COLISIÓN POR FORMA (paridad con server/world.isSolidAt).
 	// Puerta/portón abiertos → se atraviesan.
-	if (b === 48 || b === 49 || b === 71) return !isDoorOpen(Math.floor(x), Math.floor(y), Math.floor(z));
+	if (b === 48 || b === 49 || b === 71)
+		return !isDoorOpen(Math.floor(x), Math.floor(y), Math.floor(z));
 	// Losas y escaleras: solo la mitad inferior de la celda es sólida (media
 	// caja / escalón). La Y flotante decide dentro de la celda.
-	if (b === 60 || b === 61 || b === 50 || b === 51) return y - Math.floor(y) < 0.5;
+	if (b === 60 || b === 61 || b === 50 || b === 51)
+		return y - Math.floor(y) < 0.5;
 	return true; // valla (70) y resto: celda completa
 }
 
@@ -253,10 +256,8 @@ function animate() {
 		// (nadando en la superficie, con los ojos a 1 bloque o fuera, no se
 		// ve). La decisión vive en waterfog.js (pura, testeable).
 		setUnderwater(
-			shouldUnderwaterFog(
-				camera.position.y,
-				inWater,
-				(y) => isWaterAt(camera.position.x, y, camera.position.z)
+			shouldUnderwaterFog(camera.position.y, inWater, (y) =>
+				isWaterAt(camera.position.x, y, camera.position.z)
 			)
 		);
 
@@ -412,6 +413,9 @@ function animate() {
 		lodTimer = 0;
 		updateLod();
 	}
+	// Fase 17 (B3): watchdog de mallas (throttle interno de 0.5s) — si un
+	// chunk tiene datos pero no mesh, se reconstruye en cuanto se detecta.
+	tickChunkWatchdog(dt);
 	// Auditoría 2026-08-09 (§3.4): sombras que siguen al jugador. El shadow
 	// map es un frustum de ±60 bloques alrededor del target del sol; si el
 	// target se queda en el origen, al alejarse del spawn el volumen queda

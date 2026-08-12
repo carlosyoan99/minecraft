@@ -6,6 +6,9 @@ import { playCrack, playHit, playTntExplode, playTntFuse } from "./audio.js"; //
 import { setStoredName, socket } from "./connection.js";
 import { TORCH } from "./constants.js";
 import { initDayNight } from "./daynight.js";
+// Fase 17 (B7): minar con el clic presionado — al romperse el bloque en
+// mina, input.js reinicia la mina sobre el siguiente bloque apuntado.
+import { onBlockMined } from "./input.js";
 import {
 	flashMob,
 	removeMob,
@@ -39,7 +42,8 @@ import {
 	renderRecipeBook,
 	renderWorldsList,
 	setCreativeCatalog, // Fase 10 (D4): catálogo del picker creativo
-	showDeathScreen // Fase 10 (B2): pantalla de muerte con causa
+	showDeathScreen, // Fase 10 (B2): pantalla de muerte con causa
+	showMenu // Fase 17 (A5): modo menú (sin mundo activo)
 } from "./ui.js";
 import {
 	hasTorchNear, // Fase 14 (M4): luz de antorcha stale al cambiar bloques sólidos
@@ -131,6 +135,21 @@ socket.addEventListener("message", (e) => {
 		case "worlds_list":
 			renderWorldsList(data.worlds || []);
 			break; // Fase 7: menú de mundos
+		case "menu_state":
+			// Fase 17 (A1/A5/C1): el servidor está (o volvió) al MODO MENÚ sin
+			// mundo activo — mostrar el menú con la lista de mundos en vez de
+			// entrar al juego. Llega al conectar sin SEED y tras leave_world.
+			showMenu(data.worlds || []);
+			break;
+		case "world_clone_result":
+			// Fase 17 (A3): resultado del clonado de un mundo (ok + lista nueva).
+			if (data.worlds) renderWorldsList(data.worlds);
+			flashMessage(
+				data.ok
+					? `📋 Mundo clonado como «${data.seed}».`
+					: "🌍 No se pudo clonar el mundo."
+			);
+			break;
 		case "world_delete_result":
 			// Fase 9 (Bloque B): resultado del borrado de un mundo (ok + lista nueva).
 			if (data.worlds) renderWorldsList(data.worlds);
@@ -159,6 +178,9 @@ socket.addEventListener("message", (e) => {
 				rebuildAround(data.x, data.z);
 			else rebuildAffectedChunks(data.x, data.z);
 			hideCrackIfAt(data.x, data.y, data.z); // el bloque en mina se rompió
+			// Fase 17 (B7): si el bloque que se estaba minando acaba de romperse
+			// y el clic sigue presionado, input.js empieza a minar el siguiente.
+			if (data.block === 0) onBlockMined(data.x, data.y, data.z);
 			// Fase 7: partículas — romper (sólido → aire) o colocar (aire → bloque).
 			if (prev !== 0 && data.block === 0)
 				spawnBlockBreak(data.x, data.y, data.z, prev);

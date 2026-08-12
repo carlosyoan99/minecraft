@@ -23,7 +23,11 @@ node tests/run.js --unit --filter <regex>            # solo los tests que casan 
   `--filter 'unit-(mundo|biomas|arboles)'`). Útil durante el desarrollo para
   iterar rápido sin esperar la suite completa.
 - **E2E omitidos ("no hay servidor") no es un fallo**: levanta
-  `PORT=3998 node server.js` en otra terminal y repite con `--e2e`.
+  `SEED=miSemilla2026 PORT=3998 node server.js` en otra terminal y repite
+  con `--e2e`. La `SEED` es obligatoria desde la Fase 17 (A1): sin ella el
+  servidor arranca en modo menú y nunca envía `init`, así que los E2E
+  clásicos se colgarían. El E2E del menú (`e2e-menu.js`) es la excepción:
+  levanta su propio servidor sin `SEED` en el puerto 3997.
 - **Verificación mínima antes de entregar** (`CLAUDE.md` §"Cómo trabajar"):
   `node --check` sobre los `.js` tocados + `node tests/run.js --unit` +
   arrancar el servidor y confirmar que sirve `/`.
@@ -127,10 +131,11 @@ Three/DOM para forzarlos.
 | `audit-fase7.js` | Métricas de tick + FPS en Chrome headless vía CDP + integridad del guardado |
 | `audit-altura.js` | Mundo de 128 bloques (−64..+63): layout, superficie, cuevas, biomas, minerales, agua, estructuras, costuras, migración v5→v6, geometría (72 checks) |
 
-## E2E (6, necesitan servidor en `WS_URL` / `ws://localhost:3998`)
+## E2E (7, necesitan servidor en `WS_URL` / `ws://localhost:3998` salvo e2e-menu)
 
 | Test | Cubre |
 | --- | --- |
+| `e2e-menu.js` | Menú Fase 17 (A1/A5/C1/C4): levanta su propio servidor sin SEED en :3997 — menu_state → join_world → init → leave_world → menu_state + cooldown anti-spam |
 | `e2e-comer.js` | Comer con clic derecho (hambre/saturación reales) |
 | `e2e-durabilidad.js` | Pico de madera, romper sus 59 usos, rotura sin duplicar drops |
 | `e2e-cofre.js` | Craftear/colocar/abrir un cofre, guardar/tomar items, romperlo → drop |

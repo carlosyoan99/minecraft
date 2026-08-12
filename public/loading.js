@@ -43,6 +43,7 @@ let tipIdx = 0;
 let done = false;
 let progressTimer = null;
 let hangTimer = null; // timeout defensivo: init nunca llega → error
+let warnTimer = null; // aviso intermedio de generación lenta (Fase 17, B2)
 let tipTimer = null;
 let started = performance.now();
 
@@ -84,11 +85,21 @@ export function showLoading(message) {
 	}, 120);
 	// Defensivo: si el init nunca llega (conexión colgada, no un crash — el
 	// crash lo cubre el handler de 'close'), mostrar el error en vez de dejar
-	// la pantalla a ~90% para siempre.
+	// la pantalla a ~90% para siempre. Fase 17 (B2): el primer arranque de un
+	// mundo genera chunks y puede tardar >20s en máquinas lentas; el error
+	// real de desconexión lo dispara el cierre del socket (connection.js), así
+	// que aquí solo se avisa a los 45s con un mensaje intermedio a los 20s.
 	if (hangTimer) clearTimeout(hangTimer);
+	if (warnTimer) clearTimeout(warnTimer);
+	warnTimer = setTimeout(() => {
+		if (done) return;
+		setStatus(
+			"El mundo sigue generándose — el primer arranque puede tardar un poco..."
+		);
+	}, 20000);
 	hangTimer = setTimeout(() => {
 		if (!done) showConnectionError();
-	}, 20000);
+	}, 45000);
 }
 
 // El mundo ya está listo (init recibido): barra al 100%, "¡Listo!" y
@@ -99,6 +110,7 @@ export function finishLoading() {
 	done = true;
 	if (progressTimer) clearInterval(progressTimer);
 	if (hangTimer) clearTimeout(hangTimer);
+	if (warnTimer) clearTimeout(warnTimer);
 	if (tipTimer) clearInterval(tipTimer);
 	setProgress(100);
 	setStatus("¡Listo!");
@@ -115,6 +127,7 @@ export function showConnectionError() {
 	done = true;
 	if (progressTimer) clearInterval(progressTimer);
 	if (hangTimer) clearTimeout(hangTimer);
+	if (warnTimer) clearTimeout(warnTimer);
 	if (tipTimer) clearInterval(tipTimer);
 	// Re-mostrar la pantalla si el juego ya estaba activo (tras finishLoading
 	// quedó oculta): sin esto, el error al caerse el servidor sería invisible.

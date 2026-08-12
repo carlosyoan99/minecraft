@@ -45,31 +45,88 @@ TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterato
 - Altura del mundo `-64 a 255`. (**Minecraft -64 a 320**), esta es una limitación temporal por rendimiento. Subir la altura va a permitir la generación de mejores cuevas y montañas mas grandes.s
 - Generación: Extender columnas de terreno/cuevas/minerales al nuevo rango sin romper la distribución de minerales por altura ya calibrado.
 - Cliente: confirmar que culling de caras/LOD y greedy meshing siguen rindiendo bien con columnas más altas.
-- Extender tests con los nuevos cambio y correcciones.
+- Extender tests con los nuevo cambio y correcciones.
 - Cerrar huecos - no inventar bloques/items nuevos, solo craftear lo que ya está.
 - Extender `unit-recetas.js` para verificar cobertura, no solo integridad de lo ya existente.
 - Agregar posibilidad de escoger skins: Steve, Alex, Noor, Sunny, Ari, Zuri, Makena, Kai y Efe.
 - Persistenci de datos del lado del cliente que sea seguro mantener de este lado: configuración, preferencias, nombre, skins.
-- Biomas más grandes en extensión y nuevos biomas:
-  1. **Llanura (Plains)**: El bioma más clásico y común. Es una zona plana y verde con algunos árboles, ideal para empezar y donde aparecen caballos de forma natural.
-  2. **Desierto (Desert)**: Un bioma árido y extenso, compuesto casi enteramente de arena y cactus. Destaca por la ausencia de lluvia y la presencia de templos y aldeas.
-  3. **Bosque (Forest)**: Un bioma templado muy común, lleno de árboles de roble y abedul, con una gran cantidad de hierba y flores.
-  4. **Taiga (Taiga)**: Un bioma frío de coníferas, dominado por enormes árboles de abeto y con el suelo a menudo cubierto de podzol. Es el hogar de lobos.
-  5. **Tundra Nevada (Snowy Plains)**: Un bioma plano y frío, cubierto de nieve y hielo. En lugar de llover, siempre nieva.
-  6. **Montañas (Windswept Hills)**: Un bioma de gran altitud con terrenos escarpados y picos rocosos. Anteriormente conocido como "Colinas Extremas".
-  7. **Pantano (Swamp)**: Un bioma húmedo y pantanoso con agua de color grisáceo, donde se generan cabañas de brujas y crecen enormes hongos.
-  8. **Jungla (Jungle)**: Un bioma muy exuberante con árboles gigantes de selva y un follaje denso. Es el único lugar donde se encuentran ocelotes y templos de jungla.
-  9. **Sabana (Savanna)**: Una llanura cálida y seca, con árboles de acacia de forma característica y donde se generan aldeas.
-  10. **Badlands (Terracota)**: Un bioma único de tierras áridas, formado por capas de terracota de colores. Es el lugar ideal para encontrar oro y minerales.
-  11. **Océano (Ocean)**: Un vasto bioma acuático que cubre gran parte del mundo. Existen variantes como el océano cálido, frío o profundo.
-  12. **Isla de Champiñones (Mushroom Fields)**: Un bioma raro y peculiar, compuesto por micelio y enormes hongos. Es el único lugar donde los mooshrooms (vacas champiñón) aparecen de forma natural.
-  13. **Bosque Oscuro (Dark Forest)**: Un bioma característico por sus árboles de roble oscuro, tan densos que casi bloquean toda la luz, lo que provoca que los mobs hostiles aparezcan incluso de día.
-  14. **Bosque de Abedules (Birch Forest)**: Un bosque compuesto casi exclusivamente por árboles de abedul, destacando por el contraste de sus troncos blancos.
-  15. **Taiga de Árboles Gigantes (Old Growth Pine/Spruce Taiga)**: Una variante de la taiga con abetos gigantes, cuyo tronco puede llegar a tener 2x2 bloques de ancho.
-  16. **Picos Nevados (Frozen Peaks)**: Una de las variantes de las montañas, con picos completamente cubiertos de nieve y hielo, alcanzando grandes altitudes.
-  17. **Cuevas de Lush (Lush Caves)**: Un bioma subterráneo verde y vibrante, iluminado por bayas luminosas y con una exuberante vegetación.
-  18. **Cuevas de Dripstone (Dripstone Caves)**: Otro bioma subterráneo, compuesto por bloques de dripstone que forman estalactitas y estalagmitas.
-- Estructuras que sean estáticas no dinámicas (como las aldeas o mansión): Pozo del desierto, Pirámide, Iglú (solo edificio)
+- **Biomas más grandes en extensión y nuevos biomas** (lista completa con 20 biomas característicos). Se deben implementar con sus bloques, vegetación, mobs y climas asociados. A continuación se detallan:
+
+  1. **Llanura (Plains)**: Zona plana y verde con árboles de roble, ideal para empezar. Aparecen caballos.
+  2. **Desierto (Desert)**: Árido, con arena, cactus y ausencia de lluvia. Genera templos y aldeas.
+  3. **Bosque (Forest)**: Templado, con robles y abedules, hierba y flores.
+  4. **Taiga (Taiga)**: Frío, con abetos y podzol. Hogar de lobos.
+  5. **Tundra Nevada (Snowy Plains)**: Plano, cubierto de nieve y hielo. Siempre nieva.
+  6. **Montañas (Windswept Hills)**: Gran altitud, terreno escarpado y rocoso.
+  7. **Pantano (Swamp)**: Agua grisácea, cabañas de brujas y hongos gigantes.
+  8. **Jungla (Jungle)**: Exuberante, con árboles gigantes, ocelotes y templos.
+  9. **Sabana (Savanna)**: Cálida y seca, con acacias y aldeas.
+  10. **Badlands (Terracota)**: Capas de terracota coloreada, rica en oro.
+  11. **Océano (Ocean)**: Extenso mar, con variantes cálidas, frías y profundas.
+  12. **Isla de Champiñones (Mushroom Fields)**: Micelio y hongos, hogar de mooshrooms.
+  13. **Bosque Oscuro (Dark Forest)**: Robles oscuros muy densos, sombra permanente.
+  14. **Bosque de Abedules (Birch Forest)**: Solo abedules, troncos blancos.
+  15. **Taiga de Árboles Gigantes (Old Growth Pine/Spruce Taiga)**: Abetos de 2x2 bloques de ancho.
+  16. **Picos Nevados (Frozen Peaks)**: Altas montañas con nieve y hielo.
+  17. **Cuevas de Lush (Lush Caves)**: Subterráneo verde, iluminado con bayas luminosas.
+  18. **Cuevas de Dripstone (Dripstone Caves)**: Estalactitas y estalagmitas de dripstone.
+  19. **Nether Wastes** (para el Nether): Paisaje desolado de roca brillante, con ghasts y piglins.
+  20. **El End**: Islas flotantes de piedra de End, endermen y el dragón.
+
+- **Estructuras estáticas (no dinámicas)**: Se clasifican en **pasivas** (seguras, comerciales o de recursos) y **activas** (peligrosas, con mobs hostiles y gran botín). A continuación se listan con su ubicación y características principales:
+
+  **Estructuras Pasivas**:
+  - **Aldea (Village)**: Aparecen en llanura, desierto, sabana, taiga. Habitadas por aldeanos con los que comerciar. Tienen granjas, camas y son refugio seguro.
+  - **Igloo**: En tundra o taiga nevada. Pequeño refugio; a veces esconde un sótano con mesa de pociones y materiales para curar a un aldeano zombi.
+  - **Pozo del Desierto (Desert Well)**: En el desierto. Simple, sin botín, pero proporciona agua.
+  - **Geoda de Amatista (Amethyst Geode)**: Subterránea. Fuente de amatista para objetos decorativos y el catalejo. No es hostil.
+
+  **Estructuras Activas**:
+  - **Puesto de Saqueadores (Pillager Outpost)**: Superficie, cerca de aldeas. Torre con saqueadores; al derrotar al capitán obtienes "Mal Presagio".
+  - **Templo del Desierto (Desert Pyramid)**: En el desierto. Pirámide con trampa de TNT; cofres con botín valioso.
+  - **Templo de la Jungla (Jungle Temple)**: En la jungla. Estructura de piedra con puzzle de redstone y trampas de flechas.
+  - **Cabaña del Pantano (Swamp Hut)**: En el pantano. Hogar de una bruja; buena para recursos de pociones.
+  - **Monumento Oceánico (Ocean Monument)**: En océanos profundos. De prismarina, custodiado por guardianes y el anciano que da fatiga minera.
+  - **Fortaleza del Nether (Nether Fortress)**: En el Nether. De ladrillos del Nether, con blazes, esqueletos wither y ghasts. Esencial para polvo de blaze.
+  - **Restos de Bastión (Bastion Remnant)**: En el Nether. Ruinas habitadas por piglins hostiles si no llevas oro. Botín excelente.
+  - **Ciudad del End (End City)**: En las islas del End. Flotante, con shulkers. En el barco se encuentra el Élitro.
+  - **Mansión del Bosque (Woodland Mansion)**: En el bosque oscuro. Enorme y laberíntica, con ilusionistas y vindicadores.
+  - **Antigua Ciudad (Ancient City)**: Bajo tierra, muy profundo. Protegida por Wardens, uno de los mobs más poderosos.
+  - **Minas (Mineshaft)**: Subterráneo. Túneles con vagonetas y cofres; suelen tener mobs hostiles.
+  - **Fortaleza (Stronghold)**: Subterránea. Mazmorra con mobs; alberga el portal al End.
+  - **Naufragio (Shipwreck)**: En el océano. Restos de barco con cofres; suelen tener ahogados.
+  - **Ruinas Oceánicas (Ocean Ruins)**: En el fondo marino. Pequeñas estructuras de piedra con cofres y mobs.
+
+- **Más mobs y mejora de su IA**: Se deben implementar todos los mobs icónicos con sus mecánicas de IA distintivas. Se clasifican en:
+
+  **Pasivos** (no atacan, huyen o son útiles):
+  - **Vaca**: Deambula, huye al ser golpeada, sigue trigo. Se puede ordeñar con cubo para obtener leche (elimina efectos).
+  - **Oveja**: Deambula y come pasto para regenerar lana. Esquilando se obtiene lana sin matarla; el color se mantiene si está teñida.
+  - **Gallina**: Se mueve erráticamente y flota al caer. Pone huevos cada 5-10 minutos; lanzarlos tiene 1/8 de probabilidad de generar un pollito.
+  - **Pulpo**: Vive en el agua, se mueve por impulsos. Al morir suelta tinta para teñir y hacer libros.
+
+  **Neutrales** (atacan solo si se les provoca):
+  - **Lobo**: Neutral en manada; si golpeas a uno, todos se vuelven hostiles. Se domestica con huesos; una vez domado, sigue y ataca a quien hiera al jugador (excepto creepers).
+  - **Enderman**: Pacífico hasta que lo miras fijamente a los ojos o le disparas. Al enfadarse, se teletransporta y golpea. Alérgico al agua; recoge bloques del suelo.
+  - **Zombified Piglin**: Neutral en el Nether. Si golpeas a uno, todos los cercanos se vuelven hostiles (efecto dominó). Se calman si mueres o te alejas.
+  - **Araña**: De día neutral, de noche hostil. Escala paredes y ve a través de bloques sólidos.
+  - **Abeja**: Neutral. Poliniza flores y vuelve a la colmena. Si se la golpea o se rompe la colmena sin fuego, pica y muere al hacerlo.
+  - **Gólem de Hierro**: Neutral, salvo si atacas a un aldeano. Lanza enemigos al aire con su puñetazo. Inmune al fuego y ahogamiento.
+
+  **Hostiles** (atacan al jugador por defecto):
+  - **Creeper**: Se acerca sigilosamente y silba 1.5 s antes de explotar. Huye de los gatos.
+  - **Zombie**: Persigue, arde al sol (si no lleva casco), rompe puertas en dificultad alta y convoca a otros zombis al recibir daño.
+  - **Esqueleto**: Mantiene distancia, dispara flechas y strafea lateralmente. Arde al sol; al matarlo con flecha, suelta esa flecha.
+  - **Blaze**: Flota en el Nether, dispara ráfagas de 3 bolas de fuego. Solo se daña con flechas, nieve o agua.
+  - **Ghast**: Flota lentamente, lanza bolas de fuego explosivas. Se puede desviar su bola para devolvérsela y matarlo.
+  - **Slime**: Salta hacia el jugador. Al morir se divide en slimes más pequeños (cada división reduce tamaño y vida). Aparece en chunks específicos o pantanos de noche.
+
+  **Jefes (Bosses)**:
+  - **Dragón del End**: Vuela, destruye bloques (excepto obsidiana, piedra del End y lecho de roca). Se posa para curarse; destruir los cristales de End evita la regeneración. Vulnerable a camas.
+  - **Wither**: Al ser invocado, explota. Dispara cráneos que causan Wither II y destruyen bloques. Al bajar del 50% de vida, se vuelve inmune a proyectiles y genera escudo.
+
+  **Sociales**:
+  - **Aldeano**: IA compleja con horarios (trabajo, socialización, sueño). Profesiones según bloque de trabajo; comercio con esmeraldas y precios variables según reputación.
 
 ## Próximas Fases
 - **Fase 16**: se va a centrar en la corrección de bugs y completar la paridad con Minecraft.
@@ -91,3 +148,5 @@ Caracteristicas sugeridas pero fuera del alcance actual, documentar como restric
 - Dimenciones (Nether, End).
 - Clima
 - Autenticación y base de datos externa.
+- Mobs: Aldeanos, Wither, Dragón del End, Blaze, Ghast, Gólem de hierro, están documentados para conocer su funcionamiemto, pero no implementar aún.
+- Estructuras: Villas, Ciudad Antigua, etc...

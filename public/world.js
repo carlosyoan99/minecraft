@@ -9,8 +9,8 @@ import {
 	NON_SOLID_PLANTS,
 	TORCH,
 	WORLD_HEIGHT,
-	WORLD_MIN_Y,
-	WORLD_MAX_Y
+	WORLD_MAX_Y,
+	WORLD_MIN_Y
 } from "./constants.js";
 import { createGeometryPool, setOrReuseAttribute } from "./geopool.js";
 import { computeChunkLight, LIGHT_RADIUS } from "./lighting.js";
@@ -484,10 +484,47 @@ function onWorkerMessage(msg) {
 	// al grupo nuevo). Igual que rebuildChunk, liberar antes de añadir el nuevo:
 	// removeChunkMesh devuelve la geometría anterior al pool.
 	removeChunkMesh(key);
-	const group = groupFromBuffers(buffers);
-	if (group) {
-		scene.add(group);
-		chunkMeshes.set(key, group);
+	// Fase 17 (B3): un error puntual al aplicar los buffers (p. ej. un
+	// atributo malformado del worker) no debe dejar el chunk INVISIBLE en
+	// silencio: se registra y se reconstruye de forma síncrona como fallback
+	// (la función pura es la misma; si el dato es válido, el rebuild funciona).
+	try {
+		const group = groupFromBuffers(buffers);
+		if (group) {
+			scene.add(group);
+			chunkMeshes.set(key, group);
+		}
+	} catch (err) {
+		// biome-ignore lint/suspicious/noConsole: error real de geometría (diagnóstico B3)
+		console.warn(
+			"[chunk] worker con buffers inválidos, rebuild síncrono:",
+			key,
+			err
+		);
+		try {
+			rebuildChunk(key);
+		} catch {
+			/* sin malla: el watchdog de tickChunkWatchdog lo reintentará */
+		}
+	}
+}
+
+// Fase 17 (B3): WATCHDOG DE MALLAS — si un chunk tiene datos (física) pero
+// no mesh (render), se reconstruye. Un job de worker perdido, un error
+// puntual de geometría o una carrera de descarga dejaban el chunk invisible
+// hasta recargar ("chunks que nunca cargan: física sí, render no"). Al ser
+// por estado (no por causa), auto-cura cualquier chunk huérfano en ~0.5s y
+// cubre el caso de que el huérfano cambie entre sesiones. Se llama desde el
+// bucle de animación (player.js) con throttle.
+let meshWatchdogT = 0;
+export function tickChunkWatchdog(dt) {
+	meshWatchdogT += dt;
+	if (meshWatchdogT < 0.5) return;
+	meshWatchdogT = 0;
+	for (const key of chunkStore.keys()) {
+		if (chunkMeshes.has(key) || lodMeshes.has(key)) continue;
+		if (workerPending.has(key)) continue; // en vuelo: el worker lo añadirá
+		rebuildChunk(key);
 	}
 }
 
@@ -674,7 +711,8 @@ function columnSurface(chunk, x, z, wx, wz) {
 		// Fase 9 (F): las plantas (hierba/flores/trigo) no cuentan como
 		// superficie — el LOD dibuja la lámina sobre el terreno real, no sobre
 		// el bulto de la planta (evita láminas flotantes de 1 bloque).
-		if (b !== 0 && b !== -1 && !NON_SOLID_PLANTS.has(b)) return { y: wy, block: b };
+		if (b !== 0 && b !== -1 && !NON_SOLID_PLANTS.has(b))
+			return { y: wy, block: b };
 	}
 	return { y: -1, block: 0 };
 }

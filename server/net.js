@@ -240,7 +240,10 @@ function enterWorld(player) {
 	// Fase 17 (B1): en survival, restaurar el inventario/posición guardados
 	// del jugador en ESTE mundo (el inventario de cero es solo la primera vez).
 	if (player.gamemode !== "creative") save.restorePlayer(player);
-	world.ensureChunksAround(player.x, player.z, player.renderDistance);
+	// Fase 14 (M5/C5): generar solo el radio INMEDIATO al spawn (igual que el
+	// arranque clásico); el resto se rellena progresivamente en mainLoop
+	// (chunks_add por lotes). ensureChunksAround es idempotente.
+	world.ensureChunksAround(player.x, player.z, INIT_CHUNK_RADIUS);
 }
 
 const app = express();
@@ -292,6 +295,12 @@ function handleConnection(ws, req) {
 		return;
 	}
 	const playerId = uuidv4();
+	// Fase 17 (B2): heartbeat — el cliente (navegador) responde al pong
+	// automáticamente; si no llega, el intervalo del heartbeat lo termina.
+	ws.isAlive = true;
+	ws.on("pong", () => {
+		ws.isAlive = true;
+	});
 	// Fase 17 (A1): MODO MENÚ. Sin mundo activo (currentSeed null — el
 	// servidor arrancó sin SEED o liberó el mundo), el jugador entra al MENÚ
 	// (menu_state) y no al mundo: sin spawn, sin chunks y sin init.
@@ -1079,6 +1088,23 @@ function handleConnection(ws, req) {
 					// después de que el mundo esté activo reciben el init directo.
 					if (!p.inMenu) break;
 					if (typeof data.seed !== "string" || !data.seed.trim()) break;
+					// Fase 17 (C4, SEC-2/F16-02): cuota anti-spam compartida con
+					// set_seed — 1 cambio de mundo cada 10 s por jugador. join_world
+					// también re-ejecuta switchWorld (persistencia síncrona + ~441
+					// chunks dirty); sin cuota, encadenar join_world/leave_world en
+					// bucle llenaba el disco y congelaba el event loop (mismo vector
+					// que el set_seed de la Fase 16).
+					const nowCooldown = Date.now();
+					if (p.seedCooldownUntil && p.seedCooldownUntil > nowCooldown) {
+						p.ws.send(
+							JSON.stringify({
+								event: "seed_rejected",
+								data: { reason: "cooldown" }
+							})
+						);
+						break;
+					}
+					p.seedCooldownUntil = nowCooldown + 10000; // 10 s (cuota)
 					// Otro jugador ya está jugando (este cliente se quedó en el menú
 					// mientras el mundo se cargaba): no cambiarle el mundo bajo sus pies.
 					const someonePlaying = Array.from(state.players.values()).some(
@@ -2022,11 +2048,17 @@ function mainLoop() {
 		for (const { key } of batch) {
 			const [cx, cz] = key.split(",").map(Number);
 			world.generateChunk(cx, cz); // idempotente (cachea en state.chunks)
-			DATA[key] = Array.from(state.chunks.get(key));
+			// Fase 16 (C2): fuera de los bordes generateChunk devuelve vacío SIN
+			// cachear → state.chunks.get(key) sería undefined y Array.from
+			// tiraba `undefined is not iterable`, matando el proceso (el crash
+			// de "al crear una semilla nueva el servidor se detiene"). Mismo
+			// guard que ensureChunksAround: solo enviar lo que quedó cacheado.
+			if (state.chunks.has(key)) DATA[key] = Array.from(state.chunks.get(key));
 		}
-		p.ws.send(
-			JSON.stringify({ event: "chunks_add", data: { chunkData: DATA } })
-		);
+		if (Object.keys(DATA).length)
+			p.ws.send(
+				JSON.stringify({ event: "chunks_add", data: { chunkData: DATA } })
+			);
 	}
 
 	// Fase 10 (D2): mechas de TNT (explotan al agotarse — cráter + cadena).
@@ -2081,6 +2113,24 @@ function start() {
 	// del servidor con payloads gigantes (ws cierra la conexión con 1009).
 	const wss = new WebSocket.Server({ server, maxPayload: WS_MAX_PAYLOAD });
 	wss.on("connection", handleConnection);
+	// Fase 17 (B2): keepalive — ping a todos los sockets cada 15s; el que no
+	// responde al pong en dos rondas se termina (detecta conexiones muertas y
+	// mantiene vivas las que pasan por proxies con timeout de inactividad).
+	const heartbeat = setInterval(() => {
+		for (const ws of wss.clients) {
+			if (ws.isAlive === false) {
+				ws.terminate();
+				continue;
+			}
+			ws.isAlive = false;
+			try {
+				ws.ping();
+			} catch {
+				ws.terminate();
+			}
+		}
+	}, 15000);
+	heartbeat.unref?.(); // no impide que el proceso termine solo
 
 	setInterval(mainLoop, TICK_MS);
 

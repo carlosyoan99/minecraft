@@ -23,7 +23,7 @@ node tests/run.js --unit --filter <regex>   # solo los que casan (con tiempo por
 node tests/run.js --audit       # solo auditorías por fase standalone (3-6 + altura)
 npm run test:coverage           # c8: % de cobertura de server/ y public/
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
-PORT=3998 node server.js        # servidor para los E2E, en otra terminal
+SEED=miSemilla2026 PORT=3998 node server.js  # servidor E2E (Fase 17: SIN SEED arranca en modo menú y nunca envía init; el E2E del menú levanta su propio servidor)
 node tests/audit-fase7.js       # render CDP con Chrome headless (por separado; ver abajo)
 ```
 
@@ -100,7 +100,7 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
 
 1. `Cannot find module 'simplex-noise'` → falta `npm install`.
 2. E2E omitidos con "no hay servidor" **no es un fallo**: arranca
-   `PORT=3998 node server.js` en otra terminal.
+   `SEED=miSemilla2026 PORT=3998 node server.js` en otra terminal (Fase 17: sin SEED el servidor arranca en modo menú — el flujo de init que esperan los E2E clásicos no llega; el E2E del menú, `e2e-menu.js`, levanta su propio servidor sin SEED).
 3. Bugs de render (`mcChunks: 0`) solo se ven en navegador; los tests
    de servidor no los detectan. Usa F3/`window.__mc*` para diagnosticar.
 4. Cambiar `SEED` en `constants.js` rompe tests deterministas

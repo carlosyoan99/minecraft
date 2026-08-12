@@ -235,27 +235,34 @@ muteBtn.addEventListener("click", () => {
 updateMuteBtn();
 
 // ============================================================
-// MENÚ (Fase 7): pantallas principal / mundos / ajustes, nombre de
-// jugador y semilla del mundo. Al pulsar Jugar (o elegir un mundo) con una
-// semilla distinta de la activa se pide al servidor cambiar el mundo activo
-// (set_seed): persiste el actual, carga/genera el de la semilla y reenvía el
-// init. La pantalla de carga cubre el cambio y el puntero se bloquea ya
-// (gesto del usuario); onWorldLoaded() la cierra cuando llega el init que
-// confirma la semilla pedida (data.seed === la enviada).
+// MENÚ (Fase 7 + Fase 17): pantallas principal / mundos / nuevo mundo /
+// ajustes / pausa, nombre de jugador y semilla del mundo. Fase 17 (A5): el
+// servidor puede arrancar en MODO MENÚ (sin mundo activo — sin SEED): el
+// cliente recibe `menu_state` con la lista de mundos y NO entra al juego
+// hasta que el jugador elige/crea uno (join_world). Con SEED en el entorno
+// el servidor arranca directo al mundo (init) y el flujo es el clásico.
 // ============================================================
 const menuMain = document.getElementById("menu-main");
 const menuWorlds = document.getElementById("menu-worlds");
+const menuCreate = document.getElementById("menu-create");
 const menuSettings = document.getElementById("menu-settings");
+const menuPause = document.getElementById("menu-pause");
 const startBtn = document.getElementById("start-btn");
-const worldsBtn = document.getElementById("worlds-btn");
 const settingsBtn = document.getElementById("settings-btn");
+const quitBtn = document.getElementById("quit-btn");
 const worldsBackBtn = document.getElementById("worlds-back-btn");
+const createBackBtn = document.getElementById("create-back-btn");
+const newWorldBtn = document.getElementById("new-world-btn");
 const settingsBackBtn = document.getElementById("settings-back-btn");
 const worldsListEl = document.getElementById("worlds-list");
 const worldNameInput = document.getElementById("world-name-input");
 const seedInput = document.getElementById("seed-input");
 const seedCreateBtn = document.getElementById("seed-create-btn");
 const randomSeedBtn = document.getElementById("random-seed-btn");
+// Fase 17 (C1): pantalla de pausa (Esc dentro del juego).
+const pauseResumeBtn = document.getElementById("pause-resume-btn");
+const pauseSettingsBtn = document.getElementById("pause-settings-btn");
+const pauseQuitBtn = document.getElementById("pause-quit-btn");
 // Fase 9 (Bloque B): selector de modo al crear un mundo NUEVO.
 const gamemodeSelect = document.getElementById("gamemode-select");
 // Fase 10 (B1): tamaño del mundo nuevo (small/medium/large; debug/infinito
@@ -283,6 +290,10 @@ const qualitySelect = document.getElementById("quality-select");
 const fullscreenToggle = document.getElementById("fullscreen-toggle");
 let currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
+// Fase 17 (A5): el cliente empieza EN EL MENÚ hasta recibir el init de un
+// mundo (join_world). Con SEED (modo clásico) el init llega al conectar y
+// pasa a false de inmediato; tras leave_world vuelve a true.
+let inMenu = true;
 // Fase 9 (Bloque B): modo de juego del mundo activo (survival/creative). El
 // servidor es la fuente de verdad (init.gamemode); el cliente lo refleja en
 // el HUD (badge) y lo usa para avisos de vuelo/creativo.
@@ -314,9 +325,41 @@ function updateGamemodeBadge() {
 }
 
 function showMenuScreen(which) {
-	menuMain.classList.toggle("hidden", which !== menuMain);
-	menuWorlds.classList.toggle("hidden", which !== menuWorlds);
-	menuSettings.classList.toggle("hidden", which !== menuSettings);
+	for (const el of [menuMain, menuWorlds, menuCreate, menuSettings, menuPause])
+		el.classList.toggle("hidden", el !== which);
+}
+
+// Fase 17 (A5/D1): ¿pantalla táctil? (joystick virtual + botones). El ratón
+// y el teclado siguen siendo el camino principal; el HUD táctil es un extra.
+export function isTouchDevice() {
+	return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+}
+
+// Fase 17 (A1/A5/C1): muestra el MENÚ (estado `menu_state` del servidor o
+// al volver al menú principal): cierra la carga, pinta la lista de mundos y
+// deja el bloqueador visible. `worlds` opcional refresca la lista.
+export function showMenu(worlds) {
+	inMenu = true;
+	setTouchVisible(false);
+	if (worlds) renderWorldsList(worlds);
+	showMenuScreen(menuMain);
+	showBlocker(true);
+	finishLoading();
+}
+
+// Fase 17 (C1): pantalla de pausa — Esc en el juego (sin paneles abiertos).
+// Libera el puntero para clicar los botones; Continuar lo vuelve a bloquear.
+export function showPause() {
+	showMenuScreen(menuPause);
+	showBlocker(true);
+	controls.unlock();
+}
+export function resumeGame() {
+	menuPause.classList.add("hidden");
+	controls.lock();
+}
+export function isPauseOpen() {
+	return !menuPause.classList.contains("hidden");
 }
 
 // Nombre de jugador: se persiste en localStorage (mc_name) y se envía con
@@ -334,12 +377,37 @@ nameInput.addEventListener("keydown", (e) => {
 	if (e.key === "Enter") startBtn.click();
 });
 
-worldsBtn.addEventListener("click", () => {
+// Fase 17 (A2): «Un jugador» muestra la lista de mundos (el flujo de
+// set_seed directo queda solo para el modo clásico con SEED).
+startBtn.addEventListener("click", () => {
+	const n = nameInput.value.trim();
+	if (n) {
+		setStoredName(n);
+		send("set_name", { name: n });
+	} else nameInput.value = defaultName();
 	showMenuScreen(menuWorlds);
 	send("worlds_list"); // el servidor responde y renderWorldsList pinta la lista
 });
-settingsBtn.addEventListener("click", () => {
-	showMenuScreen(menuSettings);
+newWorldBtn.addEventListener("click", () => showMenuScreen(menuCreate));
+worldsBackBtn.addEventListener("click", () => showMenuScreen(menuMain));
+createBackBtn.addEventListener("click", () => showMenuScreen(menuWorlds));
+// Fase 17 (A2): «Salir» no hace nada destructivo (el navegador bloquea
+// window.close() salvo pestañas abiertas por el propio script).
+quitBtn.addEventListener("click", () => {
+	flashMessage(
+		"👋 Salir no está disponible en el navegador (cierra la pestaña)."
+	);
+	try {
+		window.close();
+	} catch {
+		/* sin acción */
+	}
+});
+
+// Rellena los controles de ajustes con los valores guardados (lo usa tanto
+// el menú principal como la pausa — Fase 17, C1).
+let settingsReturnTo = menuMain; // pantalla a la que vuelve «Volver» de ajustes
+function refreshSettingsUI() {
 	const s = getSettings();
 	rdSlider.value = s.renderDistance;
 	rdValue.textContent = s.renderDistance;
@@ -361,9 +429,41 @@ settingsBtn.addEventListener("click", () => {
 	// del navegador puede divergir si se salió con Esc — lo sincroniza
 	// fullscreenchange en settings.js).
 	fullscreenToggle.checked = !!s.fullscreen;
+}
+settingsBtn.addEventListener("click", () => {
+	settingsReturnTo = menuMain;
+	showMenuScreen(menuSettings);
+	refreshSettingsUI();
 });
-worldsBackBtn.addEventListener("click", () => showMenuScreen(menuMain));
-settingsBackBtn.addEventListener("click", () => showMenuScreen(menuMain));
+pauseSettingsBtn.addEventListener("click", () => {
+	settingsReturnTo = menuPause;
+	showMenuScreen(menuSettings);
+	refreshSettingsUI();
+});
+settingsBackBtn.addEventListener("click", () =>
+	showMenuScreen(settingsReturnTo)
+);
+
+// Fase 17 (A4): pestañas de ajustes (Video / Audio / Controles) — solo
+// alternan paneles; la lógica de cada ajuste sigue intacta en settings.js.
+for (const tab of document.querySelectorAll(".st-tab")) {
+	tab.addEventListener("click", () => {
+		for (const t of document.querySelectorAll(".st-tab"))
+			t.classList.toggle("active", t === tab);
+		const pane = document.getElementById(`pane-${tab.dataset.tab}`);
+		for (const p of document.querySelectorAll(".settings-pane"))
+			p.classList.toggle("hidden", p !== pane);
+	});
+}
+
+// Fase 17 (C1): pausa — Continuar reanuda; Volver al menú principal envía
+// leave_world (el servidor persiste al jugador y responde menu_state).
+pauseResumeBtn.addEventListener("click", resumeGame);
+pauseQuitBtn.addEventListener("click", () => {
+	if (inMenu) return;
+	showLoading("Volviendo al menú...");
+	send("leave_world");
+});
 
 rdSlider.addEventListener("input", () => {
 	rdValue.textContent = rdSlider.value;
@@ -403,44 +503,32 @@ invertToggle.addEventListener("change", () =>
 // Fullscreen API — toggleFullscreen() hace la petición real al navegador.
 fullscreenToggle.addEventListener("change", () => toggleFullscreen());
 
-// Entrar al juego con una semilla: si difiere de la activa (o llega un nombre
-// nuevo para el mundo actual) se pide al servidor cambiar/renombrar el mundo
-// (set_seed) y se espera el init que lo confirma (onWorldLoaded). Con semilla
-// vacía se juega el mundo activo tal cual, salvo que llegue un nombre: en ese
-// caso se renombra el mundo activo (el campo `name` nunca se ignora).
-// Fase 9 (Bloque B): `mode` (survival/creative) fija el modo del mundo NUEVO;
-// un mundo existente conserva el suyo (el servidor ignora el modo si la
-// semilla ya existía).
-function startWithSeed(seed, worldName, mode, size) {
-	seed = (seed || "").trim();
+// Fase 17 (A5): entrar a un mundo (existente o nuevo) desde el menú — envía
+// join_world { seed, name, gamemode, size }; el servidor carga/crea el mundo
+// y responde con el init (onWorldLoaded lo espera para cerrar la carga). Con
+// semilla vacía se genera una aleatoria (el servidor exige semilla no vacía).
+// El puntero se bloquea en el gesto (patrón de siempre); en táctil no hay
+// pointer lock: se oculta el bloqueador directamente.
+function joinWorld(worldSeed, worldName, mode, size) {
+	const seed = (worldSeed || "").trim() || randomSeed();
 	const name = (worldName || "").trim();
-	const gamemodeReq = mode ? { gamemode: mode } : {};
-	// Fase 10 (B1): tamaño pedido para el mundo NUEVO (el servidor lo ignora
-	// si la semilla ya existía — cada mundo conserva su tamaño).
-	const sizeReq = size ? { size } : {};
-	if (seed && (seed !== currentSeed || name)) {
-		seedPending = seed;
-		showLoading(`Generando el mundo «${seed}»...`);
-		send("set_seed", { seed, name, ...gamemodeReq, ...sizeReq });
-	} else if (name && currentSeed) {
-		seedPending = currentSeed;
-		showLoading(`Renombrando el mundo «${currentSeed}»...`);
-		send("set_seed", { seed: currentSeed, name, ...gamemodeReq, ...sizeReq });
+	seedPending = seed;
+	showLoading(`Generando el mundo «${seed}»...`);
+	send("join_world", {
+		seed,
+		name: name || undefined,
+		gamemode: mode || undefined,
+		size: size || undefined
+	});
+	if (isTouchDevice()) {
+		showBlocker(false);
+	} else {
+		controls.lock(); // el lock en el gesto es fiable; la carga cubre el cambio
 	}
-	controls.lock(); // el lock en el gesto es fiable; la carga cubre el cambio
 }
 
-startBtn.addEventListener("click", () => {
-	const n = nameInput.value.trim();
-	if (n) {
-		setStoredName(n);
-		send("set_name", { name: n });
-	} else nameInput.value = defaultName();
-	startWithSeed("");
-});
-
 seedCreateBtn.addEventListener("click", () =>
-	startWithSeed(
+	joinWorld(
 		seedInput.value,
 		worldNameInput.value,
 		gamemodeSelect.value,
@@ -479,19 +567,37 @@ function randomSeed() {
 }
 randomSeedBtn.addEventListener("click", () => {
 	seedInput.value = randomSeed();
-	startWithSeed(seedInput.value, worldNameInput.value, gamemodeSelect.value);
+	joinWorld(seedInput.value, worldNameInput.value, gamemodeSelect.value);
 });
 
-// Lista de mundos guardados (evento worlds_list del servidor, Fase 7)
-// Fase 9 (Bloque B): cada mundo muestra un badge de modo (Supervivencia/
-// Creativo) y un botón 🗑️ para borrarlo (world_delete; el activo no se puede
-// borrar — el servidor lo rechaza).
+// Botón pequeño de acción por mundo (Fase 17, A3): clonar, renombrar,
+// cambiar modo y borrar. `onClick` no abre el mundo (stopPropagation).
+function makeWorldActionBtn(icon, title, onClick) {
+	const b = document.createElement("button");
+	b.type = "button";
+	b.className = "world-action";
+	b.textContent = icon;
+	b.title = title;
+	b.addEventListener("click", (e) => {
+		e.stopPropagation();
+		onClick();
+	});
+	return b;
+}
+
+// Lista de mundos guardados (evento worlds_list del servidor, Fase 7).
+// Fase 9 (Bloque B): badge de modo por mundo. Fase 17 (A3): gestión completa
+// — reproducir (clic en el ítem), clonar (world_clone), renombrar
+// (world_rename), cambiar modo (world_gamemode) y borrar (world_delete; el
+// activo no se puede borrar — el servidor lo rechaza). Clonar/renombrar/camb
+// mode son SOLO de operadores (el primer jugador conectado es op).
 export function renderWorldsList(worlds) {
 	worldsListEl.innerHTML = "";
 	if (!worlds.length) {
 		const empty = document.createElement("div");
 		empty.className = "world-item empty";
-		empty.textContent = "Todavía no hay mundos guardados.";
+		empty.innerHTML =
+			"Todavía no hay mundos guardados.<br><small>Pulsa «✨ Crear nuevo mundo» para empezar.</small>";
 		worldsListEl.appendChild(empty);
 		return;
 	}
@@ -512,31 +618,66 @@ export function renderWorldsList(worlds) {
 			8192: "Infinito"
 		};
 		const sizeBadge = `<span class="mode-badge size">🗺 ${sizeName[w.worldSize] || `${w.worldSize}×${w.worldSize}`}</span>`;
-		const delBtn = `<button type="button" class="world-delete" title="Borrar este mundo (no se puede deshacer)" data-seed="${escapeHtml(w.seed)}" data-name="${escapeHtml(w.name)}">🗑️</button>`;
-		item.innerHTML =
-			`<span class="wi-left"><span class="wi-name">${escapeHtml(w.name)}</span>${badge}${sizeBadge}<span class="wi-seed">semilla: ${escapeHtml(w.seed)}</span></span>` +
-			`<span class="wi-meta">${escapeHtml(meta)}</span>` +
-			delBtn;
+		const left = document.createElement("span");
+		left.className = "wi-left";
+		left.innerHTML = `<span class="wi-name">${escapeHtml(w.name)}</span>${badge}${sizeBadge}<span class="wi-seed">semilla: ${escapeHtml(w.seed)}</span>`;
+		const metaEl = document.createElement("span");
+		metaEl.className = "wi-meta";
+		metaEl.textContent = meta;
+		const actions = document.createElement("span");
+		actions.className = "world-actions";
+		actions.append(
+			makeWorldActionBtn(
+				"📋",
+				`Clonar «${w.name}» (copia a una semilla nueva)`,
+				() => {
+					const name = prompt(
+						`Nombre del clon de «${w.name}»:`,
+						`${w.name} (copia)`
+					);
+					if (name === null) return;
+					send("world_clone", { seed: w.seed, name: name.trim() });
+				}
+			),
+			makeWorldActionBtn("✏️", `Renombrar «${w.name}»`, () => {
+				const name = prompt(`Nuevo nombre del mundo «${w.name}»:`, w.name);
+				if (name === null || !name.trim()) return;
+				send("world_rename", { seed: w.seed, name: name.trim() });
+			}),
+			makeWorldActionBtn(
+				mode === "creative" ? "⛏" : "✦",
+				mode === "creative"
+					? `«${w.name}» es Creativo → cambiar a Supervivencia`
+					: `«${w.name}» es Supervivencia → cambiar a Creativo`,
+				() =>
+					send("world_gamemode", {
+						seed: w.seed,
+						gamemode: mode === "creative" ? "survival" : "creative"
+					})
+			),
+			makeWorldActionBtn(
+				"🗑️",
+				`Borrar «${w.name}» (no se puede deshacer)`,
+				() => {
+					if (w.active) {
+						flashMessage(
+							"🌍 No se puede borrar el mundo activo: entra a otro y vuelve."
+						);
+						return;
+					}
+					if (
+						confirm(
+							`¿Borrar el mundo «${w.name}» (semilla ${w.seed})? No se puede deshacer.`
+						)
+					) {
+						send("world_delete", { seed: w.seed });
+					}
+				}
+			)
+		);
+		item.append(left, metaEl, actions);
 		item.title = `Abrir el mundo «${w.name}» (semilla: ${w.seed})`;
-		item.addEventListener("click", () => startWithSeed(w.seed, "", w.gamemode));
-		item.querySelector(".world-delete").addEventListener("click", (e) => {
-			e.stopPropagation(); // no abrir el mundo al borrarlo
-			const seed = item.querySelector(".world-delete").dataset.seed;
-			const name = item.querySelector(".world-delete").dataset.name;
-			if (w.active) {
-				flashMessage(
-					"🌍 No se puede borrar el mundo activo: entra a otro y vuelve."
-				);
-				return;
-			}
-			if (
-				confirm(
-					`¿Borrar el mundo «${name}» (semilla ${seed})? No se puede deshacer.`
-				)
-			) {
-				send("world_delete", { seed });
-			}
-		});
+		item.addEventListener("click", () => joinWorld(w.seed, "", w.gamemode));
 		worldsListEl.appendChild(item);
 	}
 }
@@ -571,8 +712,19 @@ function escapeHtml(s) {
 // la pantalla de carga. Si se pidió una semilla, espera el init que la
 // confirma antes de cerrar (evita destapar el mundo anterior durante el
 // cambio).
+// Fase 17 (D1): mostrar/ocultar el HUD táctil — evento a window que escucha
+// input.js (así no hay ciclo de imports; ui.js e input.js se importan entre
+// sí). En táctil se muestran al entrar al mundo y se ocultan en el menú.
+function setTouchVisible(show) {
+	window.dispatchEvent(
+		new CustomEvent("mc-touch-visibility", { detail: !!show })
+	);
+}
+
 export function onWorldLoaded(seed) {
 	currentSeed = seed;
+	inMenu = false;
+	setTouchVisible(true);
 	if (seedPending) {
 		if (seed === seedPending) {
 			seedPending = null;
@@ -587,7 +739,9 @@ export function onWorldLoaded(seed) {
 // fallo de guardado): volver al menú y avisar.
 export function onSeedRejected(reason) {
 	seedPending = null;
+	inMenu = true;
 	finishLoading(); // ocultar la carga (fade) antes de mostrar el menú
+	showBlocker(true);
 	controls.unlock(); // el handler de unlock vuelve a mostrar el menú
 	const msgs = {
 		rechazo: "🌱 No se pudo abrir el mundo de esa semilla (formato más nuevo).",

@@ -1207,3 +1207,312 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 #chat-input.active {
 	display: block;
 }
+
+/* ============================================================
+FASE 17 (C2): ESTÉTICA DEL MENÚ — cielo con nubes (sin assets),
+logo pixel, títulos MC y navegación coherente entre pantallas.
+============================================================ */
+/* Fondo del menú: degradado de cielo + sol pixel + nubes que pasan. */
+#menu-bg {
+	position: absolute;
+	inset: 0;
+	z-index: 1; /* sobre el canvas, bajo el bloqueador (300) */
+	background: linear-gradient(#4a90d9, #87ceeb 55%, #cfe8ff);
+	overflow: hidden;
+	pointer-events: none;
+}
+.menu-cloud {
+	position: absolute;
+	bottom: 22%;
+	left: -220px;
+	width: 160px;
+	height: 46px;
+	background: rgba(255, 255, 255, 0.92);
+	box-shadow:
+		30px -16px 0 8px rgba(255, 255, 255, 0.92),
+		62px 0 0 4px rgba(255, 255, 255, 0.9);
+	border-radius: 24px;
+	animation: cloudDrift 95s linear infinite;
+	opacity: 0.85;
+}
+.menu-cloud.c2 {
+	bottom: 40%;
+	transform: scale(0.7);
+	animation-duration: 130s;
+	animation-delay: -30s;
+	opacity: 0.6;
+}
+.menu-cloud.c3 {
+	bottom: 12%;
+	transform: scale(1.15);
+	animation-duration: 70s;
+	animation-delay: -50s;
+	opacity: 0.7;
+}
+@keyframes cloudDrift {
+	to {
+		left: 110%;
+	}
+}
+.menu-sun {
+	position: absolute;
+	top: 7%;
+	right: 10%;
+	width: 84px;
+	height: 84px;
+	background: #ffe55c;
+	box-shadow: 0 0 42px 18px rgba(255, 229, 92, 0.55);
+	border-radius: 8px;
+}
+/* Logo tipo Minecraft: letras pixel con sombra dura y bisel */
+.mc-logo {
+	margin-bottom: 6px;
+	filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.25));
+}
+.logo-big {
+	display: block;
+	font-size: 46px;
+	font-weight: 900;
+	letter-spacing: 4px;
+	color: #fff;
+	text-shadow:
+		3px 3px 0 #3d3d3d,
+		-2px -2px 0 rgba(0, 0, 0, 0.3);
+	background: linear-gradient(#9adf5a, #5fae3a);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+/* Títulos de pantalla (Fase 17) */
+.mc-title {
+	margin: 0 0 6px;
+	color: #2b2b2b;
+	font-size: 22px;
+	letter-spacing: 2px;
+	text-shadow:
+		2px 2px 0 rgba(255, 255, 255, 0.65),
+		-1px -1px 0 rgba(0, 0, 0, 0.2);
+}
+.menu-sub {
+	font-size: 12px;
+	color: #4a4a4a;
+	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+	margin: 2px 0;
+}
+.menu-credit {
+	margin-top: 14px;
+	font-size: 11px;
+	color: #777;
+	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+}
+/* El menú no debe desbordar en pantallas pequeñas (pausa/mundos) */
+#menu {
+	max-height: 92vh;
+	overflow-y: auto;
+}
+/* Pestañas de ajustes (Fase 17, A4) */
+.settings-tabs {
+	display: flex;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+.st-tab {
+	flex: 1;
+	padding: 6px 10px;
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	cursor: pointer;
+	background: #8f8f8f;
+	background-image: linear-gradient(
+		rgba(255, 255, 255, 0.18),
+		rgba(0, 0, 0, 0.12)
+	);
+	color: #ddd;
+	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+	border: 2px solid;
+	border-color: #d6d6d6 #555 #555 #d6d6d6;
+	transition: filter 0.1s;
+}
+.st-tab:hover {
+	filter: brightness(1.15);
+}
+.st-tab.active {
+	background: #7d7d7d;
+	background-image: linear-gradient(
+		rgba(255, 255, 255, 0.26),
+		rgba(0, 0, 0, 0.1)
+	);
+	color: #fff;
+	border-color: #fff #3d3d3d #3d3d3d #fff;
+}
+.settings-pane {
+	min-width: 300px;
+}
+/* Botones grandes de pausa (Fase 17, C1) — mismo aspecto que Jugar */
+#pause-resume-btn,
+#new-world-btn {
+	margin-top: 8px;
+	padding: 9px 22px;
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	background: #7d7d7d;
+	background-image: linear-gradient(
+		rgba(255, 255, 255, 0.22),
+		rgba(0, 0, 0, 0.15)
+	);
+	color: #fff;
+	text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
+	border: 3px solid;
+	border-color: #fff #3d3d3d #3d3d3d #fff;
+	cursor: pointer;
+	transition: filter 0.1s;
+}
+#pause-resume-btn:hover,
+#new-world-btn:hover {
+	filter: brightness(1.18);
+}
+#pause-resume-btn:active,
+#new-world-btn:active {
+	border-color: #3d3d3d #fff #fff #3d3d3d;
+	filter: brightness(0.92);
+}
+#menu-pause button {
+	width: 240px;
+}
+/* Acciones por mundo (Fase 17, A3): clonar/renombrar/modo/borrar */
+.world-actions {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+.world-action {
+	width: 26px;
+	height: 26px;
+	font-size: 13px;
+	line-height: 1;
+	padding: 0;
+	cursor: pointer;
+	background: rgba(0, 0, 0, 0.3);
+	border: 2px solid;
+	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-radius: 4px;
+	transition:
+		background 0.12s,
+		transform 0.12s;
+}
+.world-action:hover {
+	background: #4a8a2e;
+	transform: scale(1.12);
+}
+.world-action:active {
+	transform: scale(0.92);
+}
+
+/* ============================================================
+FASE 17 (D1): CONTROLES TÁCTILES (móvil). Solo visibles si el JS
+los activa (clase hidden por defecto).
+============================================================ */
+#touch-controls {
+	position: absolute;
+	inset: 0;
+	z-index: 280; /* bajo el bloqueador (300), sobre el HUD (90) */
+	pointer-events: none;
+	touch-action: none;
+}
+#touch-controls.hidden {
+	display: none;
+}
+#touch-joystick {
+	position: absolute;
+	left: 26px;
+	bottom: 26px;
+	width: 128px;
+	height: 128px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.16);
+	border: 3px solid rgba(255, 255, 255, 0.45);
+	pointer-events: auto;
+	touch-action: none;
+}
+#touch-stick {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 56px;
+	height: 56px;
+	margin: -28px 0 0 -28px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.55);
+	border: 2px solid rgba(0, 0, 0, 0.25);
+	transition: transform 0.05s;
+}
+#touch-look {
+	position: absolute;
+	inset: 0 0 0 55%;
+	pointer-events: auto;
+	touch-action: none;
+}
+#touch-buttons {
+	position: absolute;
+	right: 20px;
+	bottom: 26px;
+	display: flex;
+	flex-direction: column-reverse;
+	gap: 10px;
+	pointer-events: auto;
+	touch-action: none;
+}
+.tbtn {
+	width: 60px;
+	height: 60px;
+	border-radius: 50%;
+	font-size: 22px;
+	line-height: 1;
+	cursor: pointer;
+	background: rgba(255, 255, 255, 0.22);
+	border: 3px solid rgba(255, 255, 255, 0.5);
+	color: #fff;
+	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+	touch-action: none;
+	-webkit-tap-highlight-color: transparent;
+}
+.tbtn:active {
+	background: rgba(255, 255, 255, 0.45);
+	transform: scale(0.92);
+}
+#touch-jump {
+	background: rgba(79, 158, 36, 0.45);
+	border-color: rgba(143, 224, 75, 0.8);
+}
+#touch-break {
+	background: rgba(180, 60, 50, 0.45);
+	border-color: rgba(255, 120, 100, 0.8);
+}
+#touch-inv {
+	background: rgba(60, 90, 180, 0.45);
+	border-color: rgba(120, 160, 255, 0.8);
+}
+
+/* ============================================================
+FASE 17 (D1): RESPONSIVE — menú compacto en pantallas pequeñas.
+============================================================ */
+@media (max-width: 640px) {
+	#menu {
+		padding: 20px 16px;
+		max-width: 94vw;
+	}
+	.logo-big {
+		font-size: 30px;
+	}
+	.settings-pane {
+		min-width: 0;
+		width: 74vw;
+	}
+	#menu-pause button {
+		width: 200px;
+	}
+}

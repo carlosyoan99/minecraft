@@ -117,7 +117,11 @@ la **calidad gráfica** (baja/media/alta: pixelRatio y sombras) y
 mostrar las coordenadas en pantalla. Para un puerto
 distinto: `PORT=3998 node server.js`. La semilla por defecto también se
 configura con la env var `SEED=miNuevaSemilla node server.js` (cada semilla tiene su propio mundo en `world/<semilla>/`;
-volver a una semilla anterior recupera su mundo).
+volver a una semilla anterior recupera su mundo). Desde la Fase 17 (A1),
+**sin `SEED` el servidor arranca en modo menú**: no carga ningún mundo
+hasta que el primer jugador elige/crea uno desde el menú (los E2E clásicos
+necesitan `SEED=...` para recibir el `init`; el E2E del menú levanta su
+propio servidor sin `SEED`).
 
 ### Controles
 

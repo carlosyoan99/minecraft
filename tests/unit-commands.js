@@ -471,9 +471,12 @@ const systemMsgs = (sent) =>
 state.timeOffset = DAY_CYCLE_MS * 3; // offset mayor que el ciclo (se modula)
 check("worldTime modula al ciclo", commands.worldTime(state) < DAY_CYCLE_MS);
 state.timeOffset = 0;
+// Tolerancia de 1 ms: worldTime y Date.now() son dos llamadas separadas y
+// el ciclo (DAY_CYCLE_MS) no es múltiplo de 1000 — si el milisegundo cambia
+// entre ambas, el módulo difiere sin que sea un fallo real (flaky histórico).
 check(
 	"worldTime con offset 0",
-	commands.worldTime(state) === Date.now() % DAY_CYCLE_MS
+	Math.abs(commands.worldTime(state) - (Date.now() % DAY_CYCLE_MS)) <= 1
 );
 
 // --- Fase 8 (B8): fases lunares ---

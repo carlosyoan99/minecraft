@@ -25,9 +25,12 @@ import {
 	closePanels,
 	getHeldItem,
 	getSelectedSlot,
+	isPauseOpen,
 	isTyping,
 	openCraftingFromBlock,
+	resumeGame,
 	selectSlot,
+	showPause,
 	toggleChestUI,
 	toggleFurnaceUI,
 	toggleInventory,
@@ -102,7 +105,15 @@ document.addEventListener("keydown", (e) => {
 			toggleRecipeBook();
 			break;
 		case "Escape":
-			closePanels();
+			// Fase 17 (C1): Esc abre la pausa en el juego; con la pausa abierta
+			// la reanuda; con un panel abierto lo cierra (comportamiento previo).
+			if (isPauseOpen()) {
+				resumeGame();
+			} else if (controls.isLocked) {
+				showPause();
+			} else {
+				closePanels();
+			}
 			break;
 		case "F3":
 			// Fase 6: visualizador de chunks (bordes + caras) para depurar el culling
@@ -153,6 +164,8 @@ raycaster.far = 7;
 // envía block_break_progress para las grietas). Soltar, mirar a otro bloque
 // o soltar el puntero cancela la mina.
 let miningTarget = null; // {x,y,z} del bloque que se está minando
+// Fase 17 (B7): ¿el botón izquierdo sigue presionado? (re-minado automático)
+let miningMouseDown = false;
 
 // ============================================================
 // RESALTADO DEL BLOQUE APUNTADO (Fase 11, Bloque A1)
@@ -483,8 +496,15 @@ function nearestMobOnRay(ray, distTerreno) {
 	return best?.mobId ? { id: best.mobId, type: best.mobType } : null;
 }
 
+// Fase 17 (D1): en pantallas táctiles no hay pointer lock — el mousedown
+// sintético de los botones táctiles debe funcionar igual (touchActive).
+let touchActive = false;
+
 renderer.domElement.addEventListener("mousedown", (e) => {
-	if (!controls.isLocked) return;
+	if (!controls.isLocked && !touchActive) return;
+	// Fase 17 (B7): recordar si el botón izquierdo sigue presionado para
+	// re-minar el bloque siguiente al romperse el actual.
+	miningMouseDown = e.button === 0;
 
 	const held = getHeldItem();
 	const hit = raycastTerrainAndMobs();
@@ -607,25 +627,20 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	// recoger la fuente de agua/lava a la que apunta el rayo; cubo lleno
 	// (250/251): verter donde se mira (la celda tras la cara apuntada). Si no
 	// hay bloque apuntado, no se hace nada (el servidor valida el resto).
-	if (e.button === 2 && held && (held.id === 249 || held.id === 250 || held.id === 251)) {
+	if (
+		e.button === 2 &&
+		held &&
+		(held.id === 249 || held.id === 250 || held.id === 251)
+	) {
 		if (!hit) return;
 		const bx = Math.floor(hit.point.x);
 		const by = Math.floor(hit.point.y);
 		const bz = Math.floor(hit.point.z);
 		// Cubo lleno: verter en la celda ADYACENTE a la cara mirada (como
 		// colocar); cubo vacío: recoger la celda apuntada (la fuente).
-		const tx =
-			held.id === 249
-				? bx
-				: bx + Math.round(hit.face.normal.x);
-		const ty =
-			held.id === 249
-				? by
-				: by + Math.round(hit.face.normal.y);
-		const tz =
-			held.id === 249
-				? bz
-				: bz + Math.round(hit.face.normal.z);
+		const tx = held.id === 249 ? bx : bx + Math.round(hit.face.normal.x);
+		const ty = held.id === 249 ? by : by + Math.round(hit.face.normal.y);
+		const tz = held.id === 249 ? bz : bz + Math.round(hit.face.normal.z);
 		send("bucket_use", { x: tx, y: ty, z: tz });
 		return;
 	}
@@ -724,7 +739,10 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 });
 // Soltar el clic izquierdo cancela la mina (como Minecraft).
 renderer.domElement.addEventListener("mouseup", (e) => {
-	if (e.button === 0) stopMining();
+	if (e.button === 0) {
+		miningMouseDown = false;
+		stopMining();
+	}
 });
 
 // Resaltado del bloque apuntado + retargeteo de la mina (Fase 14, M1): ANTES
@@ -757,9 +775,226 @@ renderer.domElement.addEventListener("pointermove", () => {
 // Si se pierde el pointer lock (Escape/menú), cancelar la mina también.
 document.addEventListener("pointerlockchange", () => {
 	if (!document.pointerLockElement) {
+		miningMouseDown = false;
 		stopMining();
 		hideHighlight();
 	}
 });
 
+// Fase 17 (B7): al romperse el bloque en mina (block_update → AIR lo llama
+// desde network.js), si el clic sigue presionado se empieza a minar el
+// bloque siguiente al que se apunta (como en Minecraft).
+export function onBlockMined(x, y, z) {
+	if (
+		!miningTarget ||
+		miningTarget.x !== x ||
+		miningTarget.y !== y ||
+		miningTarget.z !== z
+	)
+		return;
+	miningTarget = null;
+	hideCrack();
+	if (!miningMouseDown) return;
+	const hit = raycastTerrainAndMobs();
+	if (!hit || mobRootData(hit)) return;
+	const point = hit.point.clone().addScaledVector(hit.face.normal, -0.5);
+	startMiningAt(Math.floor(point.x), Math.floor(point.y), Math.floor(point.z));
+}
+
 renderer.domElement.addEventListener("contextmenu", (e) => e.preventDefault());
+
+// ============================================================
+// CONTROLES TÁCTILES (Fase 17, D1): HUD adaptativo para móviles — joystick
+// virtual (movimiento + sprint al fondo), arrastre a la derecha para mirar,
+// y botones (agacharse, saltar, romper, usar, inventario, pausa). Mouse y
+// teclado siguen siendo el camino principal; el servidor no se entera (todo
+// se traduce a los mismos mensajes que mouse/teclado).
+// ============================================================
+const touchControlsEl = document.getElementById("touch-controls");
+const touchJoystick = document.getElementById("touch-joystick");
+const touchStick = document.getElementById("touch-stick");
+const touchLookEl = document.getElementById("touch-look");
+const JOY_RADIUS = 46;
+let joyId = null;
+let joyBase = { x: 0, y: 0 };
+let lookId = null;
+let lastLook = { x: 0, y: 0 };
+const lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
+
+// ui.js lo avisa (evento mc-touch-visibility): al entrar al mundo se
+// muestran en pantallas táctiles; en el menú se ocultan.
+window.addEventListener("mc-touch-visibility", (e) =>
+	setTouchControlsVisible(e.detail)
+);
+
+function setTouchControlsVisible(show) {
+	if (!touchControlsEl) return;
+	touchActive = !!show;
+	touchControlsEl.classList.toggle("hidden", !show);
+}
+
+// Rotación de cámara equivalente a la del pointer lock (mismo euler YXZ y
+// mismo clamp de ±90° que PointerLockControls), sin depender del lock.
+function rotateCameraTouch(dx, dy) {
+	lookEuler.setFromQuaternion(camera.quaternion);
+	lookEuler.y -= dx * 0.0035;
+	lookEuler.x -= dy * 0.0035;
+	const lim = Math.PI / 2 - 0.01;
+	lookEuler.x = Math.max(-lim, Math.min(lim, lookEuler.x));
+	camera.quaternion.setFromEuler(lookEuler);
+}
+
+// Mueve el joystick (y mapea las direcciones al estado `move` de player.js).
+function setJoystick(dx, dy) {
+	const len = Math.hypot(dx, dy);
+	const clamped = Math.min(len, JOY_RADIUS);
+	const nx = clamped ? dx / len : 0;
+	const ny = clamped ? dy / len : 0;
+	if (touchStick)
+		touchStick.style.transform = `translate(${nx * clamped}px, ${ny * clamped}px)`;
+	move.forward = ny < -0.3;
+	move.back = ny > 0.3;
+	move.left = nx < -0.3;
+	move.right = nx > 0.3;
+	move.sprint = ny < -0.85; // al fondo del joystick, correr
+}
+
+if (touchJoystick) {
+	touchJoystick.addEventListener(
+		"touchstart",
+		(e) => {
+			const t = e.changedTouches[0];
+			joyId = t.identifier;
+			joyBase = { x: t.clientX, y: t.clientY };
+			setJoystick(0, 0);
+			e.preventDefault();
+		},
+		{ passive: false }
+	);
+	touchJoystick.addEventListener(
+		"touchmove",
+		(e) => {
+			for (const t of e.changedTouches) {
+				if (t.identifier === joyId) {
+					setJoystick(t.clientX - joyBase.x, t.clientY - joyBase.y);
+					e.preventDefault();
+				}
+			}
+		},
+		{ passive: false }
+	);
+	const joyEnd = (e) => {
+		for (const t of e.changedTouches) {
+			if (t.identifier === joyId) {
+				joyId = null;
+				setJoystick(0, 0);
+				e.preventDefault();
+			}
+		}
+	};
+	touchJoystick.addEventListener("touchend", joyEnd);
+	touchJoystick.addEventListener("touchcancel", joyEnd);
+}
+
+if (touchLookEl) {
+	touchLookEl.addEventListener(
+		"touchstart",
+		(e) => {
+			const t = e.changedTouches[0];
+			lookId = t.identifier;
+			lastLook = { x: t.clientX, y: t.clientY };
+			e.preventDefault();
+		},
+		{ passive: false }
+	);
+	touchLookEl.addEventListener(
+		"touchmove",
+		(e) => {
+			for (const t of e.changedTouches) {
+				if (t.identifier === lookId) {
+					rotateCameraTouch(t.clientX - lastLook.x, t.clientY - lastLook.y);
+					lastLook = { x: t.clientX, y: t.clientY };
+					e.preventDefault();
+				}
+			}
+		},
+		{ passive: false }
+	);
+}
+
+// Botón pulsado (mantener) para saltar/agacharse.
+function bindTouchHold(el, on, off) {
+	if (!el) return;
+	el.addEventListener(
+		"touchstart",
+		(e) => {
+			on();
+			e.preventDefault();
+		},
+		{ passive: false }
+	);
+	el.addEventListener(
+		"touchend",
+		(e) => {
+			off();
+			e.preventDefault();
+		},
+		{ passive: false }
+	);
+	el.addEventListener(
+		"touchcancel",
+		(e) => {
+			off();
+			e.preventDefault();
+		},
+		{ passive: false }
+	);
+}
+// Botón de golpe (tap): reutiliza el handler de mousedown del canvas
+// despachando un MouseEvent sintético (misma lógica que el ratón real).
+function syntheticMouse(button) {
+	if (!touchActive) return;
+	renderer.domElement.dispatchEvent(
+		new MouseEvent("mousedown", {
+			button,
+			bubbles: true,
+			cancelable: true,
+			view: window
+		})
+	);
+}
+bindTouchHold(
+	document.getElementById("touch-jump"),
+	() => (move.jump = true),
+	() => (move.jump = false)
+);
+bindTouchHold(
+	document.getElementById("touch-sneak"),
+	() => (move.sneak = true),
+	() => (move.sneak = false)
+);
+bindTouchHold(
+	document.getElementById("touch-break"),
+	() => syntheticMouse(0),
+	() => {}
+);
+bindTouchHold(
+	document.getElementById("touch-use"),
+	() => syntheticMouse(2),
+	() => {}
+);
+bindTouchHold(
+	document.getElementById("touch-inv"),
+	() => {
+		if (uiGamemode() === "creative") togglePicker();
+		else toggleInventory();
+	},
+	() => {}
+);
+bindTouchHold(
+	document.getElementById("touch-pause"),
+	() => {
+		if (touchActive && !isPauseOpen()) showPause();
+	},
+	() => {}
+);

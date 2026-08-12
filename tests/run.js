@@ -65,7 +65,8 @@ const UNIT = [
 	"unit-ao.js", // Fase 10 (E1): AO por vértice — sombreado de esquinas internas/bloques empotrados
 	"unit-muerte.js", // Fase 10 (B2): causas de player_die (caída, mob, fuego, ...)
 	"unit-fase16.js", // Fase 16: niebla (B1), cofre Shift (B2), horno combustible (D1), drops (D2), puertas/vidrio/carbón (D3-D5), XP (D6)
-	"unit-dia.js" // Fase 16 (G3): matemática pura del ciclo día/noche (public/daymath.js)
+	"unit-dia.js", // Fase 16 (G3): matemática pura del ciclo día/noche (public/daymath.js)
+	"unit-fase17.js" // Fase 17: menú (A1), persistencia por nombre (B1), plantas (B4), creativo (B6), cuevas (B5)
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
@@ -76,7 +77,8 @@ const E2E = [
 	"e2e-durabilidad.js",
 	"e2e-reload.js",
 	"e2e-cofre.js",
-	"e2e-templo.js" // Fase 12 (B1/E5): templo de jungla — trampa de flechas + cofre con loot
+	"e2e-templo.js", // Fase 12 (B1/E5): templo de jungla — trampa de flechas + cofre con loot
+	"e2e-menu.js" // Fase 17 (A1/A5/C1): menú sin SEED — levanta su propio servidor (puerto 3997)
 ];
 // G0.2: auditorías por fase standalone, ejecutables con `node tests/run.js
 // --audit`. Antes esta constante no existía y el modo lanzaba ReferenceError.
