@@ -438,19 +438,19 @@
 - [ ] D6 XP del slime mediano y del lobo (PAR-7/8)
 - [ ] E1 pantalla completa (opción/tecla)
 - [ ] E2 `unit-recetas.js` con cobertura total + tests de F16
-- [ ] G0.1 commitear el WIP de Fase 16 y dejar la suite en verde
-- [ ] G0.2 definir `AUDIT` en `tests/run.js` (audit-fase3..7 + audit-altura) —
-      `--audit` hoy lanza ReferenceError
-- [ ] G1.1 c8 (devDep) + `npm run test:coverage`
-- [ ] G1.2 `coverage/` en `.gitignore`
+- [x] G0.1 commitear el WIP de Fase 16 y dejar la suite en verde
+- [x] G0.2 definir `AUDIT` en `tests/run.js` (audit-fase3..7 + audit-altura) —
+      `--audit` ya no lanza ReferenceError
+- [x] G1.1 c8 (devDep) + `npm run test:coverage`
+- [x] G1.2 `coverage/` en `.gitignore`
 - [ ] G1.3 `tests/helpers.js` (check/reporte, mkPlayer, withRandom, loader ESM)
-- [ ] G1.4 runner `--filter <regex>` + tiempos por test
-- [ ] G2.1 unit de guardado asíncrono (C1) + migración v5→v6
-- [ ] G2.2 unit-red: coords inválidas (C2), parse WS try/catch (CL-3),
+- [x] G1.4 runner `--filter <regex>` + tiempos por test
+- [x] G2.1 unit de guardado asíncrono (C1) + migración v5→v6
+- [x] G2.2 unit-red: coords inválidas (C2), parse WS try/catch (CL-3),
       anti-cheat v2 (C3)
-- [ ] G2.3 unit-commands: `/give` 64 (SV-5), `/tp` clamp (SV-6),
+- [x] G2.3 unit-commands: `/give` 64 (SV-5), `/tp` clamp (SV-6),
       `set_seed` cooldown (C4)
-- [ ] G2.4 hornos huérfanos (C5) + `FUEL_TICKS` completo (D1)
+- [x] G2.4 hornos huérfanos (C5) + `FUEL_TICKS` completo (D1)
 - [ ] G2.5 `ItemStack` coverage (items.js)
 - [ ] G2.6 TNT: cadenas, cráter con bedrock, knockback
 - [ ] G3 units de cliente puro: network, settings, daynight, clouds,

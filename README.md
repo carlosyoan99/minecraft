@@ -486,8 +486,14 @@ en el servidor y `public/network.js` en el cliente).
     servidor y verifica que el watcher recarga y avisa por chat, que
     `/reload` responde y que un JSON inválido se rechaza sin tumbar el
     servidor; pasa `RECETAS_PATH` si el servidor no es el del proyecto).
-- Flags del runner: `node tests/run.js --unit` (solo unitarios), `WS_URL=...`
-  `node tests/run.js --e2e` (solo E2E contra ese servidor).
+- Flags del runner: `node tests/run.js --unit` (solo unitarios),
+  `node tests/run.js --audit` (solo auditorías standalone), `WS_URL=...`
+  `node tests/run.js --e2e` (solo E2E contra ese servidor) y
+  `node tests/run.js --unit --filter <regex>` (solo los unitarios que casan con
+  el regex, con tiempo por test).
+- Cobertura: `npm run test:coverage` (c8 — `--all` sobre `server/` y `public/`).
+  La matriz completa módulo→test y los umbrales están en
+  [`docs/tests.md`](docs/tests.md).
 - Para que los handlers de red sean testeables, `net.js` exporta
   `handleConnection` (además de `broadcast` y `start`): los tests le pasan un
   `ws` fake y ejercitan cada evento sin abrir el puerto.
@@ -512,21 +518,20 @@ en el servidor y `public/network.js` en el cliente).
 
 ### Resultados (agosto 2026)
 
-Suite completa: **50 tests unitarios + 6 E2E** (si hay servidor).
-Estado actual del working tree: el mundo de 128 bloques (D5, Fase 15)
-está implementado pero **sin commitear** y **12 unitarios** están
-pendientes de recalibración a las nuevas alturas (mundo −64..+63,
-`tests/test.log`); la suite queda en verde al cerrar el A1 de la Fase 16.
-Los unitarios cubren persistencia, IA de mobs, handlers de red,
-integridad de recetas, sincronización servidor↔cliente, hot-reload,
-minería fina, LOD, cofre, antorchas, cama, armadura, terreno,
-caída/void, anti-cheat, crack, métricas, raycast/pool con three real,
-cámara, biomas de Fase 11, mecánicas de Fase 11 y el mundo de 128
-bloques (`audit-altura.js`, 72 checks). Los E2E contra un servidor real
-con mundo fresco cubren comer, durabilidad, cofre, reload, mascotas y
-templo. La auditoría de la Fase 5 sigue cubriendo la sincronización de
-durabilidad y la no-duplicación de items; los unitarios transversales
-amplían la red de seguridad a toda la base.
+Suite completa: **51 tests unitarios + 6 E2E** (si hay servidor) — ver la
+matriz en [`docs/tests.md`](docs/tests.md). La suite cubre persistencia, IA
+de mobs, handlers de red, integridad de recetas, sincronización
+servidor↔cliente, hot-reload, minería fina, LOD, pool de geometrías, greedy
+meshing + worker, cofre, antorchas, cama, armadura, terreno, caída/void,
+anti-cheat (vuelo + v2 velocidad/hover), crack, métricas, raycast/pool con
+three real, cámara, biomas de Fase 11, mecánicas de Fase 11/12/16, POO del
+servidor (F13), paridad de valores (F13), lagunas L1-L5 y el mundo de 128
+bloques (`audit-altura.js`, 72 checks). Los E2E contra un servidor real con
+mundo fresco cubren comer, durabilidad, cofre, reload, mascotas y templo.
+El estado del working tree puede dejar algunos unitarios en rojo mientras
+una fase está en curso (p. ej. la recalibración al cambio de SEED del modo
+menú de la Fase 17); la verificación final antes de cerrar fase se detalla
+en `docs/tests.md`.
 
 ## Cómo contribuir
 

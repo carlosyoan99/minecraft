@@ -58,6 +58,7 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
 | Documento | Descripción |
 | --- | --- |
 | [`Notas del usuario.md`](Notas%20del%20usuario.md) | Auditoría manual del usuario: bugs, nuevas características, debug y "valorar implementar" — base de las fases 9, 10 y 11 |
+| [`tests.md`](tests.md) | Suite de tests y cobertura: comandos del runner, matriz módulo→test (51 unitarios + 6 E2E + auditorías), cobertura con c8 y umbrales |
 
 ## Cómo usar estas specs
 

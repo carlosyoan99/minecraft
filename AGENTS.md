@@ -17,13 +17,18 @@ build step desde `public/`. Todo el código, docs y commits en español.
 ```bash
 npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
-node tests/run.js               # 50 unitarios + 6 E2E si hay servidor vivo
+node tests/run.js               # 51 unitarios + 6 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
+node tests/run.js --unit --filter <regex>   # solo los que casan (con tiempo por test)
 node tests/run.js --audit       # solo auditorías por fase standalone (3-6 + altura)
+npm run test:coverage           # c8: % de cobertura de server/ y public/
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
 PORT=3998 node server.js        # servidor para los E2E, en otra terminal
 node tests/audit-fase7.js       # render CDP con Chrome headless (por separado; ver abajo)
 ```
+
+La matriz módulo→test y los umbrales están en
+[`docs/tests.md`](docs/tests.md); léela antes de añadir un test nuevo.
 
 Verificación mínima antes de entregar (CLAUDE.md §"Cómo trabajar"):
 `node --check` sobre los `.js` tocados, `node tests/run.js --unit`,
