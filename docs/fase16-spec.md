@@ -416,7 +416,7 @@
 | G0.2 | Definir `AUDIT` en `tests/run.js` (audit-fase3..7 + audit-altura) | `node tests/run.js --audit` corre las 6 auditorías |
 | G1.1 | c8 (devDep) + `npm run test:coverage` (`c8 --all --src=server --src=public node tests/run.js --unit`) | Reporte por archivo; módulos no importados al 0% |
 | G1.2 | `coverage/` en `.gitignore` | `git status` limpio tras correr c8 |
-| G1.3 | `tests/helpers.js` (check/reporte `# checks fallidos`, `mkPlayer`, `withRandom`, loader ESM tmp) | Tests nuevos lo usan; reporte uniforme parseable por `run.js` |
+| G1.3 | `tests/helpers.js` (check/reporte `# checks fallidos`, `mkPlayer`, `withRandom`, loader ESM) | Tests nuevos lo usan; reporte uniforme parseable por `run.js` |
 | G1.4 | Runner: `--filter <regex>` + tiempos por test | Correr un subconjunto sin tocar el resto |
 | G2.1 | Unit de guardado asíncrono (C1) + migración v5→v6 | Cola por lotes, idempotencia, chunk ensuciado durante guardado, error sin bucle, `.bak`, `world.json` al final |
 | G2.2 | `unit-red`: coords `NaN`/string/null (C2) sin mutar estado; parse WS try/catch + default (CL-3); anti-cheat v2 (C3) | Handlers rechazan sin mutar estado ni disco |
@@ -424,7 +424,8 @@
 | G2.4 | Hornos huérfanos (C5) + `FUEL_TICKS` completo (D1) | romper horno lo elimina de `state` y `world.json` |
 | G2.5 | `ItemStack` (`items.js`): serialización, merge/clamp, durabilidad | ampliar `unit-poo-entities` |
 | G2.6 | TNT: cadenas, cráter con bedrock, knockback | ampliar `unit-fase11` |
-| G3 | Cliente puro: `network` (parse), `settings` (validate/apply), `daynight`, `clouds`, `particles`, `audio` (pitch/scheduling) | units nuevos con el loader ESM tmp |
+| G3 | Cliente puro: se extrae la matemática del ciclo a `public/daymath.js` (patrón `waterfog.js`/`quality.js`) y se usa en `daynight.js` (luz, cielo, niebla) y `clouds.js` (tinte cuantizado) — cubierto por `tests/unit-dia.js` (18 checks: `dayFactor`, `duskFactor` con pico real en d≈0.402, `fogDistances` 30/70→75/200, `cloudTint` + `CLOUD_TINT_STEP`) | `unit-dia.js` en verde; refactor sin cambio de comportamiento |
+| G3b | Cliente puro restante: `network` (parse), `settings` (validate/apply), `particles`, `audio` (pitch/scheduling) | módulos DOM/WebAudio — se revisan con G3.7 (CDP) en vez de refactor; `unit-ajustes` ya cubre settings/quality |
 | G3.7 | Ampliar `audit-fase7` (CDP): calidad B6, niebla B1, inventario B4, libro B5 | checks de render nuevos |
 | G4 | E2E: cofre Shift (B2), libro de recetas abrir/cerrar (B5); E2E 6/6 en solitario | E2E verdes sin timeouts |
 | G5.1 | `docs/tests.md`: matriz módulo → test (alimentada por c8) + guía "cómo añadir un test" + umbrales | matriz completa por módulo |

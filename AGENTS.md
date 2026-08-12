@@ -17,7 +17,7 @@ build step desde `public/`. Todo el código, docs y commits en español.
 ```bash
 npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
-node tests/run.js               # 51 unitarios + 6 E2E si hay servidor vivo
+node tests/run.js               # 52 unitarios + 6 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
 node tests/run.js --unit --filter <regex>   # solo los que casan (con tiempo por test)
 node tests/run.js --audit       # solo auditorías por fase standalone (3-6 + altura)

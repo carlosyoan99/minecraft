@@ -251,9 +251,14 @@ mobs visibles en escena).
   sin depender del tick del servidor.
 - `updateDayNight` interpola colores de cielo (cenit/horizonte),
   luz ambiental, luz del sol y niebla por la fase (día/noche/atardecer).
-- **Niebla submarina (Fase 10):** `setUnderwater` (lo detecta `player.js`
-  con la cámara sumergida) sobreescribe la niebla con azul denso y muy
-  cercano mientras se nada.
+- **Niebla submarina (Fase 10, refinada en Fase 16/B1):**
+  `setUnderwater` (lo detecta `player.js` con la cámara sumergida)
+  sobreescribe la niebla con azul denso y muy cercano mientras se nada.
+  La activación es **`shouldUnderwaterFog` (`public/waterfog.js`, lógica
+  pura)**: solo con inmersión real de los ojos — cuerpo en el agua Y
+  profundidad de ojos **≥ 2 bloques** (`waterSurfaceDepth` sube desde el
+  techo de la celda de los ojos hasta el primer aire). Con los ojos fuera
+  o a 1 bloque (nadando en superficie) **no** se muestra la niebla.
 - **Nubes (Fase 10):** `clouds.js` dibuja un campo de sprites
   procedurales (tinte por vértice día/noche) que se desplazan con el
   viento y siguen al jugador con offsets cíclicos.
@@ -364,9 +369,19 @@ mobs visibles en escena).
   `furnace_state`, `chest_state`).
 - **Libro de recetas (B):** todas las recetas por categorías (bloques/
   herramientas/armadura/comida/materiales + fundición) sin desbloqueo;
-  `recipeCategories.js` decide la pestaña (lógica pura testeable).
+  `recipeCategories.js` decide la pestaña (lógica pura testeable). Cada
+  receta muestra sus ítems con `itemVisual` (iconos procedurales) y se
+  **cierra con B o Esc** (`toggleRecipeBook`, Fase 16/B5): al abrirlo el
+  pointer lock se libera sobre el panel (las pestañas son clicables) y al
+  cerrarlo se restaura sobre el canvas.
 - **Ajustes:** `mc_settings` en localStorage; los aplica `settings.js` en
   tiempo real (render distance notifica al servidor, calidad al renderer).
+  La **calidad** (Fase 16/B6) escala la **resolución real** con
+  `renderScale` de `quality.js` (baja 0.6× / media 0.85× / alta 1×) además
+  de las sombras: con `devicePixelRatio` se aplica como
+  `pixelRatio = clamp(dpr, 0.5, 2) × renderScale`, así el ajuste tiene un
+  efecto visible en cualquier pantalla (antes `min(dpr, perfil)` lo
+  aplanaba a 1 en pantallas dpr=1).
 
 ### Por qué así
 
@@ -397,7 +412,7 @@ mobs visibles en escena).
 | PRNG determinista en atlas | `textures.js`/`itemicons.js`/`mobtextures.js` | texturas estables y compartidas |
 | Partículas con pool | `particles.js` | sin instantiate/free por evento |
 | Nubes procedurales | `clouds.js` | cielo vivo sin assets ni draw calls caros (Fase 10) |
-| Perfiles de calidad | `quality.js` + `scene.js` | pixelRatio/sombras ajustables |
+| Perfiles de calidad | `quality.js` + `scene.js` | `renderScale` × resolución nativa + sombras (Fase 16/B6) |
 
 **Cómo se mide:** el F3 (`debug.js`) muestra FPS, chunks visibles/totales,
 caras y triángulos; `audit-fase7.js` (CDP) captura `window.__mc*` en

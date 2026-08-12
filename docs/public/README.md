@@ -71,7 +71,8 @@ carga.
 | `particles.js` | Partículas de romper/colocar (pool de cubitos) | THREE |
 | `player.js` | Física/movimiento del jugador local (predicción), vuelo creativo, sprint, agacharse | THREE |
 | `input.js` | Teclado (movimiento, hotbar, paneles, libro, picker creativo) y ratón (minar/atacar/colocar/pick-block) | DOM/THREE |
-| `daynight.js` | Ciclo día/noche visual (extrapola el reloj del servidor), niebla submarina | THREE |
+| `daynight.js` | Ciclo día/noche visual (extrapola el reloj del servidor) | THREE |
+| `waterfog.js` | Decisión de niebla submarina (Fase 16 B1): solo con inmersión real de los ojos (≥2 bloques) | **puro** |
 | `sky.js` / `skycolors.js` | Dome procedural (sol, luna, estrellas) + paleta | THREE / **puro** |
 | `clouds.js` | Nubes procedurales que se desplazan y siguen al jugador (Fase 10) | THREE |
 | `audio.js` | Sonido procedural (Web Audio): pasos, roturas, ambiente, comer, música por contexto | DOM |
@@ -89,13 +90,14 @@ importan con `file://`, patrón `tests/unit-itemicons.js`).
 **Por qué la separación puro/impuro:** el proyecto no tiene build step,
 pero sí tests de servidor en Node. La solución es que **toda la lógica de
 decisión** (LOD, luz, pool, iconos, calidad, categorías, geometría del
-chunk) viva en módulos sin dependencias de navegador; los módulos con
-THREE/DOM se quedan como pegamento fino. Así `tests/unit-lod.js`,
-`tests/unit-geopool.js`, `tests/unit-itemicons.js`,
+chunk, niebla submarina) viva en módulos sin dependencias de navegador;
+los módulos con THREE/DOM se quedan como pegamento fino. Así
+`tests/unit-lod.js`, `tests/unit-geopool.js`, `tests/unit-itemicons.js`,
 `tests/unit-recipecats.js`, `tests/unit-antorchas.js` (bloque B: luz de
 `lighting.js`), `tests/unit-greedy.js` (greedy meshing de
-`chunkGeometry.js`) y `tests/unit-workers.js` importan y prueban lógica
-real, no mocks.
+`chunkGeometry.js`), `tests/unit-workers.js` y `tests/unit-fase16.js`
+(sección de niebla: `waterfog.js`) importan y prueban lógica real, no
+mocks.
 
 ## El bucle de render
 

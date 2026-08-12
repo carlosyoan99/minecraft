@@ -443,7 +443,7 @@
       `--audit` ya no lanza ReferenceError
 - [x] G1.1 c8 (devDep) + `npm run test:coverage`
 - [x] G1.2 `coverage/` en `.gitignore`
-- [ ] G1.3 `tests/helpers.js` (check/reporte, mkPlayer, withRandom, loader ESM)
+- [x] G1.3 `tests/helpers.js` (check/reporte, mkPlayer, withRandom, loader ESM)
 - [x] G1.4 runner `--filter <regex>` + tiempos por test
 - [x] G2.1 unit de guardado asíncrono (C1) + migración v5→v6
 - [x] G2.2 unit-red: coords inválidas (C2), parse WS try/catch (CL-3),
@@ -453,17 +453,20 @@
 - [x] G2.4 hornos huérfanos (C5) + `FUEL_TICKS` completo (D1)
 - [ ] G2.5 `ItemStack` coverage (items.js)
 - [ ] G2.6 TNT: cadenas, cráter con bedrock, knockback
-- [ ] G3 units de cliente puro: network, settings, daynight, clouds,
-      particles, audio
+- [x] G3 units de cliente puro: daynight + clouds (vía `public/daymath.js`,
+      cubierto por `unit-dia.js`)
+- [ ] G3b units de cliente puro restantes: network (parse), settings
+      (validate/apply), particles, audio (pitch/scheduling) — módulos
+      DOM/WebAudio, se revisan con G3.7 (CDP) en vez de refactor
 - [ ] G3.7 ampliar `audit-fase7` (CDP): B6, B1, B4, B5
 - [ ] G4 E2E: cofre Shift (B2), libro de recetas (B5); E2E 6/6 en solitario
-- [ ] G5.1 `docs/tests.md` (matriz módulo→test + guía + umbrales)
-- [ ] G5.2 `README.md` §Tests actualizado
-- [ ] G5.3 `docs/server/mecanicas.md`: C1, D1, D2, B2, C3, C4, C5, C6
-- [ ] G5.4 `docs/public/mecanicas.md`: B1, B6, B5
-- [ ] G5.5 `docs/server/README.md` (persistencia asíncrona) +
+- [x] G5.1 `docs/tests.md` (matriz módulo→test + guía + umbrales)
+- [x] G5.2 `README.md` §Tests actualizado
+- [x] G5.3 `docs/server/mecanicas.md`: C1, D1, D2, B2, C3, C4, C5, C6
+- [x] G5.4 `docs/public/mecanicas.md`: B1, B6, B5
+- [x] G5.5 `docs/server/README.md` (persistencia asíncrona) +
       `docs/public/README.md` (mapa `waterfog.js`/`chunkWorker.js`)
-- [ ] G5.6 `AGENTS.md`/`CLAUDE.md`/`docs/README.md` al día
+- [x] G5.6 `AGENTS.md`/`CLAUDE.md`/`docs/README.md` al día
 - [ ] Auditoría de Fase 16: E2E 6/6 en solitario, suite unitaria en verde,
       `node --check`/`biome`, auditorías sin regresiones, c8 con umbrales,
       verificación manual en navegador, actualizar `docs/README.md`/`AGENTS.md`

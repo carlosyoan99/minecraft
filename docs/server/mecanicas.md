@@ -76,11 +76,21 @@
 
 - **Gravedad y salto** (`GRAVITY = 18`, `JUMP_SPEED = 7`): el servidor
   integra la velocidad vertical del jugador en cada tick.
-- **Validación anti-cheat:** el ascenso se valida contra la parábola del
-  salto (`JUMP_SPEED·dt − GRAVITY·dt²/2`); un cliente no puede "subir"
-  más rápido de lo que la física permite. El daño de caída se calcula por
-  velocidad vertical inferida (`h = v²/(2·GRAVITY)`), no por "bloques
-  caídos" que el cliente declare.
+- **Validación anti-cheat** (Fase 16, C3/SEC-1):
+  - **Ascenso contra la parábola del salto:** un cliente no puede "subir"
+    más rápido de lo que la física permite (`vyObs > JUMP_SPEED·1.5`), ni
+    mantener el ascenso o **flotar** más de 1 s en el aire (`airTimeMs >
+    1000` — el *hover*, `dy ≥ −0.001`, antes no disparaba nada porque la
+    condición excluía `dy = 0`). En creative el vuelo es legítimo y se
+    salta esta validación.
+  - **Velocidad horizontal por ventana deslizante:** ráfagas de ~0.8
+    bloques a 20/s pasan el límite por-move pero son ~16 bloques/s
+    sostenidos; la ventana (`speedSamples`, 1200 ms, intervalos clavados a
+    ≥50 ms) mide bloques/s reales y **corrige con `teleport` si supera 7
+    bloques/s** (el sprint legítimo es ~5.6). Las muestras se resetean al
+    teleportar (`/tp`) y al reaparecer.
+  - El daño de caída se calcula por velocidad vertical inferida
+    (`h = v²/(2·GRAVITY)`), no por "bloques caídos" que el cliente declare.
 - **Colisión con el mundo:** el servidor consulta bloques sólidos vía
   `world.getBlock` y resuelve el desplazamiento por ejes.
 - **Agua y lava:** flotación en agua (el jugador no se hunde del todo) y
@@ -258,6 +268,10 @@ primer soporte, TNT explota con cráter y el bedrock sobrevive).
 - **Salud por especie** (Fase 14, Bloque B, paridad MC): zombi/creeper/
   esqueleto/lobo/drowned 20, **araña 16**, **enderman 40**, **abeja 10**;
   el creeper explota con el **daño del TNT** (`TNT_DAMAGE`).
+- **Drops por especie** (Fase 16, D2/PAR-2): zombis sueltan **carne
+  podrida** (0-2, `I.ROTTEN_FLESH`) y creepers **pólvora** (0-2,
+  `I.GUNPOWDER`) — ítems nuevos sincronizados en ambos `constants.js`; la
+  pólvora además es ingrediente de la receta del TNT.
 - **Persecución con `stuckTicks`:** si un hostil no avanza pese a
   perseguir, se desvía lateralmente; hay límite de rango con vuelta a
   wander.
@@ -305,9 +319,13 @@ primer soporte, TNT explota con cráter y el bedrock sobrevive).
 - **Hornos** (`furnaces` en `state`): combustible, input, progreso por
   tick, output; `furnaceSnapshot` para el wire. Se persisten en
   `world.json` y se restauran al cargar.
-- **Combustibles** (`FUEL_ITEMS`, Fase 14, Bloque B): troncos de las
-  cuatro variedades (roble, abedul, abeto, jungla), tablones, palo y
-  **carbón**.
+- **Combustibles y consumo real** (Fase 16, D1/PAR-1): `FUEL_ITEMS`
+  (troncos de las cuatro variedades, tablones, palo y carbón) y tabla
+  `FUEL_TICKS` por ítem con los ticks oficiales de MC — carbón **1600**,
+  tronco/tablas **300**, palo **100**. Al recargar el horno se **consume
+  la unidad de combustible real** (`fuelCount`) y se asigna el `fuelTicksLeft`
+  de su ítem; al agotarlos el horno se apaga. Antes el combustible era un
+  genérico 400 t que ardía para siempre (paridad PAR-1).
 - **Validación estructural** (`isValidRecipes`): receta malformada se
   rechaza al cargar, nunca deja el juego a medias.
 
@@ -344,6 +362,11 @@ recetas vía `recipe_book`), `tests/e2e-comer.js`.
 - El estado vive en `state.chests` y se persiste en `world.json`
   (`restoreChests`); la lógica de mover ítems (put/take) vive en el
   handler de red de `net.js`.
+- **Abrir vs romper (Fase 16, B2):** clic derecho abre el cofre, pero para
+  **romperlo** hay que ir **agachado** (Shift), como en Minecraft — sin
+  agacharse el `block_action break` sobre un cofre no lo destruye. Al
+  romperlo sueltan su contenido como drops y su propio drop, y se limpia el
+  estado de `state.chests`.
 
 ### Por qué así
 
@@ -362,6 +385,13 @@ recetas vía `recipe_book`), `tests/e2e-comer.js`.
   set`, `/gamemode`. El servidor es la fuente de verdad: cada comando
   muta el estado y sincroniza con eventos existentes (`teleport`,
   `inventory_update`, `time_set`, `chunks_add`).
+- **`/give` con tope de stack (Fase 16, SV-5):** los ítems apilables se
+  entregan con tope 64 por stack (pedir `/give tronco 999` da 15 stacks de
+  64), paridad MC.
+- **`/tp` sujeto a los bordes del mundo (Fase 16, SV-6):** las
+  coordenadas se **clampan** a `±(worldHalfExtent − 0.6)` en x/z y a
+  `WORLD_MIN_Y..WORLD_MAX_Y` en Y — antes un `/tp 99999` sacaba al jugador
+  fuera del mundo.
 - **Reloj del mundo:** `worldTime(state) = (Date.now() + timeOffset) %
   DAY_CYCLE_MS`. El `timeOffset` (de `/time set` o dormir) **se persiste en
   `world.json`** (Fase 10): la hora del mundo continúa entre sesiones y los
@@ -413,10 +443,53 @@ infinita).
 
 ---
 
+## 8.6 Persistencia: guardado asíncrono (server/save.js, C1)
+
+### Cómo funciona
+
+- **Guardado incremental por chunk:** solo se reescriben los chunks sucios
+  (`dirtyChunks`) y `world.json` (mobs, hornos, cofres, cultivos, hora) al
+  final; `atomicWrite` (tmp+rename) y el `.bak` del `world.json` anterior
+  mantienen la integridad.
+- **Cola asíncrona fuera del event loop** (`saveWorldAsync`, Fase 16,
+  C1/REN-1/SV-4): el autosave del `setInterval` ya no escribe síncronamente
+  (que congelaba el servidor con cientos de chunks y era la causa de los
+  timeouts E2E). La cola procesa los chunks por **lotes de 6** con
+  `setImmediate`, cediendo el turno al bucle principal entre lotes. El
+  chunk se borra de `dirtyChunks` **al escribirse**, así un chunk re-ensuciado
+  durante el guardado no se pierde; un error de escritura elimina la clave
+  para no reintentar en bucle infinito; y la llamada es **idempotente** (si
+  ya hay cola en curso, no abre otra).
+- **`saveWorld()` síncrono se conserva** para los puntos que necesitan el
+  resultado inmediato (`switchWorld` y SIGINT); solo el autosave periódico
+  usa la cola.
+
+### Verificación
+
+`tests/unit-persistencia.js` (bloque C1: la cola drena `dirtyChunks`,
+escribe los archivos y `world.json` al final, sin `.tmp` residuales; C5:
+romper un horno lo elimina de `state` y de `world.json`).
+
+---
+
 ## 9. Seguridad y robustez
 
 - **Sanitización de entrada:** nombres, semillas, nombres de mundo y
   mensajes se sanean y acotan (regex de control, límites de longitud).
+- **Coordenadas validadas en todos los handlers** (Fase 16, C2/SV-3/SEC-3):
+  `validCoords(x, y, z)` exige `Number.isFinite` antes de cualquier uso en
+  `block_action`, `till`, `plant`, `bonemeal`, `bucket_use`, `door_use`,
+  `furnace_open`, `chest_open` y `move`; el mensaje se **descarta sin
+  mutar estado ni inventario** (antes un `NaN`/string podía crear chunks
+  `"NaN,NaN"` o consumir ítems sin colocar nada).
+- **Cuota anti-spam en `set_seed`** (Fase 16, C4/SEC-2): un cambio de
+  semilla cada **10 s por jugador** (`seedCooldownUntil`); sin cuota un
+  cliente podía martillear `switchWorld` (que persiste el mundo a disco) y
+  saturar el disco. El rechazo avisa con `seed_rejected {reason:'cooldown'}`.
+- **Hornos huérfanos** (Fase 16, C5/REN-2): al **romper un horno** se
+  borra su entrada de `state.furnaces` (y por tanto de `world.json`) —
+  antes quedaba huérfana: fuga de memoria + el meta engordando en cada
+  guardado.
 - **Path traversal bloqueado:** `deleteWorld` valida que la semilla
   resuelva a un directorio bajo `world/` (test de path-traversal en
   `unit-fase9.js`).

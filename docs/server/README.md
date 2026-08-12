@@ -141,6 +141,15 @@ lo permite.
   persistía mascotas (`ownerId/ownerName/sitting`) y el tamaño del slime
   (`slimeSize`) en `world.json`; un mundo v4 sin esos campos carga igual
   (mob salvaje, slime grande).
+- **Guardado asíncrono por lotes** (`saveWorldAsync`, Fase 16 C1): el
+  autosave periódico del `setInterval` escribe los chunks sucios **por lotes
+  de 6 con `setImmediate`**, cediendo el turno al event loop entre lotes —
+  antes todo el guardado era síncrono y con cientos de chunks congelaba el
+  servidor (causa de los timeouts E2E). El chunk se borra de `dirtyChunks`
+  al escribirse (un chunk re-ensuciado durante el guardado no se pierde),
+  los errores de escritura no reintentan en bucle y la llamada es
+  idempotente. `saveWorld()` síncrono se conserva para los puntos que
+  necesitan el resultado inmediato (`switchWorld`, SIGINT).
 - **Descarga de chunks lejanos** (>10 chunks del jugador, cada 10 s) para
   acotar la memoria del servidor.
 
@@ -188,9 +197,11 @@ tamaño de los mensajes entrantes (anti-DoS).
 
 ```bash
 node tests/run.js --unit      # unitarios (sin servidor)
+node tests/run.js --unit --filter <regex>   # solo los que casan (con tiempo por test)
 PORT=3998 node server.js      # servidor para E2E (otra terminal)
 WS_URL=ws://localhost:3998 node tests/run.js --e2e
 node tests/run.js --audit     # auditorías por fase (3-6 + altura)
+npm run test:coverage         # c8: % de cobertura de server/ y public/
 node tests/audit-fase7.js     # render CDP con Chrome headless (por separado)
 node tests/audit-altura.js    # auditoría del mundo de 128 bloques (72 checks)
 node tests/unit-mobs-poo.js   # POO de mobs (subclases por especie + createMob)

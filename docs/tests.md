@@ -44,12 +44,17 @@ archivo de `server/` y `public/`. `coverage/` está en `.gitignore`.
 añadir cobertura nueva): `quality.js` (`unit-ajustes.js`), `lod.js`
 (`unit-lod.js`), `lighting.js` (`unit-antorchas.js`), `itemicons.js`
 (`unit-itemicons.js`), `recipeCategories.js` (`unit-recipecats.js`),
-`chunkGeometry.js` (`unit-greedy.js`) y `chunkWorker.js` (`unit-workers.js`).
-Los módulos acoplados a DOM/Three.js (render, física visual, Web Audio)
-se verifican en navegador vía `tests/audit-fase7.js` (Chrome headless + CDP)
-o por E2E, no en Node — **no** vale la pena mockear Three/DOM para forzarlos.
+`chunkGeometry.js` (`unit-greedy.js`), `chunkWorker.js` (`unit-workers.js`)
+y `daymath.js` (`unit-dia.js`). Los módulos acoplados a DOM/Three.js (render,
+física visual, Web Audio) se verifican en navegador vía `tests/audit-fase7.js`
+(Chrome headless + CDP) o por E2E, no en Node — **no** vale la pena mockear
+Three/DOM para forzarlos.
 
-## Suite unitaria (51 tests)
+> Los tests nuevos usan `tests/helpers.js` (G1.3): `Reporter` para el
+> reporte uniforme que parsea `run.js` (`N OK, M FAIL` + `# checks
+> fallidos`), `mkPlayer`, `withRandom` (LCG determinista) y `loaderESM`.
+
+## Suite unitaria (52 tests)
 
 > Orden de `UNIT` en `tests/run.js`. El `(*)` marca tests que importan código
 > del cliente (`public/`) como ESM.
@@ -107,6 +112,7 @@ o por E2E, no en Node — **no** vale la pena mockear Three/DOM para forzarlos.
 | `unit-ao.js` | AO por vértice (esquinas internas) |
 | `unit-muerte.js` | Causas de `player_die` (caída, mob, fuego, ...) |
 | `unit-fase16.js` | Fase 16: niebla submarina (B1), cofre Shift (B2), horno `FUEL_TICKS` (D1), drops (D2), puertas ×3/vidrio 200 t/carbón vegetal (D3-D5), XP del slime y lobo (D6) |
+| `unit-dia.js` | Matemática pura del ciclo día/noche (`public/daymath.js`): `dayFactor`, `duskFactor` (pico real en d≈0.402), `fogDistances` (30/70→75/200) y `cloudTint` + `CLOUD_TINT_STEP` (G3) |
 
 ## Auditorías standalone
 
@@ -143,6 +149,7 @@ o por E2E, no en Node — **no** vale la pena mockear Three/DOM para forzarlos.
 - **Cobertura** se mide con `npm run test:coverage`; los huecos grandes
   actuales están en los módulos de cliente acoplados a DOM/Three (audio,
   player, network, settings, clouds, particles) — se cubren por CDP/E2E y por
-  extracción de lógica pura (como ya se hizo con `quality.js`/`lod.js`).
+  extracción de lógica pura (como ya se hizo con `quality.js`/`lod.js` y con
+  `daymath.js` en G3).
 - Antes de cerrar una fase: suite unitaria en verde, auditorías sin
   regresiones, `node --check`/`biome` limpios, E2E 6/6 en solitario.

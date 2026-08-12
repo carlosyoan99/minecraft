@@ -518,13 +518,14 @@ en el servidor y `public/network.js` en el cliente).
 
 ### Resultados (agosto 2026)
 
-Suite completa: **51 tests unitarios + 6 E2E** (si hay servidor) — ver la
+Suite completa: **52 tests unitarios + 6 E2E** (si hay servidor) — ver la
 matriz en [`docs/tests.md`](docs/tests.md). La suite cubre persistencia, IA
 de mobs, handlers de red, integridad de recetas, sincronización
 servidor↔cliente, hot-reload, minería fina, LOD, pool de geometrías, greedy
 meshing + worker, cofre, antorchas, cama, armadura, terreno, caída/void,
 anti-cheat (vuelo + v2 velocidad/hover), crack, métricas, raycast/pool con
-three real, cámara, biomas de Fase 11, mecánicas de Fase 11/12/16, POO del
+three real, cámara, biomas de Fase 11, mecánicas de Fase 11/12/16,
+matemática del ciclo día/noche (F16 G3), POO del
 servidor (F13), paridad de valores (F13), lagunas L1-L5 y el mundo de 128
 bloques (`audit-altura.js`, 72 checks). Los E2E contra un servidor real con
 mundo fresco cubren comer, durabilidad, cofre, reload, mascotas y templo.

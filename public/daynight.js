@@ -7,6 +7,7 @@
 // ============================================================
 import * as THREE from "three";
 import { DAY_CYCLE_MS, MOON_CYCLE_MS } from "./constants.js";
+import { dayFactor as dayFactorOf, duskFactor, fogDistances } from "./daymath.js"; // Fase 16 (G3): matemática pura del ciclo
 import { ambient, scene, sun } from "./scene.js";
 import { updateSky } from "./sky.js"; // Fase 7: dome procedural (degradado + sol/luna)
 
@@ -60,7 +61,7 @@ export function currentMoonPhase() {
 export function updateDayNight() {
 	const phase = currentPhase();
 	// Factor de día: 1 al mediodía, 0 en la noche; transición suave con seno.
-	const dayFactor = Math.max(0, Math.sin(phase * Math.PI * 2));
+	const dayFactor = dayFactorOf(phase);
 	// Intensidad de luz: día brillante, noche tenue (la luna nunca apaga del todo)
 	sun.intensity = 0.08 + dayFactor * 1.05;
 	ambient.intensity = 0.25 + dayFactor * 0.5;
@@ -71,10 +72,7 @@ export function updateDayNight() {
 	// Cielo: azul de día → azul oscuro de noche, con naranja en amanecer/atardecer
 	// (máximo cuando dayFactor ≈ 0.35, es decir, sol bajo pero aún con luz).
 	skyColor.copy(DAY_SKY).lerp(NIGHT_SKY, 1 - dayFactor);
-	const dusk = Math.max(
-		0,
-		Math.min(1, dayFactor * (1 - Math.abs(dayFactor - 0.35) * 2.2))
-	);
+	const dusk = duskFactor(dayFactor);
 	skyColor.lerp(DUSK_SKY, dusk);
 	// El fondo plano sigue siendo el color del horizonte (fallback si el dome
 	// no estuviera); el dome procedural de sky.js es lo que se ve realmente.
@@ -93,8 +91,9 @@ export function updateDayNight() {
 			scene.fog.far = 12;
 		} else {
 			scene.fog.color.copy(skyColor);
-			scene.fog.near = 30 + dayFactor * 45; // 30 de noche → 75 al mediodía
-			scene.fog.far = 70 + dayFactor * 130 + dusk * 40; // 70 de noche → ~240 de día
+			const { near, far } = fogDistances(dayFactor, dusk);
+			scene.fog.near = near;
+			scene.fog.far = far;
 		}
 	}
 

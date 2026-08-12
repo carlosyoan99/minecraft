@@ -18,6 +18,7 @@
 // ============================================================
 import * as THREE from "three";
 import { currentPhase } from "./daynight.js";
+import { CLOUD_TINT_STEP, cloudTint, dayFactor as dayFactorOf } from "./daymath.js"; // Fase 16 (G3)
 import { camera, scene } from "./scene.js";
 
 const CLOUD_ALT = 96; // por encima del mundo (64) pero bajo el dome
@@ -93,7 +94,7 @@ export function updateClouds(_dt) {
 	const px = camera.position.x;
 	const pz = camera.position.z;
 	const phase = currentPhase();
-	const dayFactor = Math.max(0, Math.sin(phase * Math.PI * 2));
+	const dayFactor = dayFactorOf(phase);
 	// Auditoría 2026-08-09 (§4.6): cuantizar el tinte a pasos de 1/32 e ignorar
 	// el re-upload si el valor cuantizado no cambió desde el último frame. Antes
 	// cada frame reescribía los 24 colores de cada caja y forzaba needsUpdate
@@ -101,7 +102,7 @@ export function updateClouds(_dt) {
 	// sol apenas se moviera). Ahora el día/noche se ve igual (el salto es de
 	// ~0.03) pero el upload solo ocurre cuando CLOUD_TINT_STEP lo amerita.
 	const lastTint = updateClouds._lastTint;
-	const tint = 0.35 + dayFactor * 0.65;
+	const tint = cloudTint(dayFactor);
 	if (lastTint === undefined || Math.abs(tint - lastTint) >= CLOUD_TINT_STEP) {
 		updateClouds._lastTint = tint;
 		for (const group of clouds) {
@@ -128,7 +129,3 @@ export function updateClouds(_dt) {
 		group.position.y = CLOUD_ALT + group.userData.altBump;
 	}
 }
-
-// Paso mínimo de tinte que provoca un re-upload de los colores de las nubes
-// (~1/34 del rango 0.35-1.0 → ~8 cambios por ciclo día/noche en lugar de 60/s).
-const CLOUD_TINT_STEP = 0.03;

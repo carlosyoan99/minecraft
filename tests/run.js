@@ -64,7 +64,8 @@ const UNIT = [
 	"unit-sky.js",
 	"unit-ao.js", // Fase 10 (E1): AO por vértice — sombreado de esquinas internas/bloques empotrados
 	"unit-muerte.js", // Fase 10 (B2): causas de player_die (caída, mob, fuego, ...)
-	"unit-fase16.js" // Fase 16: niebla (B1), cofre Shift (B2), horno combustible (D1), drops (D2), puertas/vidrio/carbón (D3-D5), XP (D6)
+	"unit-fase16.js", // Fase 16: niebla (B1), cofre Shift (B2), horno combustible (D1), drops (D2), puertas/vidrio/carbón (D3-D5), XP (D6)
+	"unit-dia.js" // Fase 16 (G3): matemática pura del ciclo día/noche (public/daymath.js)
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
