@@ -130,9 +130,12 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   junto a la Fase 13; la suite tiene 50 unitarios). La **Fase 16** (corrección
   de la auditoría 2026-08-10, bugs del usuario y paridad restante) es la fase
   **actual, prospectiva** (spec `docs/fase16-spec.md`, tareas `[ ]` en
-  `TODO.md`): su prerrequisito **A1** es commitear el WIP del D5 — la
-  implementación está en el working tree **sin commitear** y la suite tiene
-  12 unitarios pendientes de recalibración (ver `tests/test.log`). No
+  `TODO.md`): su prerrequisito **A1** (commitear el WIP del D5) está cerrado y
+  el bloque G (cobertura + docs) avanzado — suite de **52 unitarios en verde**
+  (`node tests/run.js --unit`, exit 0, verificado 2026-08-11). La **Fase 17**
+  (modo menú A1, gestión de mundos A3, persistencia B1) está **en curso**: el
+  cambio de SEED a `null` por defecto puede dejar algunos unitarios en rojo
+  mientras se recalibran. No
   adelantar trabajo más allá de lo que `TODO.md` marque.
 
 ## Documentación

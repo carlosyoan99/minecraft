@@ -468,9 +468,9 @@
 - [x] G5.5 `docs/server/README.md` (persistencia asíncrona) +
       `docs/public/README.md` (mapa `waterfog.js`/`chunkWorker.js`)
 - [x] G5.6 `AGENTS.md`/`CLAUDE.md`/`docs/README.md` al día
-- [ ] Auditoría de Fase 16: E2E 6/6 en solitario, suite unitaria en verde,
-      `node --check`/`biome`, auditorías sin regresiones, c8 con umbrales,
-      verificación manual en navegador, actualizar `docs/README.md`/`AGENTS.md`
+- [ ] Auditoría de Fase 16 (G6): suite unitaria **en verde (52, verificado
+      2026-08-11)**; faltan E2E (bloqueado por la recalibración del modo
+      menú F17), auditorías sin regresiones y c8 con umbrales
 
 ---
 

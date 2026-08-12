@@ -38,9 +38,10 @@ tocar código.
    el detalle de esa fase (decisiones, mecánicas, auditorías) vive en su
    spec `docs/faseN-spec.md`. No adelantes trabajo de fases futuras sin
    que se pida explícitamente. La fase **actual y prospectiva** es la
-   **Fase 16** (`docs/fase16-spec.md`): su prerrequisito A1 es commitear
-   el WIP del D5 (mundo de 128 bloques, `SCHEMA_VERSION` 6) que sigue sin
-   commitear y con 12 unitarios pendientes de recalibración.
+   **Fase 16** (`docs/fase16-spec.md`): su prerrequisito A1 (commitear el
+   WIP del D5, mundo de 128 bloques, `SCHEMA_VERSION` 6) está cerrado y la
+   suite unitaria está en verde (52 unitarios). La **Fase 17** (modo menú,
+   `SEED=null`) está en curso y puede dejar tests en rojo mientras recalibra.
 2. **Cambios pequeños y verificables.** Preferir PRs/commits que
    toquen una sola preocupación (ej. "guardado incremental por
    chunk") sobre cambios masivos que mezclen varias fases.

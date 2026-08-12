@@ -529,9 +529,8 @@ matemática del ciclo día/noche (F16 G3), POO del
 servidor (F13), paridad de valores (F13), lagunas L1-L5 y el mundo de 128
 bloques (`audit-altura.js`, 72 checks). Los E2E contra un servidor real con
 mundo fresco cubren comer, durabilidad, cofre, reload, mascotas y templo.
-El estado del working tree puede dejar algunos unitarios en rojo mientras
-una fase está en curso (p. ej. la recalibración al cambio de SEED del modo
-menú de la Fase 17); la verificación final antes de cerrar fase se detalla
+Los E2E necesitan el flujo de selección de mundo del modo menú de la Fase 17
+para quedar en verde; la verificación final antes de cerrar fase se detalla
 en `docs/tests.md`.
 
 ## Cómo contribuir
