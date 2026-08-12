@@ -272,7 +272,21 @@ function enterWorld(player) {
 }
 
 const app = express();
-app.use(express.static(path.join(__dirname, "..", "public")));
+// SEC-4 (auditoría 2026-08-11, F16-05): cabecera de seguridad mínima en el
+// estático — `X-Content-Type-Options: nosniff` evita que el navegador
+// interprete un `.js`/`.css` servido con el tipo equivocado. El CSP y el SRI
+// del CDN de Three.js quedan DIFERIDOS (decisión documentada en
+// docs/fase18-spec.md §8): el importmap de index.html es un script inline que
+// exige `script-src 'unsafe-inline'` al cargarse desde el CDN, lo que deja
+// casi sin valor el resto de la política; el juego es localhost/LAN sin
+// autenticación.
+app.use(
+	express.static(path.join(__dirname, "..", "public"), {
+		setHeaders(res) {
+			res.setHeader("X-Content-Type-Options", "nosniff");
+		}
+	})
+);
 
 // ============================================================
 // NOMBRE DE JUGADOR (Fase 7)
