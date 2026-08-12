@@ -72,7 +72,7 @@ Three/DOM para forzarlos.
 | `unit-persistencia.js` | Persistencia (F1) + **C1 guardado asíncrono** + **C5 hornos huérfanos** + mascotas/slimes (v5) + migración v5→v6 + `.bak` + `switchWorld` + `listWorlds` |
 | `unit-mobs-ia.js` | Máquina de estados de mobs, ataque con cooldown, quema solar, spawn por fase, tope 30 |
 | `unit-mobs-poo.js` | POO (F13): subclases por especie + `createMob` |
-| `unit-poo-entities.js` | POO (F13): `Player`/`World`/`Chunk`/`ItemStack` como clases |
+| `unit-poo-entities.js` | POO (F13): `Player`/`World`/`Chunk`/`ItemStack` como clases (+ G2.5: serialización, merge/clamp, durabilidad 0, inventario lleno) |
 | `unit-lagunas.js` | Lagunas L1-L5: arco, puertas, escaleras/losas/vallas, cubo, recetas |
 | `unit-red.js` | Handlers de `net.js` con ws fake (sin servidor) + **C2 coords inválidas** + **C4 cooldown de `set_seed`** + CL-3 parse seguro |
 | `unit-recetas.js` | Integridad de recetas + cadena de obtención de las 20 herramientas |
@@ -90,7 +90,7 @@ Three/DOM para forzarlos.
 | `unit-raycast.js` | Raycast de minería con three real (fix del pool de bounds) |
 | `unit-mobray.js` | Raycast de mobs multibloque |
 | `unit-camara.js` | Clamp de pitch del PLC (sin vueltas) con three real |
-| `unit-fase11.js` | 4 biomas nuevos, lianas, esquileo, bonemeal, agua infinita + pendientes F10 (TNT, mundo-size, `/kill`) |
+| `unit-fase11.js` | 4 biomas nuevos, lianas, esquileo, bonemeal, agua infinita + pendientes F10 (TNT mecha/cráter/bedrock + **G2.6 cadena y daño**, mundo-size, `/kill`) |
 | `unit-fase12.js` | Slimes, lobo/gato, tridentes del ahogado, drops, persistencia de mascotas |
 | `unit-mining-click.js` | Decisión de clic mob delante/detrás |
 | `unit-fase9.js` | Gamemode por mundo, `world_delete` (path-traversal), cultivos, `creative_pick`/`fly`, libro |
@@ -151,5 +151,7 @@ Three/DOM para forzarlos.
   player, network, settings, clouds, particles) — se cubren por CDP/E2E y por
   extracción de lógica pura (como ya se hizo con `quality.js`/`lod.js` y con
   `daymath.js` en G3).
+- **Gap conocido:** el TNT no aplica knockback a jugadores (solo daño por
+  distancia, `server/tnt.js`); el test de G2.6 lo verifica como tal.
 - Antes de cerrar una fase: suite unitaria en verde, auditorías sin
   regresiones, `node --check`/`biome` limpios, E2E 6/6 en solitario.

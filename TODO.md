@@ -452,7 +452,8 @@
       `set_seed` cooldown (C4)
 - [x] G2.4 hornos huérfanos (C5) + `FUEL_TICKS` completo (D1)
 - [x] G2.5 `ItemStack` coverage (items.js)
-- [ ] G2.6 TNT: cadenas, cráter con bedrock, knockback
+- [x] G2.6 TNT: cadenas, cráter con bedrock, knockback (knockback no
+      implementado: la explosión solo daña — ver `docs/tests.md`)
 - [x] G3 units de cliente puro: daynight + clouds (vía `public/daymath.js`,
       cubierto por `unit-dia.js`)
 - [ ] G3b units de cliente puro restantes: network (parse), settings

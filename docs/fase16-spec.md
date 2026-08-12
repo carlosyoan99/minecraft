@@ -422,8 +422,8 @@
 | G2.2 | `unit-red`: coords `NaN`/string/null (C2) sin mutar estado; parse WS try/catch + default (CL-3); anti-cheat v2 (C3) | Handlers rechazan sin mutar estado ni disco |
 | G2.3 | `unit-commands`: `/give` 64 (SV-5), `/tp` clamp (SV-6), `set_seed` cooldown (C4) | cada caso en verde |
 | G2.4 | Hornos huérfanos (C5) + `FUEL_TICKS` completo (D1) | romper horno lo elimina de `state` y `world.json` |
-| G2.5 | `ItemStack` (`items.js`): serialización, merge/clamp, durabilidad | ampliar `unit-poo-entities` |
-| G2.6 | TNT: cadenas, cráter con bedrock, knockback | ampliar `unit-fase11` |
+| G2.5 | `ItemStack` (`items.js`): serialización, merge/clamp, durabilidad | **Hecho** en `unit-poo-entities`: defaults de `add`/`consume`, borde de `empty`, `from` con durabilidad, `durability 0` serializable, `toPlain` sin durabilidad, inventario lleno → rechazo |
+| G2.6 | TNT: cadenas, cráter con bedrock, knockback | **Hecho** en `unit-fase11` §10b: cadena determinista (Math.random fijo a 0, ticks de 1s por la re-iteración en vivo de `tick`) + daño al jugador. **Knockback no implementado** en `tnt.js` (solo daño) — queda como gap documentado en `docs/tests.md` |
 | G3 | Cliente puro: se extrae la matemática del ciclo a `public/daymath.js` (patrón `waterfog.js`/`quality.js`) y se usa en `daynight.js` (luz, cielo, niebla) y `clouds.js` (tinte cuantizado) — cubierto por `tests/unit-dia.js` (18 checks: `dayFactor`, `duskFactor` con pico real en d≈0.402, `fogDistances` 30/70→75/200, `cloudTint` + `CLOUD_TINT_STEP`) | `unit-dia.js` en verde; refactor sin cambio de comportamiento |
 | G3b | Cliente puro restante: `network` (parse), `settings` (validate/apply), `particles`, `audio` (pitch/scheduling) | módulos DOM/WebAudio — se revisan con G3.7 (CDP) en vez de refactor; `unit-ajustes` ya cubre settings/quality |
 | G3.7 | Ampliar `audit-fase7` (CDP): calidad B6, niebla B1, inventario B4, libro B5 | checks de render nuevos |

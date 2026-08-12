@@ -416,62 +416,76 @@ for (let cx = -12; cx <= 12; cx++) {
 	);
 }
 // 10b) TNT (G2.6): reacción en cadena y daño a jugadores (knockback no
-// implementado: la explosión solo daña — ver docs/tests.md).
+// implementado: la explosión solo daña — ver docs/tests.md). Determinista:
+// Math.random se fija a 0 para que TODAS las celdas del cráter se procesen
+// (la probabilidad de romper por celda es `0.75 - dist*0.13`, que con el
+// azar real volvería el test flaky).
 {
-	tnt.setBroadcastHandler(() => {});
-	const cx = 100,
-		cy = 30,
-		cz = 100;
-	for (let dx = -3; dx <= 3; dx++) {
-		for (let dy = -3; dy <= 3; dy++) {
-			for (let dz = -3; dz <= 3; dz++) {
-				world.setBlock(cx + dx, cy + dy, cz + dz, B.STONE);
+	const prevRandom = Math.random;
+	try {
+		Math.random = () => 0;
+		tnt.setBroadcastHandler(() => {});
+		const cx = 100,
+			cy = 30,
+			cz = 100;
+		for (let dx = -3; dx <= 3; dx++) {
+			for (let dy = -3; dy <= 3; dy++) {
+				for (let dz = -3; dz <= 3; dz++) {
+					world.setBlock(cx + dx, cy + dy, cz + dz, B.STONE);
+				}
 			}
 		}
+		// Dos TNT pegados: el segundo queda DENTRO del radio de la explosión.
+		world.setBlock(cx, cy, cz, B.TNT);
+		world.setBlock(cx + 1, cy, cz, B.TNT);
+		tnt.fuses.clear();
+		tnt.ignite(cx, cy, cz);
+		tnt.tick(1000); // la mecha sigue (TNT_FUSE_MS=1.6s > 1s)
+		check("cadena: A sigue con mecha a 1s", tnt.fuses.size === 1);
+		tnt.tick(1000); // A explota y ENCIENDE al vecino (reacción en cadena)
+		check(
+			"cadena: el TNT vecino se ignita con la explosión",
+			tnt.fuses.size === 1,
+			`fuses=${tnt.fuses.size}`
+		);
+		tnt.tick(2000); // el segundo explota (sin bucles)
+		check(
+			"cadena: ambas mechas se agotan (sin bucles)",
+			tnt.fuses.size === 0
+		);
+		check(
+			"cadena: el segundo TNT se consume (cráter)",
+			world.getBlock(cx + 1, cy, cz) === B.AIR
+		);
+		// Daño: un jugador a distancia 1 dentro del radio pierde vida.
+		state.players.clear();
+		const pl = players.createPlayer({
+			id: "tntp",
+			ws: { readyState: 3, send() {} },
+			health: 20,
+			maxHealth: 20,
+			x: cx + 1,
+			y: cy,
+			z: cz,
+			gamemode: "survival",
+			inventory: ItemStack.slots(36),
+			armor: { helmet: null, chestplate: null, leggings: null, boots: null },
+			selectedSlot: 0,
+			craftingGrid: ItemStack.slots(9)
+		});
+		state.players.set("tntp", pl);
+		world.setBlock(cx, cy, cz, B.TNT);
+		tnt.ignite(cx, cy, cz);
+		tnt.tick(2000);
+		check(
+			"la explosión daña al jugador (TNT_DAMAGE por distancia)",
+			pl.health < 20,
+			`health=${pl.health}`
+		);
+		state.players.clear();
+	} finally {
+		Math.random = prevRandom;
 	}
-	// Dos TNT pegados: el segundo queda DENTRO del radio de la explosión.
-	world.setBlock(cx, cy, cz, B.TNT);
-	world.setBlock(cx + 1, cy, cz, B.TNT);
-	tnt.fuses.clear();
-	tnt.ignite(cx, cy, cz);
-	tnt.tick(2000);
-	check(
-		"cadena: el TNT vecino se ignita con la explosión",
-		tnt.fuses.size === 1,
-		`fuses=${tnt.fuses.size}`
-	);
-	tnt.tick(2000); // explota el segundo
-	check(
-		"cadena: ambas mechas se agotan (sin bucles)",
-		tnt.fuses.size === 0
-	);
-	// Daño: un jugador a distancia 1 dentro del radio pierde vida.
-	state.players.clear();
-	const pl = players.createPlayer({
-		id: "tntp",
-		ws: { readyState: 3, send() {} },
-		health: 20,
-		maxHealth: 20,
-		x: cx + 1,
-		y: cy,
-		z: cz,
-		gamemode: "survival",
-		inventory: ItemStack.slots(36),
-		armor: { helmet: null, chestplate: null, leggings: null, boots: null },
-		selectedSlot: 0,
-		craftingGrid: ItemStack.slots(9)
-	});
-	state.players.set("tntp", pl);
-	world.setBlock(cx + 1, cy + 2, cz, B.STONE); // que el centro no esté en aire de la cadena
-	world.setBlock(cx, cy, cz, B.TNT);
-	tnt.ignite(cx, cy, cz);
-	tnt.tick(2000);
-	check(
-		"la explosión daña al jugador (TNT_DAMAGE por distancia)",
-		pl.health < 20,
-		`health=${pl.health}`
-	);
-	state.players.clear();
 }
 check(
 	"setBlock fuera de límites devuelve false",
