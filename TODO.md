@@ -624,10 +624,14 @@
 - [x] C2 estética del menú (interfaz 100% Minecraft; sin adelantar la F19)
 - [x] D1 controles táctiles básicos (joystick + mirar + botones) — HUD
       adaptativo móvil, mouse+teclado intactos
-- [ ] Auditoría de Fase 17: suite unit completa + E2E (6/6 + menú) en
-      verde, `node --check`/`biome` 0 errores, auditorías sin regresiones,
-      verificación manual en navegador (menú, B1-B7, pausa, móvil),
-      actualizar `docs/README.md`/`AGENTS.md`
+- [x] Auditoría de Fase 17 (implementación): suite unit 53/53 en verde
+      (`unit-fase17` + `unit-commands` tolerante), E2E de menú 7/7 (servidor
+      propio sin SEED en :3997), `node --check`/`biome` 0 errores,
+      auditorías sin regresiones (mismo estado que la 2026-08-11),
+      `docs/README.md`/`AGENTS.md`/`docs/tests.md`/spec al día.
+- [ ] Auditoría final de Fase 17 (verificación manual pendiente): probar en
+      navegador el flujo completo (menú → mundo → pausa → volver al menú),
+      B1-B7, controles táctiles en móvil/emulación y cerrar la spec (Bloque E).
 
 ---
 
