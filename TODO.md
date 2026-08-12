@@ -451,7 +451,7 @@
 - [x] G2.3 unit-commands: `/give` 64 (SV-5), `/tp` clamp (SV-6),
       `set_seed` cooldown (C4)
 - [x] G2.4 hornos huérfanos (C5) + `FUEL_TICKS` completo (D1)
-- [ ] G2.5 `ItemStack` coverage (items.js)
+- [x] G2.5 `ItemStack` coverage (items.js)
 - [ ] G2.6 TNT: cadenas, cráter con bedrock, knockback
 - [x] G3 units de cliente puro: daynight + clouds (vía `public/daymath.js`,
       cubierto por `unit-dia.js`)

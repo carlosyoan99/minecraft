@@ -6,7 +6,14 @@
 // ============================================================
 const fs = require("node:fs");
 const path = require("node:path");
-const { SAVE_INTERVAL_MS, UNLOAD_INTERVAL_MS } = require("./constants.js");
+const {
+	SAVE_INTERVAL_MS,
+	UNLOAD_INTERVAL_MS,
+	// Fase 17 (A1): sin SEED en el entorno el servidor arranca en modo menú
+	// (no carga ningún mundo; join_world lo hace al elegir/crear uno). Con
+	// SEED arranca directo al mundo (indispensable para los E2E).
+	MENU_MODE
+} = require("./constants.js");
 const state = require("./state.js");
 const world = require("./world.js");
 const save = require("./save.js");
@@ -70,29 +77,46 @@ try {
 // semilla (world/<semilla>/): cada semilla tiene su propio mundo (bug semilla).
 save.migrateWorldLayout();
 
-const loadResult = save.loadWorld();
-if (loadResult === "rechazo") {
-	// biome-ignore lint/suspicious/noConsole: error fatal de arranque
-	console.error(
-		"❌ Arranque abortado: no se pudo abrir el mundo guardado de forma segura (formato más nuevo o datos ilegibles)."
-	);
-	process.exit(1);
-} else if (!loadResult) {
-	// Sin guardado por chunk: probar la migración del world.dat antiguo (v1 → v2)
-	if (!save.migrateLegacyWorld()) {
-		world.ensureChunksAround(0, 0, 4);
+// Fase 17 (A1): MODO MENÚ. Sin SEED el servidor arranca sin mundo activo: no
+// se carga ni se genera nada hasta que el primer jugador elige/crea un mundo
+// (join_world → save.switchWorld). Con SEED (E2E/auditorías) se carga el
+// mundo al arrancar, como siempre.
+if (!MENU_MODE) {
+	const loadResult = save.loadWorld();
+	if (loadResult === "rechazo") {
+		// biome-ignore lint/suspicious/noConsole: error fatal de arranque
+		console.error(
+			"❌ Arranque abortado: no se pudo abrir el mundo guardado de forma segura (formato más nuevo o datos ilegibles)."
+		);
+		process.exit(1);
+	} else if (!loadResult) {
+		// Sin guardado por chunk: probar la migración del world.dat antiguo (v1 → v2)
+		if (!save.migrateLegacyWorld()) {
+			world.ensureChunksAround(0, 0, 4);
+		}
 	}
+	if (state.mobs.length === 0) for (let i = 0; i < 4; i++) mobs.spawnMobs();
+} else {
+	// biome-ignore lint/suspicious/noConsole: log del modo menú (arranque)
+	console.log(
+		"🗂️ Modo menú: sin SEED, no se carga ningún mundo (se elige/crea desde el cliente)."
+	);
 }
-if (state.mobs.length === 0) for (let i = 0; i < 4; i++) mobs.spawnMobs();
 
 // C1 (REN-1/SV-4): el autosave usa la cola ASÍNCRONA (lotes con
 // setImmediate) — el guardado síncrono bloqueaba el event loop con muchos
 // chunks sucios. saveWorld() síncrono sigue existiendo para switchWorld y
 // SIGINT, que necesitan el resultado inmediato.
-setInterval(save.saveWorldAsync, SAVE_INTERVAL_MS);
+// Fase 17 (B1): el autosave también persiste el estado de los jugadores
+// conectados (inventario/salud/posición) en su archivo aditivo por nombre.
+setInterval(() => {
+	save.saveWorldAsync();
+	for (const p of state.players.values()) save.savePlayer(p);
+}, SAVE_INTERVAL_MS);
 setInterval(save.unloadFarChunks, UNLOAD_INTERVAL_MS);
 process.on("SIGINT", () => {
 	save.saveWorld();
+	for (const p of state.players.values()) save.savePlayer(p);
 	process.exit(0);
 });
 

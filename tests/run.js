@@ -109,7 +109,12 @@ try {
 function run(file) {
 	const t0 = process.hrtime.bigint();
 	const r = spawnSync(process.execPath, [path.join(__dirname, file)], {
-		stdio: ["inherit", "pipe", "pipe"]
+		stdio: ["inherit", "pipe", "pipe"],
+		// Fase 17 (A1): sin SEED el servidor arranca en modo menú (sin mundo
+		// activo). Los tests unitarios asumen un mundo cargado (handleConnection
+		// devuelve init), así que se les inyecta la semilla por defecto si el
+		// entorno no trae una (los tests de menú la anulan con setWorldSeed).
+		env: { ...process.env, SEED: process.env.SEED || "miSemilla2026" }
 	});
 	const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
 	const out = `${r.stdout || ""}${r.stderr || ""}`;
@@ -149,7 +154,8 @@ function failedChecksFrom(out) {
 	for (const line of out.split("\n")) {
 		const t = line.trim();
 		if (/^✗/.test(t)) names.push(t.replace(/^✗\s*/, "").split(" — ")[0]);
-		else if (/^FAIL:?/.test(t)) names.push(t.replace(/^FAIL:?\s*/, "").split(" | ")[0]);
+		else if (/^FAIL:?/.test(t))
+			names.push(t.replace(/^FAIL:?\s*/, "").split(" | ")[0]);
 	}
 	return names;
 }
@@ -175,9 +181,7 @@ ${
 		? `tests con fallo: ${failedFiles
 				.map((r) => {
 					const checks = failedChecksFrom(r.out);
-					return checks.length
-						? `${r.file} → ${checks.join("; ")}`
-						: r.file;
+					return checks.length ? `${r.file} → ${checks.join("; ")}` : r.file;
 				})
 				.join(" | ")}`
 		: "tests con fallo: (ninguno)"
@@ -236,12 +240,12 @@ function serverUp(wsUrl) {
 		}
 
 		if (!args.includes("--unit")) {
-		const wsUrl = process.env.WS_URL || "ws://localhost:3998";
-		if (await serverUp(wsUrl)) {
-			for (const f of E2E) if (matches(f)) run(f);
-		} else {
+			const wsUrl = process.env.WS_URL || "ws://localhost:3998";
+			if (await serverUp(wsUrl)) {
+				for (const f of E2E) if (matches(f)) run(f);
+			} else {
+			}
 		}
-	}
 	}
 	writeTestLog(); // Fase 10 (C1)
 	printSummary(); // Fase 15 (cierre)

@@ -87,10 +87,244 @@ function buildMeta() {
 	};
 }
 
+// ============================================================
+// PERSISTENCIA DE JUGADORES (Fase 17, B1)
+// El estado del jugador (inventario, salud/comida, XP, posición, armadura,
+// punto de reaparición) se guarda por NOMBRE en un archivo ADITIVO
+// world/<semilla>/players/<nombre>.json. No toca SCHEMA_VERSION ni el
+// formato de chunks/meta: retrocompatible por definición (un mundo v6 sin
+// carpeta players/ carga igual). Se guarda al desconectar y en el autosave;
+// se restaura al conectar por nombre (patrón de las mascotas F12: el nombre
+// es la identidad persistida, los ids son de sesión).
+// ============================================================
+function playersDir() {
+	return path.join(P.worldDir, "players");
+}
+function playerFilePath(name) {
+	return path.join(playersDir(), `${sanitizePlayerFile(name)}.json`);
+}
+function sanitizePlayerFile(name) {
+	return (
+		String(name || "jugador")
+			.replace(/[^a-zA-Z0-9_-]+/g, "_")
+			.slice(0, 40) || "jugador"
+	);
+}
+
+// Snapshot de los campos del jugador que se persisten (null si no aplica:
+// en menú o jugador fantasma). El wire del jugador es el mismo JSON plano.
+function playerSnapshot(player) {
+	if (!player || player.inMenu || !P.currentSeed) return null;
+	return {
+		name: player.name,
+		inventory: player.inventory,
+		armor: player.armor,
+		selectedSlot: player.selectedSlot,
+		health: player.health,
+		food: player.food,
+		saturation: player.saturation,
+		xp: player.xp,
+		level: player.level,
+		x: player.x,
+		y: player.y,
+		z: player.z,
+		yaw: player.yaw,
+		pitch: player.pitch,
+		respawnPoint: player.respawnPoint
+	};
+}
+function savePlayer(player) {
+	const data = playerSnapshot(player);
+	if (!data) return;
+	try {
+		if (!fs.existsSync(playersDir()))
+			fs.mkdirSync(playersDir(), { recursive: true });
+		world.atomicWrite(
+			playerFilePath(player.name),
+			JSON.stringify(data, null, 2)
+		);
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de persistencia (no silenciar)
+		console.warn(
+			`⚠️  No se pudo guardar el jugador ${player.name}: ${e.message}`
+		);
+	}
+}
+
+// Restaura el estado persistido del jugador (por nombre) en la instancia
+// recién creada. Lectura defensiva: campos inválidos se ignoran (los
+// archivos son locales, pero nunca se confía en el formato). Devuelve true
+// si había datos y se aplicaron (posiblemente en parte).
+function restorePlayer(player) {
+	if (!player || player.inMenu || !P.currentSeed) return false;
+	let data;
+	try {
+		const f = playerFilePath(player.name);
+		if (!fs.existsSync(f)) return false;
+		data = JSON.parse(fs.readFileSync(f, "utf8"));
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: aviso de jugador ilegible
+		console.warn(
+			`⚠️  Jugador guardado ilegible (${player.name}), se empieza de cero: ${e.message}`
+		);
+		return false;
+	}
+	if (Array.isArray(data.inventory) && data.inventory.length === 36)
+		player.inventory = data.inventory;
+	if (data.armor && typeof data.armor === "object")
+		player.armor = {
+			helmet: data.armor.helmet ?? null,
+			chestplate: data.armor.chestplate ?? null,
+			leggings: data.armor.leggings ?? null,
+			boots: data.armor.boots ?? null
+		};
+	if (
+		typeof data.selectedSlot === "number" &&
+		data.selectedSlot >= 0 &&
+		data.selectedSlot < 9
+	)
+		player.selectedSlot = data.selectedSlot;
+	if (typeof data.health === "number")
+		player.health = Math.min(player.maxHealth || 20, data.health);
+	if (typeof data.food === "number")
+		player.food = Math.min(20, Math.max(0, data.food));
+	if (typeof data.saturation === "number")
+		player.saturation = Math.min(20, Math.max(0, data.saturation));
+	if (typeof data.xp === "number" && data.xp >= 0) {
+		player.xp = data.xp;
+		player.level = typeof data.level === "number" ? data.level : 0;
+	}
+	if (
+		typeof data.x === "number" &&
+		typeof data.y === "number" &&
+		typeof data.z === "number" &&
+		Number.isFinite(data.x) &&
+		Number.isFinite(data.y) &&
+		Number.isFinite(data.z)
+	) {
+		player.x = data.x;
+		player.y = data.y;
+		player.z = data.z;
+	}
+	if (typeof data.yaw === "number") player.yaw = data.yaw;
+	if (typeof data.pitch === "number") player.pitch = data.pitch;
+	if (data.respawnPoint && typeof data.respawnPoint === "object")
+		player.respawnPoint = data.respawnPoint;
+	return true;
+}
+
+// ============================================================
+// GESTIÓN DE MUNDOS (Fase 17, A3): clonar, renombrar y cambiar modo
+// Operaciones sobre world/<semilla>/ con la misma validación defensiva
+// de deleteWorld (nombres saneados con seedDir; nunca rutas arbitrarias).
+// ============================================================
+// Clona un mundo a una semilla nueva (copia el directorio completo; el
+// world.json del clon lleva su propia semilla y el nombre pedido). Si la
+// semilla destino ya existe, se desambigua con sufijos -2, -3...
+function cloneWorld(seed, newName) {
+	if (typeof seed !== "string" || !seed.trim())
+		return { ok: false, reason: "invalid" };
+	const srcDir = path.join(P.worldRoot, constants.seedDir(seed));
+	if (!fs.existsSync(srcDir) || !fs.statSync(srcDir).isDirectory())
+		return { ok: false, reason: "invalid" };
+	const base = (newName || "").trim() || `${seed}-copia`;
+	let newSeed = base;
+	let dir = constants.seedDir(newSeed);
+	let n = 2;
+	while (fs.existsSync(path.join(P.worldRoot, dir))) {
+		newSeed = `${base}-${n++}`;
+		dir = constants.seedDir(newSeed);
+	}
+	try {
+		fs.cpSync(srcDir, path.join(P.worldRoot, dir), { recursive: true });
+		const metaFile = path.join(P.worldRoot, dir, "world.json");
+		if (fs.existsSync(metaFile)) {
+			const meta = JSON.parse(fs.readFileSync(metaFile, "utf8"));
+			meta.seed = newSeed;
+			const name = sanitizeWorldName(newName);
+			if (name) meta.name = name;
+			world.atomicWrite(metaFile, JSON.stringify(meta, null, 2));
+		}
+		// biome-ignore lint/suspicious/noConsole: log de clonado
+		console.log(`📋 Mundo clonado: ${seed} → ${newSeed}`);
+		return { ok: true, seed: newSeed };
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de clonado
+		console.error("⚠️  No se pudo clonar el mundo:", e.message);
+		return { ok: false, reason: "error" };
+	}
+}
+
+// Renombra un mundo (edita `name` de world.json sin tocar la semilla/directorio).
+function renameWorld(seed, newName) {
+	const name = sanitizeWorldName(newName);
+	if (!name) return { ok: false, reason: "invalid" };
+	const dirName = constants.seedDir(seed);
+	const metaFile = path.join(P.worldRoot, dirName, "world.json");
+	if (!fs.existsSync(metaFile)) return { ok: false, reason: "invalid" };
+	try {
+		const meta = JSON.parse(fs.readFileSync(metaFile, "utf8"));
+		meta.name = name;
+		world.atomicWrite(metaFile, JSON.stringify(meta, null, 2));
+		if (dirName === constants.seedDir(P.currentSeed)) P.worldName = name;
+		return { ok: true };
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de renombrado
+		console.error("⚠️  No se pudo renombrar el mundo:", e.message);
+		return { ok: false, reason: "error" };
+	}
+}
+
+// Cambia el modo de juego de un mundo (survival/creative, persiste en
+// world.json). El mundo activo lo refleja también en memoria.
+function setWorldMode(seed, mode) {
+	const m = constants.sanitizeGamemode(mode);
+	const dirName = constants.seedDir(seed);
+	const metaFile = path.join(P.worldRoot, dirName, "world.json");
+	if (!fs.existsSync(metaFile)) return { ok: false, reason: "invalid" };
+	try {
+		const meta = JSON.parse(fs.readFileSync(metaFile, "utf8"));
+		meta.gamemode = m;
+		world.atomicWrite(metaFile, JSON.stringify(meta, null, 2));
+		if (dirName === constants.seedDir(P.currentSeed)) P.worldGamemode = m;
+		return { ok: true, gamemode: m };
+	} catch (e) {
+		// biome-ignore lint/suspicious/noConsole: error real de cambio de modo
+		console.error("⚠️  No se pudo cambiar el modo del mundo:", e.message);
+		return { ok: false, reason: "error" };
+	}
+}
+
+// ============================================================
+// LIBERAR EL MUNDO ACTIVO (Fase 17, A1/C1)
+// En modo menú, al quedarse el servidor sin jugadores se vuelve al estado
+// de menú: persiste el mundo, limpia el estado en memoria y deja la semilla
+// activa a null (el próximo jugador elige/crea mundo de nuevo).
+// ============================================================
+function releaseWorld() {
+	if (!P.currentSeed) return;
+	saveWorld(); // persistir antes de soltar
+	state.chunks.clear();
+	state.dirtyChunks.clear();
+	state.mobs = [];
+	state.furnaces.clear();
+	state.chests.clear();
+	state.crops.clear();
+	state.arrows = [];
+	state.doors.clear();
+	constants.setWorldSeed(null, null);
+	world.reinitNoise("menu");
+	// biome-ignore lint/suspicious/noConsole: log del modo menú
+	console.log("🗂️ Modo menú: mundo liberado (sin jugadores).");
+}
+
 // Devuelve true si la persistencia terminó correctamente; false si hubo un
 // error (que queda loggeado). switchWorld la usa para abortar el cambio de
 // semilla si no se pudo guardar el mundo actual (integridad: nada se pierde).
 function saveWorld() {
+	// Fase 17 (A1): en modo menú no hay mundo activo — nada que persistir
+	// (switchWorld lo llama antes de cargar el mundo elegido).
+	if (!P.currentSeed) return true;
 	try {
 		if (!fs.existsSync(P.worldDir))
 			fs.mkdirSync(P.worldDir, { recursive: true });
@@ -414,7 +648,9 @@ function migrateLegacyWorld() {
 function listWorlds() {
 	const out = [];
 	if (!fs.existsSync(P.worldRoot)) return out;
-	let activeFound = false; // ¿el mundo activo ya tiene directorio en disco?
+	// Fase 17 (A1): en modo menú no hay mundo activo (currentSeed null) — la
+	// lista no marca ningún mundo como activo ni inventa uno.
+	let activeFound = !P.currentSeed; // ¿el mundo activo ya tiene directorio en disco?
 	for (const dir of fs.readdirSync(P.worldRoot)) {
 		const dirPath = path.join(P.worldRoot, dir);
 		let stat;
@@ -454,7 +690,10 @@ function listWorlds() {
 			// sesión, antes de que el autosave haya vuelto a escribir el archivo).
 			// Fase 9 (Bloque B): `active: true` marca el mundo en uso — el menú no
 			// permite borrarlo (el servidor también lo rechaza en deleteWorld).
-			if (constants.seedDir(seed) === constants.seedDir(P.currentSeed)) {
+			if (
+				P.currentSeed &&
+				constants.seedDir(seed) === constants.seedDir(P.currentSeed)
+			) {
 				activeFound = true;
 				if (P.worldName) name = P.worldName;
 				out.push({
@@ -610,6 +849,9 @@ let asyncSaving = false;
 // Programa el guardado asíncrono de los chunks sucios. Idempotente: si ya
 // hay una cola en curso, esta llamada no hace nada (esa cola drena el resto).
 function saveWorldAsync() {
+	// Fase 17 (A1): en modo menú no hay mundo — sin chunks sucios ni meta,
+	// nada que guardar (y no se crea un directorio "default" fantasma).
+	if (!P.currentSeed) return;
 	if (asyncSaving) return;
 	if (!dirtyChunks.size && fs.existsSync(P.metaFile)) return; // nada que guardar
 	asyncSaving = true;
@@ -686,5 +928,13 @@ module.exports = {
 	unloadFarChunks,
 	setUnloadHandler,
 	listWorlds,
-	deleteWorld
+	deleteWorld,
+	// Fase 17 (A1/A3/B1): menú, gestión de mundos y persistencia de jugadores
+	releaseWorld,
+	cloneWorld,
+	renameWorld,
+	setWorldMode,
+	playerSnapshot,
+	savePlayer,
+	restorePlayer
 };

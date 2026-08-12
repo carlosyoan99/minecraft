@@ -29,8 +29,10 @@ const MOON_CYCLE_MS = DAY_CYCLE_MS * MOON_DAYS;
 // luna está en la misma fase en el mismo instante, para todos los jugadores
 // y entre reinicios (el reloj base es Date.now(), no un contador de ticks).
 function seedMoonOffsetMs(seed) {
+	// Defensivo (Fase 17 A1): en modo menú la semilla activa puede ser null.
 	let h = 0;
-	for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+	for (let i = 0; i < (seed || "").length; i++)
+		h = (h * 31 + seed.charCodeAt(i)) >>> 0;
 	return h % MOON_CYCLE_MS;
 }
 // Gracia inicial de spawn (Fase 8, B2): tras entrar o reaparecer, N ms sin
@@ -51,11 +53,16 @@ const MAX_CONNECTIONS = 10;
 // deja margen a bloqueos del cliente (jitter/tabloss) sin permitir flood.
 // superarlo corta la conexión (el cliente la reintenta).
 const MAX_MSG_RATE = 30;
-// La semilla se configura con la env var SEED (defecto miSemilla2026).
-// Cambiar la SEED genera un mundo TOTALMENTE nuevo: cada semilla tiene su
-// propio directorio de mundo (world/<semilla>/), así nunca se pisan ni se
-// mezclan los chunks (bug: antes reutilizaba los guardados con un warn).
+// Fase 17 (A1): la semilla se configura con la env var SEED. Sin SEED el
+// servidor arranca en MODO MENÚ: no carga ningún mundo hasta que el primer
+// jugador elige/crea uno (join_world). Con SEED (p. ej. los E2E) arranca
+// directo al mundo como siempre. `SEED` conserva el default histórico
+// (miSemilla2026) para que los tests deterministas y los ruidos por defecto
+// no cambien; `currentSeed` (la semilla ACTIVA) es null en modo menú.
 const SEED = process.env.SEED || "miSemilla2026";
+// Modo menú = ausencia de SEED en el entorno (boot). El mundo se carga al
+// recibir `join_world`; al quedarse vacío el servidor vuelve al menú.
+const MENU_MODE = !process.env.SEED;
 
 // Física del jugador (Fase 7): el cliente envía la posición del OJO en `move`
 // (altura del ojo EYE_HEIGHT sobre los pies) y el servidor la usa para inferir
@@ -107,7 +114,11 @@ function seedDir(seed) {
 // aislar el I/O en un directorio temporal.
 const worldPaths = {
 	worldRoot: WORLD_ROOT,
-	currentSeed: SEED, // semilla activa (el directorio se deriva de ella)
+	// Fase 17 (A1): semilla ACTIVA — null en modo menú (sin mundo cargado);
+	// join_world la fija al elegir/crear el mundo. En el arranque clásico
+	// (SEED en el entorno) es la SEED. El directorio se deriva de ella
+	// (seedDir).
+	currentSeed: process.env.SEED || null, // semilla activa (el directorio se deriva de ella)
 	// Fase 7: nombre MOSTRADO del mundo (world.json, campo `name` del menú).
 	// La semilla es la identidad; el nombre es solo cosmético y viaja con
 	// set_seed. Por defecto, la semilla (buildMeta/loadWorld lo mantienen).
@@ -433,7 +444,12 @@ const NON_SOLID_PLANTS = new Set([
 //    a través (como en MC).
 //  - puerta/portón: la SOLIDEZ depende del estado (cerrada sólida, abierta
 //    no) — lo resuelve world.isSolidAt/state.doors, no esta función pura.
-const SHAPED_SOLIDS = new Set([B.OAK_SLAB, B.STONE_SLAB, B.OAK_STAIRS, B.STONE_STAIRS]);
+const SHAPED_SOLIDS = new Set([
+	B.OAK_SLAB,
+	B.STONE_SLAB,
+	B.OAK_STAIRS,
+	B.STONE_STAIRS
+]);
 const isSolidBlock = (id) =>
 	id !== B.AIR &&
 	id !== B.WATER &&
@@ -443,7 +459,8 @@ const isSolidBlock = (id) =>
 	!NON_SOLID_PLANTS.has(id);
 // Fase 13 (L2/L3): puertas y portones (el estado de apertura decide la
 // solidez; ver state.doors y world.isSolidAt).
-const isDoor = (id) => id === B.OAK_DOOR || id === B.IRON_DOOR || id === B.OAK_FENCE_GATE;
+const isDoor = (id) =>
+	id === B.OAK_DOOR || id === B.IRON_DOOR || id === B.OAK_FENCE_GATE;
 const FUEL_ITEMS = new Set([
 	B.OAK_LOG,
 	B.BIRCH_LOG,
@@ -1120,6 +1137,7 @@ module.exports = {
 	SPAWN_GRACE_MS,
 	DESPAWN_DIST,
 	SEED,
+	MENU_MODE, // Fase 17 (A1): sin SEED el servidor arranca sin mundo activo
 	OPS,
 	EYE_HEIGHT,
 	FALL_DAMAGE_FREE_BLOCKS,
@@ -1162,7 +1180,6 @@ module.exports = {
 	TNT_FUSE_MS,
 	TNT_RADIUS,
 	TNT_DAMAGE,
-	FUEL_ITEMS,
 	FOOD_VALUES,
 	isFood,
 	isPickaxe,
@@ -1184,7 +1201,8 @@ module.exports = {
 	BOW_DAMAGE,
 	isBow,
 	isArrow,
-	isBucket: (id) => id === I.BUCKET || id === I.WATER_BUCKET || id === I.LAVA_BUCKET,
+	isBucket: (id) =>
+		id === I.BUCKET || id === I.WATER_BUCKET || id === I.LAVA_BUCKET,
 	WORLD_SIZES,
 	worldHalfExtent,
 	worldSizeBlocks,

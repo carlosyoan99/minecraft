@@ -69,6 +69,9 @@ tocar código.
 npm install                        # primera vez (incluye simplex-noise)
 npm test                           # unitarios + E2E si hay servidor vivo
 node tests/run.js --unit           # solo unitarios
+node tests/run.js --unit --filter <regex>   # solo los que casan (tiempos por test)
+node tests/run.js --audit          # solo auditorías standalone (audit-fase3..7 + audit-altura)
+npm run test:coverage              # c8: cobertura de server/ y public/ (matriz en docs/tests.md)
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E contra ese servidor
 node tests/audit-fase3.js          # auditorías por fase (3, 4, 5, 6, 7)
 node tests/audit-fase4.js

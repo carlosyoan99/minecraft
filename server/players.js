@@ -83,8 +83,46 @@ function addToInventory(player, itemId, count = 1, durability) {
 // infinita, como en Minecraft creativo — el inventario se gestiona con
 // /give). Lo usa net.js para la minería instantánea en creative.
 // ============================================================
+// Fase 17 (B4): rompe una planta (hierba alta, flores, cultivo) con su drop,
+// mismo comportamiento que si se minara directamente. Devuelve false (estas
+// roturas no desgastan herramienta — las plantas se rompen al instante).
+function breakPlant(player, x, y, z, block) {
+	if (block === B.WHEAT) {
+		const key = `${x},${y},${z}`;
+		const crop = state.crops.get(key);
+		state.crops.delete(key);
+		const mature = (crop?.stage ?? 0) >= 7;
+		addToInventory(player, I.SEEDS, 1 + Math.floor(Math.random() * 3));
+		if (mature) addToInventory(player, I.WHEAT, 1);
+		return false;
+	}
+	const tool = player.inventory[player.selectedSlot]
+		? player.inventory[player.selectedSlot].id
+		: 0;
+	if (canHarvest(tool, block)) {
+		// Flores → tinte; hierba alta → a veces semillas (misma tabla que abajo).
+		if (block === B.POPPY) addToInventory(player, I.RED_DYE, 1);
+		if (block === B.DANDELION) addToInventory(player, I.YELLOW_DYE, 1);
+		if (block === B.TALL_GRASS && Math.random() < 0.3)
+			addToInventory(player, I.SEEDS, 1);
+	}
+	return false;
+}
+
+// Plantas que viven SOBRE un bloque de soporte y se destruyen si se rompe
+// (Fase 17, B4). Las lianas cuelgan del techo y no aplican.
+const GROUND_PLANTS = new Set([B.TALL_GRASS, B.POPPY, B.DANDELION, B.WHEAT]);
+
 function finishMining(player, x, y, z, block, opts = {}) {
 	world.setBlock(x, y, z, B.AIR);
+	// Fase 17 (B4): romper el bloque de soporte de una planta (hierba/flor)
+	// la destruye también con su drop (survival) — como en Minecraft. El
+	// cambio se replica con el broadcast de setBlock.
+	const aboveId = world.getBlock(x, y + 1, z);
+	if (GROUND_PLANTS.has(aboveId)) {
+		world.setBlock(x, y + 1, z, B.AIR);
+		if (!opts.creative) breakPlant(player, x, y + 1, z, aboveId);
+	}
 	// Fase 11 (C): fuente de agua infinita — si se retira un bloque de agua
 	// (solo ocurre en creative: en survival el agua es irrompible) con ≥2
 	// fuentes ortogonales adyacentes, se rellena solo (regla de Minecraft:
@@ -100,14 +138,16 @@ function finishMining(player, x, y, z, block, opts = {}) {
 		const slots = state.chests.get(`${x},${y},${z}`);
 		state.chests.delete(`${x},${y},${z}`);
 		if (slots && !opts.creative)
-			for (const s of slots) if (s) addToInventory(player, s.id, s.count, s.durability);
+			for (const s of slots)
+				if (s) addToInventory(player, s.id, s.count, s.durability);
 	}
 	// Fase 13 (L2): al romper la celda inferior de una puerta/portón se rompe
 	// también la superior (2 celdas de alto) y se limpia su estado de
 	// apertura (state.doors).
 	if (isDoor(block)) {
 		state.doors.delete(`${x},${y},${z}`);
-		if (world.getBlock(x, y + 1, z) === block) world.setBlock(x, y + 1, z, B.AIR);
+		if (world.getBlock(x, y + 1, z) === block)
+			world.setBlock(x, y + 1, z, B.AIR);
 	}
 	// C5 (REN-2): horno roto → se elimina su estado (fuga de memoria y
 	// world.json engordando con hornos huérfanos). El jugador que lo tenía
@@ -141,12 +181,7 @@ function finishMining(player, x, y, z, block, opts = {}) {
 	// crecimiento (state.crops): maduro suelta trigo + semillas; inmaduro solo
 	// semillas. El estado se limpia al cosechar.
 	if (block === B.WHEAT) {
-		const key = `${x},${y},${z}`;
-		const crop = state.crops.get(key);
-		state.crops.delete(key);
-		const mature = (crop?.stage ?? 0) >= 7;
-		addToInventory(player, I.SEEDS, 1 + Math.floor(Math.random() * 3));
-		if (mature) addToInventory(player, I.WHEAT, 1);
+		breakPlant(player, x, y, z, block);
 		sendInventory(player);
 		return false;
 	}
@@ -226,7 +261,8 @@ function applyToolWear(player, onlySwords = false) {
 function applyBowWear(player) {
 	const slot = player.inventory[player.selectedSlot];
 	if (!slot || !isBow(slot.id)) return false;
-	const cur = typeof slot.durability === "number" ? slot.durability : BOW_DURABILITY;
+	const cur =
+		typeof slot.durability === "number" ? slot.durability : BOW_DURABILITY;
 	const next = Math.max(0, cur - 1);
 	if (next <= 0) {
 		player.inventory[player.selectedSlot] = null;

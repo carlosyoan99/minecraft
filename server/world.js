@@ -129,6 +129,9 @@ function reinitNoise(seed) {
 	lakeCache.clear();
 }
 reinitNoise(constants.SEED); // al arrancar, la SEED de la env var
+// Fase 17 (A1): en modo menú no hay mundo activo (currentSeed null), pero el
+// ruido se siembra igualmente (join_world → switchWorld lo re-siembra al
+// elegir mundo).
 const SEA_LEVEL = 5; // bloques de agua (ESPACIO DE DISEÑO): y ∈ (LAKE_FLOOR, SEA_LEVEL)
 // Fase 15 (D5): re-base del mundo. La generación trabaja en un espacio de
 // diseño 0..63 (superficie 3..27, mar en 5) que se desplaza a las
@@ -328,7 +331,6 @@ function getBiome(wx, wz) {
 	return b;
 }
 
-
 function heightFrom(temp, wMnt, wx, wz) {
 	const h = noise2D(wx * 0.02, wz * 0.02) * 0.5 + 0.5;
 	const detail = noise2D_detail(wx * 0.08, wz * 0.08) * 1.5;
@@ -420,18 +422,27 @@ function findSpawn(wx, wz) {
 // tipo gusano (estilo Minecraft). La suma ponderada de dos octavas
 // (gruesa + fina) da pasadizos con desvíos. Determinista por coordenada
 // de mundo: mismo resultado en cualquier reinicio y continuo entre chunks.
-const CAVE_FREQ = 0.07; // escala horizontal de los túneles
-const CAVE_FREQ_Y = 0.09; // algo mayor en Y para túneles más horizontales
-const CAVE_FINE_FREQ = 0.2; // octava fina (desvíos)
-const CAVE_THRESHOLD = 0.84; // calibrado por barrido: ~14% del subsuelo excavado,
-// túneles conexos sin queso suizo (0.62 daba ~58%)
+// Fase 17 (B5): pocas cuevas, pero LARGAS Y GRANDES (explorables) — Notas
+// del usuario: "se generan muchas en vez de pocas cuevas, pero que sean más
+// largas y grandes". Antes (Fase 4): CAVE_FREQ 0.07 con umbral 0.84 daba
+// ~14% del subsuelo excavado en muchos túneles finos y cortos. Ahora las
+// frecuencias bajan ~2x (features 3D más amplias → túneles más largos y
+// anchos, más horizontales al bajar CAVE_FREQ_Y) y el umbral sube
+// (solo los pasajes FUERTES del ruido excavan → menos cuevas, cada una
+// con más volumen). El muestreo fino también baja para que los desvíos
+// sean amplios y no fragmenten el túnel en bolsas pequeñas.
+const CAVE_FREQ = 0.032; // escala horizontal: túneles ~2x más largos/anchas
+const CAVE_FREQ_Y = 0.045; // túneles más horizontales (se exploran en plano)
+const CAVE_FINE_FREQ = 0.09; // desvíos amplios (no fragmentan el túnel)
+const CAVE_THRESHOLD = 0.86; // solo pasajes fuertes excavan: menos cuevas,
+// cada una con más volumen (calibrado por barrido: ~7-9% del subsuelo)
 // Fase 15 (cierre): el muestreo fino se salta cuando la octava GRUESA no
 // puede alcanzar el umbral: caveStrength = base*0.6 + fine*0.4 con fine ≤ 1,
 // así que si base*0.6 + 0.4 ≤ 0.84 (= CAVE_THRESHOLD) ningún fine llega al
 // umbral (ni al de superficie 0.91) → la celda NO es cueva. Evita el noise3D
 // fino en ~73% de las celdas de piedra (26K muestras por chunk); el resultado
 // es bit-idéntico (solo se omite un cálculo que no podía cambiar la decisión).
-const CAVE_FINE_MAX_BASE = (CAVE_THRESHOLD - 0.4) / 0.6; // ≈ 0.733
+const CAVE_FINE_MAX_BASE = (CAVE_THRESHOLD - 0.4) / 0.6; // ≈ 0.833
 function caveStrength(wx, wy, wz) {
 	const base =
 		1 -
@@ -459,10 +470,10 @@ function isCaveBlock(wx, wy, wz, nearSurface) {
 }
 
 // Umbral para abrir el bloque de superficie: solo un pico de ruido fuerte
-// excava la boca (≈1-2% de columnas) → entradas de cueva escasas y visibles
+// excava la boca (≈0.5-1% de columnas) → entradas de cueva escasas y visibles
 // hacia el exterior. La conexión real exige además la capa inferior excavada
-// (nearSurface 0.91), así que nunca hay hoyos aislados.
-const CAVE_MOUTH_THRESHOLD = 0.9;
+// (nearSurface 0.97), así que nunca hay hoyos aislados.
+const CAVE_MOUTH_THRESHOLD = 0.96;
 
 // ============================================================
 // MINAS ABANDONADAS (Fase 7): pasillos subterráneos + cofres de loot.
@@ -1064,10 +1075,7 @@ function generateChunk(cx, cz) {
 					// CUEVAS bajo el agua se inundan (cuevas acuáticas) — nunca hay
 					// bolsas de aire bajo el agua (invariante de unit-mundo).
 					if (y < floorY) {
-						if (
-							y > WORLD_MIN_Y + 1 &&
-							isCaveBlock(wx, y, wz, false)
-						)
+						if (y > WORLD_MIN_Y + 1 && isCaveBlock(wx, y, wz, false))
 							block = B.WATER;
 						else block = B.STONE;
 					} else if (y === floorY) block = B.SAND;
@@ -1078,10 +1086,7 @@ function generateChunk(cx, cz) {
 					// chunks vecinos y determinista. Cerca de la superficie el umbral
 					// sube (nearSurface): los túneles se estrechan y solo los más
 					// fuertes alcanzan la capa superior (boca de cueva).
-					if (
-						y > WORLD_MIN_Y + 1 &&
-						isCaveBlock(wx, y, wz, y >= height - 3)
-					) {
+					if (y > WORLD_MIN_Y + 1 && isCaveBlock(wx, y, wz, y >= height - 3)) {
 						block = B.AIR;
 						if (y === height - 2) carvedTop = true;
 					} else {
@@ -1245,7 +1250,7 @@ function generateChunk(cx, cz) {
 									block: B.JUNGLE_LEAVES,
 									// Lianas bajo el borde de la copa (donde hay aire debajo).
 									vines: Math.abs(dx) === 2 || Math.abs(dz) === 2,
-									height,
+									height
 								});
 						}
 					}
@@ -1300,7 +1305,7 @@ function generateChunk(cx, cz) {
 									vines:
 										biome === "swamp" &&
 										(Math.abs(dx) === 2 || Math.abs(dz) === 2),
-									height,
+									height
 								});
 						}
 					}
@@ -1350,7 +1355,7 @@ function generateChunk(cx, cz) {
 									lz,
 									block: B.SPRUCE_LEAVES,
 									vines: false,
-									height,
+									height
 								});
 						}
 					}
@@ -1653,8 +1658,7 @@ class Chunk {
 	constructor(cx, cz, data = null) {
 		this.cx = cx;
 		this.cz = cz;
-		this.data =
-			data || new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+		this.data = data || new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
 		this.dirty = false;
 	}
 

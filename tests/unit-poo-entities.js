@@ -167,12 +167,35 @@ const check = (_name, ok, _extra = "") => {
 	);
 	check("add/consume/empty", s.add(2).count === 6 && s.consume(6).empty);
 	check(
+		"add/consume usan n=1 por defecto",
+		new ItemStack(B.COBBLESTONE).add().count === 2 &&
+			new ItemStack(B.COBBLESTONE, 2).consume().count === 1
+	);
+	check(
+		"empty: count 1 no está vacío, count 0 sí",
+		!new ItemStack(B.COBBLESTONE, 1).empty && new ItemStack(B.COBBLESTONE, 1).consume().empty
+	);
+	check(
+		"ItemStack.from conserva la durabilidad del literal",
+		ItemStack.from({ id: 200, count: 1, durability: 5 }).durability === 5
+	);
+	check(
+		"constructor con durability 0 la conserva (estado roto serializable)",
+		new ItemStack(200, 1, 0).durability === 0 &&
+			JSON.stringify(new ItemStack(200, 1, 0)) === `{"id":200,"count":1,"durability":0}`
+	);
+	check(
 		"ItemStack.slots(n) crea n huecos vacíos",
 		ItemStack.slots(36).length === 36 && ItemStack.slots(36).every((x) => x === null)
 	);
 	check(
 		"toPlain() devuelve el shape histórico",
 		tool.toPlain().id === 200 && tool.toPlain().durability === 59
+	);
+	check(
+		"toPlain() sin durabilidad omite la clave (shape histórico)",
+		JSON.stringify(new ItemStack(B.COBBLESTONE, 2).toPlain()) ===
+			`{"id":${B.COBBLESTONE},"count":2}`
 	);
 }
 
@@ -206,6 +229,27 @@ const check = (_name, ok, _extra = "") => {
 	check("addItem apila en el slot existente", (p.addItem(B.COBBLESTONE, 3), p.inventory[0].count === 8));
 	check("countItem cuenta por id", p.countItem(B.COBBLESTONE) === 8);
 	check("removeItem retira el stack", (p.removeItem(B.COBBLESTONE, 8), p.inventory[0] === null));
+	// G2.5: inventario lleno (sin slot libre y sin merge posible) → rechazo.
+	{
+		const pFull = playerHelpers.createPlayer({
+			id: "pFull",
+			ws: { readyState: 3, send() {} },
+			health: 20,
+			maxHealth: 20,
+			gamemode: "survival",
+			inventory: Array.from(
+				{ length: 36 },
+				() => new ItemStack(B.COBBLESTONE, 1)
+			),
+			armor: { helmet: null, chestplate: null, leggings: null, boots: null },
+			selectedSlot: 0,
+			craftingGrid: ItemStack.slots(9)
+		});
+		check(
+			"addItem con inventario lleno y sin merge devuelve false",
+			pFull.addItem(B.DIRT, 1) === false
+		);
+	}
 	check("damage() descuenta salud", (p.damage(5, { armor: false }), p.health === 15));
 	check("heal() restaura hasta maxHealth", (p.heal(3), p.health === 18));
 	check("heal() no supera la salud máxima", (p.heal(99), p.health === 20));

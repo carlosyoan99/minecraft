@@ -48,13 +48,35 @@ TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterato
 - Extender tests con los nuevos cambio y correcciones.
 - Cerrar huecos - no inventar bloques/items nuevos, solo craftear lo que ya está.
 - Extender `unit-recetas.js` para verificar cobertura, no solo integridad de lo ya existente.
+- Agregar posibilidad de escoger skins: Steve, Alex, Noor, Sunny, Ari, Zuri, Makena, Kai y Efe.
+- Persistenci de datos del lado del cliente que sea seguro mantener de este lado: configuración, preferencias, nombre, skins.
+- Biomas más grandes en extensión y nuevos biomas:
+  1. **Llanura (Plains)**: El bioma más clásico y común. Es una zona plana y verde con algunos árboles, ideal para empezar y donde aparecen caballos de forma natural.
+  2. **Desierto (Desert)**: Un bioma árido y extenso, compuesto casi enteramente de arena y cactus. Destaca por la ausencia de lluvia y la presencia de templos y aldeas.
+  3. **Bosque (Forest)**: Un bioma templado muy común, lleno de árboles de roble y abedul, con una gran cantidad de hierba y flores.
+  4. **Taiga (Taiga)**: Un bioma frío de coníferas, dominado por enormes árboles de abeto y con el suelo a menudo cubierto de podzol. Es el hogar de lobos.
+  5. **Tundra Nevada (Snowy Plains)**: Un bioma plano y frío, cubierto de nieve y hielo. En lugar de llover, siempre nieva.
+  6. **Montañas (Windswept Hills)**: Un bioma de gran altitud con terrenos escarpados y picos rocosos. Anteriormente conocido como "Colinas Extremas".
+  7. **Pantano (Swamp)**: Un bioma húmedo y pantanoso con agua de color grisáceo, donde se generan cabañas de brujas y crecen enormes hongos.
+  8. **Jungla (Jungle)**: Un bioma muy exuberante con árboles gigantes de selva y un follaje denso. Es el único lugar donde se encuentran ocelotes y templos de jungla.
+  9. **Sabana (Savanna)**: Una llanura cálida y seca, con árboles de acacia de forma característica y donde se generan aldeas.
+  10. **Badlands (Terracota)**: Un bioma único de tierras áridas, formado por capas de terracota de colores. Es el lugar ideal para encontrar oro y minerales.
+  11. **Océano (Ocean)**: Un vasto bioma acuático que cubre gran parte del mundo. Existen variantes como el océano cálido, frío o profundo.
+  12. **Isla de Champiñones (Mushroom Fields)**: Un bioma raro y peculiar, compuesto por micelio y enormes hongos. Es el único lugar donde los mooshrooms (vacas champiñón) aparecen de forma natural.
+  13. **Bosque Oscuro (Dark Forest)**: Un bioma característico por sus árboles de roble oscuro, tan densos que casi bloquean toda la luz, lo que provoca que los mobs hostiles aparezcan incluso de día.
+  14. **Bosque de Abedules (Birch Forest)**: Un bosque compuesto casi exclusivamente por árboles de abedul, destacando por el contraste de sus troncos blancos.
+  15. **Taiga de Árboles Gigantes (Old Growth Pine/Spruce Taiga)**: Una variante de la taiga con abetos gigantes, cuyo tronco puede llegar a tener 2x2 bloques de ancho.
+  16. **Picos Nevados (Frozen Peaks)**: Una de las variantes de las montañas, con picos completamente cubiertos de nieve y hielo, alcanzando grandes altitudes.
+  17. **Cuevas de Lush (Lush Caves)**: Un bioma subterráneo verde y vibrante, iluminado por bayas luminosas y con una exuberante vegetación.
+  18. **Cuevas de Dripstone (Dripstone Caves)**: Otro bioma subterráneo, compuesto por bloques de dripstone que forman estalactitas y estalagmitas.
+- Estructuras que sean estáticas no dinámicas (como las aldeas o mansión): Pozo del desierto, Pirámide, Iglú (solo edificio)
 
 ## Próximas Fases
 - **Fase 16**: se va a centrar en la corrección de bugs y completar la paridad con Minecraft.
 - **Fase 17**: se centrará en la UI/UX, experiencia visual del usuario, uso en móviles, interfaz 100% Minecraft.
 - **Fase 18**: Bugs, paridad y rendimiento, nada de nuevas características, solo pulir las que ya tenemos. Refactorizado de los modulos a las convenciones ya establecidas en CLAUDE.md y mejorar la documentación en general.
 - **Fase 19**: Crear texturas faltantes para todos los items, mejorar cofres, mesa de crafteo, hornos y demás interfases.
-- **Fase 20**: Rolling release del proyecto, fase larga donde solo se corregiran bugs, se mejorará la paridad en implementaciones que estan documentadas como limitadas, si el rendimiento lo permite, no se incluiran las características reportadas como **Restricciones (Won't)**
+- **Fase 20**: Rolling release del proyecto, fase larga donde solo se corregiran bugs, se mejorará la paridad en implementaciones que estan documentadas como limitadas, si el rendimiento lo permite, no se incluiran las características reportadas como **Restricciones (Won't)**. Fase que logra equilibrio entre rendimiento y paridad. No avanzar a una siguiente fase hasta que todo lo actual este 100% confirmado su funcionamiento y estable.
 - Cada fase solo se da por concluida una vez que esta pasa todos los test y una auditoría para esa fase en específico.
 
 ## Importante

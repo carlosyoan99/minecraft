@@ -459,18 +459,31 @@ class Mob {
 	}
 
 	findNearestPlayer() {
+		// Fase 17 (B6): los hostiles NO agreden a jugadores en CREATIVO — se
+		// excluyen como objetivo de agresión/persecución (decisión de diseño
+		// del clon, alineada con el bug reportado). En survival el
+		// comportamiento actual se mantiene intacto.
 		// Notas del usuario: el aggro hace objetivo al agresor AUNQUE esté
 		// dentro de la zona segura del spawn (quien ataca se expone): el
 		// hostil lo persigue hasta que expira el aggro.
 		if (this.isAggroed() && this.aggroTarget) {
 			const p = players.get(this.aggroTarget);
-			if (p) return { nearest: p, dist: this.distTo(p) };
-			this.aggroUntil = 0; // el agresor se desconectó: pierde el aggro
+			if (p) {
+				if (p.gamemode === "creative") {
+					this.aggroUntil = 0; // el objetivo pasó a creativo: sin aggro
+					this.aggroTarget = null;
+				} else {
+					return { nearest: p, dist: this.distTo(p) };
+				}
+			} else {
+				this.aggroUntil = 0; // el agresor se desconectó: pierde el aggro
+			}
 		}
 		let nearest = null,
 			best = Infinity;
 		const safe = spawnSafeRadius > 0 ? getSafeSpawn() : null;
 		for (const p of players.values()) {
+			if (p.gamemode === "creative") continue; // B6: sin aggro a creativos
 			// B2: los hostiles no targetean a jugadores dentro de la zona segura
 			// del spawn (el recién llegado se orienta; al salir del radio vuelven
 			// a ser objetivo).
@@ -977,6 +990,9 @@ class Mob {
 	// Minecraft — antes no hacían nada al ser golpeados.
 	mobHit(attacker) {
 		if (HOSTILE.has(this.type)) {
+			// Fase 17 (B6): golpear a un jugador en CREATIVO no genera aggro (los
+			// hostiles no agreden a creativos, ni siquiera si se les golpea).
+			if (attacker?.gamemode === "creative") return;
 			this.aggroUntil = Date.now() + MOB_AGGRO_MS;
 			this.aggroTarget = attacker.id;
 			return;
