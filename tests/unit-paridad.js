@@ -34,8 +34,10 @@ let fail = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (name, cond, extra = "") => {
 	if (cond) ok++;
@@ -60,19 +62,18 @@ check(
 	SWORD_DAMAGE[I.GOLDEN_SWORD] === 4
 );
 check("espada de diamante: 7", SWORD_DAMAGE[I.DIAMOND_SWORD] === 7);
-// El daño a mano (sin herramienta) lo aplica server/net.js:
-// TOOL_DAMAGE[tool] || SWORD_DAMAGE[tool] || 1 (auditoría §3.7)
-{
-	check(
-		"daño a mano = 1 (TOOL_DAMAGE[tool] || SWORD_DAMAGE[tool] || 1)",
-		/TOOL_DAMAGE\[tool\] \|\| SWORD_DAMAGE\[tool\] \|\| 1/.test(
-			require("fs").readFileSync("server/net.js", "utf8")
-		)
-	);
-}
+check(
+	"daño a mano = 1 (TOOL_DAMAGE[tool] || SWORD_DAMAGE[tool] || 1)",
+	/TOOL_DAMAGE\[tool\] \|\| SWORD_DAMAGE\[tool\] \|\| 1/.test(
+		require("fs").readFileSync("server/net.js", "utf8")
+	)
+);
 
 // --- Auditoría §3.7: daño de herramientas no-espada ---
-check("hacha de hierro: 6 (igual a espada, sin cooldown)", TOOL_DAMAGE[I.IRON_AXE] === 6);
+check(
+	"hacha de hierro: 6 (igual a espada, sin cooldown)",
+	TOOL_DAMAGE[I.IRON_AXE] === 6
+);
 check("hacha de diamante: 7", TOOL_DAMAGE[I.DIAMOND_AXE] === 7);
 check("pico de piedra: 3", TOOL_DAMAGE[I.STONE_PICKAXE] === 3);
 check("pala de hierro: 4", TOOL_DAMAGE[I.IRON_SHOVEL] === 4);
@@ -200,10 +201,26 @@ check("xpToNext(31) = 121", xpToNext(31) === 121);
 {
 	const mobs = require("../server/mobs.js");
 	const mkMob = (type) => new mobs.Mob(type, 0, 80, 0);
-	check("pollo: 4 HP (MC)", mkMob("chicken").health === 4, `=${mkMob("chicken").health}`);
-	check("oveja: 8 HP (MC)", mkMob("sheep").health === 8, `=${mkMob("sheep").health}`);
-	check("vaca: 10 HP (MC)", mkMob("cow").health === 10, `=${mkMob("cow").health}`);
-	check("cerdo: 10 HP (MC)", mkMob("pig").health === 10, `=${mkMob("pig").health}`);
+	check(
+		"pollo: 4 HP (MC)",
+		mkMob("chicken").health === 4,
+		`=${mkMob("chicken").health}`
+	);
+	check(
+		"oveja: 8 HP (MC)",
+		mkMob("sheep").health === 8,
+		`=${mkMob("sheep").health}`
+	);
+	check(
+		"vaca: 10 HP (MC)",
+		mkMob("cow").health === 10,
+		`=${mkMob("cow").health}`
+	);
+	check(
+		"cerdo: 10 HP (MC)",
+		mkMob("pig").health === 10,
+		`=${mkMob("pig").health}`
+	);
 	check("enderman: 40 HP (MC)", mkMob("enderman").health === 40);
 	check("zombie: 20 HP (MC)", mkMob("zombie").health === 20);
 }

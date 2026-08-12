@@ -22,11 +22,16 @@ let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { fails++; failedChecks.push(_name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(_name);
+	}
 };
 
 class FakeWS {

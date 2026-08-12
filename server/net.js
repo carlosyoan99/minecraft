@@ -994,7 +994,10 @@ function handleConnection(ws, req) {
 					ws.send(
 						JSON.stringify({
 							event: "furnace_state",
-							data: { key, ...crafting.furnaceSnapshot(f || crafting.emptyFurnace()) }
+							data: {
+								key,
+								...crafting.furnaceSnapshot(f || crafting.emptyFurnace())
+							}
 						})
 					);
 					break;
@@ -1128,8 +1131,7 @@ function handleConnection(ws, req) {
 						const watchers = state.openFurnaceWatchers.get(key);
 						if (watchers) {
 							watchers.delete(playerId);
-							if (watchers.size === 0)
-								state.openFurnaceWatchers.delete(key);
+							if (watchers.size === 0) state.openFurnaceWatchers.delete(key);
 						}
 						p.openFurnace = null;
 					}

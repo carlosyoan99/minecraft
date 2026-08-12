@@ -15,15 +15,22 @@
 // densidad no baje perceptiblemente (observado ≥ 0.5 × esperado por bioma).
 // ============================================================
 const world = require("../server/world.js");
-const { CHUNK_SIZE, WORLD_MIN_Y, WORLD_MAX_Y, B } = require("../server/constants.js");
+const {
+	CHUNK_SIZE,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y,
+	B
+} = require("../server/constants.js");
 
 let _passed = 0,
 	failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 function check(_name, ok, _info) {
 	if (ok) _passed++;
@@ -38,7 +45,10 @@ function check(_name, ok, _info) {
 // árboles (no el modo denso de la segunda sección).
 function lcg(seed) {
 	let s = seed >>> 0;
-	return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+	return () => {
+		s = (s * 1664525 + 1013904223) >>> 0;
+		return s / 4294967296;
+	};
 }
 const isLog = (b) =>
 	b === B.OAK_LOG ||
@@ -60,7 +70,7 @@ const THRESH = {
 	taiga: 0.03,
 	snow: 0.02,
 	mountain: 0.02,
-	jungle: 0.09,
+	jungle: 0.09
 };
 
 world.setDiskLoader(() => null);
@@ -140,7 +150,7 @@ try {
 			[1, 0, "px"],
 			[-1, 0, "mx"],
 			[0, 1, "pz"],
-			[0, -1, "mz"],
+			[0, -1, "mz"]
 		]) {
 			for (let d = 1; d <= 2; d++) {
 				const wx = b.wx + dx * d,
@@ -178,8 +188,7 @@ try {
 	const aislados = validos.filter(
 		(b) =>
 			!validos.some(
-				(o) =>
-					o !== b && Math.abs(o.wx - b.wx) <= 5 && Math.abs(o.z - b.z) <= 5
+				(o) => o !== b && Math.abs(o.wx - b.wx) <= 5 && Math.abs(o.z - b.z) <= 5
 			)
 	);
 	check(
@@ -200,7 +209,7 @@ try {
 			[1, 0, "px"],
 			[-1, 0, "mx"],
 			[0, 1, "pz"],
-			[0, -1, "mz"],
+			[0, -1, "mz"]
 		]) {
 			for (let d = 1; d <= 2; d++) {
 				const wx = b.wx + dx * d,

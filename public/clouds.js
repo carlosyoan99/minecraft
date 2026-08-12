@@ -17,8 +17,12 @@
 // el día/noche y reduce artefactos con bloques transparentes.
 // ============================================================
 import * as THREE from "three";
+import {
+	CLOUD_TINT_STEP,
+	cloudTint,
+	dayFactor as dayFactorOf
+} from "./daymath.js"; // Fase 16 (G3)
 import { currentPhase } from "./daynight.js";
-import { CLOUD_TINT_STEP, cloudTint, dayFactor as dayFactorOf } from "./daymath.js"; // Fase 16 (G3)
 import { camera, scene } from "./scene.js";
 
 const CLOUD_ALT = 96; // por encima del mundo (64) pero bajo el dome
@@ -70,7 +74,7 @@ function spawnCloud(seed) {
 			((seed + i * 5) % 3) * 0.6
 		);
 		// Algunas cajas ligeramente más oscuras para dar textura.
-		box.userData.shade = ((seed + i) % 3 === 0) ? 0.9 : 1;
+		box.userData.shade = (seed + i) % 3 === 0 ? 0.9 : 1;
 		group.add(box);
 	}
 	// Posición base dentro del campo (se re-posiciona al seguir al jugador)
@@ -78,7 +82,7 @@ function spawnCloud(seed) {
 	group.userData.offsetZ = ((seed * 179) % 1000) / 1000;
 	// Variedad de alturas (ligera ondulación del "techo" de nubes).
 	group.userData.altBump = ((seed * 31) % 5) - 2; // -2..+2 bloques
-	group.userData.windMul = 0.85 + ((seed % 5) / 10); // 0.85..1.25 (unas más rápidas)
+	group.userData.windMul = 0.85 + (seed % 5) / 10; // 0.85..1.25 (unas más rápidas)
 	scene.add(group);
 	clouds.push(group);
 }

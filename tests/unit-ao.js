@@ -24,13 +24,18 @@ let failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (name, ok, extra = "") => {
 	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(`${ok ? "OK " : "✗  "}${name}${extra ? ` — ${extra}` : ""}`);
-	if (!ok) { failed++; failedChecks.push(name); }
+	if (!ok) {
+		failed++;
+		failedChecks.push(name);
+	}
 };
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "unit-ao-"));
@@ -135,8 +140,11 @@ fs.writeFileSync(
 		// 1.0 — al aire: sin vecinos.
 		const geo = build(centerChunk());
 		const cs = colorAt(geo.terrain, VX, VY, VZ);
-		check("AO al aire = 1.0", cs.length > 0 && cs.every((c) => near(c, 1.0)),
-			JSON.stringify(cs));
+		check(
+			"AO al aire = 1.0",
+			cs.length > 0 && cs.every((c) => near(c, 1.0)),
+			JSON.stringify(cs)
+		);
 	}
 	{
 		// 0.5 — esquina encerrada: s1 Y s2.
@@ -144,8 +152,11 @@ fs.writeFileSync(
 		setBlock(c, 0, 6, 1, DIRT); // s1
 		setBlock(c, 1, 6, 0, DIRT); // s2
 		const cs = colorAt(build(c).terrain, VX, VY, VZ);
-		check("AO esquina encerrada = 0.5", cs.length > 0 && cs.every((x) => near(x, 0.5)),
-			JSON.stringify(cs));
+		check(
+			"AO esquina encerrada = 0.5",
+			cs.length > 0 && cs.every((x) => near(x, 0.5)),
+			JSON.stringify(cs)
+		);
 	}
 	{
 		// 0.55 — un lado + diagonal.
@@ -153,24 +164,33 @@ fs.writeFileSync(
 		setBlock(c, 0, 6, 1, DIRT); // s1
 		setBlock(c, 0, 6, 0, DIRT); // diag
 		const cs = colorAt(build(c).terrain, VX, VY, VZ);
-		check("AO un lado + diagonal = 0.55", cs.length > 0 && cs.every((x) => near(x, 0.55)),
-			JSON.stringify(cs));
+		check(
+			"AO un lado + diagonal = 0.55",
+			cs.length > 0 && cs.every((x) => near(x, 0.55)),
+			JSON.stringify(cs)
+		);
 	}
 	{
 		// 0.7 — un lado, sin diagonal.
 		const c = centerChunk();
 		setBlock(c, 0, 6, 1, DIRT); // s1
 		const cs = colorAt(build(c).terrain, VX, VY, VZ);
-		check("AO un lado, sin diagonal = 0.7", cs.length > 0 && cs.every((x) => near(x, 0.7)),
-			JSON.stringify(cs));
+		check(
+			"AO un lado, sin diagonal = 0.7",
+			cs.length > 0 && cs.every((x) => near(x, 0.7)),
+			JSON.stringify(cs)
+		);
 	}
 	{
 		// 0.85 — solo diagonal.
 		const c = centerChunk();
 		setBlock(c, 0, 6, 0, DIRT); // diag
 		const cs = colorAt(build(c).terrain, VX, VY, VZ);
-		check("AO solo diagonal = 0.85", cs.length > 0 && cs.every((x) => near(x, 0.85)),
-			JSON.stringify(cs));
+		check(
+			"AO solo diagonal = 0.85",
+			cs.length > 0 && cs.every((x) => near(x, 0.85)),
+			JSON.stringify(cs)
+		);
 	}
 
 	// ----------------------------------------------------------
@@ -186,8 +206,11 @@ fs.writeFileSync(
 		setBlock(c, 0, 6, 1, id); // s1 (no oclusor)
 		setBlock(c, 1, 6, 0, id); // s2 (no oclusor)
 		const cs = colorAt(build(c).terrain, VX, VY, VZ);
-		check(`AO: ${name} no es oclusor (sigue 1.0)`,
-			cs.length > 0 && cs.every((x) => near(x, 1.0)), JSON.stringify(cs));
+		check(
+			`AO: ${name} no es oclusor (sigue 1.0)`,
+			cs.length > 0 && cs.every((x) => near(x, 1.0)),
+			JSON.stringify(cs)
+		);
 	}
 
 	// ----------------------------------------------------------
@@ -209,8 +232,11 @@ fs.writeFileSync(
 			const bad = [];
 			for (let i = 0; i < cols.length; i++)
 				if (!near(cols[i], 1.0)) bad.push(cols[i]);
-			check("agua: ningún vértice sombreado (todos 1.0)",
-				bad.length === 0, JSON.stringify(bad.slice(0, 6)));
+			check(
+				"agua: ningún vértice sombreado (todos 1.0)",
+				bad.length === 0,
+				JSON.stringify(bad.slice(0, 6))
+			);
 		}
 	}
 

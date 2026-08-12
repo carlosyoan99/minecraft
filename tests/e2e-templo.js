@@ -39,8 +39,7 @@ function finish(exitCode) {
 		console.error(
 			`E2E templo: ${results.filter((r) => r.ok === false).length}/${results.length} checks FAIL`
 		);
-		for (const r of results)
-			if (!r.ok) console.error(`  FAIL ${r.name}`);
+		for (const r of results) if (!r.ok) console.error(`  FAIL ${r.name}`);
 	}
 	const fails = results.filter((r) => r.ok === false).length;
 	process.exit(exitCode !== undefined ? exitCode : fails ? 1 : 0);
@@ -172,7 +171,9 @@ ws.on("message", (d) => {
 		}
 		if (trapFired) {
 			// Ir a por el cofre: la cámara central está a 2 bloques del pasadizo.
-			send("chat", { message: `/tp ${chestAt.x + 0.5} ${chestAt.y} ${chestAt.z + 0.5}` });
+			send("chat", {
+				message: `/tp ${chestAt.x + 0.5} ${chestAt.y} ${chestAt.z + 0.5}`
+			});
 			phase = "tp-cofre";
 		} else if (Date.now() > trapCooldownUntil + 8000) {
 			check(

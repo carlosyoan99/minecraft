@@ -23,7 +23,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
-const { TOOL_DURABILITY, XP_PER_LEVEL, B, I } = require(
+const { TOOL_DURABILITY, B, I } = require(
 	path.join(ROOT, "server", "constants.js")
 );
 const playersMod = require(path.join(ROOT, "server", "players.js"));
@@ -34,11 +34,16 @@ let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 function check(_name, ok, _extra = "") {
-	if (!ok) { fails++; failedChecks.push(_name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(_name);
+	}
 }
 
 const OPEN = 1;

@@ -11,13 +11,7 @@
 // está activo.
 // ============================================================
 import * as THREE from "three";
-import {
-	CHUNK_SIZE,
-	WATER,
-	WORLD_HEIGHT,
-	WORLD_MIN_Y,
-	WORLD_MAX_Y
-} from "./constants.js";
+import { CHUNK_SIZE, WATER, WORLD_MAX_Y, WORLD_MIN_Y } from "./constants.js";
 import { camera, scene } from "./scene.js";
 import { getGamemode } from "./ui.js";
 import { chunkMeshes, getClientBlock, lodMeshes } from "./world.js";

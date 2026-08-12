@@ -18,11 +18,16 @@ let failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { failed++; failedChecks.push(_name); }
+	if (!ok) {
+		failed++;
+		failedChecks.push(_name);
+	}
 };
 
 (async () => {

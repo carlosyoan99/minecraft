@@ -41,11 +41,16 @@ let failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { failed++; failedChecks.push(_name); }
+	if (!ok) {
+		failed++;
+		failedChecks.push(_name);
+	}
 };
 
 // Superficie efectiva de una columna (Y de MUNDO del bloque de superficie):
@@ -53,7 +58,9 @@ const check = (_name, ok, _extra = "") => {
 // devuelve el fondo en ESPACIO DE DISEÑO → se re-basa a mundo).
 function columnSurface(wx, wz) {
 	const floorY = world.columnFloorY(wx, wz);
-	return floorY != null ? floorY - world.DESIGN_OFFSET : world.getHeight(wx, wz);
+	return floorY != null
+		? floorY - world.DESIGN_OFFSET
+		: world.getHeight(wx, wz);
 }
 
 // --- 1) Generar una zona de 7x7 chunks y medir invariantes básicas ---
@@ -89,7 +96,10 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 				const lake = world.isLake(wx, wz);
 				const river = world.isRiver(wx, wz);
 				const floorY = world.columnFloorY(wx, wz);
-				const surface = floorY != null ? floorY - world.DESIGN_OFFSET : world.getHeight(wx, wz);
+				const surface =
+					floorY != null
+						? floorY - world.DESIGN_OFFSET
+						: world.getHeight(wx, wz);
 				columns++;
 				// Fase 10 (A4): métricas de ríos y de profundidad variable de lagos.
 				if (floorY != null) {
@@ -137,7 +147,11 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 						if (below === B.AIR) airUnderWater++;
 						// Lecho del lago/río: el bloque del fondo real (columnFloorY en
 						// mundo) es arena. El agua en y = floorYMundo + 1 descansa sobre él.
-						if (floorY != null && y === floorY - world.DESIGN_OFFSET + 1 && below !== B.SAND)
+						if (
+							floorY != null &&
+							y === floorY - world.DESIGN_OFFSET + 1 &&
+							below !== B.SAND
+						)
 							badWaterFloor++;
 					}
 				}

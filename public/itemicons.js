@@ -1332,23 +1332,23 @@ ICONS[138] = (g) => drawDye(g, "#e8c547", "#b8860b", "#f5e07a");
 ICONS[139] = (g) => drawDye(g, "#f5f5f0", "#c9c9c0", "#ffffff");
 ICONS[140] = drawHoney;
 // Fase 11 (C): tijeras
-ICONS[141] = drawShears;	// Fase 12 (A): tridente (245) y bola de slime (246)
-	ICONS[245] = drawTrident;
-	ICONS[246] = drawSlimeBall;
-	// Fase 13 (L1): arco, flecha, pedernal y pluma
-	ICONS[247] = drawBow;
-	ICONS[248] = drawArrow;
-	ICONS[252] = drawFlint;
-	ICONS[253] = drawFeather;
-	// Fase 13 (L4): cubos (vacío, agua, lava)
-	ICONS[249] = (g) => drawBucket(g, null);
-	ICONS[250] = (g) => drawBucket(g, "#3a6fd8");
-	ICONS[251] = (g) => drawBucket(g, "#e25822");
-	// Fase 13 (L5): compás (4 lingotes de hierro + redstone)
-	ICONS[254] = drawCompass;
-	// Fase 16 (D2): carne podrida (zombi) y pólvora (creeper).
-	ICONS[255] = drawFlesh;
-	ICONS[256] = drawGunpowder;
+ICONS[141] = drawShears; // Fase 12 (A): tridente (245) y bola de slime (246)
+ICONS[245] = drawTrident;
+ICONS[246] = drawSlimeBall;
+// Fase 13 (L1): arco, flecha, pedernal y pluma
+ICONS[247] = drawBow;
+ICONS[248] = drawArrow;
+ICONS[252] = drawFlint;
+ICONS[253] = drawFeather;
+// Fase 13 (L4): cubos (vacío, agua, lava)
+ICONS[249] = (g) => drawBucket(g, null);
+ICONS[250] = (g) => drawBucket(g, "#3a6fd8");
+ICONS[251] = (g) => drawBucket(g, "#e25822");
+// Fase 13 (L5): compás (4 lingotes de hierro + redstone)
+ICONS[254] = drawCompass;
+// Fase 16 (D2): carne podrida (zombi) y pólvora (creeper).
+ICONS[255] = drawFlesh;
+ICONS[256] = drawGunpowder;
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);

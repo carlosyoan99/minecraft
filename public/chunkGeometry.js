@@ -34,8 +34,8 @@ import {
 	TORCH,
 	WATER,
 	WORLD_HEIGHT,
-	WORLD_MIN_Y,
-	WORLD_MAX_Y
+	WORLD_MAX_Y,
+	WORLD_MIN_Y
 } from "./constants.js";
 import { tileForFace, tileRect } from "./texturemap.js";
 
@@ -409,7 +409,8 @@ export function buildChunkGeometryData({
 		for (let y = 0; y < WORLD_HEIGHT; y++) {
 			for (let z = 0; z < CHUNK_SIZE; z++) {
 				const block = chunk[cIdx(x, y, z)];
-				if (block === 0) continue;				if (block === TORCH) {
+				if (block === 0) continue;
+				if (block === TORCH) {
 					// Fase 15 (D5): posiciones de MUNDO (local + WORLD_MIN_Y).
 					pushTorch(baseX + x, y + WORLD_MIN_Y, baseZ + z);
 					continue;
@@ -435,7 +436,7 @@ export function buildChunkGeometryData({
 	// Fase 15) trae el AO de las 4 esquinas de cada celda del grid, ya
 	// calculado durante el llenado; reutilizarlo es bit-idéntico a llamar
 	// vertexAO (el AO de una celda no depende del quad que la usa).
-	const emitQuad = (fi, s, u0, v0, w, h, key, gridAO, W, H) => {
+	const emitQuad = (fi, s, u0, v0, w, h, key, gridAO, W, _H) => {
 		const face = FACES[fi];
 		const nAxis = face.nAxis;
 		const uAxis = (nAxis + 1) % 3;
@@ -475,9 +476,7 @@ export function buildChunkGeometryData({
 			// AO solo en el terreno opaco (agua/lava no se sombrean, como MC).
 			// Desde la caché del grid (3 bits por esquina → índice AO_VALUES).
 			const ao =
-				target === 0
-					? AO_VALUES[(gridAO[cv * W + cu] >> (c * 3)) & 0x7]
-					: 1;
+				target === 0 ? AO_VALUES[(gridAO[cv * W + cu] >> (c * 3)) & 0x7] : 1;
 			const v = baseV * ao;
 			const [uu, vv] = face.uvs[c];
 			verts.push({
@@ -501,7 +500,8 @@ export function buildChunkGeometryData({
 				buf.col.push(p.c, p.c, p.c);
 			}
 		}
-	};		for (let fi = 0; fi < FACES.length; fi++) {
+	};
+	for (let fi = 0; fi < FACES.length; fi++) {
 		const face = FACES[fi];
 		const nAxis = face.nAxis;
 		const uAxis = (nAxis + 1) % 3;
@@ -561,7 +561,13 @@ export function buildChunkGeometryData({
 					let aoBits = 0;
 					if (target === 0) {
 						for (let c = 0; c < 4; c++) {
-							const ao = vertexAO(wx, ly + WORLD_MIN_Y, wz, face.corners[c], face.dir);
+							const ao = vertexAO(
+								wx,
+								ly + WORLD_MIN_Y,
+								wz,
+								face.corners[c],
+								face.dir
+							);
 							aoBits |= AO_IDX.get(ao) << (c * 3);
 						}
 						gridAO[v * W + u] = aoBits; // cache para emitQuad

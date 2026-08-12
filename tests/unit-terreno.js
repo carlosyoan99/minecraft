@@ -16,13 +16,7 @@ const path = require("node:path");
 const os = require("node:os");
 const zlib = require("node:zlib");
 const constants = require("../server/constants.js");
-const {
-	B,
-	SCHEMA_VERSION,
-	WORLD_HEIGHT,
-	WORLD_MIN_Y,
-	worldPaths
-} = constants;
+const { B, SCHEMA_VERSION, WORLD_HEIGHT, WORLD_MIN_Y, worldPaths } = constants;
 const world = require("../server/world.js");
 const state = require("../server/state.js");
 
@@ -39,11 +33,16 @@ let failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { failed++; failedChecks.push(_name); }
+	if (!ok) {
+		failed++;
+		failedChecks.push(_name);
+	}
 };
 
 const IDX = (x, y, z) => (y * 16 + z) * 16 + x;

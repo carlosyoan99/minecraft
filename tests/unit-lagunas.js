@@ -39,8 +39,10 @@ let failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
 	total++;
@@ -91,11 +93,15 @@ const connect = (name) => {
 	// Receta: arco → 247 (BOW) y flechas → 248 (ARROW ×4).
 	check(
 		"receta del arco (247) presente",
-		recetas.bow && recetas.bow.result.id === I.BOW && recetas.bow.result.count === 1
+		recetas.bow &&
+			recetas.bow.result.id === I.BOW &&
+			recetas.bow.result.count === 1
 	);
 	check(
 		"receta de 4 flechas (248) presente",
-		recetas.arrow && recetas.arrow.result.id === I.ARROW && recetas.arrow.result.count === 4
+		recetas.arrow &&
+			recetas.arrow.result.id === I.ARROW &&
+			recetas.arrow.result.count === 4
 	);
 	// Disparo por el handler shoot_bow.
 	const { ws, player } = connect("arco");
@@ -111,7 +117,10 @@ const connect = (name) => {
 		const a = state.arrows[0];
 		check(
 			"flecha del jugador: kind arrow, daño 9 (BOW_DAMAGE), playerArrow",
-			a.kind === "arrow" && a.damage === 9 && a.playerArrow === true && a.from === player.id,
+			a.kind === "arrow" &&
+				a.damage === 9 &&
+				a.playerArrow === true &&
+				a.from === player.id,
 			JSON.stringify({ kind: a.kind, dmg: a.damage, pa: a.playerArrow })
 		);
 	}
@@ -129,10 +138,7 @@ const connect = (name) => {
 	state.arrows.length = 0;
 	playerHelpers.removeFromInventory(player, I.ARROW, 3);
 	ws.emit("message", JSON.stringify({ event: "shoot_bow", data: {} }));
-	check(
-		"shoot_bow sin flechas no dispara",
-		state.arrows.length === 0
-	);
+	check("shoot_bow sin flechas no dispara", state.arrows.length === 0);
 	// Flecha recogible: al expirar vuelve al inventario (no hay items en el
 	// suelo — simplificación documentada; la recogida es automática).
 	playerHelpers.addToInventory(player, I.ARROW, 1);
@@ -215,42 +221,36 @@ const connect = (name) => {
 	state.mobs = [];
 	state.doors.clear();
 }
-
-// ============================================================
-// L3 — ESCALERAS, LOSAS Y VALLAS (recetas y colisión por forma)
-// ============================================================
-{
-	check(
-		"recetas de escaleras (50/51), losas (60/61), valla y portón (70/71)",
-		recetas.oak_stairs?.result?.id === B.OAK_STAIRS &&
-			recetas.stone_stairs?.result?.id === B.STONE_STAIRS &&
-			recetas.oak_slab?.result?.id === B.OAK_SLAB &&
-			recetas.stone_slab?.result?.id === B.STONE_SLAB &&
-			recetas.oak_fence?.result?.id === B.OAK_FENCE &&
-			recetas.oak_fence_gate?.result?.id === B.OAK_FENCE_GATE
-	);
-	// LOSA: media caja inferior — se pisa por arriba (y+0.7) y bloquea en la
-	// mitad inferior (y+0.2). Bloques reales (isSolidAt usa el getBlock del
-	// cierre, no la instancia parcheada).
-	world.setBlock(0, 10, 0, B.OAK_SLAB);
-	check(
-		"losa sólida solo en su mitad inferior",
-		world.isSolidAt(0, 10.2, 0) === true && world.isSolidAt(0, 10.7, 0) === false
-	);
-	// ESCALERA: escalón inferior sólido, el superior se pisa.
-	world.setBlock(0, 10, 0, B.OAK_STAIRS);
-	check(
-		"escalera sólida en el escalón inferior",
-		world.isSolidAt(0, 10.2, 0) === true && world.isSolidAt(0, 10.7, 0) === false
-	);
-	// VALLA: celda completa (no se atraviesa).
-	world.setBlock(0, 10, 0, B.OAK_FENCE);
-	check(
-		"valla sólida en toda la celda",
-		world.isSolidAt(0, 10.2, 0) === true && world.isSolidAt(0, 10.7, 0) === true
-	);
-	world.setBlock(0, 10, 0, B.AIR);
-}
+check(
+	"recetas de escaleras (50/51), losas (60/61), valla y portón (70/71)",
+	recetas.oak_stairs?.result?.id === B.OAK_STAIRS &&
+		recetas.stone_stairs?.result?.id === B.STONE_STAIRS &&
+		recetas.oak_slab?.result?.id === B.OAK_SLAB &&
+		recetas.stone_slab?.result?.id === B.STONE_SLAB &&
+		recetas.oak_fence?.result?.id === B.OAK_FENCE &&
+		recetas.oak_fence_gate?.result?.id === B.OAK_FENCE_GATE
+);
+// LOSA: media caja inferior — se pisa por arriba (y+0.7) y bloquea en la
+// mitad inferior (y+0.2). Bloques reales (isSolidAt usa el getBlock del
+// cierre, no la instancia parcheada).
+world.setBlock(0, 10, 0, B.OAK_SLAB);
+check(
+	"losa sólida solo en su mitad inferior",
+	world.isSolidAt(0, 10.2, 0) === true && world.isSolidAt(0, 10.7, 0) === false
+);
+// ESCALERA: escalón inferior sólido, el superior se pisa.
+world.setBlock(0, 10, 0, B.OAK_STAIRS);
+check(
+	"escalera sólida en el escalón inferior",
+	world.isSolidAt(0, 10.2, 0) === true && world.isSolidAt(0, 10.7, 0) === false
+);
+// VALLA: celda completa (no se atraviesa).
+world.setBlock(0, 10, 0, B.OAK_FENCE);
+check(
+	"valla sólida en toda la celda",
+	world.isSolidAt(0, 10.2, 0) === true && world.isSolidAt(0, 10.7, 0) === true
+);
+world.setBlock(0, 10, 0, B.AIR);
 
 // ============================================================
 // L4 — CUBO (receta, recoger, verter y fuente infinita 2×2)
@@ -288,7 +288,9 @@ const connect = (name) => {
 	// VERTER: cubo lleno sobre aire → se coloca agua y vuelve el cubo vacío.
 	world.getBlock = () => B.AIR;
 	// Seleccionar el slot del cubo lleno.
-	const wbSlot = player.inventory.findIndex((s) => s && s.id === I.WATER_BUCKET);
+	const wbSlot = player.inventory.findIndex(
+		(s) => s && s.id === I.WATER_BUCKET
+	);
 	player.selectedSlot = wbSlot;
 	ws.emit(
 		"message",
@@ -302,7 +304,9 @@ const connect = (name) => {
 	// FUENTE INFINITA 2×2: con ≥2 fuentes adyacentes la celda NO se recoge.
 	// (tras el vertido el jugador tiene 1 BUCKET; se añade otro → 2).
 	playerHelpers.addToInventory(player, I.BUCKET, 1);
-	player.selectedSlot = player.inventory.findIndex((s) => s && s.id === I.BUCKET);
+	player.selectedSlot = player.inventory.findIndex(
+		(s) => s && s.id === I.BUCKET
+	);
 	world.getBlock = (x, y, z) =>
 		x === ax + 2 && y === ay && z === az ? B.WATER : B.AIR;
 	world.countWaterNeighbors = () => 2; // patrón 2×2 con 3 fuentes
@@ -320,29 +324,20 @@ const connect = (name) => {
 	state.players.clear();
 	state.mobs = [];
 }
-
-// ============================================================
-// L5 — RECETAS NUEVAS (oro 232-235 y compás 254; la malla no lleva receta)
-// ============================================================
-{
-	check(
-		"armadura de oro (232-235) con receta",
-		recetas.golden_helmet?.result?.id === I.GOLD_HELMET &&
-			recetas.golden_chestplate?.result?.id === I.GOLD_CHESTPLATE &&
-			recetas.golden_leggings?.result?.id === I.GOLD_LEGGINGS &&
-			recetas.golden_boots?.result?.id === I.GOLD_BOOTS
-	);
-	check(
-		"compás (254) con receta",
-		recetas.compass?.result?.id === I.COMPASS
-	);
-	// Invariante documentada (constants.js): la malla (236-239) NO tiene
-	// receta de crafteo, igual que en Minecraft — llega solo por drops.
-	check(
-		"la malla (236-239) no tiene receta (decisión MC documentada)",
-		!Object.keys(recetas).some((k) => k.includes("chain"))
-	);
-}
+check(
+	"armadura de oro (232-235) con receta",
+	recetas.golden_helmet?.result?.id === I.GOLD_HELMET &&
+		recetas.golden_chestplate?.result?.id === I.GOLD_CHESTPLATE &&
+		recetas.golden_leggings?.result?.id === I.GOLD_LEGGINGS &&
+		recetas.golden_boots?.result?.id === I.GOLD_BOOTS
+);
+check("compás (254) con receta", recetas.compass?.result?.id === I.COMPASS);
+// Invariante documentada (constants.js): la malla (236-239) NO tiene
+// receta de crafteo, igual que en Minecraft — llega solo por drops.
+check(
+	"la malla (236-239) no tiene receta (decisión MC documentada)",
+	!Object.keys(recetas).some((k) => k.includes("chain"))
+);
 
 // ============================================================
 // RESUMEN

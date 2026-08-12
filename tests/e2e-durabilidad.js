@@ -304,7 +304,9 @@ ws.on("message", (d) => {
 		// como bootstrap sin tener los materiales; ahora los pide con /give y
 		// replica el flujo legítimo del cliente (grid_set + craft).
 		ws.send(JSON.stringify({ event: "chat", data: { message: "/give 7 3" } }));
-		ws.send(JSON.stringify({ event: "chat", data: { message: "/give 100 2" } }));
+		ws.send(
+			JSON.stringify({ event: "chat", data: { message: "/give 100 2" } })
+		);
 		phase = "give-materiales";
 		return;
 	}

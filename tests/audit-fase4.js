@@ -27,18 +27,26 @@ const state = require(path.join(ROOT, "server", "state.js"));
 // real de la generación (caves/lagos/árboles por coordenadas), no el RNG.
 function lcg(seed) {
 	let s = seed >>> 0;
-	return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+	return () => {
+		s = (s * 1664525 + 1013904223) >>> 0;
+		return s / 4294967296;
+	};
 }
 
 let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_n, ok, _extra) => {
-	if (!ok) { fails++; failedChecks.push(_n); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(_n);
+	}
 };
 
 // --- Culling ---

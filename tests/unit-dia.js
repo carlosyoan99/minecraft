@@ -19,10 +19,7 @@ const { Reporter, loaderESM } = require("./helpers.js");
 		"dayFactor: mediodía (fase 0.25) = 1",
 		Math.abs(dm.dayFactor(0.25) - 1) < 1e-6
 	);
-	r.check(
-		"dayFactor: medianoche (fase 0.75) = 0",
-		dm.dayFactor(0.75) === 0
-	);
+	r.check("dayFactor: medianoche (fase 0.75) = 0", dm.dayFactor(0.75) === 0);
 	r.check(
 		"dayFactor: amanecer/atardecer (fase 0/0.5) ≈ 0",
 		dm.dayFactor(0) === 0 && Math.abs(dm.dayFactor(0.5)) < 1e-9
@@ -60,14 +57,8 @@ const { Reporter, loaderESM } = require("./helpers.js");
 		peakV > 0.3,
 		`v=${peakV.toFixed(3)}`
 	);
-	r.check(
-		"duskFactor: 0 al mediodía (dayFactor 1)",
-		dm.duskFactor(1) === 0
-	);
-	r.check(
-		"duskFactor: 0 en la noche (dayFactor 0)",
-		dm.duskFactor(0) === 0
-	);
+	r.check("duskFactor: 0 al mediodía (dayFactor 1)", dm.duskFactor(1) === 0);
+	r.check("duskFactor: 0 en la noche (dayFactor 0)", dm.duskFactor(0) === 0);
 	r.check(
 		"duskFactor: rango [0,1] y no negativo",
 		[0, 0.1, 0.2, 0.35, 0.5, 0.8, 1].every(
@@ -86,9 +77,8 @@ const { Reporter, loaderESM } = require("./helpers.js");
 	);
 	r.check(
 		"niebla: el atardecer espesa (far +40 con dusk)",
-		Math.abs(
-			dm.fogDistances(0, 1).far - (dm.fogDistances(0, 0).far + 40)
-		) < 1e-9
+		Math.abs(dm.fogDistances(0, 1).far - (dm.fogDistances(0, 0).far + 40)) <
+			1e-9
 	);
 	r.check(
 		"niebla: valores de noche = 30/70 (documentados)",
@@ -100,10 +90,7 @@ const { Reporter, loaderESM } = require("./helpers.js");
 	);
 
 	// --- cloudTint: blanco de día, gris azulado de noche ---
-	r.check(
-		"cloudTint: día (d=1) = 1.0",
-		Math.abs(dm.cloudTint(1) - 1.0) < 1e-9
-	);
+	r.check("cloudTint: día (d=1) = 1.0", Math.abs(dm.cloudTint(1) - 1.0) < 1e-9);
 	r.check(
 		"cloudTint: noche (d=0) = 0.35",
 		Math.abs(dm.cloudTint(0) - 0.35) < 1e-9
@@ -121,10 +108,13 @@ const { Reporter, loaderESM } = require("./helpers.js");
 	);
 
 	// --- Determinismo: misma entrada → mismo resultado ---
+	const d1 = dm.dayFactor(0.333),
+		d2 = dm.dayFactor(0.333);
+	const u1 = dm.duskFactor(0.35),
+		u2 = dm.duskFactor(0.35);
 	r.check(
 		"daymath es determinista (misma entrada → mismo resultado)",
-		dm.dayFactor(0.333) === dm.dayFactor(0.333) &&
-			dm.duskFactor(0.35) === dm.duskFactor(0.35)
+		d1 === d2 && u1 === u2
 	);
 
 	r.done();
@@ -133,4 +123,3 @@ const { Reporter, loaderESM } = require("./helpers.js");
 	console.error("unit-dia:", e.message);
 	process.exit(1);
 });
-

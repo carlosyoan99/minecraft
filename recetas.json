@@ -1,1018 +1,769 @@
 {
-  "planks": {
-    "shape": [
-      "#"
-    ],
-    "ingredients": {
-      "#": 4
-    },
-    "result": {
-      "id": 7,
-      "count": 4
-    }
-  },
-  "stick": {
-    "shape": [
-      "#",
-      "#"
-    ],
-    "ingredients": {
-      "#": 7
-    },
-    "result": {
-      "id": 100,
-      "count": 4
-    }
-  },
-  "crafting_table": {
-    "shape": [
-      "##",
-      "##"
-    ],
-    "ingredients": {
-      "#": 7
-    },
-    "result": {
-      "id": 15,
-      "count": 1
-    }
-  },
-  "furnace": {
-    "shape": [
-      "###",
-      "# #",
-      "###"
-    ],
-    "ingredients": {
-      "#": 8
-    },
-    "result": {
-      "id": 16,
-      "count": 1
-    }
-  },
-  "wooden_pickaxe": {
-    "shape": [
-      "###",
-      " I ",
-      " I "
-    ],
-    "ingredients": {
-      "#": 7,
-      "I": 100
-    },
-    "result": {
-      "id": 200,
-      "count": 1
-    }
-  },
-  "stone_pickaxe": {
-    "shape": [
-      "###",
-      " I ",
-      " I "
-    ],
-    "ingredients": {
-      "#": 8,
-      "I": 100
-    },
-    "result": {
-      "id": 201,
-      "count": 1
-    }
-  },
-  "iron_pickaxe": {
-    "shape": [
-      "###",
-      " I ",
-      " I "
-    ],
-    "ingredients": {
-      "#": 102,
-      "I": 100
-    },
-    "result": {
-      "id": 202,
-      "count": 1
-    }
-  },
-  "golden_pickaxe": {
-    "shape": [
-      "###",
-      " I ",
-      " I "
-    ],
-    "ingredients": {
-      "#": 103,
-      "I": 100
-    },
-    "result": {
-      "id": 203,
-      "count": 1
-    }
-  },
-  "diamond_pickaxe": {
-    "shape": [
-      "###",
-      " I ",
-      " I "
-    ],
-    "ingredients": {
-      "#": 104,
-      "I": 100
-    },
-    "result": {
-      "id": 204,
-      "count": 1
-    }
-  },
-  "wooden_axe": {
-    "shape": [
-      "##",
-      "#I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 7,
-      "I": 100
-    },
-    "result": {
-      "id": 205,
-      "count": 1
-    }
-  },
-  "stone_axe": {
-    "shape": [
-      "##",
-      "#I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 8,
-      "I": 100
-    },
-    "result": {
-      "id": 206,
-      "count": 1
-    }
-  },
-  "iron_axe": {
-    "shape": [
-      "##",
-      "#I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 102,
-      "I": 100
-    },
-    "result": {
-      "id": 207,
-      "count": 1
-    }
-  },
-  "golden_axe": {
-    "shape": [
-      "##",
-      "#I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 103,
-      "I": 100
-    },
-    "result": {
-      "id": 208,
-      "count": 1
-    }
-  },
-  "diamond_axe": {
-    "shape": [
-      "##",
-      "#I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 104,
-      "I": 100
-    },
-    "result": {
-      "id": 209,
-      "count": 1
-    }
-  },
-  "wooden_shovel": {
-    "shape": [
-      "#",
-      "I",
-      "I"
-    ],
-    "ingredients": {
-      "#": 7,
-      "I": 100
-    },
-    "result": {
-      "id": 210,
-      "count": 1
-    }
-  },
-  "stone_shovel": {
-    "shape": [
-      "#",
-      "I",
-      "I"
-    ],
-    "ingredients": {
-      "#": 8,
-      "I": 100
-    },
-    "result": {
-      "id": 211,
-      "count": 1
-    }
-  },
-  "iron_shovel": {
-    "shape": [
-      "#",
-      "I",
-      "I"
-    ],
-    "ingredients": {
-      "#": 102,
-      "I": 100
-    },
-    "result": {
-      "id": 212,
-      "count": 1
-    }
-  },
-  "golden_shovel": {
-    "shape": [
-      "#",
-      "I",
-      "I"
-    ],
-    "ingredients": {
-      "#": 103,
-      "I": 100
-    },
-    "result": {
-      "id": 213,
-      "count": 1
-    }
-  },
-  "diamond_shovel": {
-    "shape": [
-      "#",
-      "I",
-      "I"
-    ],
-    "ingredients": {
-      "#": 104,
-      "I": 100
-    },
-    "result": {
-      "id": 214,
-      "count": 1
-    }
-  },
-  "wooden_sword": {
-    "shape": [
-      "#",
-      "#",
-      "I"
-    ],
-    "ingredients": {
-      "#": 7,
-      "I": 100
-    },
-    "result": {
-      "id": 215,
-      "count": 1
-    }
-  },
-  "stone_sword": {
-    "shape": [
-      "#",
-      "#",
-      "I"
-    ],
-    "ingredients": {
-      "#": 8,
-      "I": 100
-    },
-    "result": {
-      "id": 216,
-      "count": 1
-    }
-  },
-  "iron_sword": {
-    "shape": [
-      "#",
-      "#",
-      "I"
-    ],
-    "ingredients": {
-      "#": 102,
-      "I": 100
-    },
-    "result": {
-      "id": 217,
-      "count": 1
-    }
-  },
-  "golden_sword": {
-    "shape": [
-      "#",
-      "#",
-      "I"
-    ],
-    "ingredients": {
-      "#": 103,
-      "I": 100
-    },
-    "result": {
-      "id": 218,
-      "count": 1
-    }
-  },
-  "diamond_sword": {
-    "shape": [
-      "#",
-      "#",
-      "I"
-    ],
-    "ingredients": {
-      "#": 104,
-      "I": 100
-    },
-    "result": {
-      "id": 219,
-      "count": 1
-    }
-  },
-  "glass": {
-    "shape": [
-      "#"
-    ],
-    "ingredients": {
-      "#": 6
-    },
-    "result": {
-      "id": 17,
-      "count": 1
-    }
-  },
-  "planks_birch": {
-    "shape": [
-      "#"
-    ],
-    "ingredients": {
-      "#": 28
-    },
-    "result": {
-      "id": 7,
-      "count": 4
-    }
-  },
-  "planks_spruce": {
-    "shape": [
-      "#"
-    ],
-    "ingredients": {
-      "#": 30
-    },
-    "result": {
-      "id": 7,
-      "count": 4
-    }
-  },
-  "wooden_hoe": {
-    "shape": [
-      "##",
-      " I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 7,
-      "I": 100
-    },
-    "result": {
-      "id": 240,
-      "count": 1
-    }
-  },
-  "stone_hoe": {
-    "shape": [
-      "##",
-      " I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 8,
-      "I": 100
-    },
-    "result": {
-      "id": 241,
-      "count": 1
-    }
-  },
-  "iron_hoe": {
-    "shape": [
-      "##",
-      " I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 102,
-      "I": 100
-    },
-    "result": {
-      "id": 242,
-      "count": 1
-    }
-  },
-  "golden_hoe": {
-    "shape": [
-      "##",
-      " I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 103,
-      "I": 100
-    },
-    "result": {
-      "id": 243,
-      "count": 1
-    }
-  },
-  "diamond_hoe": {
-    "shape": [
-      "##",
-      " I",
-      " I"
-    ],
-    "ingredients": {
-      "#": 104,
-      "I": 100
-    },
-    "result": {
-      "id": 244,
-      "count": 1
-    }
-  },
-  "bread": {
-    "shape": [
-      "###"
-    ],
-    "ingredients": {
-      "#": 115
-    },
-    "result": {
-      "id": 133,
-      "count": 1
-    }
-  },
-  "bone_meal": {
-    "shape": [
-      "#"
-    ],
-    "ingredients": {
-      "#": 136
-    },
-    "result": {
-      "id": 139,
-      "count": 3
-    }
-  },
-  "red_dye": {
-    "shape": [
-      "#"
-    ],
-    "ingredients": {
-      "#": 34
-    },
-    "result": {
-      "id": 137,
-      "count": 1
-    }
-  },
-  "yellow_dye": {
-    "shape": [
-      "#"
-    ],
-    "ingredients": {
-      "#": 35
-    },
-    "result": {
-      "id": 138,
-      "count": 1
-    }
-  },
-  "red_wool": {
-    "shape": [
-      "#X"
-    ],
-    "ingredients": {
-      "#": 18,
-      "X": 137
-    },
-    "result": {
-      "id": 36,
-      "count": 1
-    }
-  },
-  "yellow_wool": {
-    "shape": [
-      "#X"
-    ],
-    "ingredients": {
-      "#": 18,
-      "X": 138
-    },
-    "result": {
-      "id": 37,
-      "count": 1
-    }
-  },
-  "white_wool": {
-    "shape": [
-      "#X"
-    ],
-    "ingredients": {
-      "#": 18,
-      "X": 139
-    },
-    "result": {
-      "id": 38,
-      "count": 1
-    }
-  },
-  "hilo_a_lana": {
-    "shape": [
-      "##",
-      "##"
-    ],
-    "ingredients": {
-      "#": 120
-    },
-    "result": {
-      "id": 18,
-      "count": 1
-    }
-  },
-  "chest": {
-    "shape": [
-      "###",
-      "# #",
-      "###"
-    ],
-    "ingredients": {
-      "#": 7
-    },
-    "result": {
-      "id": 22,
-      "count": 1
-    }
-  },
-  "torch": {
-    "shape": [
-      "#",
-      "I"
-    ],
-    "ingredients": {
-      "#": 101,
-      "I": 100
-    },
-    "result": {
-      "id": 23,
-      "count": 4
-    }
-  },
-  "bed": {
-    "shape": [
-      "###",
-      "XXX"
-    ],
-    "ingredients": {
-      "#": 18,
-      "X": 7
-    },
-    "result": {
-      "id": 24,
-      "count": 1
-    }
-  },
-  "leather_helmet": {
-    "shape": [
-      "###",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 132
-    },
-    "result": {
-      "id": 220,
-      "count": 1
-    }
-  },
-  "leather_chestplate": {
-    "shape": [
-      "# #",
-      "###",
-      "###"
-    ],
-    "ingredients": {
-      "#": 132
-    },
-    "result": {
-      "id": 221,
-      "count": 1
-    }
-  },
-  "leather_leggings": {
-    "shape": [
-      "###",
-      "# #",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 132
-    },
-    "result": {
-      "id": 222,
-      "count": 1
-    }
-  },
-  "leather_boots": {
-    "shape": [
-      "# #",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 132
-    },
-    "result": {
-      "id": 223,
-      "count": 1
-    }
-  },
-  "iron_helmet": {
-    "shape": [
-      "###",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 102
-    },
-    "result": {
-      "id": 224,
-      "count": 1
-    }
-  },
-  "iron_chestplate": {
-    "shape": [
-      "# #",
-      "###",
-      "###"
-    ],
-    "ingredients": {
-      "#": 102
-    },
-    "result": {
-      "id": 225,
-      "count": 1
-    }
-  },
-  "iron_leggings": {
-    "shape": [
-      "###",
-      "# #",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 102
-    },
-    "result": {
-      "id": 226,
-      "count": 1
-    }
-  },
-  "iron_boots": {
-    "shape": [
-      "# #",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 102
-    },
-    "result": {
-      "id": 227,
-      "count": 1
-    }
-  },
-  "diamond_helmet": {
-    "shape": [
-      "###",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 104
-    },
-    "result": {
-      "id": 228,
-      "count": 1
-    }
-  },
-  "diamond_chestplate": {
-    "shape": [
-      "# #",
-      "###",
-      "###"
-    ],
-    "ingredients": {
-      "#": 104
-    },
-    "result": {
-      "id": 229,
-      "count": 1
-    }
-  },
-  "diamond_leggings": {
-    "shape": [
-      "###",
-      "# #",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 104
-    },
-    "result": {
-      "id": 230,
-      "count": 1
-    }
-  },
-  "diamond_boots": {
-    "shape": [
-      "# #",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 104
-    },
-    "result": {
-      "id": 231,
-      "count": 1
-    }
-  },
-  "shears": {
-    "shape": [
-      " #",
-      "# "
-    ],
-    "ingredients": {
-      "#": 102
-    },
-    "result": {
-      "id": 141,
-      "count": 1
-    }
-  },
-  "bow": {
-    "shape": [
-      " #I",
-      "# I",
-      " #I"
-    ],
-    "ingredients": {
-      "#": 100,
-      "I": 120
-    },
-    "result": {
-      "id": 247,
-      "count": 1
-    }
-  },
-  "arrow": {
-    "shape": [
-      "#",
-      "I",
-      "F"
-    ],
-    "ingredients": {
-      "#": 252,
-      "I": 100,
-      "F": 253
-    },
-    "result": {
-      "id": 248,
-      "count": 4
-    }
-  },
-  "oak_door": {
-    "shape": [
-      "##",
-      "##",
-      "##"
-    ],
-    "ingredients": {
-      "#": 7
-    },
-    "result": {
-      "id": 48,
-      "count": 3
-    }
-  },
-  "iron_door": {
-    "shape": [
-      "##",
-      "##",
-      "##"
-    ],
-    "ingredients": {
-      "#": 102
-    },
-    "result": {
-      "id": 49,
-      "count": 3
-    }
-  },
-  "tnt": {
-    "shape": [
-      "SGS",
-      "GSG",
-      "SGS"
-    ],
-    "ingredients": {
-      "S": 6,
-      "G": 256
-    },
-    "result": {
-      "id": 40,
-      "count": 1
-    }
-  },
-  "oak_stairs": {
-    "shape": [
-      "#  ",
-      "## ",
-      "###"
-    ],
-    "ingredients": {
-      "#": 7
-    },
-    "result": {
-      "id": 50,
-      "count": 4
-    }
-  },
-  "stone_stairs": {
-    "shape": [
-      "#  ",
-      "## ",
-      "###"
-    ],
-    "ingredients": {
-      "#": 8
-    },
-    "result": {
-      "id": 51,
-      "count": 4
-    }
-  },
-  "oak_slab": {
-    "shape": [
-      "###"
-    ],
-    "ingredients": {
-      "#": 7
-    },
-    "result": {
-      "id": 60,
-      "count": 6
-    }
-  },
-  "stone_slab": {
-    "shape": [
-      "###"
-    ],
-    "ingredients": {
-      "#": 8
-    },
-    "result": {
-      "id": 61,
-      "count": 6
-    }
-  },
-  "oak_fence": {
-    "shape": [
-      "#I#",
-      "#I#"
-    ],
-    "ingredients": {
-      "#": 7,
-      "I": 100
-    },
-    "result": {
-      "id": 70,
-      "count": 3
-    }
-  },
-  "oak_fence_gate": {
-    "shape": [
-      "I#I",
-      "I#I"
-    ],
-    "ingredients": {
-      "#": 7,
-      "I": 100
-    },
-    "result": {
-      "id": 71,
-      "count": 1
-    }
-  },
-  "bucket": {
-    "shape": [
-      "# #",
-      " # "
-    ],
-    "ingredients": {
-      "#": 102
-    },
-    "result": {
-      "id": 249,
-      "count": 1
-    }
-  },
-  "golden_helmet": {
-    "shape": [
-      "###",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 103
-    },
-    "result": {
-      "id": 232,
-      "count": 1
-    }
-  },
-  "golden_chestplate": {
-    "shape": [
-      "# #",
-      "###",
-      "###"
-    ],
-    "ingredients": {
-      "#": 103
-    },
-    "result": {
-      "id": 233,
-      "count": 1
-    }
-  },
-  "golden_leggings": {
-    "shape": [
-      "###",
-      "# #",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 103
-    },
-    "result": {
-      "id": 234,
-      "count": 1
-    }
-  },
-  "golden_boots": {
-    "shape": [
-      "# #",
-      "# #"
-    ],
-    "ingredients": {
-      "#": 103
-    },
-    "result": {
-      "id": 235,
-      "count": 1
-    }
-  },
-  "compass": {
-    "shape": [
-      " # ",
-      "#R#",
-      " # "
-    ],
-    "ingredients": {
-      "#": 102,
-      "R": 105
-    },
-    "result": {
-      "id": 254,
-      "count": 1
-    }
-  }
+	"planks": {
+		"shape": ["#"],
+		"ingredients": {
+			"#": 4
+		},
+		"result": {
+			"id": 7,
+			"count": 4
+		}
+	},
+	"stick": {
+		"shape": ["#", "#"],
+		"ingredients": {
+			"#": 7
+		},
+		"result": {
+			"id": 100,
+			"count": 4
+		}
+	},
+	"crafting_table": {
+		"shape": ["##", "##"],
+		"ingredients": {
+			"#": 7
+		},
+		"result": {
+			"id": 15,
+			"count": 1
+		}
+	},
+	"furnace": {
+		"shape": ["###", "# #", "###"],
+		"ingredients": {
+			"#": 8
+		},
+		"result": {
+			"id": 16,
+			"count": 1
+		}
+	},
+	"wooden_pickaxe": {
+		"shape": ["###", " I ", " I "],
+		"ingredients": {
+			"#": 7,
+			"I": 100
+		},
+		"result": {
+			"id": 200,
+			"count": 1
+		}
+	},
+	"stone_pickaxe": {
+		"shape": ["###", " I ", " I "],
+		"ingredients": {
+			"#": 8,
+			"I": 100
+		},
+		"result": {
+			"id": 201,
+			"count": 1
+		}
+	},
+	"iron_pickaxe": {
+		"shape": ["###", " I ", " I "],
+		"ingredients": {
+			"#": 102,
+			"I": 100
+		},
+		"result": {
+			"id": 202,
+			"count": 1
+		}
+	},
+	"golden_pickaxe": {
+		"shape": ["###", " I ", " I "],
+		"ingredients": {
+			"#": 103,
+			"I": 100
+		},
+		"result": {
+			"id": 203,
+			"count": 1
+		}
+	},
+	"diamond_pickaxe": {
+		"shape": ["###", " I ", " I "],
+		"ingredients": {
+			"#": 104,
+			"I": 100
+		},
+		"result": {
+			"id": 204,
+			"count": 1
+		}
+	},
+	"wooden_axe": {
+		"shape": ["##", "#I", " I"],
+		"ingredients": {
+			"#": 7,
+			"I": 100
+		},
+		"result": {
+			"id": 205,
+			"count": 1
+		}
+	},
+	"stone_axe": {
+		"shape": ["##", "#I", " I"],
+		"ingredients": {
+			"#": 8,
+			"I": 100
+		},
+		"result": {
+			"id": 206,
+			"count": 1
+		}
+	},
+	"iron_axe": {
+		"shape": ["##", "#I", " I"],
+		"ingredients": {
+			"#": 102,
+			"I": 100
+		},
+		"result": {
+			"id": 207,
+			"count": 1
+		}
+	},
+	"golden_axe": {
+		"shape": ["##", "#I", " I"],
+		"ingredients": {
+			"#": 103,
+			"I": 100
+		},
+		"result": {
+			"id": 208,
+			"count": 1
+		}
+	},
+	"diamond_axe": {
+		"shape": ["##", "#I", " I"],
+		"ingredients": {
+			"#": 104,
+			"I": 100
+		},
+		"result": {
+			"id": 209,
+			"count": 1
+		}
+	},
+	"wooden_shovel": {
+		"shape": ["#", "I", "I"],
+		"ingredients": {
+			"#": 7,
+			"I": 100
+		},
+		"result": {
+			"id": 210,
+			"count": 1
+		}
+	},
+	"stone_shovel": {
+		"shape": ["#", "I", "I"],
+		"ingredients": {
+			"#": 8,
+			"I": 100
+		},
+		"result": {
+			"id": 211,
+			"count": 1
+		}
+	},
+	"iron_shovel": {
+		"shape": ["#", "I", "I"],
+		"ingredients": {
+			"#": 102,
+			"I": 100
+		},
+		"result": {
+			"id": 212,
+			"count": 1
+		}
+	},
+	"golden_shovel": {
+		"shape": ["#", "I", "I"],
+		"ingredients": {
+			"#": 103,
+			"I": 100
+		},
+		"result": {
+			"id": 213,
+			"count": 1
+		}
+	},
+	"diamond_shovel": {
+		"shape": ["#", "I", "I"],
+		"ingredients": {
+			"#": 104,
+			"I": 100
+		},
+		"result": {
+			"id": 214,
+			"count": 1
+		}
+	},
+	"wooden_sword": {
+		"shape": ["#", "#", "I"],
+		"ingredients": {
+			"#": 7,
+			"I": 100
+		},
+		"result": {
+			"id": 215,
+			"count": 1
+		}
+	},
+	"stone_sword": {
+		"shape": ["#", "#", "I"],
+		"ingredients": {
+			"#": 8,
+			"I": 100
+		},
+		"result": {
+			"id": 216,
+			"count": 1
+		}
+	},
+	"iron_sword": {
+		"shape": ["#", "#", "I"],
+		"ingredients": {
+			"#": 102,
+			"I": 100
+		},
+		"result": {
+			"id": 217,
+			"count": 1
+		}
+	},
+	"golden_sword": {
+		"shape": ["#", "#", "I"],
+		"ingredients": {
+			"#": 103,
+			"I": 100
+		},
+		"result": {
+			"id": 218,
+			"count": 1
+		}
+	},
+	"diamond_sword": {
+		"shape": ["#", "#", "I"],
+		"ingredients": {
+			"#": 104,
+			"I": 100
+		},
+		"result": {
+			"id": 219,
+			"count": 1
+		}
+	},
+	"glass": {
+		"shape": ["#"],
+		"ingredients": {
+			"#": 6
+		},
+		"result": {
+			"id": 17,
+			"count": 1
+		}
+	},
+	"planks_birch": {
+		"shape": ["#"],
+		"ingredients": {
+			"#": 28
+		},
+		"result": {
+			"id": 7,
+			"count": 4
+		}
+	},
+	"planks_spruce": {
+		"shape": ["#"],
+		"ingredients": {
+			"#": 30
+		},
+		"result": {
+			"id": 7,
+			"count": 4
+		}
+	},
+	"wooden_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": {
+			"#": 7,
+			"I": 100
+		},
+		"result": {
+			"id": 240,
+			"count": 1
+		}
+	},
+	"stone_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": {
+			"#": 8,
+			"I": 100
+		},
+		"result": {
+			"id": 241,
+			"count": 1
+		}
+	},
+	"iron_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": {
+			"#": 102,
+			"I": 100
+		},
+		"result": {
+			"id": 242,
+			"count": 1
+		}
+	},
+	"golden_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": {
+			"#": 103,
+			"I": 100
+		},
+		"result": {
+			"id": 243,
+			"count": 1
+		}
+	},
+	"diamond_hoe": {
+		"shape": ["##", " I", " I"],
+		"ingredients": {
+			"#": 104,
+			"I": 100
+		},
+		"result": {
+			"id": 244,
+			"count": 1
+		}
+	},
+	"bread": {
+		"shape": ["###"],
+		"ingredients": {
+			"#": 115
+		},
+		"result": {
+			"id": 133,
+			"count": 1
+		}
+	},
+	"bone_meal": {
+		"shape": ["#"],
+		"ingredients": {
+			"#": 136
+		},
+		"result": {
+			"id": 139,
+			"count": 3
+		}
+	},
+	"red_dye": {
+		"shape": ["#"],
+		"ingredients": {
+			"#": 34
+		},
+		"result": {
+			"id": 137,
+			"count": 1
+		}
+	},
+	"yellow_dye": {
+		"shape": ["#"],
+		"ingredients": {
+			"#": 35
+		},
+		"result": {
+			"id": 138,
+			"count": 1
+		}
+	},
+	"red_wool": {
+		"shape": ["#X"],
+		"ingredients": {
+			"#": 18,
+			"X": 137
+		},
+		"result": {
+			"id": 36,
+			"count": 1
+		}
+	},
+	"yellow_wool": {
+		"shape": ["#X"],
+		"ingredients": {
+			"#": 18,
+			"X": 138
+		},
+		"result": {
+			"id": 37,
+			"count": 1
+		}
+	},
+	"white_wool": {
+		"shape": ["#X"],
+		"ingredients": {
+			"#": 18,
+			"X": 139
+		},
+		"result": {
+			"id": 38,
+			"count": 1
+		}
+	},
+	"hilo_a_lana": {
+		"shape": ["##", "##"],
+		"ingredients": {
+			"#": 120
+		},
+		"result": {
+			"id": 18,
+			"count": 1
+		}
+	},
+	"chest": {
+		"shape": ["###", "# #", "###"],
+		"ingredients": {
+			"#": 7
+		},
+		"result": {
+			"id": 22,
+			"count": 1
+		}
+	},
+	"torch": {
+		"shape": ["#", "I"],
+		"ingredients": {
+			"#": 101,
+			"I": 100
+		},
+		"result": {
+			"id": 23,
+			"count": 4
+		}
+	},
+	"bed": {
+		"shape": ["###", "XXX"],
+		"ingredients": {
+			"#": 18,
+			"X": 7
+		},
+		"result": {
+			"id": 24,
+			"count": 1
+		}
+	},
+	"leather_helmet": {
+		"shape": ["###", "# #"],
+		"ingredients": {
+			"#": 132
+		},
+		"result": {
+			"id": 220,
+			"count": 1
+		}
+	},
+	"leather_chestplate": {
+		"shape": ["# #", "###", "###"],
+		"ingredients": {
+			"#": 132
+		},
+		"result": {
+			"id": 221,
+			"count": 1
+		}
+	},
+	"leather_leggings": {
+		"shape": ["###", "# #", "# #"],
+		"ingredients": {
+			"#": 132
+		},
+		"result": {
+			"id": 222,
+			"count": 1
+		}
+	},
+	"leather_boots": {
+		"shape": ["# #", "# #"],
+		"ingredients": {
+			"#": 132
+		},
+		"result": {
+			"id": 223,
+			"count": 1
+		}
+	},
+	"iron_helmet": {
+		"shape": ["###", "# #"],
+		"ingredients": {
+			"#": 102
+		},
+		"result": {
+			"id": 224,
+			"count": 1
+		}
+	},
+	"iron_chestplate": {
+		"shape": ["# #", "###", "###"],
+		"ingredients": {
+			"#": 102
+		},
+		"result": {
+			"id": 225,
+			"count": 1
+		}
+	},
+	"iron_leggings": {
+		"shape": ["###", "# #", "# #"],
+		"ingredients": {
+			"#": 102
+		},
+		"result": {
+			"id": 226,
+			"count": 1
+		}
+	},
+	"iron_boots": {
+		"shape": ["# #", "# #"],
+		"ingredients": {
+			"#": 102
+		},
+		"result": {
+			"id": 227,
+			"count": 1
+		}
+	},
+	"diamond_helmet": {
+		"shape": ["###", "# #"],
+		"ingredients": {
+			"#": 104
+		},
+		"result": {
+			"id": 228,
+			"count": 1
+		}
+	},
+	"diamond_chestplate": {
+		"shape": ["# #", "###", "###"],
+		"ingredients": {
+			"#": 104
+		},
+		"result": {
+			"id": 229,
+			"count": 1
+		}
+	},
+	"diamond_leggings": {
+		"shape": ["###", "# #", "# #"],
+		"ingredients": {
+			"#": 104
+		},
+		"result": {
+			"id": 230,
+			"count": 1
+		}
+	},
+	"diamond_boots": {
+		"shape": ["# #", "# #"],
+		"ingredients": {
+			"#": 104
+		},
+		"result": {
+			"id": 231,
+			"count": 1
+		}
+	},
+	"shears": {
+		"shape": [" #", "# "],
+		"ingredients": {
+			"#": 102
+		},
+		"result": {
+			"id": 141,
+			"count": 1
+		}
+	},
+	"bow": {
+		"shape": [" #I", "# I", " #I"],
+		"ingredients": {
+			"#": 100,
+			"I": 120
+		},
+		"result": {
+			"id": 247,
+			"count": 1
+		}
+	},
+	"arrow": {
+		"shape": ["#", "I", "F"],
+		"ingredients": {
+			"#": 252,
+			"I": 100,
+			"F": 253
+		},
+		"result": {
+			"id": 248,
+			"count": 4
+		}
+	},
+	"oak_door": {
+		"shape": ["##", "##", "##"],
+		"ingredients": {
+			"#": 7
+		},
+		"result": {
+			"id": 48,
+			"count": 3
+		}
+	},
+	"iron_door": {
+		"shape": ["##", "##", "##"],
+		"ingredients": {
+			"#": 102
+		},
+		"result": {
+			"id": 49,
+			"count": 3
+		}
+	},
+	"tnt": {
+		"shape": ["SGS", "GSG", "SGS"],
+		"ingredients": {
+			"S": 6,
+			"G": 256
+		},
+		"result": {
+			"id": 40,
+			"count": 1
+		}
+	},
+	"oak_stairs": {
+		"shape": ["#  ", "## ", "###"],
+		"ingredients": {
+			"#": 7
+		},
+		"result": {
+			"id": 50,
+			"count": 4
+		}
+	},
+	"stone_stairs": {
+		"shape": ["#  ", "## ", "###"],
+		"ingredients": {
+			"#": 8
+		},
+		"result": {
+			"id": 51,
+			"count": 4
+		}
+	},
+	"oak_slab": {
+		"shape": ["###"],
+		"ingredients": {
+			"#": 7
+		},
+		"result": {
+			"id": 60,
+			"count": 6
+		}
+	},
+	"stone_slab": {
+		"shape": ["###"],
+		"ingredients": {
+			"#": 8
+		},
+		"result": {
+			"id": 61,
+			"count": 6
+		}
+	},
+	"oak_fence": {
+		"shape": ["#I#", "#I#"],
+		"ingredients": {
+			"#": 7,
+			"I": 100
+		},
+		"result": {
+			"id": 70,
+			"count": 3
+		}
+	},
+	"oak_fence_gate": {
+		"shape": ["I#I", "I#I"],
+		"ingredients": {
+			"#": 7,
+			"I": 100
+		},
+		"result": {
+			"id": 71,
+			"count": 1
+		}
+	},
+	"bucket": {
+		"shape": ["# #", " # "],
+		"ingredients": {
+			"#": 102
+		},
+		"result": {
+			"id": 249,
+			"count": 1
+		}
+	},
+	"golden_helmet": {
+		"shape": ["###", "# #"],
+		"ingredients": {
+			"#": 103
+		},
+		"result": {
+			"id": 232,
+			"count": 1
+		}
+	},
+	"golden_chestplate": {
+		"shape": ["# #", "###", "###"],
+		"ingredients": {
+			"#": 103
+		},
+		"result": {
+			"id": 233,
+			"count": 1
+		}
+	},
+	"golden_leggings": {
+		"shape": ["###", "# #", "# #"],
+		"ingredients": {
+			"#": 103
+		},
+		"result": {
+			"id": 234,
+			"count": 1
+		}
+	},
+	"golden_boots": {
+		"shape": ["# #", "# #"],
+		"ingredients": {
+			"#": 103
+		},
+		"result": {
+			"id": 235,
+			"count": 1
+		}
+	},
+	"compass": {
+		"shape": [" # ", "#R#", " # "],
+		"ingredients": {
+			"#": 102,
+			"R": 105
+		},
+		"result": {
+			"id": 254,
+			"count": 1
+		}
+	}
 }

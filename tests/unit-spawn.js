@@ -9,15 +9,17 @@ let ok = 0,
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (n, c, x) => {
 	if (c) ok++;
 	else {
 		fail++;
 		failedChecks.push(n);
-		console.log("FAIL: " + n + " " + (x || ""));
+		console.log(`FAIL: ${n} ${x || ""}`);
 	}
 };
 
@@ -31,7 +33,7 @@ check(
 check(
 	"findSpawn(0,0) y = getHeight(columna)+2",
 	s.y === world.getHeight(Math.floor(s.x), Math.floor(s.z)) + 2,
-	"y=" + s.y
+	`y=${s.y}`
 );
 check(
 	"findSpawn(0,0) x/z centrados en la columna (+0.5)",
@@ -53,7 +55,7 @@ for (let dx = -20; dx <= 20; dx++) {
 		check(
 			`findSpawn(${dx},${dz}) y correcto`,
 			p.y === world.getHeight(Math.floor(p.x), Math.floor(p.z)) + 2,
-			"y=" + p.y
+			`y=${p.y}`
 		);
 	}
 }
@@ -85,5 +87,5 @@ check(
 	Math.floor(f.x) === firme.x && Math.floor(f.z) === firme.z
 );
 
-console.log(ok + " OK, " + fail + " FAIL");
+console.log(`${ok} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

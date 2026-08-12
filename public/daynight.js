@@ -7,7 +7,11 @@
 // ============================================================
 import * as THREE from "three";
 import { DAY_CYCLE_MS, MOON_CYCLE_MS } from "./constants.js";
-import { dayFactor as dayFactorOf, duskFactor, fogDistances } from "./daymath.js"; // Fase 16 (G3): matemática pura del ciclo
+import {
+	dayFactor as dayFactorOf,
+	duskFactor,
+	fogDistances
+} from "./daymath.js"; // Fase 16 (G3): matemática pura del ciclo
 import { ambient, scene, sun } from "./scene.js";
 import { updateSky } from "./sky.js"; // Fase 7: dome procedural (degradado + sol/luna)
 

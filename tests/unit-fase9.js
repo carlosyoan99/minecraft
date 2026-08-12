@@ -56,11 +56,16 @@ let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { fails++; failedChecks.push(_name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(_name);
+	}
 };
 
 // --- ws fake: captura mensajes salientes y permite inyectar entrantes ---
@@ -323,12 +328,17 @@ function connect() {
 		);
 		wsNoOp.emit(
 			"message",
-			JSON.stringify({ event: "world_delete", data: { seed: "mundo_creativo" } })
+			JSON.stringify({
+				event: "world_delete",
+				data: { seed: "mundo_creativo" }
+			})
 		);
 		const denied = wsNoOp.events("world_delete_result").at(-1);
 		check(
 			"world_delete de un NO operador → rechazado (solo operadores)",
-			!!denied && denied.data.ok === false && denied.data.reason === "solo operadores",
+			!!denied &&
+				denied.data.ok === false &&
+				denied.data.reason === "solo operadores",
 			JSON.stringify(denied?.data)
 		);
 	}

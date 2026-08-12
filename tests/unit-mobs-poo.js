@@ -16,11 +16,16 @@ let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (name, ok, extra = "") => {
-	if (!ok) { fails++; failedChecks.push(name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(name);
+	}
 	console.log(`${ok ? "🟢" : "🔴"} ${name}${extra ? " — " + extra : ""}`);
 };
 
@@ -56,8 +61,10 @@ for (const [type, cls] of cases) {
 {
 	const cat = mobs.createMob("cat", 0, 10, 0); // "cat" solo existe como type runtime
 	check(
-		"tipo sin registro (\"cat\") cae en Mob base",
-		cat instanceof mobs.Mob && cat.constructor === mobs.Mob && cat.type === "cat"
+		'tipo sin registro ("cat") cae en Mob base',
+		cat instanceof mobs.Mob &&
+			cat.constructor === mobs.Mob &&
+			cat.type === "cat"
 	);
 }
 
@@ -78,7 +85,8 @@ for (const [type, cls] of cases) {
 	const base = mobs.createMob("cow", 0, 10, 0);
 	check(
 		"onDeath base no hace nada (hook vacío)",
-		base.onDeath() === undefined && base.onDeath !== mobs.Slime.prototype.onDeath
+		base.onDeath() === undefined &&
+			base.onDeath !== mobs.Slime.prototype.onDeath
 	);
 	const slime = mobs.createMob("slime", 0, 10, 0);
 	check(
@@ -91,8 +99,11 @@ for (const [type, cls] of cases) {
 {
 	const z = new mobs.Mob("zombie", 0, 10, 0);
 	check(
-		"new Mob(\"zombie\") mantiene API (health, tick)",
-		z.type === "zombie" && z.health === 20 && typeof z.tick === "function" && typeof z.tickSpecies === "function"
+		'new Mob("zombie") mantiene API (health, tick)',
+		z.type === "zombie" &&
+			z.health === 20 &&
+			typeof z.tick === "function" &&
+			typeof z.tickSpecies === "function"
 	);
 	// El switch base sigue despachando (compatibilidad): un zombie con un
 	// jugador hostil cerca entra en chase. El jugador debe estar registrado

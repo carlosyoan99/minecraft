@@ -3,7 +3,11 @@
 // ============================================================
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
-import { QUALITY_DEFAULT, qualityPixelRatio, qualityProfile } from "./quality.js";
+import {
+	QUALITY_DEFAULT,
+	qualityPixelRatio,
+	qualityProfile
+} from "./quality.js";
 
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);

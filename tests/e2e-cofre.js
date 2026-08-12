@@ -177,10 +177,7 @@ ws.on("message", (d) => {
 		// grid_set descuenta de un SOLO slot; si los 8 tablones están repartidos
 		// en varios slots (mundo reutilizado), la grid quedaría incompleta y el
 		// craft nunca dispararía — fallar claro en vez de un timeout mudo.
-		if (
-			planksSlot === -1 ||
-			(m.data.inventory[planksSlot].count || 0) < 8
-		) {
+		if (planksSlot === -1 || (m.data.inventory[planksSlot].count || 0) < 8) {
 			check(
 				"hay 8 tablones en un solo slot para la grid del cofre",
 				false,

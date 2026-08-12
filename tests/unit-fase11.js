@@ -19,14 +19,8 @@ const tnt = require("../server/tnt.js");
 const commands = require("../server/commands.js");
 const players = require("../server/players.js");
 const { ItemStack } = require("../server/items.js");
-const {
-	CHUNK_SIZE,
-	WORLD_MIN_Y,
-	WORLD_MAX_Y,
-	B,
-	I,
-	SCHEMA_VERSION
-} = constants;
+const { CHUNK_SIZE, WORLD_MIN_Y, WORLD_MAX_Y, B, I, SCHEMA_VERSION } =
+	constants;
 
 // Fase 15 (D5): el índice local usa Y de MUNDO (local = mundo − WORLD_MIN_Y);
 // getHeight devuelve Y de mundo y columnFloorY, espacio de diseño.
@@ -38,8 +32,10 @@ let failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
 	if (!ok) {
@@ -151,8 +147,7 @@ for (let cx = -12; cx <= 12; cx++) {
 					if (data[idx(x, surface - 1, z)] !== B.WATER) continue;
 					swampPools++;
 					const below = data[idx(x, surface - 2, z)];
-					const above =
-						surface < WORLD_MAX_Y ? data[idx(x, surface, z)] : -1;
+					const above = surface < WORLD_MAX_Y ? data[idx(x, surface, z)] : -1;
 					if (
 						surface - 1 < world.WORLD_SEA_LEVEL ||
 						below !== B.SAND ||
@@ -449,10 +444,7 @@ for (let cx = -12; cx <= 12; cx++) {
 			`fuses=${tnt.fuses.size}`
 		);
 		tnt.tick(2000); // el segundo explota (sin bucles)
-		check(
-			"cadena: ambas mechas se agotan (sin bucles)",
-			tnt.fuses.size === 0
-		);
+		check("cadena: ambas mechas se agotan (sin bucles)", tnt.fuses.size === 0);
 		check(
 			"cadena: el segundo TNT se consume (cráter)",
 			world.getBlock(cx + 1, cy, cz) === B.AIR

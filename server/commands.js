@@ -226,7 +226,8 @@ function executeCommand(player, raw, ctx) {
 			if (args.length < 3 || args.some((a) => !/^-?\d+(\.\d+)?$/.test(a))) {
 				systemMessage(player, "Uso: /tp <x> <y> <z>");
 				break;
-			}			const tx0 = parseFloat(args[0]),
+			}
+			const tx0 = parseFloat(args[0]),
 				ty0 = parseFloat(args[1]),
 				tz0 = parseFloat(args[2]);
 			// SV-6 (C6): /tp se sujeta a los bordes del mundo (mismo clamp que el
@@ -245,8 +246,7 @@ function executeCommand(player, raw, ctx) {
 			let y = ty;
 			const feet = world.getBlock(fx, Math.floor(y), fz);
 			const head = world.getBlock(fx, Math.floor(y + 1.5), fz);
-			if (feet !== B.AIR || head !== B.AIR || y < WORLD_MIN_Y + 1)
-				y = ground; // sólido/agua/void → superficie
+			if (feet !== B.AIR || head !== B.AIR || y < WORLD_MIN_Y + 1) y = ground; // sólido/agua/void → superficie
 			// En un lago, getHeight no conoce el nivel del agua: subir hasta salir
 			// de ella para que el jugador nunca aparezca nadando (como findSpawn).
 			while (

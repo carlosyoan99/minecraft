@@ -9,11 +9,17 @@ let ok = 0,
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (n, c, x) => {
-	c ? ok++ : (fail++, failedChecks.push(n), console.log("FAIL: " + n + " " + (x || "")));
+	c
+		? ok++
+		: (fail++,
+			failedChecks.push(n),
+			console.log("FAIL: " + n + " " + (x || "")));
 };
 
 // Patch seguro para el tick: suelo siempre sólido, así no dependemos del mundo real

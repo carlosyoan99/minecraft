@@ -25,7 +25,7 @@ let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
+	if (failedChecks?.length)
 		console.log(
 			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
 		);
@@ -1318,7 +1318,11 @@ function connect() {
 {
 	const { ws, player: p } = connect();
 	// Segundo jugador conectado (objeto mínimo: solo cuenta para el size).
-	state.players.set("q", { id: "q", inMenu: true, ws: { readyState: 1, send() {} } });
+	state.players.set("q", {
+		id: "q",
+		inMenu: true,
+		ws: { readyState: 1, send() {} }
+	});
 	p.seedCooldownUntil = 0;
 	ws.sent.length = 0;
 	ws.emit(
@@ -1372,7 +1376,10 @@ function connect() {
 		`watchers=${[...state.openFurnaceWatchers.keys()].join(",")}`
 	);
 	// Cerrar → se quita del índice de watchers.
-	ws.emit("message", JSON.stringify({ event: "furnace_action", data: { action: "close" } }));
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "furnace_action", data: { action: "close" } })
+	);
 	check(
 		"C5: cerrar el horno limpia su índice de watchers",
 		!state.openFurnaceWatchers.has("4,12,4")

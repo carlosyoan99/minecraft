@@ -28,11 +28,16 @@ let failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { failed++; failedChecks.push(_name); }
+	if (!ok) {
+		failed++;
+		failedChecks.push(_name);
+	}
 };
 
 // --- 1) Los 5 biomas existen en la semilla ---
@@ -136,9 +141,8 @@ for (let cx = -4; cx <= 4; cx++) {
 				// MUNDO (getHeight no contempla lagos; la profundidad es variable).
 				if (
 					world.isLake(wx, wz) &&
-					data[
-						idx(x, world.columnFloorY(wx, wz) - world.DESIGN_OFFSET, z)
-					] === B.SAND
+					data[idx(x, world.columnFloorY(wx, wz) - world.DESIGN_OFFSET, z)] ===
+						B.SAND
 				)
 					waterSurface++;
 			}

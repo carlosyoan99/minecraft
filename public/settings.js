@@ -131,13 +131,15 @@ export function toggleFullscreen() {
 			// requestFullscreen devuelve una promesa en navegadores modernos:
 			// la preferencia se confirma al resolverse (o la sincroniza el
 			// listener fullscreenchange si el navegador no devuelve promesa).
-			if (p && typeof p.then === "function") p.then(() => setSetting("fullscreen", true)).catch(() => {});
+			if (p && typeof p.then === "function")
+				p.then(() => setSetting("fullscreen", true)).catch(() => {});
 			else setSetting("fullscreen", true);
 		} else if (document.fullscreenElement || document.webkitFullscreenElement) {
 			const p = document.exitFullscreen
 				? document.exitFullscreen()
 				: document.webkitExitFullscreen?.();
-			if (p && typeof p.then === "function") p.then(() => setSetting("fullscreen", false)).catch(() => {});
+			if (p && typeof p.then === "function")
+				p.then(() => setSetting("fullscreen", false)).catch(() => {});
 			else setSetting("fullscreen", false);
 		}
 	} catch {

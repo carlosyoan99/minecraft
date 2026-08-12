@@ -48,12 +48,17 @@ const checks = [];
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (name, ok, extra = "") => {
 	checks.push({ name, ok, extra });
-	if (!ok) { failed++; failedChecks.push(name); }
+	if (!ok) {
+		failed++;
+		failedChecks.push(name);
+	}
 };
 const info = (msg) => console.log(`   · ${msg}`);
 
@@ -105,7 +110,10 @@ check(
 	c00.length === CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE,
 	`${c00.length}`
 );
-check("bedrock en WORLD_MIN_Y (−64)", c00[idx(0, WORLD_MIN_Y, 0)] === B.BEDROCK);
+check(
+	"bedrock en WORLD_MIN_Y (−64)",
+	c00[idx(0, WORLD_MIN_Y, 0)] === B.BEDROCK
+);
 check(
 	"aire en WORLD_MAX_Y (63)",
 	c00[idx(0, WORLD_MAX_Y, 0)] === B.AIR,
@@ -208,8 +216,16 @@ for (let cx = -R8; cx <= R8; cx++) {
 }
 const frac = stoneTotal ? (carved / stoneTotal) * 100 : 0;
 const holePct = columns ? (surfaceHoles / columns) * 100 : 0;
-check("bedrock intacto en WORLD_MIN_Y (0 violaciones)", bedrockBroken === 0, `${bedrockBroken}`);
-check("hay bocas de cueva hacia la superficie", mouthCount > 0, `${mouthCount} bocas`);
+check(
+	"bedrock intacto en WORLD_MIN_Y (0 violaciones)",
+	bedrockBroken === 0,
+	`${bedrockBroken}`
+);
+check(
+	"hay bocas de cueva hacia la superficie",
+	mouthCount > 0,
+	`${mouthCount} bocas`
+);
 check(
 	"los huecos de superficie son escasos (< 10% de columnas)",
 	holePct < 10,
@@ -280,7 +296,11 @@ check(
 	count3 > 0,
 	`${count3} cuevas, mayor ${largest}`
 );
-check("la cueva más grande es sustancial (≥ 10 bloques)", largest >= 10, `${largest}`);
+check(
+	"la cueva más grande es sustancial (≥ 10 bloques)",
+	largest >= 10,
+	`${largest}`
+);
 
 // ---------------------------------------------------------------
 // 4) BIOMAS
@@ -303,7 +323,11 @@ for (const b of [
 	"jungle",
 	"mountain"
 ]) {
-	check(`bioma '${b}' presente`, (counts[b] || 0) > 0, `${counts[b] || 0} muestras`);
+	check(
+		`bioma '${b}' presente`,
+		(counts[b] || 0) > 0,
+		`${counts[b] || 0} muestras`
+	);
 }
 let maxPlain = 0,
 	maxMountain = -Infinity,
@@ -325,7 +349,11 @@ check(
 	maxMountain > maxPlain + 4,
 	`montaña ${maxMountain} vs llanura ${maxPlain}`
 );
-check("cumbres altas (máx ≥ 7)", maxMountain >= 15 - world.DESIGN_OFFSET, `${maxMountain}`);
+check(
+	"cumbres altas (máx ≥ 7)",
+	maxMountain >= 15 - world.DESIGN_OFFSET,
+	`${maxMountain}`
+);
 check(
 	"valles de montaña no excesivamente bajos (mín ≥ −5)",
 	minMountain >= 3 - world.DESIGN_OFFSET,
@@ -407,7 +435,11 @@ check(
 );
 check("las llanuras conservan césped", grassSurface > 0, `${grassSurface}`);
 check("el desierto conserva arena", sandSurface > 0, `${sandSurface}`);
-check("la taiga tiene césped (bosque frío)", taigaSurface > 0, `${taigaSurface}`);
+check(
+	"la taiga tiene césped (bosque frío)",
+	taigaSurface > 0,
+	`${taigaSurface}`
+);
 check("la jungla tiene césped", jungleSurface > 0, `${jungleSurface}`);
 check("el pantano tiene césped", swampSurface > 0, `${swampSurface}`);
 
@@ -595,13 +627,13 @@ for (let cx = -R16; cx <= R16; cx++) {
 						)
 							templeOk++;
 						else if (!tower)
-							info(`templo en (${wx},${wz}): torre se sale del mundo (baseY ${baseY})`);
+							info(
+								`templo en (${wx},${wz}): torre se sale del mundo (baseY ${baseY})`
+							);
 					} else if (struct.type === "shipwreck") {
 						shipwrecks++;
 						const baseY =
-							world.oceanFloorY(struct.cx, struct.cz) -
-							world.DESIGN_OFFSET +
-							1;
+							world.oceanFloorY(struct.cx, struct.cz) - world.DESIGN_OFFSET + 1;
 						const floorBlock = data[idx(x, baseY, z)];
 						const aboveTop = data[idx(x, baseY + 4, z)];
 						if (
@@ -622,7 +654,9 @@ for (let cx = -R16; cx <= R16; cx++) {
 					mineshaftCols++;
 					const floor = world.columnFloorY(wx, wz);
 					const surface =
-						floor != null ? floor - world.DESIGN_OFFSET : world.getHeight(wx, wz);
+						floor != null
+							? floor - world.DESIGN_OFFSET
+							: world.getHeight(wx, wz);
 					const depth = world.mineshaftDepth(wx, wz, surface);
 					let carved = 0;
 					for (
@@ -641,7 +675,11 @@ for (let cx = -R16; cx <= R16; cx++) {
 		}
 	}
 }
-check("se encontró al menos un templo en jungla", temples > 0, `${temples} templos`);
+check(
+	"se encontró al menos un templo en jungla",
+	temples > 0,
+	`${temples} templos`
+);
 check(
 	"los templos cumplen invariantes (piso, cofre, torre, jungla firme)",
 	templeOk === temples && temples > 0,
@@ -718,7 +756,10 @@ try {
 		migrated && migrated.data.length === CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE,
 		migrated ? `${migrated.data.length}` : "null"
 	);
-	check("schemaVersion sube a 6", migrated && migrated.schemaVersion === SCHEMA_VERSION);
+	check(
+		"schemaVersion sube a 6",
+		migrated && migrated.schemaVersion === SCHEMA_VERSION
+	);
 	if (migrated) {
 		const d = migrated.data;
 		check(
@@ -726,7 +767,10 @@ try {
 			d[toLocal(10) * CHUNK_SIZE * CHUNK_SIZE] === B.GRASS,
 			`local ${toLocal(10)} = mundo 10`
 		);
-		check("el marcador profundo se conserva", d[idx(3, 30, 5)] === B.DIAMOND_ORE);
+		check(
+			"el marcador profundo se conserva",
+			d[idx(3, 30, 5)] === B.DIAMOND_ORE
+		);
 		check("bedrock en local 0 (−64)", d[0] === B.BEDROCK);
 		let fillOk = true;
 		for (let ly = 1; ly < -WORLD_MIN_Y; ly++)
@@ -741,7 +785,8 @@ try {
 	const loaded = world.loadChunkFromDisk(2, 2);
 	let rtOk = loaded && loaded.length === fresh.length;
 	if (rtOk)
-		for (let i = 0; i < fresh.length; i++) if (loaded[i] !== fresh[i]) rtOk = false;
+		for (let i = 0; i < fresh.length; i++)
+			if (loaded[i] !== fresh[i]) rtOk = false;
 	check("round-trip v6 byte-idéntico (escribir → leer)", rtOk === true);
 
 	// --- 9c) Guard defensivo: writeChunkFile con array v5 ---
@@ -764,11 +809,16 @@ console.log("== 10. Geometría del cliente (índice local → Y de mundo) ==");
 	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "audit-geo-"));
 	for (const f of ["chunkGeometry.js", "texturemap.js", "constants.js"])
 		fs.copyFileSync(path.join(__dirname, "..", "public", f), path.join(tmp, f));
-	fs.writeFileSync(path.join(tmp, "package.json"), JSON.stringify({ type: "module" }));
+	fs.writeFileSync(
+		path.join(tmp, "package.json"),
+		JSON.stringify({ type: "module" })
+	);
 	const { buildChunkGeometryData } = await import(
 		`file://${path.join(tmp, "chunkGeometry.js")}`
 	);
-	const { tileForFace, tileRect } = await import(`file://${path.join(tmp, "texturemap.js")}`);
+	const { tileForFace, tileRect } = await import(
+		`file://${path.join(tmp, "texturemap.js")}`
+	);
 
 	// Mapa de vecinos de un chunk (los vecinos ya están generados).
 	const neighbors = (cxx, czz) => {
@@ -884,11 +934,15 @@ console.log("== 10. Geometría del cliente (índice local → Y de mundo) ==");
 		);
 		check(
 			"todo el agua del chunk queda en Y de mundo (−64..−3)",
-			wgeo.water && waterMin >= WORLD_MIN_Y && waterMax <= world.WORLD_SEA_LEVEL,
+			wgeo.water &&
+				waterMin >= WORLD_MIN_Y &&
+				waterMax <= world.WORLD_SEA_LEVEL,
 			`rango [${waterMin}, ${waterMax}]`
 		);
 	} else {
-		info("no se encontró agua expuesta cerca del origen para el test de render");
+		info(
+			"no se encontró agua expuesta cerca del origen para el test de render"
+		);
 	}
 
 	fs.rmSync(tmp, { recursive: true, force: true });

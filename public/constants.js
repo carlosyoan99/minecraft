@@ -318,20 +318,39 @@ export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43]); // 43 = lianas (F
 // Armadura equipable (Fase 7): clic derecho con la pieza en mano la equipa.
 // No se apilan (cada pieza con su durabilidad, como las herramientas).
 export const ARMOR_ITEMS = new Set([
-		220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231,
-		232, 233, 234, 235, 236, 237, 238, 239 // oro y malla (Fase 13, L5)
-	]);
+	220,
+	221,
+	222,
+	223,
+	224,
+	225,
+	226,
+	227,
+	228,
+	229,
+	230,
+	231,
+	232,
+	233,
+	234,
+	235,
+	236,
+	237,
+	238,
+	239 // oro y malla (Fase 13, L5)
+]);
 // Arco (Fase 13, L1): herramienta con durabilidad propia que no se apila.
 export const BOW = 247;
 export const ARROW = 248;
 // Fase 13 (L4): cubo de líquidos.
 export const BUCKET = 249;
-export const WATER_BUCKET = 250;	export const LAVA_BUCKET = 251;
-	export const FLINT = 252;
-	export const FEATHER = 253;
-	export const COMPASS = 254;
-	export const ROTTEN_FLESH = 255; // Fase 16 (D2): drop del zombi
-	export const GUNPOWDER = 256; // Fase 16 (D2): drop del creeper + receta TNT
+export const WATER_BUCKET = 250;
+export const LAVA_BUCKET = 251;
+export const FLINT = 252;
+export const FEATHER = 253;
+export const COMPASS = 254;
+export const ROTTEN_FLESH = 255; // Fase 16 (D2): drop del zombi
+export const GUNPOWDER = 256; // Fase 16 (D2): drop del creeper + receta TNT
 // Durabilidad máxima por pieza (Fase 7). Mantener en sincronía con
 // ARMOR_DURABILITY de constants.js (servidor) — lo verifica unit-sync.js.
 export const ARMOR_DURABILITY = {

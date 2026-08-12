@@ -71,8 +71,7 @@ function finish(exitCode) {
 		console.error(
 			`E2E mascotas: ${results.filter((r) => r.ok === false).length}/${results.length} checks FAIL`
 		);
-		for (const r of results)
-			if (!r.ok) console.error(`  FAIL ${r.name}`);
+		for (const r of results) if (!r.ok) console.error(`  FAIL ${r.name}`);
 	}
 	const fails = results.filter((r) => r.ok === false).length;
 	process.exit(exitCode !== undefined ? exitCode : fails ? 1 : 0);
@@ -124,7 +123,12 @@ function findTaigaSpot() {
 			const frac = taiga / total;
 			if (frac < 0.15) continue; // mínimo: algún vecino taiga además del punto
 			if (!best || frac > best.frac)
-				best = { frac, x: wx + 0.5, y: world.getHeight(wx, wz) + 2, z: wz + 0.5 };
+				best = {
+					frac,
+					x: wx + 0.5,
+					y: world.getHeight(wx, wz) + 2,
+					z: wz + 0.5
+				};
 		}
 	}
 	return best ? { x: best.x, y: best.y, z: best.z } : null;
@@ -178,7 +182,11 @@ ws.on("message", (d) => {
 			0
 		);
 		if (bones < 30) return; // esperar a que llegue el /give
-		check("se obtienen 30 huesos (/give 136 30)", bones >= 30, `huesos=${bones}`);
+		check(
+			"se obtienen 30 huesos (/give 136 30)",
+			bones >= 30,
+			`huesos=${bones}`
+		);
 		boneSlot = m.data.inventory.findIndex((s) => s && s.id === BONE);
 		send("inventory_select", { slot: boneSlot });
 		// Equipar la armadura de diamante (una pieza por update; el servidor
@@ -270,10 +278,13 @@ ws.on("message", (d) => {
 		// <=11 mensajes por ventana; el éxito de la doma sigue siendo casi
 		// seguro (33% por hueso × 30).
 		for (let i = 0; i < 30; i++) {
-			setTimeout(() => {
-				send("tame_mob", { mobId: wolfId });
-				tameAttempts++;
-			}, i < 10 ? 0 : i < 20 ? 500 : 1100);
+			setTimeout(
+				() => {
+					send("tame_mob", { mobId: wolfId });
+					tameAttempts++;
+				},
+				i < 10 ? 0 : i < 20 ? 500 : 1100
+			);
 		}
 		phase = "domar";
 		return;

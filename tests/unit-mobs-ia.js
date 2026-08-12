@@ -41,11 +41,16 @@ let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { fails++; failedChecks.push(_name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(_name);
+	}
 };
 
 const CLOSED = 3; // ws que no envía nada (como unit-hambre)
@@ -531,10 +536,17 @@ check(
 	const z = new mobs.Mob("zombie", 0, 10, 0);
 	// De día y a 30 bloques (fuera de la visión de 16): idle.
 	z.tick(false);
-	check("zombie idle de día sin aggro (lejos)", z.state === "idle", `state=${z.state}`);
+	check(
+		"zombie idle de día sin aggro (lejos)",
+		z.state === "idle",
+		`state=${z.state}`
+	);
 	// Golpeado por el jugador: entra en aggro con el atacante.
 	z.mobHit(p);
-	check("mobHit marca aggro al hostil", z.isAggroed() && z.aggroTarget === p.id);
+	check(
+		"mobHit marca aggro al hostil",
+		z.isAggroed() && z.aggroTarget === p.id
+	);
 	// Siguiente tick (de día): persigue al agresor aunque la visión no lo alcance.
 	z.tick(false);
 	check(
@@ -558,7 +570,11 @@ check(
 	z.aggroUntil = Date.now() - 1;
 	z.x = 0;
 	z.tick(false);
-	check("zombie vuelve a idle al expirar el aggro", z.state === "idle", `state=${z.state}`);
+	check(
+		"zombie vuelve a idle al expirar el aggro",
+		z.state === "idle",
+		`state=${z.state}`
+	);
 	resetPlayers();
 }
 

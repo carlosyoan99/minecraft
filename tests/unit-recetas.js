@@ -24,11 +24,16 @@ let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { fails++; failedChecks.push(_name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(_name);
+	}
 };
 
 // ============================================================
@@ -321,9 +326,7 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 	const resultadoCrafteo = new Set(
 		Object.values(recetas).map((r) => r.result.id)
 	);
-	const resultadoHorno = new Set(
-		Object.values(horno).map((r) => r.result.id)
-	);
+	const resultadoHorno = new Set(Object.values(horno).map((r) => r.result.id));
 	// Drop/uso justificado (sin receta, como en Minecraft):
 	//   104/105/106 — minerales que se minan directo (diamante sin horno)
 	//   107-110/118  — carnes crudas (drops de mobs; se cocinan en el horno)
@@ -335,15 +338,34 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 	//   252/253     — pedernal (grava) / pluma (pollo)
 	//   255/256     — carne podrida (zombi) / pólvora (creeper) — Fase 16 (D2)
 	const DROPS_JUSTIFICADOS = new Set([
-		I.DIAMOND, I.REDSTONE, I.EMERALD,
-		I.BEEF, I.PORKCHOP, I.CHICKEN, I.MUTTON, I.RABBIT,
-		I.WHEAT, I.CARROT, I.SEEDS,
-		I.STRING, I.LEATHER, I.COD, I.BONE, I.HONEY,
-		I.CHAIN_HELMET, I.CHAIN_CHESTPLATE, I.CHAIN_LEGGINGS, I.CHAIN_BOOTS,
-		I.TRIDENT, I.SLIME_BALL,
-		I.WATER_BUCKET, I.LAVA_BUCKET,
-		I.FLINT, I.FEATHER,
-		I.ROTTEN_FLESH, I.GUNPOWDER
+		I.DIAMOND,
+		I.REDSTONE,
+		I.EMERALD,
+		I.BEEF,
+		I.PORKCHOP,
+		I.CHICKEN,
+		I.MUTTON,
+		I.RABBIT,
+		I.WHEAT,
+		I.CARROT,
+		I.SEEDS,
+		I.STRING,
+		I.LEATHER,
+		I.COD,
+		I.BONE,
+		I.HONEY,
+		I.CHAIN_HELMET,
+		I.CHAIN_CHESTPLATE,
+		I.CHAIN_LEGGINGS,
+		I.CHAIN_BOOTS,
+		I.TRIDENT,
+		I.SLIME_BALL,
+		I.WATER_BUCKET,
+		I.LAVA_BUCKET,
+		I.FLINT,
+		I.FEATHER,
+		I.ROTTEN_FLESH,
+		I.GUNPOWDER
 	]);
 	const huérfanos = Object.values(I)
 		.filter((id) => typeof id === "number")
@@ -409,16 +431,15 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 		check("existe receta de TNT", !!r);
 		const chars = (r?.shape || []).join("");
 		const ing = r?.ingredients || {};
-		const nPolvora = chars.split("").filter((c) => ing[c] === I.GUNPOWDER).length;
+		const nPolvora = chars
+			.split("")
+			.filter((c) => ing[c] === I.GUNPOWDER).length;
 		const nArena = chars.split("").filter((c) => ing[c] === B.SAND).length;
 		check(
 			"el TNT usa 4 pólvora (256) + 5 arena",
 			nPolvora === 4 && nArena === 5 && chars.length === 9
 		);
-		check(
-			"el TNT sale como bloque TNT",
-			r?.result && r.result.id === B.TNT
-		);
+		check("el TNT sale como bloque TNT", r?.result && r.result.id === B.TNT);
 	}
 	// D5: el carbón vegetal se obtiene fundiendo troncos (cualquier tipo de
 	// tronco → carbón 101), además del carbón mineral (9).

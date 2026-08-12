@@ -29,8 +29,10 @@ let failed = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
 	total++;
@@ -41,42 +43,35 @@ const check = (_name, ok, _extra = "") => {
 		console.log(`FAIL: ${_name} | ${_extra}`);
 	}
 };
-
-// ============================================================
-// 1) WORLD como clase
-// ============================================================
-{
-	check("world es una instancia de World", world instanceof world.World);
-	check(
-		"los métodos viven en el prototipo (fachada idéntica)",
-		typeof world.getBlock === "function" &&
-			world.getBlock === world.World.prototype.getBlock
-	);
-	check(
-		"getBlock fuera del mundo devuelve aire",
-		world.getBlock(0, 999, 0) === B.AIR
-	);
-	check(
-		"getHeight devuelve una altura positiva",
-		typeof world.getHeight(137, 421) === "number" &&
-			world.getHeight(137, 421) > 0
-	);
-	check(
-		"getBiome devuelve una etiqueta de bioma",
-		typeof world.getBiome(137, 421) === "string"
-	);
-	check(
-		"las constantes públicas cuelgan de la instancia",
-		world.SEA_LEVEL === 5 &&
-			typeof world.MOUNTAIN_THRESHOLD === "number" &&
-			typeof world.MS_TUNNEL_H === "number"
-	);
-	// Las clases quedan expuestas para los tests/consumidores nuevos.
-	check(
-		"World y Chunk expuestos en la instancia",
-		typeof world.World === "function" && typeof world.Chunk === "function"
-	);
-}
+check("world es una instancia de World", world instanceof world.World);
+check(
+	"los métodos viven en el prototipo (fachada idéntica)",
+	typeof world.getBlock === "function" &&
+		world.getBlock === world.World.prototype.getBlock
+);
+check(
+	"getBlock fuera del mundo devuelve aire",
+	world.getBlock(0, 999, 0) === B.AIR
+);
+check(
+	"getHeight devuelve una altura positiva",
+	typeof world.getHeight(137, 421) === "number" && world.getHeight(137, 421) > 0
+);
+check(
+	"getBiome devuelve una etiqueta de bioma",
+	typeof world.getBiome(137, 421) === "string"
+);
+check(
+	"las constantes públicas cuelgan de la instancia",
+	world.SEA_LEVEL === 5 &&
+		typeof world.MOUNTAIN_THRESHOLD === "number" &&
+		typeof world.MS_TUNNEL_H === "number"
+);
+// Las clases quedan expuestas para los tests/consumidores nuevos.
+check(
+	"World y Chunk expuestos en la instancia",
+	typeof world.World === "function" && typeof world.Chunk === "function"
+);
 
 // ============================================================
 // 2) CHUNK como clase (get/set locales, dirty, serialización)
@@ -91,10 +86,7 @@ const check = (_name, ok, _extra = "") => {
 		"el chunk envuelto es el de memoria (misma data)",
 		c.data === world.getChunk(7, 3).data
 	);
-	check(
-		"dimensiones 16×128×16 (Fase 15 D5)",
-		c.data.length === 16 * 128 * 16
-	);
+	check("dimensiones 16×128×16 (Fase 15 D5)", c.data.length === 16 * 128 * 16);
 	// Escritura local + dirty.
 	const cc = new world.Chunk(1, 1);
 	check("Chunk nuevo nace sin dirty", cc.dirty === false);
@@ -173,7 +165,8 @@ const check = (_name, ok, _extra = "") => {
 	);
 	check(
 		"empty: count 1 no está vacío, count 0 sí",
-		!new ItemStack(B.COBBLESTONE, 1).empty && new ItemStack(B.COBBLESTONE, 1).consume().empty
+		!new ItemStack(B.COBBLESTONE, 1).empty &&
+			new ItemStack(B.COBBLESTONE, 1).consume().empty
 	);
 	check(
 		"ItemStack.from conserva la durabilidad del literal",
@@ -182,11 +175,13 @@ const check = (_name, ok, _extra = "") => {
 	check(
 		"constructor con durability 0 la conserva (estado roto serializable)",
 		new ItemStack(200, 1, 0).durability === 0 &&
-			JSON.stringify(new ItemStack(200, 1, 0)) === `{"id":200,"count":1,"durability":0}`
+			JSON.stringify(new ItemStack(200, 1, 0)) ===
+				`{"id":200,"count":1,"durability":0}`
 	);
 	check(
 		"ItemStack.slots(n) crea n huecos vacíos",
-		ItemStack.slots(36).length === 36 && ItemStack.slots(36).every((x) => x === null)
+		ItemStack.slots(36).length === 36 &&
+			ItemStack.slots(36).every((x) => x === null)
 	);
 	check(
 		"toPlain() devuelve el shape histórico",
@@ -226,9 +221,15 @@ const check = (_name, ok, _extra = "") => {
 		"addItem crea un ItemStack en el inventario",
 		(p.addItem(B.COBBLESTONE, 5), p.inventory[0] instanceof ItemStack)
 	);
-	check("addItem apila en el slot existente", (p.addItem(B.COBBLESTONE, 3), p.inventory[0].count === 8));
+	check(
+		"addItem apila en el slot existente",
+		(p.addItem(B.COBBLESTONE, 3), p.inventory[0].count === 8)
+	);
 	check("countItem cuenta por id", p.countItem(B.COBBLESTONE) === 8);
-	check("removeItem retira el stack", (p.removeItem(B.COBBLESTONE, 8), p.inventory[0] === null));
+	check(
+		"removeItem retira el stack",
+		(p.removeItem(B.COBBLESTONE, 8), p.inventory[0] === null)
+	);
 	// G2.5: inventario lleno (sin slot libre y sin merge posible) → rechazo.
 	{
 		const pFull = playerHelpers.createPlayer({
@@ -250,19 +251,28 @@ const check = (_name, ok, _extra = "") => {
 			pFull.addItem(B.DIRT, 1) === false
 		);
 	}
-	check("damage() descuenta salud", (p.damage(5, { armor: false }), p.health === 15));
+	check(
+		"damage() descuenta salud",
+		(p.damage(5, { armor: false }), p.health === 15)
+	);
 	check("heal() restaura hasta maxHealth", (p.heal(3), p.health === 18));
 	check("heal() no supera la salud máxima", (p.heal(99), p.health === 20));
 	check("addXp acumula experiencia", (p.addXp(10), p.xp === 10));
+	p.food = 10;
 	check(
 		"eat() aplica comida si no está lleno",
-		((p.food = 10), p.eat(I.BREAD) === true && p.food > 10)
+		p.eat(I.BREAD) === true && p.food > 10
 	);
+	p.food = 20;
+	p.saturation = 20;
 	check(
 		"eat() con hambre y saturación llenas se rechaza",
-		((p.food = 20), (p.saturation = 20), p.eat(I.BREAD) === false)
+		p.eat(I.BREAD) === false
 	);
-	check("applyFallDamage() no revienta en el aire", typeof p.applyFallDamage(-10) === "undefined");
+	check(
+		"applyFallDamage() no revienta en el aire",
+		typeof p.applyFallDamage(-10) === "undefined"
+	);
 	check("tick() no revienta", typeof p.tick(50) === "undefined");
 	// Una herramienta equipada: applyToolWear desgasta el ItemStack.
 	const p2 = playerHelpers.createPlayer({
@@ -313,7 +323,10 @@ const check = (_name, ok, _extra = "") => {
 	net.handleConnection(ws);
 	const init = ws.events("init")[0];
 	const player = state.players.get(init.data.playerId);
-	check("el jugador conectado es instancia de Player", player instanceof playerHelpers.Player);
+	check(
+		"el jugador conectado es instancia de Player",
+		player instanceof playerHelpers.Player
+	);
 	check(
 		"el init serializa el inventario plano (36 slots)",
 		Array.isArray(init.data.inventory) && init.data.inventory.length === 36

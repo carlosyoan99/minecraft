@@ -21,13 +21,18 @@ let fails = 0;
 const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (name, ok, extra = "") => {
 	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(`${ok ? "OK " : "✗  "}${name}${extra ? ` — ${extra}` : ""}`);
-	if (!ok) { fails++; failedChecks.push(name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(name);
+	}
 };
 
 class FakeWS {
@@ -96,7 +101,10 @@ const countSent = (ws) => {
 		lastDie()?.cause === "fall",
 		JSON.stringify(lastDie())
 	);
-	check("fall: lostInventory:true en survival", lastDie()?.lostInventory === true);
+	check(
+		"fall: lostInventory:true en survival",
+		lastDie()?.lostInventory === true
+	);
 
 	// lava: damagePlayer con source "lava" (tickPlayer, players.js)
 	fresh(p);
@@ -148,16 +156,16 @@ const countSent = (ws) => {
 	// Fase 15 (D5): el mundo va de WORLD_MIN_Y (−64) a WORLD_MAX_Y (63);
 	// VOID_Y = −72 (por debajo del fondo). El move debe ir por debajo de
 	// VOID_Y para morir por void (antes −30 caía bajo el mundo de 0..63).
-	ws.emit("message", JSON.stringify({ event: "move", data: { x: 0, y: -80, z: 0 } }));
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "move", data: { x: 0, y: -80, z: 0 } })
+	);
 	check(
 		"void: move con y<VOID_Y → player_die con cause=void",
 		lastDie()?.cause === "void",
 		JSON.stringify(lastDie())
 	);
-	check(
-		"void: respawn con teleport",
-		ws.events("teleport").length > 0
-	);
+	check("void: respawn con teleport", ws.events("teleport").length > 0);
 	check("void: salud reiniciada a 20", p.health === 20, `health=${p.health}`);
 }
 
@@ -183,10 +191,7 @@ const countSent = (ws) => {
 		lastDie()?.cause === "kill",
 		JSON.stringify(lastDie())
 	);
-	check(
-		"kill: respawn con teleport",
-		ws.events("teleport").length > 0
-	);
+	check("kill: respawn con teleport", ws.events("teleport").length > 0);
 }
 
 // ============================================================
@@ -219,7 +224,11 @@ const countSent = (ws) => {
 		broadcasts.filter((b) => b.event === "player_die").length === 0,
 		JSON.stringify(broadcasts)
 	);
-	check("gracia de spawn: la salud no cambia", p.health === 1, `health=${p.health}`);
+	check(
+		"gracia de spawn: la salud no cambia",
+		p.health === 1,
+		`health=${p.health}`
+	);
 
 	// La gracia NO protege de lava/caída/hambre (players.js línea 549).
 	p.spawnGraceUntil = Date.now() + 30000;

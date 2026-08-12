@@ -21,8 +21,10 @@ let ok = 0;
 let fail = 0;
 const failedChecks = [];
 process.on("exit", () => {
-	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+	if (failedChecks?.length)
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (name, cond, extra = "") => {
 	if (cond) ok++;
@@ -260,7 +262,11 @@ const mkPlayer = (over = {}) => ({
 	withRandom(() => {
 		const sm = new mobs.Mob("slime", 0, 10, 0);
 		sm.slimeSize = 1; // mediano
-		check("D6: slime mediano da 2 XP", mobs.mobXp(sm) === 2, `${mobs.mobXp(sm)}`);
+		check(
+			"D6: slime mediano da 2 XP",
+			mobs.mobXp(sm) === 2,
+			`${mobs.mobXp(sm)}`
+		);
 		const w = new mobs.Mob("wolf", 0, 10, 0);
 		const xp = mobs.mobXp(w);
 		check("D6: el lobo da 1-3 XP aleatorio", xp >= 1 && xp <= 3, `${xp}`);
