@@ -26,10 +26,15 @@ const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
 	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { fails++; failedChecks.push(_name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(_name);
+	}
 };
 
 // --- ws fake: captura mensajes salientes y permite inyectar entrantes ---
@@ -459,6 +464,29 @@ function connect() {
 		"colocar sobre bloque ocupado → rechazado",
 		world.getBlock(px, py, pz) === B.DIRT && p.inventory[0].count === 4
 	);
+
+	// F16-04 (auditoría 2026-08-11): si world.setBlock FALLA (coords fuera de
+	// rango: wy fuera de −64..63 o wx/wz en el borde del mundo) el ítem NO se
+	// consume — antes se restaba igual y el jugador en el límite perdía el
+	// bloque sin colocarlo.
+	world.setBlock(px, py, pz, B.AIR);
+	p.inventory[0] = { id: B.DIRT, count: 3 };
+	const origSetBlock = world.setBlock;
+	world.setBlock = () => false; // getBlock sigue dando AIR; setBlock devuelve false
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "block_action",
+			data: { action: "place", x: px, y: py, z: pz, itemId: B.DIRT }
+		})
+	);
+	world.setBlock = origSetBlock;
+	check(
+		"place con setBlock fallido NO consume el ítem (F16-04)",
+		p.inventory[0].count === 3,
+		`count=${p.inventory[0].count}`
+	);
 }
 
 // ============================================================
@@ -507,7 +535,10 @@ function connect() {
 	ws.sent.length = 0;
 	const fakeGrid = new Array(9).fill(null);
 	fakeGrid[4] = { id: B.OAK_LOG, count: 1 }; // grid inventada por el cliente
-	ws.emit("message", JSON.stringify({ event: "craft", data: { grid: fakeGrid } }));
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "craft", data: { grid: fakeGrid } })
+	);
 	check(
 		"craft con grid del wire inventada no craftea nada (fuente de verdad = servidor)",
 		!p.inventory.some((s) => s && s.id === B.PLANKS),
@@ -1046,6 +1077,16 @@ function connect() {
 		ws.events("chunks_add").length >= 1,
 		`${ws.events("chunks_add").length}`
 	);
+	// C6-REN-3 (auditoría 2026-08-11): el reenvío del radio va por LOTES — un
+	// único chunks_add con los ~441 chunks del radio (r=10) congelaba el event
+	// loop del servidor y reconstruía el cliente de golpe. Cada mensaje lleva
+	// como mucho CHUNK_FILL_PER_TICK (6) claves; el resto va por setImmediate.
+	const ca = ws.events("chunks_add")[0];
+	check(
+		"settings: el reenvío de radio va fragmentado en lotes de ≤6 chunks",
+		!!ca && Object.keys(ca.data.chunkData).length <= 6,
+		`claves=${ca && Object.keys(ca.data.chunkData).length}`
+	);
 
 	ws.emit(
 		"message",
@@ -1121,7 +1162,7 @@ function connect() {
 		'{"event":"block_action","data":"nope"}', // data string
 		'{"event":"craft","data":[]}', // data array
 		'{"foo":1}', // sin event ni data
-		"not-json",
+		"not-json"
 	];
 	for (const raw of bad) ws.emit("message", raw);
 	check(
@@ -1132,7 +1173,10 @@ function connect() {
 	ws.sent.length = 0;
 	ws.emit(
 		"message",
-		JSON.stringify({ event: "move", data: { x: beforeX, y: player.y, z: player.z } })
+		JSON.stringify({
+			event: "move",
+			data: { x: beforeX, y: player.y, z: player.z }
+		})
 	);
 	check("guard: tras basura, un move válido sigue procesándose", true);
 }
@@ -1262,6 +1306,35 @@ function connect() {
 		"C4: set_seed inmediato → seed_rejected(cooldown)",
 		rej.length === 1 && rej[0].data.reason === "cooldown",
 		`reasons=${rej.map((r) => r.data.reason).join(",")}`
+	);
+	state.players.clear();
+}
+
+// ============================================================
+// F16-03/F16-06 (auditoría 2026-08-11): un rechazo legítimo por "others"
+// NO debe consumir la cuota de 10 s (antes se reservaba antes del chequeo
+// y un set_seed rechazado porque hay otro jugador pagaba el cooldown).
+// ============================================================
+{
+	const { ws, player: p } = connect();
+	// Segundo jugador conectado (objeto mínimo: solo cuenta para el size).
+	state.players.set("q", { id: "q", inMenu: true, ws: { readyState: 1, send() {} } });
+	p.seedCooldownUntil = 0;
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "set_seed", data: { seed: "otra-semilla" } })
+	);
+	const rej = ws.events("seed_rejected");
+	check(
+		"F16-03: set_seed con otro jugador → seed_rejected(others)",
+		rej.length === 1 && rej[0].data.reason === "others",
+		`reasons=${rej.map((r) => r.data.reason).join(",")}`
+	);
+	check(
+		"F16-03: el rechazo por 'others' NO consume la cuota",
+		!p.seedCooldownUntil,
+		`cd=${p.seedCooldownUntil}`
 	);
 	state.players.clear();
 }

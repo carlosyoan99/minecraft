@@ -79,6 +79,31 @@ const INIT_CHUNK_RADIUS = 2;
 // (20 Hz) son ~6×20=120 chunks/s, el radio completo (169) se completa en ~1.5 s.
 const CHUNK_FILL_PER_TICK = 6;
 
+// C6-REN-3 (auditoría 2026-08-11): envía una lista de claves de chunk en
+// LOTES de CHUNK_FILL_PER_TICK repartidos con setImmediate, en vez de un único
+// `chunks_add` gigante (hasta ~441 chunks = ~7,2M de números al ampliar
+// renderDistance a 10) que congelaba el event loop del servidor y la
+// reconstrucción del cliente (Uint8Array.from + escaneo de antorchas por chunk).
+// Cada mensaje es pequeño, el socket se procesa entre lotes y, si se cierra a
+// mitad, el envío se aborta sin lanzar.
+function sendChunksFragmented(ws, keys) {
+	if (ws.readyState !== WebSocket.OPEN || !keys.length) return;
+	const DATA = {};
+	for (const key of keys.slice(0, CHUNK_FILL_PER_TICK))
+		if (state.chunks.has(key)) DATA[key] = Array.from(state.chunks.get(key));
+	if (Object.keys(DATA).length) {
+		try {
+			ws.send(
+				JSON.stringify({ event: "chunks_add", data: { chunkData: DATA } })
+			);
+		} catch {
+			return; // socket cerrado a mitad del envío en lote
+		}
+	}
+	const rest = keys.slice(CHUNK_FILL_PER_TICK);
+	if (rest.length) setImmediate(() => sendChunksFragmented(ws, rest));
+}
+
 function broadcast(event, data, exceptId = null) {
 	const msg = JSON.stringify({ event, data });
 	for (const p of state.players.values()) {
@@ -604,15 +629,29 @@ function handleConnection(ws, req) {
 					// exenta porque dura >1s), el tiempo acumulado cuenta igual.
 					const dy = y - p.y;
 					const hovering = dy >= -0.001; // sube o se mantiene (no cae)
+					// F16-03 (auditoría 2026-08-11, bypass B): hundimiento LENTO — dy
+					// entre −0.02 y −0.001 por move nunca daba `hovering` (dy ≥ −0.001)
+					// y un cliente podía "flotar" descendiendo indefinidamente. Se
+					// acumula el descenso total mientras se está en el aire (p.hoverSink):
+					// tras >1 s, una caída real ya ha bajado >3 bloques (GRAVITY 18, la
+					// parábola del salto), así que descender en total <2 bloques
+					// sostenido es flotar sin caer.
+					if (inAir) {
+						if (dy < 0) p.hoverSink = (p.hoverSink || 0) - dy;
+					} else {
+						p.hoverSink = 0; // al tocar suelo se descarta la deriva
+					}
 					if (inAir && p.gamemode !== "creative") {
 						// Parábola del salto: vy = JUMP_SPEED − GRAVITY·t (máx al iniciar
 						// el salto). Margen 1.5× por latencia/jitter; además ningún salto
 						// legítimo sube más de ~0.4s seguido (tras >1s en el aire, subir
 						// o flotar es volar).
-						if (
-							(dy > 0 && (vyObs > JUMP_SPEED * 1.5 || p.airTimeMs > 1000)) ||
-							(hovering && p.airTimeMs > 1000)
-						) {
+						const spike =
+							dy > 0 && (vyObs > JUMP_SPEED * 1.5 || p.airTimeMs > 1000);
+						const flotando =
+							(hovering || (dy < 0 && (p.hoverSink || 0) < 2)) &&
+							p.airTimeMs > 1000;
+						if (spike || flotando) {
 							ws.send(
 								JSON.stringify({
 									event: "teleport",
@@ -625,23 +664,36 @@ function handleConnection(ws, req) {
 					// Fase 16 (C3, SEC-1): ventana deslizante de velocidad horizontal.
 					// Ráfagas de ~0.8 bloques a 20/s pasan el límite por-move (1.2) pero
 					// son ~16 bloques/s sostenidos. La ventana mide bloques/s reales sobre
-					// las muestras aceptadas (~1.2s), con el intervalo de cada muestra
-					// clavado a ≥50 ms (igual que el anti-cheat vertical) para no falsar
-					// con ráfagas de red. El sprint legítimo (~5.6 bloques/s) queda por
-					// debajo del umbral (7 bloques/s).
+					// las muestras aceptadas (~1.2s). El sprint legítimo (~5.6 bloques/s)
+					// queda por debajo del umbral (7 bloques/s).
+					// F16-03 (auditoría 2026-08-11, bypass A): antes se clavaba cada
+					// intervalo a ≥50 ms (Math.max(0.05, s.t − prevT)) — a 30 msg/s el
+					// intervalo real es ~33 ms y el tiempo medido se inflaba a ~1,5× →
+					// la velocidad medida era ~2/3 de la real y ráfagas de 0.35
+					// bloques/move (10,5 bloques/s = 1,9× sprint) pasaban como ≤7. Ahora
+					// se mide la ventana REAL con los timestamps: velocidad = distancia
+					// total ÷ tiempo real transcurrido, con un piso de 0,1 s solo para
+					// no dividir por un micro-instante con un puñado de muestras.
 					if (p.gamemode !== "creative") {
 						const WINDOW_MS = 1200;
 						const MAX_SPEED = 7; // bloques/s sostenidos (sprint ≈ 5.6)
 						let sumDist = 0;
-						let sumDur = 0;
-						let prevT = nowMs - 50;
+						let first = Infinity,
+							last = 0,
+							n = 0;
 						for (const s of p.speedSamples) {
 							if (nowMs - s.t > WINDOW_MS) continue; // muestra vieja
-							sumDur += Math.max(0.05, s.t - prevT) / 1000;
 							sumDist += s.dist;
-							prevT = s.t;
+							n++;
+							if (s.t < first) first = s.t;
+							if (s.t > last) last = s.t;
 						}
-						if (sumDur >= 0.1 && sumDist / sumDur > MAX_SPEED) {
+						const realElapsed = (last - first) / 1000;
+						if (
+							n >= 2 &&
+							realElapsed >= 0.05 &&
+							sumDist / Math.max(0.1, realElapsed) > MAX_SPEED
+						) {
 							ws.send(
 								JSON.stringify({
 									event: "teleport",
@@ -716,31 +768,23 @@ function handleConnection(ws, req) {
 						const clamped = Math.min(10, Math.max(2, Math.round(rd)));
 						if (clamped !== p.renderDistance) {
 							p.renderDistance = clamped;
-							const fresh = world.ensureChunksAround(
-								p.x,
-								p.z,
-								p.renderDistance
-							);
-							const extra = {};
-							for (const key of fresh)
-								extra[key] = Array.from(state.chunks.get(key));
+							// Se generan los chunks nuevos del radio (síncrono, pocos
+							// tras el relleno progresivo del mainLoop) y se reenvía TODO
+							// el radio por LOTES (C6-REN-3): el cliente descargó los
+							// lejanos al reducir el radio y los necesita de nuevo, pero
+							// mandarlos en un único chunks_add gigante congelaba ambos
+							// lados.
+							world.ensureChunksAround(p.x, p.z, p.renderDistance);
 							const pcx = Math.floor(p.x / constants.CHUNK_SIZE),
 								pcz = Math.floor(p.z / constants.CHUNK_SIZE);
+							const keys = [];
 							for (let x = pcx - clamped; x <= pcx + clamped; x++) {
 								for (let z = pcz - clamped; z <= pcz + clamped; z++) {
 									const key = `${x},${z}`;
-									if (state.chunks.has(key) && !extra[key])
-										extra[key] = Array.from(state.chunks.get(key));
+									if (state.chunks.has(key)) keys.push(key);
 								}
 							}
-							if (Object.keys(extra).length) {
-								ws.send(
-									JSON.stringify({
-										event: "chunks_add",
-										data: { chunkData: extra }
-									})
-								);
-							}
+							sendChunksFragmented(p.ws, keys);
 						}
 					}
 					break;
@@ -812,15 +856,29 @@ function handleConnection(ws, req) {
 						if (constants.isDoor(itemId)) {
 							if (world.getBlock(x, y + 1, z) !== B.AIR) return;
 							if (!isSolidBlock(world.getBlock(x, y - 1, z))) return;
-							world.setBlock(x, y, z, itemId);
-							world.setBlock(x, y + 1, z, itemId);
-							playerHelpers.removeFromInventory(p, itemId, 1);
-							playerHelpers.sendInventory(p);
+							// F16-04 (auditoría 2026-08-11): solo se consume el ítem si la
+							// colocación REALMENTE se hizo — setBlock devuelve false fuera de
+							// rango (y+1 > +63 en el tope del mundo) y antes el ítem se
+							// restaba igual (un cliente en el límite perdía el bloque sin
+							// colocarlo). Si solo cabe la mitad inferior, se deshace.
+							const bottom = world.setBlock(x, y, z, itemId);
+							const top = world.setBlock(x, y + 1, z, itemId);
+							if (bottom && top) {
+								playerHelpers.removeFromInventory(p, itemId, 1);
+								playerHelpers.sendInventory(p);
+							} else if (bottom) {
+								world.setBlock(x, y, z, B.AIR);
+							}
 							break;
 						}
-						world.setBlock(x, y, z, itemId);
-						playerHelpers.removeFromInventory(p, itemId, 1);
-						playerHelpers.sendInventory(p);
+						// F16-04 (auditoría 2026-08-11): solo se consume el ítem si
+						// world.setBlock devolvió true (false = wy fuera de −64..63 o
+						// wx/wz fuera de los bordes). Antes el ítem se restaba igual: un
+						// cliente en el límite del mundo perdía el bloque sin colocarlo.
+						if (world.setBlock(x, y, z, itemId)) {
+							playerHelpers.removeFromInventory(p, itemId, 1);
+							playerHelpers.sendInventory(p);
+						}
 					}
 					break;
 				}
@@ -1104,7 +1162,6 @@ function handleConnection(ws, req) {
 						);
 						break;
 					}
-					p.seedCooldownUntil = nowCooldown + 10000; // 10 s (cuota)
 					// Otro jugador ya está jugando (este cliente se quedó en el menú
 					// mientras el mundo se cargaba): no cambiarle el mundo bajo sus pies.
 					const someonePlaying = Array.from(state.players.values()).some(
@@ -1119,6 +1176,11 @@ function handleConnection(ws, req) {
 						);
 						break;
 					}
+					// F16-03/F16-06 (auditoría 2026-08-11): la cuota se reserva SOLO
+					// cuando el cambio va a proceder — antes se reservaba antes de
+					// comprobar `someonePlaying` y un rechazo legítimo por "others"
+					// pagaba la cuota de 10 s igualmente.
+					p.seedCooldownUntil = nowCooldown + 10000; // 10 s (cuota)
 					// Fase 7: `name` (opcional) da nombre al mundo nuevo (world.json); si
 					// la semilla ya existe, el nombre guardado en disco gana (loadWorld).
 					// Fase 9 (Bloque B): `gamemode` fija el modo del mundo NUEVO.
@@ -1175,7 +1237,6 @@ function handleConnection(ws, req) {
 						);
 						break;
 					}
-					p.seedCooldownUntil = nowCooldown + 10000; // 10 s (cuota)
 					if (state.players.size > 1) {
 						p.ws.send(
 							JSON.stringify({
@@ -1185,6 +1246,11 @@ function handleConnection(ws, req) {
 						);
 						break;
 					}
+					// F16-03/F16-06 (auditoría 2026-08-11): la cuota se reserva SOLO
+					// cuando el cambio va a proceder — antes se reservaba antes de
+					// comprobar `state.players.size > 1` y un rechazo legítimo por
+					// "others" pagaba la cuota de 10 s igualmente.
+					p.seedCooldownUntil = nowCooldown + 10000; // 10 s (cuota)
 					const seed = data.seed.trim();
 					// Fase 7: `name` (opcional) da nombre al mundo nuevo (world.json); si la
 					// semilla ya existe, el nombre guardado en disco gana (loadWorld).
@@ -1550,6 +1616,7 @@ function handleConnection(ws, req) {
 					// Fase 7: dormir en una cama de noche — salta al amanecer y fija el
 					// punto de reaparición en la cama (respawnPoint, usado por
 					// players.damagePlayer al morir). De día se rechaza (como Minecraft).
+					if (!validCoords(data.x, data.y, data.z)) break; // F16-04 (C2, residual)
 					const bx = data.x,
 						by = data.y,
 						bz = data.z;
@@ -2036,7 +2103,14 @@ function mainLoop() {
 		const missing = [];
 		for (let dx = -p.renderDistance; dx <= p.renderDistance; dx++) {
 			for (let dz = -p.renderDistance; dz <= p.renderDistance; dz++) {
-				const key = `${pcx + dx},${pcz + dz}`;
+				const cx = pcx + dx,
+					cz = pcz + dz;
+				const key = `${cx},${cz}`;
+				// F16-07 (auditoría 2026-08-11): fuera de los bordes generateChunk
+				// devuelve vacío SIN cachear → si estas claves entraran en `missing`
+				// nunca saldrían de ahí (el guard de abajo evita el crash pero el
+				// escaneo+sort O(r²) por tick seguiría sin converger en el borde).
+				if (world.outOfBounds(cx, cz)) continue;
 				if (!state.chunks.has(key))
 					missing.push({ key, ring: Math.max(Math.abs(dx), Math.abs(dz)) });
 			}
@@ -2132,7 +2206,18 @@ function start() {
 	}, 15000);
 	heartbeat.unref?.(); // no impide que el proceso termine solo
 
-	setInterval(mainLoop, TICK_MS);
+	// F16-05 (auditoría 2026-08-11): el bucle del tick queda BLINDADO — una
+	// excepción interna (como el crash F16-01 antes del guard) no debe tumbar
+	// el proceso entero: se loguea y el siguiente tick continúa (el handler de
+	// mensajes ya tenía su propio try/catch; el mainLoop no).
+	setInterval(() => {
+		try {
+			mainLoop();
+		} catch (err) {
+			// biome-ignore lint/suspicious/noConsole: error real del tick (no silenciar)
+			console.error("mainLoop:", err);
+		}
+	}, TICK_MS);
 
 	server.listen(PORT, () => {
 		// biome-ignore lint/suspicious/noConsole: banner de arranque del servidor

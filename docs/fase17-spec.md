@@ -4,7 +4,12 @@
 > modificaciones recientes), `docs/fase16-spec.md`, `docs/auditoria-2026-08-10.md`
 > y la entrevista con el usuario (2026-08-11, Tandas 1-3).
 > Fecha: 2026-08-11 · Proyecto: clon de Minecraft.
-> Estado: prospectiva (sin implementar).
+> Estado: **implementada** (commit `a2d0437` + mejoras de la auditoría
+> 2026-08-11 en `server/net.js`: F16-03 anti-cheat de hundimiento, F16-05
+> blindaje del mainLoop, F16-07 fuera de bordes en el relleno de chunks y
+> C6-REN-3 envío de chunks fragmentado). Pendiente solo la auditoría final
+> documentada en el Bloque E (los tests unitarios 53/53 y el E2E de menú
+> 7/7 están en verde; los E2E clásicos requieren `SEED` desde A1).
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -312,9 +317,25 @@
 
 ## 6. Bloque E — Cierre y auditoría de la Fase 17 (tarea obligatoria)
 
+**Estado al cierre de la implementación (2026-08-12):**
+
+- Suite unitaria completa: **53/53 en verde** (`unit-fase17` incluido,
+   `unit-commands` tolera la deriva de 1 ms del `worldTime`).
+- E2E de menú (`tests/e2e-menu.js`): **7/7 en verde** — levanta su propio
+   servidor sin `SEED` en :3997 (menu_state → join_world → init →
+   leave_world → menu_state + cooldown anti-spam C4) y limpia su mundo.
+- E2E clásicos (con `SEED=miSemilla2026 PORT=3998 node server.js`): 6/7 —
+   `e2e-durabilidad` con TIMEOUT en fase "breaking" (preexistente, ya
+   documentado en la auditoría 2026-08-11; sin crash).
+- Auditorías por fase: sin regresiones (mismo estado que la auditoría
+   2026-08-11: `fase5` y `altura` en verde; `fase3/4/6/7` rojas por
+   presupuestos descalibrados del mundo v6 y render SwiftShader).
+- `node --check` y `biome` 0 errores en los archivos tocados.
+
 1. Suite unitaria completa en verde (`node tests/run.js --unit`) tras cada
-   commit; **E2E completos en solitario** (`PORT=3998 node server.js` con
-   `SEED` + `WS_URL=... run.js --e2e`) incluidos los **E2E de menú** nuevos.
+   commit; **E2E completos en solitario** (`SEED=miSemilla2026 PORT=3998
+   node server.js` + `WS_URL=... run.js --e2e`) incluidos los **E2E de
+   menú** nuevos (estos últimos sin `SEED`, servidor propio en :3997).
 2. `node --check` sobre los `.js` tocados y `biome check` 0 errores.
 3. Auditorías por fase sin regresiones (`audit-fase3`-`fase7` +
    `audit-altura` 72/72) — deben estar ya verdes por el cierre de la Fase 16.

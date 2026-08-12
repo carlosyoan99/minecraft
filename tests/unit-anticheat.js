@@ -31,10 +31,15 @@ const failedChecks = [];
 // Fase 15 (cierre): reporte uniforme de checks fallidos (lo parsea run.js).
 process.on("exit", () => {
 	if (typeof failedChecks !== "undefined" && failedChecks.length)
-		console.log(`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`);
+		console.log(
+			`# checks fallidos: ${failedChecks.length} — ${failedChecks.join("; ")}`
+		);
 });
 const check = (_name, ok, _extra = "") => {
-	if (!ok) { fails++; failedChecks.push(_name); }
+	if (!ok) {
+		fails++;
+		failedChecks.push(_name);
+	}
 };
 
 class FakeWS {
@@ -341,6 +346,92 @@ function paveRunway() {
 		"caminar normal (~4.4 bloques/s) → sin teleport (C3)",
 		ws.events("teleport").length === 0,
 		`teleports=${ws.events("teleport").length}`
+	);
+}
+
+// ============================================================
+// F16-03 (auditoría 2026-08-11): los DOS bypasses del C3
+// ============================================================
+// Bypass A: a 30 msg/s el intervalo real es ~33 ms — el clamp antiguo a ≥50 ms
+// inflaba el tiempo medido a ~1,5× y la velocidad medida era ~2/3 de la real.
+// Una ráfaga de 0.35 bloques/move (10,5 bloques/s = 1,9× sprint) pasaba como
+// ≤7; ahora la ventana mide con los timestamps reales y la caza.
+{
+	const { ws, player: p } = connect();
+	paveRunway();
+	p.x = 9.5;
+	p.z = 9.5;
+	p.y = 7;
+	const origNow = Date.now;
+	let fakeNow = origNow();
+	Date.now = () => fakeNow;
+	const moveTo = (x) =>
+		ws.emit(
+			"message",
+			JSON.stringify({
+				event: "move",
+				data: { x, y: p.y, z: p.z, yaw: 0, pitch: 0 }
+			})
+		);
+	ws.sent.length = 0;
+	for (let i = 1; i <= 40; i++) {
+		fakeNow += 33; // 30 msg/s
+		moveTo(9.5 + i * 0.35); // 10,5 bloques/s sostenidos
+	}
+	Date.now = origNow;
+	check(
+		"speedhack a 30 msg/s (10,5 bloques/s) → teleport (F16-03)",
+		ws.events("teleport").length >= 1,
+		`teleports=${ws.events("teleport").length}`
+	);
+}
+
+// Bypass B: hundimiento LENTO — dy entre −0.02 y −0.001 por move nunca daba
+// `hovering` (dy ≥ −0.001), así que un cliente podía flotar descendiendo
+// indefinidamente. La deriva acumulada en el aire (<2 bloques tras >1s) se
+// caza ahora.
+{
+	const { ws, player: p } = connect();
+	clearColumn(9, 9);
+	p.x = 9.5;
+	p.z = 9.5;
+	p.y = 25; // en el aire (piedra en y=5)
+	const move = (y) =>
+		ws.emit(
+			"message",
+			JSON.stringify({
+				event: "move",
+				data: { x: p.x, y, z: p.z, yaw: 0, pitch: 0 }
+			})
+		);
+	ws.sent.length = 0;
+	// 25 moves de −0.01: ~1250 ms en el aire descendiendo en total 0.25 bloques.
+	for (let i = 1; i <= 25; i++) move(p.y - 0.01);
+	check(
+		"hundimiento lento (>1s en el aire descendiendo poco) → teleport (F16-03)",
+		ws.events("teleport").length >= 1,
+		`teleports=${ws.events("teleport").length}`
+	);
+	// La caída LEGÍTIMA sigue exenta: descender rápido acumula >2 bloques.
+	ws.sent.length = 0;
+	const { ws: ws2, player: q } = connect();
+	clearColumn(9, 9);
+	q.x = 9.5;
+	q.z = 9.5;
+	q.y = 25;
+	const moveQ = (y) =>
+		ws2.emit(
+			"message",
+			JSON.stringify({
+				event: "move",
+				data: { x: q.x, y, z: q.z, yaw: 0, pitch: 0 }
+			})
+		);
+	for (let i = 1; i <= 10; i++) moveQ(q.y - 0.5); // cae 5 bloques en 10 pasos
+	check(
+		"caída legítima rápida → sin teleport (F16-03, no regresión)",
+		ws2.events("teleport").length === 0,
+		`teleports=${ws2.events("teleport").length}`
 	);
 }
 
