@@ -163,22 +163,48 @@ function matchRecipe(grid) {
 // ============================================================
 // HORNOS
 // ============================================================
+// Fase 16 (C5/REN-2): una caja vacía reproducible es la plantilla de horno
+// nuevo. getOrCreateFurnace la clona; getFurnace/emptyFurnace permiten abrir
+// un horno vacío SIN registrar una entrada (antes cada horno alguna vez
+// abierto quedaba en memoria y en world.json para siempre).
+function emptyFurnace() {
+	return {
+		fuelItem: null,
+		fuelCount: 0, // Fase 16 (D1): unidades de combustible cargadas (se consumen de una en una)
+		fuelTicksLeft: 0,
+		inputItem: null,
+		progress: 0,
+		requiredTicks: 0,
+		outputItem: null,
+		outputCount: 0
+	};
+}
+
+function getFurnace(key) {
+	return furnaces.get(key);
+}
+
 function getOrCreateFurnace(key) {
 	let f = furnaces.get(key);
 	if (!f) {
-		f = {
-			fuelItem: null,
-			fuelCount: 0, // Fase 16 (D1): unidades de combustible cargadas (se consumen de una en una)
-			fuelTicksLeft: 0,
-			inputItem: null,
-			progress: 0,
-			requiredTicks: 0,
-			outputItem: null,
-			outputCount: 0
-		};
+		f = emptyFurnace();
 		furnaces.set(key, f);
 	}
 	return f;
+}
+
+// ¿El horno está completamente vacío? (sin combustible, insumo, avance ni
+// resultado). Úsalo para podar: un horno vacío no aporta nada persistido.
+function isEmptyFurnace(f) {
+	return (
+		f.fuelItem == null &&
+		(f.fuelCount || 0) === 0 &&
+		!f.fuelTicksLeft &&
+		f.inputItem == null &&
+		!f.progress &&
+		f.outputItem == null &&
+		!f.outputCount
+	);
 }
 
 function furnaceSnapshot(f) {
@@ -200,7 +226,7 @@ function isCookable(itemId) {
 }
 
 function tickFurnaces() {
-	for (const [_key, f] of furnaces) {
+	for (const [key, f] of furnaces) {
 		const recipe = f.inputItem ? furnaceRecipes[String(f.inputItem.id)] : null;
 		const canCook =
 			recipe &&
@@ -237,6 +263,12 @@ function tickFurnaces() {
 		} else {
 			f.progress = Math.max(0, f.progress - 2); // se enfría si no hay combustible/insumo
 		}
+		// Fase 16 (C5/REN-2): podar hornos vacíos. getFurnace/server no crean
+		// entradas al abrir, pero un horno que SÍ se usó y luego quedó vacío
+		// (el jugador sacó el resultado y vació insumo/combustible) debe
+		// soltarse: sin esta poda cada horno alguna vez usado era permanente
+		// en memoria y en world.json (fuga media de sesiones largas).
+		if (isEmptyFurnace(f)) furnaces.delete(key);
 	}
 }
 
@@ -268,7 +300,10 @@ module.exports = {
 	setRecipePaths,
 	watchRecipeFiles,
 	matchRecipe,
+	getFurnace,
 	getOrCreateFurnace,
+	emptyFurnace,
+	isEmptyFurnace,
 	furnaceSnapshot,
 	tickFurnaces,
 	restoreFurnaces,

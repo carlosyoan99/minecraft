@@ -970,12 +970,31 @@ function handleConnection(ws, req) {
 					// jugador podía abrir/operar cualquier horno del mundo desde lejos.
 					if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) return;
 					if (world.getBlock(data.x, data.y, data.z) !== B.FURNACE) return;
+					// Fase 16 (C5/REN-2): registrar en el índice de watchers (en vez
+					// de escanear O(H×J) por tick) y NO crear una entrada de horno
+					// para un horno vacío — antes cada horno alguna vez abierto
+					// quedaba en memoria y en world.json para siempre.
+					const prevKey = p.openFurnace;
 					p.openFurnace = key;
-					const f = crafting.getOrCreateFurnace(key);
+					if (prevKey && prevKey !== key) {
+						const prevWatchers = state.openFurnaceWatchers.get(prevKey);
+						if (prevWatchers) {
+							prevWatchers.delete(playerId);
+							if (prevWatchers.size === 0)
+								state.openFurnaceWatchers.delete(prevKey);
+						}
+					}
+					let watchers = state.openFurnaceWatchers.get(key);
+					if (!watchers) {
+						watchers = new Set();
+						state.openFurnaceWatchers.set(key, watchers);
+					}
+					watchers.add(playerId);
+					const f = crafting.getFurnace(key);
 					ws.send(
 						JSON.stringify({
 							event: "furnace_state",
-							data: { key, ...crafting.furnaceSnapshot(f) }
+							data: { key, ...crafting.furnaceSnapshot(f || crafting.emptyFurnace()) }
 						})
 					);
 					break;
@@ -1103,6 +1122,15 @@ function handleConnection(ws, req) {
 							}
 						}
 					} else if (data.action === "close") {
+						// Fase 16 (C5/REN-2): dejar de mirar el horno — quita al
+						// jugador del índice de watchers (el escaneo por tick ya no
+						// lo notificará).
+						const watchers = state.openFurnaceWatchers.get(key);
+						if (watchers) {
+							watchers.delete(playerId);
+							if (watchers.size === 0)
+								state.openFurnaceWatchers.delete(key);
+						}
 						p.openFurnace = null;
 					}
 					ws.send(
@@ -1919,6 +1947,16 @@ function handleConnection(ws, req) {
 		// Fase 17 (B1): persistir el estado del jugador al desconectar (el
 		// autosave ya lo va guardando; este cierre garantiza el último estado).
 		if (leaver && !leaver.inMenu) save.savePlayer(leaver);
+		// Fase 16 (C5/REN-2): al desconectar, dejar de mirar el horno abierto
+		// (el índice de watchers no debe acumular jugadores que ya no están).
+		if (leaver?.openFurnace) {
+			const watchers = state.openFurnaceWatchers.get(leaver.openFurnace);
+			if (watchers) {
+				watchers.delete(playerId);
+				if (watchers.size === 0)
+					state.openFurnaceWatchers.delete(leaver.openFurnace);
+			}
+		}
 		state.players.delete(playerId);
 		// biome-ignore lint/suspicious/noConsole: log de desconexión (operación normal del servidor)
 		console.log(
@@ -1983,6 +2021,21 @@ function tickTempleTraps() {
 			id: "⚙️ Templo",
 			message: "¡Ssst! ¡Flechas!"
 		});
+	}
+	// P9 (auditoría 2026-08-11): limpiar cooldowns huérfanos — antes cada
+	// templo alguna vez visitado dejaba una entrada en el Map para siempre
+	// (fuga menor en sesiones largas). Solo se conservan los templos con un
+	// jugador encima AHORA; el resto se suelta (el próximo disparo lo recrea).
+	if (state.templeTrapCooldowns.size > 0) {
+		const active = new Set();
+		for (const q of state.players.values()) {
+			if (q.inMenu) continue;
+			const t = world.structureAt(Math.floor(q.x), Math.floor(q.z));
+			if (t?.type === "temple")
+				active.add(`${Math.floor(t.cx)},${Math.floor(t.cz)}`);
+		}
+		for (const k of state.templeTrapCooldowns.keys())
+			if (!active.has(k)) state.templeTrapCooldowns.delete(k);
 	}
 }
 
@@ -2139,17 +2192,27 @@ function mainLoop() {
 	tnt.tick(TICK_MS);
 
 	crafting.tickFurnaces();
-	for (const [key, f] of state.furnaces) {
-		// Notificar a quien tenga ese horno abierto
-		for (const p of state.players.values()) {
-			if (p.openFurnace === key && p.ws.readyState === WebSocket.OPEN) {
-				p.ws.send(
-					JSON.stringify({
-						event: "furnace_state",
-						data: { key, ...crafting.furnaceSnapshot(f) }
-					})
-				);
-			}
+	// Fase 16 (C5/REN-2): notificar los hornos abiertos por SU índice de
+	// watchers (O(H+J) por tick) en vez de escanear cada horno contra cada
+	// jugador (O(H×J)). Un horno sin watchers o roto se limpia del índice
+	// aquí mismo, sin tocar los tres sitios que borran el horno del mundo.
+	for (const [key, watchers] of state.openFurnaceWatchers) {
+		if (watchers.size === 0) {
+			state.openFurnaceWatchers.delete(key);
+			continue;
+		}
+		const f = state.furnaces.get(key);
+		if (!f) {
+			// Hornos rotos/explotados mientras estaban abiertos: nadie a quien
+			// notificar, el índice se auto-limpia.
+			state.openFurnaceWatchers.delete(key);
+			continue;
+		}
+		const data = { key, ...crafting.furnaceSnapshot(f) };
+		for (const pid of watchers) {
+			const p = state.players.get(pid);
+			if (p && p.ws.readyState === WebSocket.OPEN)
+				p.ws.send(JSON.stringify({ event: "furnace_state", data }));
 		}
 	}
 
@@ -2239,6 +2302,7 @@ module.exports = {
 	broadcastNear,
 	handleConnection,
 	mainLoop,
+	tickTempleTraps,
 	getServerMetrics,
 	start
 };

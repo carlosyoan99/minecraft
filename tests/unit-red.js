@@ -1339,5 +1339,94 @@ function connect() {
 	state.players.clear();
 }
 
+// ============================================================
+// F16 C5/REN-2 (auditoría 2026-08-11): abrir un horno VACÍO no crea
+// entrada persistente y el índice de watchers evita el escaneo O(H×J).
+// ============================================================
+{
+	const { ws, player: p } = connect();
+	// Poner un horno (bloque) y abrirlo SIN que exista estado previo.
+	world.setBlock(4, 12, 4, B.FURNACE);
+	p.x = 4.5;
+	p.y = 12;
+	p.z = 4.5;
+	state.furnaces.delete("4,12,4");
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "furnace_open", data: { x: 4, y: 12, z: 4 } })
+	);
+	check(
+		"C5: abrir un horno vacío NO crea entrada en state.furnaces",
+		!state.furnaces.has("4,12,4")
+	);
+	check(
+		"C5: abrir un horno vacío manda furnace_state con valores por defecto",
+		ws.events("furnace_state").length === 1 &&
+			ws.events("furnace_state")[0].data.inputItem === null &&
+			ws.events("furnace_state")[0].data.progress === 0
+	);
+	check(
+		"C5: el jugador queda registrado como watcher del horno abierto",
+		state.openFurnaceWatchers.get("4,12,4")?.has(p.id) === true,
+		`watchers=${[...state.openFurnaceWatchers.keys()].join(",")}`
+	);
+	// Cerrar → se quita del índice de watchers.
+	ws.emit("message", JSON.stringify({ event: "furnace_action", data: { action: "close" } }));
+	check(
+		"C5: cerrar el horno limpia su índice de watchers",
+		!state.openFurnaceWatchers.has("4,12,4")
+	);
+	check("C5: cerrar el horno desactiva p.openFurnace", p.openFurnace === null);
+	// Podar: un horno usado y luego VACIADO desaparece del estado.
+	const f = crafting.getOrCreateFurnace("4,12,4");
+	f.fuelItem = I.COAL;
+	f.fuelCount = 1;
+	f.fuelTicksLeft = 100;
+	f.inputItem = { id: B.DIRT, count: 1 };
+	f.progress = 50;
+	f.requiredTicks = 100;
+	f.outputItem = null;
+	f.outputCount = 0;
+	crafting.tickFurnaces(); // quema sin llegar a cocinar nada aún
+	check(
+		"C5: horno con actividad se mantiene (no se poda prematuramente)",
+		state.furnaces.has("4,12,4")
+	);
+	f.inputItem = null;
+	f.outputItem = null;
+	f.outputCount = 0;
+	f.progress = 0;
+	f.fuelTicksLeft = 0;
+	f.fuelItem = null;
+	f.fuelCount = 0;
+	crafting.tickFurnaces();
+	check(
+		"C5: un horno vaciado se poda de state.furnaces",
+		!state.furnaces.has("4,12,4")
+	);
+	state.players.clear();
+}
+
+// ============================================================
+// P9 (auditoría 2026-08-11): templeTrapCooldowns no debe acumular
+// entradas por templo visitado — se limpian cuando nadie pisa el templo.
+// ============================================================
+{
+	const { ws, player: p } = connect();
+	// Cooldown huérfano: templo con una entrada pero sin jugador encima.
+	state.templeTrapCooldowns.set("990,990", Date.now() - 1000);
+	// Jugador lejos de cualquier templo.
+	p.x = 0.5;
+	p.y = 10;
+	p.z = 0.5;
+	net.tickTempleTraps();
+	check(
+		"P9: un cooldown de templo sin jugadores encima se elimina",
+		!state.templeTrapCooldowns.has("990,990")
+	);
+	state.players.clear();
+}
+
 world.setDiskLoader(null);
 process.exit(fails ? 1 : 0);

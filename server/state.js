@@ -8,6 +8,11 @@
 const chunks = new Map(); // "cx,cz" -> Uint8Array(16*64*16)
 const players = new Map(); // id -> player
 const furnaces = new Map(); // "x,y,z" -> { fuelItem, fuelTicks, inputItem, progress, requiredTicks, outputItem, outputCount }
+// Fase 16 (C5/REN-2): quién tiene cada horno abierto — "x,y,z" -> Set<playerId>.
+// Evita el bucle O(H×J) por tick: para notificar un horno solo se recorre la
+// lista de quien lo mira. Se mantiene al día en furnace_open / furnace_action
+// (close) / desconexión / horno roto (la notificación lo detecta y limpia).
+const openFurnaceWatchers = new Map();
 const chests = new Map(); // "x,y,z" -> array(27) de slots null | { id, count, durability } (Fase 6)
 // Fase 9 (Bloque C): cultivos — "x,y,z" -> { stage: 0-7, plantedAt: Date.now() }
 // (los bloques solo guardan el ID; el estado de crecimiento vive aquí y se
@@ -40,6 +45,7 @@ module.exports = {
 	chunks,
 	players,
 	furnaces,
+	openFurnaceWatchers,
 	chests,
 	crops,
 	mobs,
