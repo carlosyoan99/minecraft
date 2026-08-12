@@ -1234,6 +1234,58 @@ function drawShears(g) {
 	set(g, 11, 1, handle);
 }
 
+// Carne podrida (Fase 16, D2): trozo de carne grisácea con vetas y moho.
+function drawFlesh(g, rng) {
+	const base = "#b06a5a",
+		dark = "#7a4a40",
+		light = "#d88a74";
+	for (let y = 3; y <= 12; y++) {
+		for (let x = 3; x <= 12; x++) {
+			const dx = x - 7.5,
+				dy = y - 7.5;
+			if ((dx * dx) / 24 + (dy * dy) / 28 <= 1) set(g, x, y, base);
+		}
+	}
+	line(g, 4, 4, 9, 9, light);
+	line(g, 5, 5, 10, 10, light);
+	line(g, 3, 9, 8, 12, dark);
+	line(g, 8, 5, 12, 8, dark);
+	set(g, 6, 7, "#3e6b3e");
+	set(g, 7, 7, "#3e6b3e");
+	set(g, 6, 8, "#3e6b3e");
+	set(g, 10, 10, "#2e4a2e");
+	set(g, 11, 11, "#2e4a2e");
+}
+
+// Pólvora (Fase 16, D2): montículo de granos gris oscuro.
+function drawGunpowder(g, rng) {
+	const dark = "#3a3a3a",
+		mid = "#555555",
+		light = "#7a7a7a";
+	for (let y = 7; y <= 13; y++) {
+		for (let x = 3; x <= 12; x++) {
+			const halfW = Math.max(0, 4.5 - Math.abs(y - 10.5));
+			if (Math.abs(x - 7.5) <= halfW) set(g, x, y, dark);
+		}
+	}
+	for (const [x, y] of [
+		[4, 8],
+		[10, 7],
+		[11, 10],
+		[6, 12],
+		[8, 9],
+		[5, 11]
+	])
+		set(g, x, y, mid);
+	for (const [x, y] of [
+		[3, 9],
+		[7, 7],
+		[12, 11],
+		[9, 13]
+	])
+		set(g, x, y, light);
+}
+
 // ============================================================
 // REGISTRO: id → función de dibujo (g, rng)
 // ============================================================
@@ -1294,6 +1346,9 @@ ICONS[141] = drawShears;	// Fase 12 (A): tridente (245) y bola de slime (246)
 	ICONS[251] = (g) => drawBucket(g, "#e25822");
 	// Fase 13 (L5): compás (4 lingotes de hierro + redstone)
 	ICONS[254] = drawCompass;
+	// Fase 16 (D2): carne podrida (zombi) y pólvora (creeper).
+	ICONS[255] = drawFlesh;
+	ICONS[256] = drawGunpowder;
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);

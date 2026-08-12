@@ -30,22 +30,23 @@ const check = (name, cond, extra = "") => {
 		`file://${path.join(__dirname, "..", "public", "quality.js")}`
 	);
 
-	// --- Perfiles de calidad ---
+	// --- Perfiles de calidad (Fase 16 B6: renderScale — escala la resolución
+	// nativa; antes un pixelRatio máximo que min(dpr, perfil) anulaba en dpr=1) ---
 	check(
-		"3 perfiles (baja/media/alta) con pixelRatio, shadows y shadowSize",
+		"3 perfiles (baja/media/alta) con renderScale, shadows y shadowSize",
 		Object.keys(q.QUALITY_PROFILES).length === 3 &&
 			["baja", "media", "alta"].every(
 				(n) =>
 					q.QUALITY_PROFILES[n] &&
-					typeof q.QUALITY_PROFILES[n].pixelRatio === "number" &&
+					typeof q.QUALITY_PROFILES[n].renderScale === "number" &&
 					typeof q.QUALITY_PROFILES[n].shadows === "boolean" &&
 					typeof q.QUALITY_PROFILES[n].shadowSize === "number"
 			)
 	);
 	check(
-		"baja: sin sombras, pixelRatio 1",
+		"baja: sin sombras, renderScale 0.6",
 		q.qualityProfile("baja").shadows === false &&
-			q.qualityProfile("baja").pixelRatio === 1
+			q.qualityProfile("baja").renderScale === 0.6
 	);
 	check(
 		"media: sombras activas (perfil por defecto)",
@@ -58,6 +59,34 @@ const check = (name, cond, extra = "") => {
 	check(
 		"perfil desconocido cae al por defecto",
 		q.qualityProfile("ultra") === q.QUALITY_PROFILES[q.QUALITY_DEFAULT]
+	);
+	check(
+		"los niveles escalan la resolución real (0.6 < 0.85 < 1)",
+		q.qualityProfile("baja").renderScale <
+			q.qualityProfile("media").renderScale &&
+			q.qualityProfile("media").renderScale <
+				q.qualityProfile("alta").renderScale
+	);
+
+	// --- pixelRatio efectivo (B6): el efecto es VISIBLE en cualquier pantalla.
+	// En dpr=1 los tres niveles dan pixelRatio distintos (0.6/0.85/1) — antes
+	// min(dpr, perfil) los aplanaba a 1 (la opción "no hacía nada").
+	check(
+		"dpr=1: baja/media/alta producen pixelRatio distintos y crecientes",
+		q.qualityPixelRatio("baja", 1) < q.qualityPixelRatio("media", 1) &&
+			q.qualityPixelRatio("media", 1) < q.qualityPixelRatio("alta", 1) &&
+			q.qualityPixelRatio("baja", 1) === 0.6 &&
+			q.qualityPixelRatio("alta", 1) === 1
+	);
+	check(
+		"dpr=2: alta == resolución nativa (2), baja la escala",
+		q.qualityPixelRatio("alta", 2) === 2 &&
+			q.qualityPixelRatio("baja", 2) === 1.2
+	);
+	check(
+		"pixelRatio nunca baja de 0.5 ni supera 2",
+		q.qualityPixelRatio("baja", 0.5) === 0.5 &&
+			q.qualityPixelRatio("alta", 3) === 2
 	);
 
 	// --- FOV ---

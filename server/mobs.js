@@ -27,7 +27,11 @@ const {
 // da 4 XP y el mediano/pequeño 1 (MC); el resto usa MOB_XP[type]. Antes todo
 // slime daba MOB_XP.slime=1.
 function mobXp(m) {
-	if (m.type === "slime") return m.slimeSize === 2 ? 4 : 1;
+	// Fase 16 (D6): paridad MC — slime grande 4, mediano 2, pequeño 1; el lobo
+	// suelta 1-3 XP aleatorio (antes 8 fijo).
+	if (m.type === "slime")
+		return m.slimeSize === 2 ? 4 : m.slimeSize === 1 ? 2 : 1;
+	if (m.type === "wolf") return 1 + Math.floor(Math.random() * 3);
 	return MOB_XP[m.type] || 0;
 }
 
@@ -663,6 +667,13 @@ class Mob {
 							// Cofre vacío: se rompe igual, pero se limpia su estado
 							// (igual que finishMining) para no dejar entradas huérfanas.
 							state.chests.delete(`${bx},${by},${bz}`);
+						}
+						// C5 (REN-2): igual con el horno — contenido protegido, vacío
+						// se rompe y se limpia su estado (sin huérfanos).
+						if (block === B.FURNACE) {
+							const f = state.furnaces.get(`${bx},${by},${bz}`);
+							if (f && (f.inputItem || f.fuelItem || f.outputItem)) continue;
+							state.furnaces.delete(`${bx},${by},${bz}`);
 						}
 						world.setBlock(bx, by, bz, B.AIR);
 					}
@@ -1610,7 +1621,11 @@ const OTHER_DROPS = {
 	// y ahogado → tridente (~15%, roll explícito en mobDrops — la tabla
 	// 0..1 daría 50%).
 	slime: { id: I.SLIME_BALL, min: 0, max: 1 },
-	drowned: { id: I.TRIDENT, min: 0, max: 1 }
+	drowned: { id: I.TRIDENT, min: 0, max: 1 },
+	// Fase 16 (D2): paridad MC — el zombi suelta carne podrida (0-2) y el
+	// creeper pólvora (0-2, material de la receta de TNT).
+	zombie: { id: I.ROTTEN_FLESH, min: 0, max: 2 },
+	creeper: { id: I.GUNPOWDER, min: 0, max: 2 }
 };
 
 // Devuelve [{ id, count }] para el tipo o null si no dropea nada. Un mob

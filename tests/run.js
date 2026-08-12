@@ -63,7 +63,8 @@ const UNIT = [
 	"unit-damage.js",
 	"unit-sky.js",
 	"unit-ao.js", // Fase 10 (E1): AO por vértice — sombreado de esquinas internas/bloques empotrados
-	"unit-muerte.js" // Fase 10 (B2): causas de player_die (caída, mob, fuego, ...)
+	"unit-muerte.js", // Fase 10 (B2): causas de player_die (caída, mob, fuego, ...)
+	"unit-fase16.js" // Fase 16: niebla (B1), cofre Shift (B2), horno combustible (D1), drops (D2), puertas/vidrio/carbón (D3-D5), XP (D6)
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
@@ -75,6 +76,16 @@ const E2E = [
 	"e2e-reload.js",
 	"e2e-cofre.js",
 	"e2e-templo.js" // Fase 12 (B1/E5): templo de jungla — trampa de flechas + cofre con loot
+];
+// G0.2: auditorías por fase standalone, ejecutables con `node tests/run.js
+// --audit`. Antes esta constante no existía y el modo lanzaba ReferenceError.
+const AUDIT = [
+	"audit-fase3.js",
+	"audit-fase4.js",
+	"audit-fase5.js",
+	"audit-fase6.js",
+	"audit-fase7.js",
+	"audit-altura.js" // Fase 15 (D5): mundo de 128 bloques (−64..+63) — 72 checks
 ];
 const args = process.argv.slice(2);
 
@@ -93,16 +104,20 @@ try {
 }
 
 // Ejecuta un test con banner, captura su salida (stderr incluido) y la
-// guarda en tests/last-run/<test>.log.
+// guarda en tests/last-run/<test>.log. Mide el tiempo por test (G1.4).
 function run(file) {
+	const t0 = process.hrtime.bigint();
 	const r = spawnSync(process.execPath, [path.join(__dirname, file)], {
 		stdio: ["inherit", "pipe", "pipe"]
 	});
+	const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
 	const out = `${r.stdout || ""}${r.stderr || ""}`;
 	const ok = r.status === 0;
 	if (!ok) failed++;
 	results.push({ file, ok, out });
-	console.log(`${ok ? "✅" : "❌"} ${file}${ok ? "" : ` (exit ${r.status})`}`);
+	console.log(
+		`${ok ? "✅" : "❌"} ${file}${ok ? "" : ` (exit ${r.status})`} — ${elapsedMs.toFixed(0)} ms`
+	);
 	try {
 		fs.writeFileSync(path.join(LAST_RUN_DIR, file + ".log"), out);
 	} catch {
@@ -110,6 +125,17 @@ function run(file) {
 	}
 	return ok;
 }
+
+// G1.4: `--filter <regex>` limita la ejecución a los tests cuyo nombre de
+// archivo coincide (subconjunto sin tocar el resto).
+const FILTER_ARG = "--filter";
+let filterRe = null;
+if (args.includes(FILTER_ARG)) {
+	const i = args.indexOf(FILTER_ARG);
+	const pat = args[i + 1];
+	if (pat) filterRe = new RegExp(pat);
+}
+const matches = (file) => !filterRe || filterRe.test(file);
 
 // Extrae de la salida capturada de un test los nombres de los checks que
 // fallaron. Prioriza el reporte uniforme que los tests instrumentados
@@ -202,16 +228,16 @@ function serverUp(wsUrl) {
 		// Modo auditoría: solo las auditorías por fase standalone (sin
 		// servidor ni navegador). Lento a propósito (audit-altura genera
 		// radio 16 de chunks); no mezclar con unit/E2E en la misma ejecución.
-		for (const f of AUDIT) run(f);
+		for (const f of AUDIT) if (matches(f)) run(f);
 	} else {
 		if (!args.includes("--e2e")) {
-			for (const f of UNIT) run(f);
+			for (const f of UNIT) if (matches(f)) run(f);
 		}
 
 		if (!args.includes("--unit")) {
 		const wsUrl = process.env.WS_URL || "ws://localhost:3998";
 		if (await serverUp(wsUrl)) {
-			for (const f of E2E) run(f);
+			for (const f of E2E) if (matches(f)) run(f);
 		} else {
 		}
 	}

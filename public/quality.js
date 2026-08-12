@@ -9,18 +9,31 @@
 // - clamp* limitan los valores de los ajustes del menú.
 // ============================================================
 
-// Perfiles: 'baja' / 'media' / 'alta'. El pixelRatio es el MÁXIMO que
-// usará el renderer (escena aplica min(devicePixelRatio, perfil)).
+// Perfiles: 'baja' / 'media' / 'alta'. El `renderScale` multiplica la
+// resolución nativa del dispositivo (devicePixelRatio) — Fase 16 (B6): antes
+// el perfil era un pixelRatio MÁXIMO y escena hacía min(dpr, perfil), que en
+// pantallas dpr=1 dejaba los tres niveles con el mismo pixelRatio (1): la
+// opción no tenía efecto visible. Ahora baja/media/alta escalan la resolución
+// real (0.6× / 0.85× / 1×) y cambian las sombras, visible en cualquier
+// pantalla.
 export const QUALITY_PROFILES = {
-	baja: { pixelRatio: 1, shadows: false, shadowSize: 512 },
-	media: { pixelRatio: 1.5, shadows: true, shadowSize: 1024 },
-	alta: { pixelRatio: 2, shadows: true, shadowSize: 2048 }
+	baja: { renderScale: 0.6, shadows: false, shadowSize: 512 },
+	media: { renderScale: 0.85, shadows: true, shadowSize: 1024 },
+	alta: { renderScale: 1, shadows: true, shadowSize: 2048 }
 };
 export const QUALITY_DEFAULT = "media";
 
 // Perfil por nombre; nombres desconocidos caen al perfil por defecto.
 export function qualityProfile(name) {
 	return QUALITY_PROFILES[name] || QUALITY_PROFILES[QUALITY_DEFAULT];
+}
+
+// pixelRatio efectivo de un perfil para una pantalla con devicePixelRatio
+// `dpr` (capped a 2 para no supersamplear absurdamente): resolución nativa ×
+// renderScale del perfil, con suelo 0.5. Lógica pura (testeable).
+function qualityPixelRatio(name, dpr) {
+	const q = qualityProfile(name);
+	return Math.max(0.5, Math.min(dpr || 1, 2) * q.renderScale);
 }
 
 // ¿Valor numérico usable? (rechaza null/undefined/string/NaN). Number(null)
@@ -47,3 +60,5 @@ export function clampVolume(v) {
 	if (!isNumber(v)) return 1;
 	return Math.min(1, Math.max(0, v));
 }
+
+export { qualityPixelRatio };

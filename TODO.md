@@ -438,9 +438,76 @@
 - [ ] D6 XP del slime mediano y del lobo (PAR-7/8)
 - [ ] E1 pantalla completa (opción/tecla)
 - [ ] E2 `unit-recetas.js` con cobertura total + tests de F16
+- [ ] G0.1 commitear el WIP de Fase 16 y dejar la suite en verde
+- [ ] G0.2 definir `AUDIT` en `tests/run.js` (audit-fase3..7 + audit-altura) —
+      `--audit` hoy lanza ReferenceError
+- [ ] G1.1 c8 (devDep) + `npm run test:coverage`
+- [ ] G1.2 `coverage/` en `.gitignore`
+- [ ] G1.3 `tests/helpers.js` (check/reporte, mkPlayer, withRandom, loader ESM)
+- [ ] G1.4 runner `--filter <regex>` + tiempos por test
+- [ ] G2.1 unit de guardado asíncrono (C1) + migración v5→v6
+- [ ] G2.2 unit-red: coords inválidas (C2), parse WS try/catch (CL-3),
+      anti-cheat v2 (C3)
+- [ ] G2.3 unit-commands: `/give` 64 (SV-5), `/tp` clamp (SV-6),
+      `set_seed` cooldown (C4)
+- [ ] G2.4 hornos huérfanos (C5) + `FUEL_TICKS` completo (D1)
+- [ ] G2.5 `ItemStack` coverage (items.js)
+- [ ] G2.6 TNT: cadenas, cráter con bedrock, knockback
+- [ ] G3 units de cliente puro: network, settings, daynight, clouds,
+      particles, audio
+- [ ] G3.7 ampliar `audit-fase7` (CDP): B6, B1, B4, B5
+- [ ] G4 E2E: cofre Shift (B2), libro de recetas (B5); E2E 6/6 en solitario
+- [ ] G5.1 `docs/tests.md` (matriz módulo→test + guía + umbrales)
+- [ ] G5.2 `README.md` §Tests actualizado
+- [ ] G5.3 `docs/server/mecanicas.md`: C1, D1, D2, B2, C3, C4, C5, C6
+- [ ] G5.4 `docs/public/mecanicas.md`: B1, B6, B5
+- [ ] G5.5 `docs/server/README.md` (persistencia asíncrona) +
+      `docs/public/README.md` (mapa `waterfog.js`/`chunkWorker.js`)
+- [ ] G5.6 `AGENTS.md`/`CLAUDE.md`/`docs/README.md` al día
 - [ ] Auditoría de Fase 16: E2E 6/6 en solitario, suite unitaria en verde,
-      `node --check`/`biome`, auditorías sin regresiones, verificación
-      manual en navegador, actualizar `docs/README.md`/`AGENTS.md`
+      `node --check`/`biome`, auditorías sin regresiones, c8 con umbrales,
+      verificación manual en navegador, actualizar `docs/README.md`/`AGENTS.md`
+
+---
+
+## Fase 17 — Menú inicial tipo Minecraft, UI/UX y móvil
+
+> Especificación (la verdad de la fase): [`docs/fase17-spec.md`](docs/fase17-spec.md)
+> Prospectiva, sin implementar. **Prerrequisito:** Fase 16 cerrada (WIP
+> commiteado, E2E 6/6, audits fase3-7 + altura en verde, `--audit`
+> operativo) — los pendientes transversales son bugs de la Fase 16, no de
+> esta.
+
+- [ ] A1 servidor en modo menú (no cargar mundo al arrancar; con `SEED`
+      arranca directo al mundo para los E2E)
+- [ ] A2 pantalla principal tipo Minecraft (logo + Un jugador / Ajustes /
+      Salir)
+- [ ] A3 pantalla de mundos con gestión completa: reproducir, eliminar,
+      clonar, renombrar y cambiar modo de juego + "nuevo mundo" con config
+- [ ] A4 ajustes en pestañas estilo Minecraft (Video / Audio / Controles)
+- [ ] A5 no cargar mundo al iniciar — flujo del cliente: menú → `join_world`
+      → init (refactor del flujo `set_seed` actual)
+- [ ] B1 persistencia del inventario entre sesiones (archivo aditivo por
+      jugador; `SCHEMA_VERSION` sin cambios)
+- [ ] B2 el cliente se desconecta a los pocos segundos (diagnóstico + fix +
+      test de regresión)
+- [ ] B3 chunks vacíos en el cliente (física sí, render no) — diagnóstico +
+      fix + auditoría CDP
+- [ ] B4 romper el bloque bajo una flor/hierba la destruye (con su drop)
+- [ ] B5 cuevas: pocas pero largas y grandes (explorables), sin romper la
+      distribución de minerales ni los tests deterministas
+- [ ] B6 los mobs hostiles no agreden a jugadores en creativo (en survival
+      se mantiene)
+- [ ] B7 minar con clic presionado re-mina el bloque siguiente (como MC)
+- [ ] C1 pantalla de pausa estilo Minecraft (Esc: Continuar / Ajustes /
+      Volver al menú principal)
+- [ ] C2 estética del menú (interfaz 100% Minecraft; sin adelantar la F19)
+- [ ] D1 controles táctiles básicos (joystick + mirar + botones) — HUD
+      adaptativo móvil, mouse+teclado intactos
+- [ ] Auditoría de Fase 17: suite unit completa + E2E (6/6 + menú) en
+      verde, `node --check`/`biome` 0 errores, auditorías sin regresiones,
+      verificación manual en navegador (menú, B1-B7, pausa, móvil),
+      actualizar `docs/README.md`/`AGENTS.md`
 
 ---
 
@@ -450,5 +517,7 @@
   generadas, clima
 - Optimización prematura (greedy meshing, workers...) salvo que una spec lo
   indique
-- Adaptación a móvil (diferida; fuera de la Fase 16)
-- Menú inicial tipo Minecraft (diferido a la Fase 17)
+- Encantamientos/pociones, texturas de ítems faltantes y rediseño de
+  cofres/mesa de crafteo/horno (Fase 19); pulido general de bugs/paridad y
+  refactor a convenciones (Fase 18); rolling release (Fase 20) — el Won't
+  se mantiene hasta después de la Fase 20

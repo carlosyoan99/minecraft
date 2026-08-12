@@ -30,6 +30,7 @@ aquí.
 | 14 — Auditoría y cierre de Fases 12-13 | [`fase14-spec.md`](fase14-spec.md) | Prospectiva (auditoría) | ✅ Completada y auditada | Bloques A (spawn por bioma, persistencia `SCHEMA_VERSION` 5, tridente contra mobs, slime determinista), B (drop de menas con `ORE_DROP`, tier de pico por mineral, comida/combustible, salud/XP de mobs, boom de creeper = `TNT_DAMAGE`) y C (un solo rayo por `pointermove`, broadcast solo si cambia, rebuild de vecinos, luz de antorcha stale, `sendInit` liviano con relleno progresivo) implementados y en verde. Auditoría de cierre: unit 3666 OK, E2E 4/4, `audit-fase7` CDP OK, `biome` 0 errores |
 | 15 — Corrección de auditoría y mejoras del usuario | [`fase15-spec.md`](fase15-spec.md) | Prospectiva (auditoría) | ✅ Completada y auditada | Cierre de los pendientes del reporte de paridad: copas de árboles completas en bordes de chunk (A2, `pendingLeaves` + test determinista en `unit-arboles`), nubes semitransparentes con variedad (D1), tooltip estilizado del hotbar (D3) y **D5: mundo de 128 bloques (Y ∈ −64..+63, `SCHEMA_VERSION` 6, migración v5→v6)** auditado por `tests/audit-altura.js` (§9). El resto del plan (A1 uuid, A3/A4 WIP, L1-L5 arco/puertas/escaleras-cubos-recetas y POO) se cerró junto a la Fase 13. Suite de 50 unitarios en verde + registro de `unit-ao`/`unit-muerte` |
 | 16 — Corrección de la auditoría 2026-08-10, bugs del usuario y paridad restante | [`fase16-spec.md`](fase16-spec.md) | Prospectiva (auditoría + notas del usuario + entrevista) | ⏳ **En curso (sin implementar)** | Prerrequisito A1: commitear el WIP del D5 (world de 128 bloques en el working tree sin commitear; 12 unitarios pendientes de recalibración). Bloques B (6 bugs del usuario: niebla submarina, cofres con Shift, IA de mobs, inventario con texturas/tooltip, libro de recetas, calidad gráfica), C (guardado asíncrono, validación de coords, anti-cheat, `set_seed`, hornos huérfanos, menores), D (paridad: combustible real, drops zombi/creeper, puertas ×3, vidrio 200 t, carbón vegetal, XP) y E (pantalla completa, cobertura de `unit-recetas.js`) |
+| 17 — Menú inicial tipo Minecraft, UI/UX y móvil | [`fase17-spec.md`](fase17-spec.md) | Prospectiva (notas del usuario + entrevista) | ⏳ **Prospectiva (sin implementar)** | Menú inicial tipo Minecraft: servidor en modo menú sin cargar mundo al arrancar (A1, con `SEED` arranca directo para E2E), pantalla principal (A2), lista de mundos con reproducir/eliminar/clonar/cambiar modo/renombrar (A3), ajustes en pestañas (A4), flujo cliente menú → `join_world` (A5); 7 bugs del usuario sin asignar (B1-B7: persistencia de inventario, desconexión, chunks vacíos, flor/hierba, cuevas largas, mobs en creativo, minar con clic mantenido); UI/UX (C1 pausa estilo MC, C2 estética) y móvil acotado (D1 controles táctiles). Prerrequisito: Fase 16 cerrada |
 
 ## Reporte comparativo 1:1
 
@@ -77,7 +78,9 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
   128 bloques D5) y el registro de los tests pendientes, con la suite de 50
   unitarios en verde. La **16 es la fase actual (prospectiva, sin
   implementar)**: su prerrequisito A1 es commitear el WIP del D5 (working
-  tree sin commitear; 12 unitarios pendientes de recalibración).
+  tree sin commitear; 12 unitarios pendientes de recalibración). La **17 es
+  la siguiente fase prospectiva** (menú inicial tipo Minecraft, UI/UX y
+  móvil — `fase17-spec.md`); su prerrequisito es la Fase 16 cerrada.
 - El estado real de cada tarea (checkboxes `[ ]`/`[x]`) vive en
   `TODO.md` (tracker, sin detalle narrativo); el detalle de cada fase se
   documenta en su spec de este índice. Al cerrar una fase se marcan sus

@@ -226,10 +226,16 @@ function executeCommand(player, raw, ctx) {
 			if (args.length < 3 || args.some((a) => !/^-?\d+(\.\d+)?$/.test(a))) {
 				systemMessage(player, "Uso: /tp <x> <y> <z>");
 				break;
-			}
-			const tx = parseFloat(args[0]),
-				ty = parseFloat(args[1]),
-				tz = parseFloat(args[2]);
+			}			const tx0 = parseFloat(args[0]),
+				ty0 = parseFloat(args[1]),
+				tz0 = parseFloat(args[2]);
+			// SV-6 (C6): /tp se sujeta a los bordes del mundo (mismo clamp que el
+			// move handler) — antes se podía teletransportar fuera del mapa y
+			// quedar en el vacío. `half` es media arista del mundo (256/512/...).
+			const half = constants.worldHalfExtent();
+			const tx = Math.max(-half + 0.6, Math.min(half - 0.6, tx0));
+			const tz = Math.max(-half + 0.6, Math.min(half - 0.6, tz0));
+			const ty = ty0;
 			const fx = Math.floor(tx),
 				fz = Math.floor(tz);
 			// Cargar el chunk destino ANTES de validar, para no teletransportar a
@@ -240,20 +246,25 @@ function executeCommand(player, raw, ctx) {
 			const feet = world.getBlock(fx, Math.floor(y), fz);
 			const head = world.getBlock(fx, Math.floor(y + 1.5), fz);
 			if (feet !== B.AIR || head !== B.AIR || y < WORLD_MIN_Y + 1)
-			y = ground; // sólido/agua/void → superficie
+				y = ground; // sólido/agua/void → superficie
 			// En un lago, getHeight no conoce el nivel del agua: subir hasta salir
 			// de ella para que el jugador nunca aparezca nadando (como findSpawn).
-		while (
-			world.getBlock(fx, Math.floor(y), fz) === B.WATER &&
-			y < WORLD_MAX_Y
-		)
-			y++;
+			while (
+				world.getBlock(fx, Math.floor(y), fz) === B.WATER &&
+				y < WORLD_MAX_Y
+			)
+				y++;
+			// SV-6: tampoco por encima del límite superior del mundo.
+			if (y > WORLD_MAX_Y) y = WORLD_MAX_Y;
 			player.x = tx;
 			player.y = y;
 			player.z = tz;
 			player.lastMoveTime = Date.now();
 			player.fallFromY = null; // teletransportarse no es caerse (Fase 7)
 			player.lastGroundY = null;
+			// Fase 16 (C3): el /tp salta la posición — la ventana de velocidad
+			// horizontal no debe heredar muestras de la posición anterior.
+			player.speedSamples = [];
 			// Fase 10 (A5): fix "el mundo deja de cargar" tras un /tp lejano.
 			// 1) El TELEPORT se envía ANTES que los chunks: loadChunkData del
 			//    cliente filtra por withinRenderDistance(cámara) y, si la cámara
@@ -270,7 +281,12 @@ function executeCommand(player, raw, ctx) {
 			const fresh = world.ensureChunksAround(tx, tz, 2);
 			if (fresh.length) {
 				const extra = {};
-				for (const key of fresh) extra[key] = Array.from(state.chunks.get(key));
+				// Defensivo (bug de semilla): nunca Array.from de un chunk que
+				// pueda no estar cacheado (fuera de bordes → undefined).
+				for (const key of fresh) {
+					const arr = state.chunks.get(key);
+					if (arr) extra[key] = Array.from(arr);
+				}
 				player.ws.send(
 					JSON.stringify({ event: "chunks_add", data: { chunkData: extra } })
 				);
@@ -316,7 +332,10 @@ function executeCommand(player, raw, ctx) {
 				);
 				break;
 			}
-			const count = Math.max(1, Math.min(999, parseInt(args[1], 10) || 1));
+			// SV-5 (C6): /give con tope de stack 64 (paridad MC) — antes se podía
+			// pedir 999 y meter un stack infinito en un slot. Las herramientas y
+			// la armadura siguen siendo 1 (no apilan; addToInventory lo ignora).
+			const count = Math.max(1, Math.min(64, parseInt(args[1], 10) || 1));
 			if (!playerHelpers.addToInventory(player, id, count)) {
 				systemMessage(player, "Inventario lleno");
 				break;

@@ -460,6 +460,47 @@ check(
 	resetPlayers();
 }
 
+// --- 10b) B3 (Notas del usuario): al ser GOLPEADO, un hostil se vuelve agresivo
+//      con el atacante AUNQUE sea de día (aggro MOB_AGGRO_MS) y lo persigue —
+//      antes no reaccionaba a los golpes ---
+{
+	resetPlayers();
+	const p = mkPlayer({ id: "pagr", x: 30, y: 10, z: 0 });
+	state.players.set(p.id, p);
+	const z = new mobs.Mob("zombie", 0, 10, 0);
+	// De día y a 30 bloques (fuera de la visión de 16): idle.
+	z.tick(false);
+	check("zombie idle de día sin aggro (lejos)", z.state === "idle", `state=${z.state}`);
+	// Golpeado por el jugador: entra en aggro con el atacante.
+	z.mobHit(p);
+	check("mobHit marca aggro al hostil", z.isAggroed() && z.aggroTarget === p.id);
+	// Siguiente tick (de día): persigue al agresor aunque la visión no lo alcance.
+	z.tick(false);
+	check(
+		"zombie aggroed persigue al atacante de día",
+		z.state === "chase",
+		`state=${z.state}`
+	);
+	check("zombie aggroed se acerca al atacante", z.x > 0, `x=${z.x}`);
+	// Cerca del agresor: lo ataca de día (daño 3).
+	p.x = 1;
+	z.x = 0.8;
+	z.attackCooldown = 0;
+	z.tick(false);
+	check(
+		"zombie aggroed ataca al agresor de día",
+		p.health === 17,
+		`health=${p.health}`
+	);
+	// Al expirar el aggro (10s) y seguir lejos, vuelve a idle.
+	p.x = 30;
+	z.aggroUntil = Date.now() - 1;
+	z.x = 0;
+	z.tick(false);
+	check("zombie vuelve a idle al expirar el aggro", z.state === "idle", `state=${z.state}`);
+	resetPlayers();
+}
+
 // --- 11) spawnMobs: requiere jugadores y respeta el tope de 30 ---
 {
 	resetPlayers();

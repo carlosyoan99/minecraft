@@ -5,6 +5,8 @@
 // ============================================================
 const fs = require("node:fs");
 const path = require("node:path");
+const constants = require("./constants.js");
+const { FUEL_TICKS } = constants;
 const state = require("./state.js");
 
 const { furnaces } = state;
@@ -166,6 +168,7 @@ function getOrCreateFurnace(key) {
 	if (!f) {
 		f = {
 			fuelItem: null,
+			fuelCount: 0, // Fase 16 (D1): unidades de combustible cargadas (se consumen de una en una)
 			fuelTicksLeft: 0,
 			inputItem: null,
 			progress: 0,
@@ -181,6 +184,7 @@ function getOrCreateFurnace(key) {
 function furnaceSnapshot(f) {
 	return {
 		fuelItem: f.fuelItem,
+		fuelCount: f.fuelCount || 0,
 		fuelTicksLeft: f.fuelTicksLeft,
 		inputItem: f.inputItem ? f.inputItem.id : null,
 		inputCount: f.inputItem ? f.inputItem.count : 0,
@@ -199,12 +203,19 @@ function tickFurnaces() {
 	for (const [_key, f] of furnaces) {
 		const recipe = f.inputItem ? furnaceRecipes[String(f.inputItem.id)] : null;
 		const canCook =
-			recipe && f.inputItem.count > 0 && (f.fuelTicksLeft > 0 || f.fuelItem);
+			recipe &&
+			f.inputItem.count > 0 &&
+			(f.fuelTicksLeft > 0 || (f.fuelItem != null && (f.fuelCount || 0) > 0));
 
 		if (canCook) {
-			if (f.fuelTicksLeft <= 0 && f.fuelItem) {
-				// Consumir una unidad de combustible
-				f.fuelTicksLeft = 400; // ticks de combustible por unidad
+			if (f.fuelTicksLeft <= 0 && f.fuelItem != null) {
+				// Fase 16 (D1): consumir UNA unidad REAL de combustible — se queman
+				// sus FUEL_TICKS oficiales (carbón 1600, palo 100, tablas/tronco
+				// 300) y la unidad se consume. Sin combustible el horno se apaga
+				// (antes quemaba 400 ticks eternos sin consumir nada).
+				f.fuelTicksLeft = FUEL_TICKS[f.fuelItem] || 100;
+				f.fuelCount = Math.max(0, (f.fuelCount || 0) - 1);
+				if (f.fuelCount <= 0) f.fuelItem = null;
 			}
 			if (f.fuelTicksLeft > 0) {
 				f.fuelTicksLeft--;
@@ -231,7 +242,13 @@ function tickFurnaces() {
 
 function restoreFurnaces(entries) {
 	furnaces.clear();
-	for (const [k, v] of entries || []) furnaces.set(k, v);
+	for (const [k, v] of entries || []) {
+		// Fase 16 (D1): los hornos guardados antes del fix no tenían fuelCount;
+		// un fuelItem persistido equivale a 1 unidad real (se consume y apaga).
+		if (v && v.fuelItem != null && typeof v.fuelCount !== "number")
+			v.fuelCount = 1;
+		furnaces.set(k, v);
+	}
 }
 
 // ============================================================

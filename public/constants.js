@@ -294,7 +294,9 @@ export const ITEM_NAMES = {
 	251: "Cubo de lava", // lleno: vierte lava (clic derecho)
 	252: "Pedernal", // ~10% de la grava; material de las flechas
 	253: "Pluma", // drop del pollo; material de las flechas
-	254: "Compás" // Fase 13 (L5): 4 lingotes de hierro + redstone
+	254: "Compás", // Fase 13 (L5): 4 lingotes de hierro + redstone
+	255: "Carne podrida", // Fase 16 (D2): drop del zombi
+	256: "Pólvora" // Fase 16 (D2): drop del creeper; material del TNT
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -328,6 +330,8 @@ export const WATER_BUCKET = 250;	export const LAVA_BUCKET = 251;
 	export const FLINT = 252;
 	export const FEATHER = 253;
 	export const COMPASS = 254;
+	export const ROTTEN_FLESH = 255; // Fase 16 (D2): drop del zombi
+	export const GUNPOWDER = 256; // Fase 16 (D2): drop del creeper + receta TNT
 // Durabilidad máxima por pieza (Fase 7). Mantener en sincronía con
 // ARMOR_DURABILITY de constants.js (servidor) — lo verifica unit-sync.js.
 export const ARMOR_DURABILITY = {

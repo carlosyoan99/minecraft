@@ -52,6 +52,18 @@ const tnt = require("./tnt.js"); // Fase 10 (D2)
 // de mobs siguen al mismo reloj (worldTime), así que el comando afecta a todo.
 const worldTime = () => commands.worldTime(state);
 
+// Fase 16 (C2, SV-3/SEC-3): valida que x/y/z sean números finitos ANTES de
+// usarlos en handlers. Sin esto, coords `NaN`/strings/null degeneraban claves
+// como "NaN,NaN" (chunks fantasma) y Math.hypot(NaN, ...) > 7 era false
+// (pasaban el guard de distancia y mutaban el mundo con claves basura).
+const validCoords = (x, y, z) =>
+	typeof x === "number" &&
+	typeof y === "number" &&
+	typeof z === "number" &&
+	Number.isFinite(x) &&
+	Number.isFinite(y) &&
+	Number.isFinite(z);
+
 // Distancia máxima (bloques) a la que se ven las grietas de rotura de otro
 // jugador: la misma que el alcance de interacción (7), como en Minecraft el
 // progreso de rotura es visible para cualquiera que pueda minar ese bloque.
@@ -315,7 +327,12 @@ function handleConnection(ws, req) {
 		// el daño de caída por velocidad usa fallVy.
 		vyObs: 0, // diagnóstico (última velocidad vertical observada, no se consume)
 		airTimeMs: 0,
-		fallVy: 0
+		fallVy: 0,
+		// Fase 16 (C3, SEC-1): ventana deslizante de velocidad horizontal — pares
+		// {t, dist} de los movimientos ACEPTADOS (distancia horizontal desde la
+		// posición anterior). El límite por-move (1.2 bloques) no cazaba ráfagas
+		// sostenidas de ~0.8 bloques a 20/s; esta ventana mide bloques/s reales.
+		speedSamples: []
 	});
 	state.players.set(playerId, player);
 	// Fase 14 (M2, fix de revisión): al entrar un jugador NUEVO, el snapshot de
@@ -427,12 +444,9 @@ function handleConnection(ws, req) {
 		switch (event) {
 			case "move": {
 				const { x, y, z, yaw, pitch } = data;
-				if (
-					typeof x !== "number" ||
-					typeof y !== "number" ||
-					typeof z !== "number"
-				)
-					return;
+				// C2 (SV-3/SEC-3): `typeof number` deja pasar NaN; rechazarlo evita
+				// corromper p.x/p.y/p.z y los chunks generados "NaN,NaN".
+				if (!validCoords(x, y, z)) return;
 				// Fase 7: caer del mundo (void). Se comprueba ANTES del anti-cheat de
 				// velocidad: una caída acelerada supera el límite de 1.2 bloques/move y
 				// sus moves se rechazarían (teleport al último punto aceptado), por lo
@@ -506,12 +520,51 @@ function handleConnection(ws, req) {
 				// parábola del salto. El límite de velocidad y los sólidos siguen
 				// aplicando (el cliente colisiona; el servidor corrige si entra en un
 				// bloque).
-				if (inAir && y - p.y > 0 && p.gamemode !== "creative") {
+				// Fase 16 (C3, SEC-1): el anti-cheat también caza el HOVER — antes la
+				// condición `y - p.y > 0` excluía dy = 0, así que mantenerse en el
+				// aire >1s sin subir ni caer (flotar) no disparaba nada. Ahora, en el
+				// aire y sin descender (dy ≥ −0.001; la caída legítima, dy < 0, sigue
+				// exenta porque dura >1s), el tiempo acumulado cuenta igual.
+				const dy = y - p.y;
+				const hovering = dy >= -0.001; // sube o se mantiene (no cae)
+				if (inAir && p.gamemode !== "creative") {
 					// Parábola del salto: vy = JUMP_SPEED − GRAVITY·t (máx al iniciar
 					// el salto). Margen 1.5× por latencia/jitter; además ningún salto
 					// legítimo sube más de ~0.4s seguido (tras >1s en el aire, subir
-					// es volar).
-					if (vyObs > JUMP_SPEED * 1.5 || p.airTimeMs > 1000) {
+					// o flotar es volar).
+					if (
+						(dy > 0 && (vyObs > JUMP_SPEED * 1.5 || p.airTimeMs > 1000)) ||
+						(hovering && p.airTimeMs > 1000)
+					) {
+						ws.send(
+							JSON.stringify({
+								event: "teleport",
+								data: { x: p.x, y: p.y, z: p.z }
+							})
+						);
+						return;
+					}
+				}
+				// Fase 16 (C3, SEC-1): ventana deslizante de velocidad horizontal.
+				// Ráfagas de ~0.8 bloques a 20/s pasan el límite por-move (1.2) pero
+				// son ~16 bloques/s sostenidos. La ventana mide bloques/s reales sobre
+				// las muestras aceptadas (~1.2s), con el intervalo de cada muestra
+				// clavado a ≥50 ms (igual que el anti-cheat vertical) para no falsar
+				// con ráfagas de red. El sprint legítimo (~5.6 bloques/s) queda por
+				// debajo del umbral (7 bloques/s).
+				if (p.gamemode !== "creative") {
+					const WINDOW_MS = 1200;
+					const MAX_SPEED = 7; // bloques/s sostenidos (sprint ≈ 5.6)
+					let sumDist = 0;
+					let sumDur = 0;
+					let prevT = nowMs - 50;
+					for (const s of p.speedSamples) {
+						if (nowMs - s.t > WINDOW_MS) continue; // muestra vieja
+						sumDur += Math.max(0.05, s.t - prevT) / 1000;
+						sumDist += s.dist;
+						prevT = s.t;
+					}
+					if (sumDur >= 0.1 && sumDist / sumDur > MAX_SPEED) {
 						ws.send(
 							JSON.stringify({
 								event: "teleport",
@@ -523,6 +576,14 @@ function handleConnection(ws, req) {
 				}
 				// Fase 10 (B1): se asignan las coordenadas YA sujetas a los bordes
 				// (cx/cz calculados antes del anti-cheat).
+				// Fase 16 (C3): registrar la muestra horizontal del move aceptado
+				// (distancia desde la última posición aceptada) para la ventana de
+				// velocidad. Se empuja ANTES de sobrescribir p.x/p.z.
+				p.speedSamples.push({
+					t: nowMs,
+					dist: Math.hypot(cx - p.x, cz - p.z)
+				});
+				if (p.speedSamples.length > 100) p.speedSamples.shift();
 				p.x = cx;
 				p.y = y;
 				p.z = cz;
@@ -603,7 +664,13 @@ function handleConnection(ws, req) {
 
 			case "block_action": {
 				const { action, x, y, z, itemId } = data;
-				if (Math.hypot(x - p.x, y - p.y, z - p.z) > 7) return;
+				// C2 (SV-3/SEC-3): solo las acciones CON coordenadas las validan;
+				// `break_cancel` no lleva x/y/z y no debe quedar bloqueado por el
+				// guard (regresión: el cooldown del guard rompía la cancelación).
+				if (action === "break" || action === "place" || action === "ignite") {
+					if (!validCoords(x, y, z)) return;
+					if (Math.hypot(x - p.x, y - p.y, z - p.z) > 7) return;
+				}
 				// Fase 10 (D2): clic derecho sobre un TNT enciende la mecha.
 				if (action === "ignite") {
 					tnt.ignite(x, y, z);
@@ -755,6 +822,7 @@ function handleConnection(ws, req) {
 			}
 
 			case "furnace_open": {
+				if (!validCoords(data.x, data.y, data.z)) break; // C2 (SV-3/SEC-3)
 				const key = `${data.x},${data.y},${data.z}`;
 				// Fase 7 (auditoría): validar distancia como chest_open — antes un
 				// jugador podía abrir/operar cualquier horno del mundo desde lejos.
@@ -774,6 +842,7 @@ function handleConnection(ws, req) {
 			case "chest_open": {
 				// Fase 6: abrir un cofre — valida distancia y que el bloque sea
 				// realmente un cofre (fuente de verdad del servidor).
+				if (!validCoords(data.x, data.y, data.z)) break; // C2 (SV-3/SEC-3)
 				const key = `${data.x},${data.y},${data.z}`;
 				if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) return;
 				if (world.getBlock(data.x, data.y, data.z) !== B.CHEST) return;
@@ -858,10 +927,14 @@ function handleConnection(ws, req) {
 						FUEL_ITEMS.has(slot.id) &&
 						(!f.fuelItem || f.fuelItem === slot.id)
 					) {
-						f.fuelItem = slot.id;
-						slot.count -= 1;
-						if (slot.count <= 0) p.inventory[data.invSlot] = null;
-						playerHelpers.sendInventory(p);
+					f.fuelItem = slot.id;
+					// Fase 16 (D1): registrar la unidad REAL cargada (fuelCount) —
+					// sin esto el horno nunca arrancaba (canCook exige fuelCount > 0)
+					// y el combustible añadido no se consumía nunca.
+					f.fuelCount = (f.fuelCount || 0) + 1;
+					slot.count -= 1;
+					if (slot.count <= 0) p.inventory[data.invSlot] = null;
+					playerHelpers.sendInventory(p);
 					}
 				} else if (data.action === "add_input") {
 					const slot = p.inventory[data.invSlot];
@@ -928,6 +1001,20 @@ function handleConnection(ws, req) {
 				// solo se cambia si este jugador es el ÚNICO en línea (los demás verían
 				// el mundo cambiar bajo sus pies).
 				if (typeof data.seed !== "string" || !data.seed.trim()) break;
+				// Fase 16 (C4, SEC-2): cuota anti-spam — 1 cambio de semilla cada 10s
+				// por jugador. switchWorld persiste el mundo actual (I/O a disco); sin
+				// cuota un cliente podía martillear el evento y saturar el disco.
+				const nowCooldown = Date.now();
+				if (p.seedCooldownUntil && p.seedCooldownUntil > nowCooldown) {
+					p.ws.send(
+						JSON.stringify({
+							event: "seed_rejected",
+							data: { reason: "cooldown" }
+						})
+					);
+					break;
+				}
+				p.seedCooldownUntil = nowCooldown + 10000; // 10 s (cuota)
 				if (state.players.size > 1) {
 					p.ws.send(
 						JSON.stringify({
@@ -1004,6 +1091,7 @@ function handleConnection(ws, req) {
 				// Fase 9 (Bloque C): arar la tierra con una azada — clic derecho con
 				// azada en la mano sobre tierra/césped la convierte en tierra arada
 				// (soporte para plantar semillas). La azada se desgasta (1 uso).
+				if (!validCoords(data.x, data.y, data.z)) break; // C2 (SV-3/SEC-3)
 				const block = world.getBlock(data.x, data.y, data.z);
 				if (block !== B.DIRT && block !== B.GRASS) break;
 				if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) break;
@@ -1026,6 +1114,7 @@ function handleConnection(ws, req) {
 				// Fase 9 (Bloque C): plantar semillas en tierra arada — clic derecho
 				// con semillas sobre farmland coloca un cultivo de trigo (crece por
 				// etapas en el bucle principal y se cosecha al madurar).
+				if (!validCoords(data.x, data.y, data.z)) break; // C2 (SV-3/SEC-3)
 				if (world.getBlock(data.x, data.y, data.z) !== B.FARMLAND) break;
 				if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) break;
 				const held = p.inventory[p.selectedSlot];
@@ -1160,6 +1249,7 @@ function handleConnection(ws, req) {
 				// con la fuente infinita 2×2 de la Fase 11: al recoger, si quedan
 				// ≥2 fuentes ortogonales adyacentes, la celda se rellena sola.
 				const { x, y, z } = data;
+				if (!validCoords(x, y, z)) break; // C2 (SV-3/SEC-3)
 				if (Math.hypot(x - p.x, y - p.y, z - p.z) > 7) break;
 				const held = p.inventory[p.selectedSlot];
 				if (!held) break;
@@ -1203,6 +1293,7 @@ function handleConnection(ws, req) {
 				let bx = data.x,
 					by = data.y,
 					bz = data.z;
+				if (!validCoords(bx, by, bz)) break; // C2 (SV-3/SEC-3)
 				if (Math.hypot(bx - p.x, by - p.y, bz - p.z) > 7) break;
 				let block = world.getBlock(bx, by, bz);
 				// La puerta ocupa 2 celdas (ambas son bloque de puerta): el
@@ -1325,6 +1416,7 @@ function handleConnection(ws, req) {
 				// (avanza etapas hasta 7); sobre césped/tierra crea vegetación
 				// encima (hierba alta o una flor). Consume 1 harina; el servidor
 				// valida el ítem y la distancia.
+				if (!validCoords(data.x, data.y, data.z)) break; // C2 (SV-3/SEC-3)
 				if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) break;
 				const held = p.inventory[p.selectedSlot];
 				if (!held || held.id !== I.BONE_MEAL) break;

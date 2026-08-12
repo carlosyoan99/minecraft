@@ -163,6 +163,7 @@ function freshFurnace(over = {}) {
 		f,
 		{
 			fuelItem: null,
+			fuelCount: 0, // Fase 16 (D1): unidades de combustible reales
 			fuelTicksLeft: 0,
 			inputItem: null,
 			progress: 0,
@@ -197,10 +198,13 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 }
 
 // 16) Ciclo completo: mineral de carbón (9) -> carbón (101) en 200 ticks
+// (Fase 16, D1: el combustible se consume de verdad — 1 unidad de tablones
+// rinde FUEL_TICKS y se agota; aquí 1 tablón cubre los 200 ticks de la receta)
 {
 	const f = freshFurnace({
 		inputItem: { id: 9, count: 1 },
-		fuelItem: { id: 7, count: 1 }
+		fuelItem: 7, // Fase 16 (D1): fuelItem es el ID numérico (igual que en el wire)
+		fuelCount: 1
 	});
 	for (let i = 0; i < 200; i++) crafting.tickFurnaces();
 	check(
@@ -211,13 +215,26 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 	check("input consumido", f.inputItem === null, JSON.stringify(f.inputItem));
 	check("requiredTicks 200", f.requiredTicks === 200, `req=${f.requiredTicks}`);
 	check("progress reseteado a 0", f.progress === 0, `progress=${f.progress}`);
+	check(
+		"D1: la unidad de tablones se consumió (fuelItem null)",
+		f.fuelItem === null,
+		JSON.stringify(f.fuelItem)
+	);
+	check(
+		"D1: 1 tablón rinde 300 ticks y tras 200 de cocción quedan 100",
+		f.fuelTicksLeft === 100,
+		`ticks=${f.fuelTicksLeft}`
+	);
 }
 
-// 17) Dos unidades: 400 ticks -> 2 de salida (el combustible rinde 400 ticks)
+// 17) Dos unidades: 400 ticks -> 2 de salida (1 carbón de 1600 ticks)
+// (Fase 16, D1: antes un combustible genérico rendía 400 ticks sin consumirse;
+// ahora el carbón rinde FUEL_TICKS[101] = 1600 y se consume al encender)
 {
 	const f = freshFurnace({
 		inputItem: { id: 9, count: 2 },
-		fuelItem: { id: 7, count: 1 }
+		fuelItem: 101, // carbón (ID numérico, formato D1 del wire)
+		fuelCount: 1
 	});
 	for (let i = 0; i < 400; i++) crafting.tickFurnaces();
 	check(
@@ -226,21 +243,28 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 		`out=${f.outputItem}x${f.outputCount}`
 	);
 	check("input agotado", f.inputItem === null, JSON.stringify(f.inputItem));
+	check(
+		"D1: la unidad de carbón se consumió",
+		f.fuelItem === null && f.fuelTicksLeft === 1200, // 1600 − 400 de cocción
+		`fuel=${f.fuelItem} ticks=${f.fuelTicksLeft}`
+	);
 }
 
-// 18) Tiempo por receta: arena (6) -> vidrio (17) tarda 150 ticks
+// 18) Tiempo por receta: arena (6) -> vidrio (17) tarda 200 ticks
+// (Fase 16, D4: paridad MC — antes 150; 1 tablón de 300 ticks cubre la receta)
 {
 	const f = freshFurnace({
 		inputItem: { id: 6, count: 1 },
-		fuelItem: { id: 7, count: 1 }
+		fuelItem: 7, // tablones (ID numérico, formato D1 del wire)
+		fuelCount: 1
 	});
-	for (let i = 0; i < 150; i++) crafting.tickFurnaces();
+	for (let i = 0; i < 200; i++) crafting.tickFurnaces();
 	check(
-		"arena -> vidrio en 150 ticks",
+		"arena -> vidrio en 200 ticks",
 		f.outputItem === 17 && f.outputCount === 1,
 		`out=${f.outputItem}x${f.outputCount}`
 	);
-	check("requiredTicks 150", f.requiredTicks === 150, `req=${f.requiredTicks}`);
+	check("requiredTicks 200", f.requiredTicks === 200, `req=${f.requiredTicks}`);
 }
 
 // 19) Sin combustible no se cocina y el progreso se enfría (-2 por tick)
@@ -264,7 +288,8 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 {
 	const f = freshFurnace({
 		inputItem: { id: 9, count: 1 },
-		fuelItem: { id: 7, count: 1 },
+		fuelItem: 7, // tablones (formato D1: ID numérico)
+		fuelCount: 1,
 		outputItem: 999,
 		outputCount: 5
 	});

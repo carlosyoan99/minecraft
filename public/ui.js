@@ -7,6 +7,7 @@ import { defaultName, send, setStoredName } from "./connection.js";
 import {
 	ARMOR_DURABILITY,
 	ARMOR_SLOT_NAMES,
+	BOW,
 	BOW_DURABILITY,
 	DURABILITY,
 	itemLabel
@@ -15,7 +16,12 @@ import { itemIconCss } from "./itemicons.js";
 import { finishLoading, showLoading } from "./loading.js";
 import { recipeCategory } from "./recipeCategories.js"; // Fase 9 (F): pestañas del libro
 import { controls, showBlocker } from "./scene.js";
-import { getSettings, setSetting, settingUiValue } from "./settings.js";
+import {
+	getSettings,
+	setSetting,
+	settingUiValue,
+	toggleFullscreen // Fase 16 (E1): pantalla completa
+} from "./settings.js";
 
 // Estado que dibuja el HUD (lo actualiza la red; lo lee el input)
 let inventory = new Array(36).fill(null);
@@ -104,11 +110,22 @@ const slotEls = Array.from({ length: 9 }, (_, i) => {
 });
 let hoveredSlot = -1; // para no reescribir el tooltip si ya está mostrando este slot
 
+// Fase 16 (B4, CL-1): durabilidad máxima real de un ítem. El fallback global
+// BOW_DURABILITY hacía que TODO ítem sin durabilidad (adoquín, comida, ...)
+// mostrara una barra fantasma "384/384" — solo el arco (BOW) usa ese valor.
+function maxDurability(item) {
+	return (
+		DURABILITY[item.id] ||
+		ARMOR_DURABILITY[item.id] ||
+		(item.id === BOW ? BOW_DURABILITY : 0)
+	);
+}
+
 const slotHtml = (i) => {
 	const item = inventory[i];
 	if (!item) return "";
 	let html = `${itemVisual(item.id, 1.5)}<span class="count">${item.count}</span>`;
-	const maxD = DURABILITY[item.id] || ARMOR_DURABILITY[item.id] || BOW_DURABILITY;
+	const maxD = maxDurability(item);
 	if (maxD) {
 		const cur = typeof item.durability === "number" ? item.durability : maxD;
 		const pct = Math.max(0, Math.min(100, (cur / maxD) * 100));
@@ -145,7 +162,7 @@ hotbarEl.addEventListener("click", (ev) => {
 
 // Tooltip por hover (delegado; requiere DOM un poco: el texto va al elemento).
 const slotTooltipHtml = (item) => {
-	const maxD = DURABILITY[item.id] || ARMOR_DURABILITY[item.id] || BOW_DURABILITY;
+	const maxD = maxDurability(item);
 	let html = `<span class="tt-name">${itemLabel(item.id)}</span>`;
 	if (maxD) {
 		const cur = typeof item.durability === "number" ? item.durability : maxD;
@@ -262,6 +279,8 @@ const volEffectsValue = document.getElementById("vol-effects-value");
 const volAmbient = document.getElementById("vol-ambient");
 const volAmbientValue = document.getElementById("vol-ambient-value");
 const qualitySelect = document.getElementById("quality-select");
+// Fase 16 (E1): pantalla completa (F11 / checkbox de ajustes)
+const fullscreenToggle = document.getElementById("fullscreen-toggle");
 let currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 // Fase 9 (Bloque B): modo de juego del mundo activo (survival/creative). El
@@ -338,6 +357,10 @@ settingsBtn.addEventListener("click", () => {
 	volAmbient.value = settingUiValue("volumeAmbient");
 	volAmbientValue.textContent = `${settingUiValue("volumeAmbient")}%`;
 	qualitySelect.value = s.quality;
+	// Fase 16 (E1): el checkbox refleja la preferencia guardada (el estado real
+	// del navegador puede divergir si se salió con Esc — lo sincroniza
+	// fullscreenchange en settings.js).
+	fullscreenToggle.checked = !!s.fullscreen;
 });
 worldsBackBtn.addEventListener("click", () => showMenuScreen(menuMain));
 settingsBackBtn.addEventListener("click", () => showMenuScreen(menuMain));
@@ -376,6 +399,9 @@ coordsToggle.addEventListener("change", () =>
 invertToggle.addEventListener("change", () =>
 	setSetting("invertControls", invertToggle.checked)
 );
+// Fase 16 (E1): el cambio del checkbox es un gesto de usuario válido para el
+// Fullscreen API — toggleFullscreen() hace la petición real al navegador.
+fullscreenToggle.addEventListener("change", () => toggleFullscreen());
 
 // Entrar al juego con una semilla: si difiere de la activa (o llega un nombre
 // nuevo para el mundo actual) se pide al servidor cambiar/renombrar el mundo
@@ -865,6 +891,17 @@ function updateCraftGridUI(success) {
 	craftResultEl.style.borderColor = success ? "#8f8" : "#555";
 }
 
+// Fase 16 (B4): tooltip estilizado (patrón del hotbar) para los slots del
+// inventario en paneles — nombre + durabilidad al hover.
+function attachSlotTooltip(el, item) {
+	if (!item) return;
+	el.addEventListener("mouseenter", () => {
+		tooltipEl.innerHTML = slotTooltipHtml(item);
+		tooltipEl.classList.remove("hidden");
+	});
+	el.addEventListener("mouseleave", () => tooltipEl.classList.add("hidden"));
+}
+
 function updateCraftInventoryUI() {
 	craftInventoryEl.innerHTML = "";
 	inventory.forEach((item, i) => {
@@ -872,6 +909,7 @@ function updateCraftInventoryUI() {
 		el.className = "slot";
 		if (item) {
 			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
+			attachSlotTooltip(el, item);
 			el.addEventListener("click", () => {
 				const emptyGridSlot = craftingGrid.findIndex((c) => !c);
 				if (emptyGridSlot !== -1)
@@ -929,6 +967,7 @@ function updateFurnaceInventoryUI() {
 		el.className = "slot";
 		if (item) {
 			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
+			attachSlotTooltip(el, item);
 			el.addEventListener("click", () => {
 				send("furnace_action", { action: "add_fuel", invSlot: i });
 				send("furnace_action", { action: "add_input", invSlot: i });
@@ -997,7 +1036,7 @@ function updateChestSlotsUI() {
 		el.className = "slot";
 		if (item) {
 			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
-			el.title = itemLabel(item.id);
+			attachSlotTooltip(el, item);
 			el.addEventListener("click", () =>
 				send("chest_action", { action: "take", chestSlot: i })
 			);
@@ -1013,7 +1052,7 @@ function updateChestInventoryUI() {
 		el.className = "slot";
 		if (item) {
 			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
-			el.title = itemLabel(item.id);
+			attachSlotTooltip(el, item);
 			el.addEventListener("click", () =>
 				send("chest_action", { action: "put", invSlot: i })
 			);

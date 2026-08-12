@@ -33,7 +33,11 @@ const DEFAULTS = {
 	volumeMaster: 0.8,
 	volumeEffects: 1,
 	volumeAmbient: 1,
-	quality: QUALITY_DEFAULT
+	quality: QUALITY_DEFAULT,
+	// Fase 16 (E1): preferencia de pantalla completa. Se aplica con gesto del
+	// usuario (checkbox de ajustes o tecla F11); en el arranque NO se fuerza
+	// (los navegadores bloquean requestFullscreen sin gesto).
+	fullscreen: false
 };
 
 let settings = { ...DEFAULTS };
@@ -104,14 +108,60 @@ export function setSetting(key, value) {
 	} else if (key === "quality") {
 		settings.quality = QUALITY_PROFILES[value] ? value : QUALITY_DEFAULT;
 		applyQuality(settings.quality);
+	} else if (key === "fullscreen") {
+		// Fase 16 (E1): solo se toca la preferencia; el cambio real de pantalla
+		// completa lo hace el gesto del usuario (F11/checkbox) vía toggleFullscreen.
+		settings.fullscreen = !!value;
 	}
 	save();
 }
+
+// Fase 16 (E1): alterna pantalla completa (Fullscreen API) con fallback si el
+// navegador lo rechaza (promesa rechazada, p. ej. gesto insuficiente o modo
+// no permitido). La preferencia solo se marca cuando la API lo confirma, así
+// el checkbox no queda encendido si el navegador denegó la petición.
+export function toggleFullscreen() {
+	const next = !settings.fullscreen;
+	try {
+		if (next) {
+			const doc = document.documentElement;
+			const p = doc.requestFullscreen
+				? doc.requestFullscreen()
+				: doc.webkitRequestFullscreen?.();
+			// requestFullscreen devuelve una promesa en navegadores modernos:
+			// la preferencia se confirma al resolverse (o la sincroniza el
+			// listener fullscreenchange si el navegador no devuelve promesa).
+			if (p && typeof p.then === "function") p.then(() => setSetting("fullscreen", true)).catch(() => {});
+			else setSetting("fullscreen", true);
+		} else if (document.fullscreenElement || document.webkitFullscreenElement) {
+			const p = document.exitFullscreen
+				? document.exitFullscreen()
+				: document.webkitExitFullscreen?.();
+			if (p && typeof p.then === "function") p.then(() => setSetting("fullscreen", false)).catch(() => {});
+			else setSetting("fullscreen", false);
+		}
+	} catch {
+		return false;
+	}
+	return true;
+}
+
+// Mantiene la preferencia sincronizada con el estado real (p. ej. salir con
+// Esc pone el checkbox en su sitio y persiste).
+document.addEventListener("fullscreenchange", () => {
+	const on = !!document.fullscreenElement;
+	if (settings.fullscreen !== on) {
+		settings.fullscreen = on;
+		save();
+	}
+});
 
 // Se llama desde network.js al recibir el init (tras cargar el mundo): aplica
 // los ajustes guardados — la distancia de render (descarta chunks sobrantes y
 // sincroniza con el servidor) y el resto (FOV, sensibilidad, volumen,
 // calidad), que se aplican en cuanto hay cámara/renderer/contexto de audio.
+// La preferencia de pantalla completa NO se fuerza aquí (requiere gesto del
+// usuario: F11 o el checkbox de ajustes — Fase 16, E1).
 export function applyStoredSettings() {
 	setRenderDistance(settings.renderDistance);
 	updateCoordsHudVisibility();

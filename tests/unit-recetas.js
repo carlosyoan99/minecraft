@@ -309,4 +309,139 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 			!canHarvest(201, B.DIAMOND_ORE)
 	);
 }
+
+// ============================================================
+// 11) COBERTURA TOTAL (Fase 16, E2): todo ítem de I es obtenible en juego
+// ============================================================
+// Cada ID numérico de I debe salir del crafteo, del horno o de un drop/uso
+// justificado (documentado abajo). Si un ítem nuevo entra en constants.js y
+// no es alcanzable, este test falla y obliga a añadir su receta o su entrada
+// en DROPS_JUSTIFICADOS con un comentario de DÓNDE se obtiene.
+{
+	const resultadoCrafteo = new Set(
+		Object.values(recetas).map((r) => r.result.id)
+	);
+	const resultadoHorno = new Set(
+		Object.values(horno).map((r) => r.result.id)
+	);
+	// Drop/uso justificado (sin receta, como en Minecraft):
+	//   104/105/106 — minerales que se minan directo (diamante sin horno)
+	//   107-110/118  — carnes crudas (drops de mobs; se cocinan en el horno)
+	//   115-117     — cosecha de cultivos (trigo/zanahoria/semillas)
+	//   120/132/134/136/140 — drops de mobs (araña/vaca/pesca/esqueleto/abeja)
+	//   236-239     — armadura de cadena (drop raro de esqueletos/zombis)
+	//   245/246     — tridente (ahogado) / slime ball (slime)
+	//   250/251     — cubo lleno: se obtiene usando el CUBO (249, con receta)
+	//   252/253     — pedernal (grava) / pluma (pollo)
+	//   255/256     — carne podrida (zombi) / pólvora (creeper) — Fase 16 (D2)
+	const DROPS_JUSTIFICADOS = new Set([
+		I.DIAMOND, I.REDSTONE, I.EMERALD,
+		I.BEEF, I.PORKCHOP, I.CHICKEN, I.MUTTON, I.RABBIT,
+		I.WHEAT, I.CARROT, I.SEEDS,
+		I.STRING, I.LEATHER, I.COD, I.BONE, I.HONEY,
+		I.CHAIN_HELMET, I.CHAIN_CHESTPLATE, I.CHAIN_LEGGINGS, I.CHAIN_BOOTS,
+		I.TRIDENT, I.SLIME_BALL,
+		I.WATER_BUCKET, I.LAVA_BUCKET,
+		I.FLINT, I.FEATHER,
+		I.ROTTEN_FLESH, I.GUNPOWDER
+	]);
+	const huérfanos = Object.values(I)
+		.filter((id) => typeof id === "number")
+		.filter(
+			(id) =>
+				!resultadoCrafteo.has(id) &&
+				!resultadoHorno.has(id) &&
+				!DROPS_JUSTIFICADOS.has(id)
+		);
+	check(
+		`todo ítem de I es obtenible (crafteo, horno o drop justificado) — sin huérfanos (${huérfanos.join(",") || "ninguno"})`,
+		huérfanos.length === 0
+	);
+}
+
+// ============================================================
+// 12) FASE 16 (Bloque D) — regresiones de los cambios de paridad
+// ============================================================
+{
+	const resultadoCrafteoF16 = new Set(
+		Object.values(recetas).map((r) => r.result.id)
+	);
+	const resultadoHornoF16 = new Set(
+		Object.values(horno).map((r) => r.result.id)
+	);
+	// D3: puertas de madera (46/47/48/49?) — la puerta de hierro (71) y la de
+	// roble (48) tienen receta de crafteo (el bloque se obtiene crafteando).
+	const puertasCrafteables = [B.OAK_DOOR, B.IRON_DOOR].filter((b) => b != null);
+	check(
+		"las puertas (48/71) se craftean (no son solo drops)",
+		puertasCrafteables.every((b) => resultadoCrafteoF16.has(b))
+	);
+	// D3: cada puerta de madera se craftea con 6 tablones del mismo tronco.
+	{
+		const puertaMadera = recetas.oak_door || recetas.puerta_madera;
+		check("existe receta de puerta de madera", !!puertaMadera);
+		const ings = Object.values(puertaMadera?.ingredients || {});
+		check(
+			"la puerta de madera usa 6 tablones (como en Minecraft)",
+			ings.length === 1 && ings[0] === B.PLANKS
+		);
+		const shape = puertaMadera?.shape || [];
+		check(
+			"la puerta de madera tiene forma 2x3 (6 celdas)",
+			shape.length === 3 &&
+				shape.every((f) => f.length === 2) &&
+				shape.join("").replace(/ /g, "").length === 6
+		);
+	}
+	// D3: la puerta de hierro se craftea con 6 lingotes.
+	{
+		const puertaHierro = recetas.iron_door;
+		check("existe receta de puerta de hierro", !!puertaHierro);
+		const ings = Object.values(puertaHierro?.ingredients || {});
+		check(
+			"la puerta de hierro usa 6 lingotes de hierro",
+			ings.length === 1 && ings[0] === I.IRON_INGOT
+		);
+	}
+	// D3: el TNT se craftea con 4 pólvora + 5 arena.
+	{
+		const r = recetas.tnt;
+		check("existe receta de TNT", !!r);
+		const chars = (r?.shape || []).join("");
+		const ing = r?.ingredients || {};
+		const nPolvora = chars.split("").filter((c) => ing[c] === I.GUNPOWDER).length;
+		const nArena = chars.split("").filter((c) => ing[c] === B.SAND).length;
+		check(
+			"el TNT usa 4 pólvora (256) + 5 arena",
+			nPolvora === 4 && nArena === 5 && chars.length === 9
+		);
+		check(
+			"el TNT sale como bloque TNT",
+			r?.result && r.result.id === B.TNT
+		);
+	}
+	// D5: el carbón vegetal se obtiene fundiendo troncos (cualquier tipo de
+	// tronco → carbón 101), además del carbón mineral (9).
+	const troncosHorno = ["4", "28", "30", "41"]; // roble, abedul, abeto, jungla
+	check(
+		"todos los troncos funden a carbón vegetal (D5)",
+		troncosHorno.every((t) => {
+			const r = horno[t];
+			return r && r.result.id === I.COAL && r.result.count === 1;
+		})
+	);
+	// D4: la arena se funde a vidrio en 200 ticks (paridad con Minecraft; antes 150).
+	check(
+		"el vidrio se funde en 200 ticks (D4)",
+		horno["6"] && horno["6"].time === 200 && horno["6"].result.id === B.GLASS
+	);
+	// D2: carne podrida y pólvora NO tienen receta (se dropean de zombi/creeper).
+	check(
+		"la carne podrida (255) y la pólvora (256) no se craftean ni funden",
+		!resultadoCrafteoF16.has(I.ROTTEN_FLESH) &&
+			!resultadoHornoF16.has(I.ROTTEN_FLESH) &&
+			!resultadoCrafteoF16.has(I.GUNPOWDER) &&
+			!resultadoHornoF16.has(I.GUNPOWDER)
+	);
+}
 process.exit(fails ? 1 : 0);

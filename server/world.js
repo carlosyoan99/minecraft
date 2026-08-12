@@ -1631,7 +1631,11 @@ function ensureChunksAround(wx, wz, radius) {
 			const key = `${x},${z}`;
 			const isNew = !chunks.has(key);
 			generateChunk(x, z);
-			if (isNew) generated.push(key);
+			// Fase 16 (C2/regresión del bug de semilla): fuera de los bordes
+			// generateChunk devuelve vacío SIN cachear — no devolver la key o el
+			// llamador haría Array.from(state.chunks.get(key)) → undefined is not
+			// iterable (el crash que tiraba el servidor al crear una semilla).
+			if (isNew && chunks.has(key)) generated.push(key);
 		}
 	}
 	return generated;

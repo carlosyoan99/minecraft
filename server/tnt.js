@@ -76,6 +76,14 @@ function explode(x, y, z) {
 					if (slots?.some((s) => s)) continue;
 					state.chests.delete(`${wx},${wy},${wz}`);
 				}
+				// C5 (REN-2): horno CON contenido se protege (su inventario se
+				// perdería — no hay entidades de item); vacío se rompe y se
+				// limpia su estado (sin entradas huérfanas en world.json).
+				if (block === B.FURNACE) {
+					const f = state.furnaces.get(`${wx},${wy},${wz}`);
+					if (f && (f.inputItem || f.fuelItem || f.outputItem)) continue;
+					state.furnaces.delete(`${wx},${wy},${wz}`);
+				}
 				// Reacción en cadena: otro TNT dentro del cráter se ignita.
 				if (block === B.TNT) {
 					ignite(wx, wy, wz);

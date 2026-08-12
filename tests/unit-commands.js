@@ -531,4 +531,37 @@ check(
 	);
 	state.timeOffset = off0; // restaurar
 }
+
+// --- SV-5 (C6): /give con tope de stack 64 (paridad MC) ---
+{
+	const h = makeHarness();
+	commands.executeCommand(h.player, "/give 4 999", h.ctx); // OAK_LOG x999 pedidos
+	const stack = h.player.inventory.find((s) => s && s.id === 4);
+	check(
+		"SV-5: /give 999 troncos → stack de 64 (tope)",
+		!!stack && stack.count === 64,
+		`count=${stack && stack.count}`
+	);
+}
+
+// --- SV-6 (C6): /tp se sujeta a los bordes del mundo (clamp x/z e Y) ---
+{
+	const constants = require("../server/constants.js");
+	const origSize = constants.worldPaths.worldSize;
+	constants.worldPaths.worldSize = 256; // mundo pequeño: half = 128
+	const h = makeHarness();
+	commands.executeCommand(h.player, "/tp 99999 70 99999", h.ctx);
+	const half = constants.worldHalfExtent();
+	check(
+		"SV-6: /tp fuera del mundo → x/z sujetas a half−0.6",
+		h.player.x === half - 0.6 && h.player.z === half - 0.6,
+		`x=${h.player.x} z=${h.player.z} half=${half}`
+	);
+	check(
+		"SV-6: /tp por encima del cielo → Y sujeta a WORLD_MAX_Y",
+		h.player.y === constants.WORLD_MAX_Y,
+		`y=${h.player.y}`
+	);
+	constants.worldPaths.worldSize = origSize;
+}
 process.exit(failed ? 1 : 0);

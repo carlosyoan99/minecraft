@@ -7,6 +7,7 @@
 	"scripts": {
 		"start": "node server.js",
 		"test": "node tests/run.js",
+		"test:coverage": "c8 --all --src=server --src=public --reporter=text node tests/run.js --unit",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write ."
@@ -19,6 +20,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",
+		"c8": "^12.0.0",
 		"three": "^0.160.0"
 	}
 }

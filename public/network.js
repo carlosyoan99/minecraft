@@ -80,7 +80,17 @@ export function getPlayerName() {
 }
 
 socket.addEventListener("message", (e) => {
-	const { event, data } = JSON.parse(e.data);
+	// CL-3 (C6): un mensaje no-JSON (proxi/red corrupta o servidor con bug)
+	// no debe tumbar el handler del socket del cliente.
+	let parsed;
+	try {
+		parsed = JSON.parse(e.data);
+	} catch {
+		// biome-ignore lint/suspicious/noConsole: log de recuperación del cliente
+		console.warn("[ws] mensaje no-JSON ignorado:", String(e.data).slice(0, 80));
+		return;
+	}
+	const { event, data } = parsed;
 	switch (event) {
 		case "init": {
 			playerId = data.playerId;
@@ -314,5 +324,11 @@ socket.addEventListener("message", (e) => {
 		case "chat":
 			addChatLine(data.id === playerName ? "Tú" : data.id, data.message);
 			break;
+		default:
+			// CL-3 (C6): eventos desconocidos se loguean y se ignoran (un
+			// servidor más nuevo puede mandar eventos que este cliente no
+			// conoce; antes se rompía el switch en silencio).
+			// biome-ignore lint/suspicious/noConsole: log de recuperación del cliente
+			console.warn(`[ws] evento desconocido: ${event}`);
 	}
 });

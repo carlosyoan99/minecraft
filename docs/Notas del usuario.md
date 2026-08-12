@@ -18,7 +18,7 @@ Esta es una auditoría manual echa por el usuario tras probar el juego, donde se
 - Hay chuncks que nunca llegan a cargar en el cliente, estan totalmente vacios, su fisica si se generan, porque es posible caminar y minar, pero no se observa nada, este error persiste entre sesiones, al iniciar una nueva sesion puede que los chunks afectados no sean los mismos.
 - Revisa la generación de las cuevas, se generan muchas en vez de pocas cuevas, pero que sean más largas y grandes, que permita que el jugador las explore.
 - En creativo, los mobs siguen siendo atraidos por el jugador.
-- Crear una nueva semilla desde el cliente muestra este error en la consola del servidor y lo detiene.
+- Crear una nueva semilla desde el cliente muestra este error en la consola del servidor y lo detiene:
 ```log
 /home/carlos/Documentos/Proyectos/minecraft/server/net.js:1713
 			DATA[key] = Array.from(state.chunks.get(key));
@@ -30,7 +30,8 @@ TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterato
     at listOnTimeout (node:internal/timers:585:17)
     at process.processTimers (node:internal/timers:521:7)
 ```
-- Al minar, dejar el click presionado hace que se siga minando el bloque siguiente, siempre que se esté a una distancia de minado, así funciona en Minecraft
+- Al minar, dejar el **click presionado** hace que se siga minando el bloque siguiente, siempre que se esté a una distancia de minado, así funciona en Minecraft.
+- No hay **persistencia del inventario** entre sesiones.
 
 ## Mejoras
 - Genera **música lofi** procedural diferente para cada bioma, que deuna sensación más inmersiva.
@@ -41,7 +42,7 @@ TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterato
   - El el menú de configuración la configuración actual dividida en pestañas, similar a Minecraft.
 - El juego debería iniciar a pantalla completa o una opción en la configuración que lo permita.
 - Adaptarlo mejor a pantallas de celular, aunque siga siendo necesario jugar con mouse y teclado.
-- Altura del mundo -64 a 64. (Minecraft -64 a 320), esta es una limitación temporal por rendimiento.
+- Altura del mundo `-64 a 255`. (**Minecraft -64 a 320**), esta es una limitación temporal por rendimiento. Subir la altura va a permitir la generación de mejores cuevas y montañas mas grandes.s
 - Generación: Extender columnas de terreno/cuevas/minerales al nuevo rango sin romper la distribución de minerales por altura ya calibrado.
 - Cliente: confirmar que culling de caras/LOD y greedy meshing siguen rindiendo bien con columnas más altas.
 - Extender tests con los nuevos cambio y correcciones.
@@ -52,8 +53,9 @@ TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterato
 - **Fase 16**: se va a centrar en la corrección de bugs y completar la paridad con Minecraft.
 - **Fase 17**: se centrará en la UI/UX, experiencia visual del usuario, uso en móviles, interfaz 100% Minecraft.
 - **Fase 18**: Bugs, paridad y rendimiento, nada de nuevas características, solo pulir las que ya tenemos. Refactorizado de los modulos a las convenciones ya establecidas en CLAUDE.md y mejorar la documentación en general.
-- **Fase 19**: Crear texturas faltantes.
-- **Fase 20**: Roling release del proyecto, fase larga donde solo se corregiran bugs, se mejorará la paridad en implementaciones que estan documentadas como limitadas, si el rendimiento lo permite, no se incluiran las características reportadas como **Restricciones (Won't)**
+- **Fase 19**: Crear texturas faltantes para todos los items, mejorar cofres, mesa de crafteo, hornos y demás interfases.
+- **Fase 20**: Rolling release del proyecto, fase larga donde solo se corregiran bugs, se mejorará la paridad en implementaciones que estan documentadas como limitadas, si el rendimiento lo permite, no se incluiran las características reportadas como **Restricciones (Won't)**
+- Cada fase solo se da por concluida una vez que esta pasa todos los test y una auditoría para esa fase en específico.
 
 ## Importante
 Migrar el código a **programación orientada a objetos**, valorar que su rentablilidad, si optimiza el rendimiento y ws más fácil la lectura del código y la implementación de nuevas características.

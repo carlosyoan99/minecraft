@@ -91,10 +91,17 @@ function finishMining(player, x, y, z, block, opts = {}) {
 	// la 2×2 nunca se agota; para limpiarla hay que colocar un sólido).
 	if (block === B.WATER && world.countWaterNeighbors(x, y, z) >= 2)
 		world.setBlock(x, y, z, B.WATER);
-	// Cofre roto: el bloque cae como item; su contenido se pierde (en este
-	// juego no hay entidades de item en el suelo — simplificación documentada
-	// en TODO.md). Se hace ANTES del camino creative (que no dropea).
-	if (block === B.CHEST) state.chests.delete(`${x},${y},${z}`);
+	// Cofre roto (Fase 16, B2): en survival su contenido pasa al inventario del
+	// jugador (no hay entidades de item en el suelo — simplificación
+	// documentada; en MC caerían al suelo como ítems recogibles). En creative
+	// el contenido se descarta (como el resto de drops). Se hace ANTES del
+	// camino creative (que no dropea).
+	if (block === B.CHEST) {
+		const slots = state.chests.get(`${x},${y},${z}`);
+		state.chests.delete(`${x},${y},${z}`);
+		if (slots && !opts.creative)
+			for (const s of slots) if (s) addToInventory(player, s.id, s.count, s.durability);
+	}
 	// Fase 13 (L2): al romper la celda inferior de una puerta/portón se rompe
 	// también la superior (2 celdas de alto) y se limpia su estado de
 	// apertura (state.doors).
@@ -102,6 +109,12 @@ function finishMining(player, x, y, z, block, opts = {}) {
 		state.doors.delete(`${x},${y},${z}`);
 		if (world.getBlock(x, y + 1, z) === block) world.setBlock(x, y + 1, z, B.AIR);
 	}
+	// C5 (REN-2): horno roto → se elimina su estado (fuga de memoria y
+	// world.json engordando con hornos huérfanos). El jugador que lo tenía
+	// abierto deja de recibir furnace_state (net.js ya salta los que no
+	// existen). Su contenido se pierde (no hay entidades de item en el
+	// suelo — misma simplificación que los drops sueltos).
+	if (block === B.FURNACE) state.furnaces.delete(`${x},${y},${z}`);
 	// Cama rota: los jugadores que tenían ahí su punto de reaparición vuelven
 	// a reaparecer en el spawn inicial (como en Minecraft).
 	if (block === B.BED) {
@@ -268,21 +281,21 @@ function sendXp(player) {
 }
 
 function removeFromInventory(player, itemId, count = 1) {
-	for (let i = 0; i < player.inventory.length; i++) {
+	// SV-2 (C6): antes, si el primer stack no cubría la cantidad devolvía
+	// false sin mirar los posteriores (perdía stacks válidos). Ahora resta
+	// de TODOS los stacks del ítem hasta cubrir `count` (como Minecraft).
+	for (let i = 0; i < player.inventory.length && count > 0; i++) {
 		const s = player.inventory[i];
-		if (s && s.id === itemId) {
-			if (s.count > count) {
-				s.count -= count;
-				return true;
-			}
-			if (s.count === count) {
-				player.inventory[i] = null;
-				return true;
-			}
-			return false;
+		if (!s || s.id !== itemId) continue;
+		if (s.count > count) {
+			s.count -= count;
+			count = 0;
+		} else {
+			count -= s.count;
+			player.inventory[i] = null;
 		}
 	}
-	return false;
+	return count === 0;
 }
 
 function countInInventory(player, itemId) {
@@ -405,6 +418,9 @@ function respawnPlayer(player, cause) {
 	player.x = spawn.x;
 	player.y = spawn.y;
 	player.z = spawn.z;
+	// Fase 16 (C3): el respawn salta la posición — reiniciar la ventana de
+	// velocidad horizontal para no heredar muestras de la posición anterior.
+	player.speedSamples = [];
 	sendHealth(player);
 	sendFood(player);
 	if (player.ws.readyState === WebSocket.OPEN) {

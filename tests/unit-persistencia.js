@@ -30,6 +30,7 @@ const LEGACY_ROOT_CHUNKS = path.join(TMP, "worldroot", "chunks");
 const world = require("../server/world.js");
 const save = require("../server/save.js");
 const state = require("../server/state.js");
+const playerHelpers = require("../server/players.js"); // C5: finishMining
 const { SCHEMA_VERSION, CHUNK_SIZE, WORLD_HEIGHT, B, SEED } = constants;
 
 let fails = 0;
@@ -890,5 +891,88 @@ function resetWorld() {
 	);
 }
 
-fs.rmSync(TMP, { recursive: true, force: true });
-process.exit(fails ? 1 : 0);
+// ============================================================
+// C5 (REN-2): romper un horno lo elimina de state.furnaces y por tanto
+// de world.json (antes quedaba huérfano: fuga de memoria + meta engordando).
+// ============================================================
+{
+	state.furnaces.clear();
+	state.furnaces.set("1,2,3", {
+		fuelItem: null,
+		fuelCount: 0,
+		fuelTicksLeft: 0,
+		inputItem: null,
+		inputCount: 0,
+		outputItem: null,
+		outputCount: 0,
+		cookTicks: 0
+	});
+	world.setBlock(1, 2, 3, B.FURNACE);
+	const fakePlayer = {
+		ws: { readyState: 1, send() {} },
+		inventory: new Array(36).fill(null),
+		selectedSlot: 0
+	};
+	playerHelpers.finishMining(fakePlayer, 1, 2, 3, B.FURNACE);
+	check(
+		"C5: romper un horno lo elimina de state.furnaces",
+		!state.furnaces.has("1,2,3")
+	);
+	save.saveWorld();
+	const metaC5 = JSON.parse(
+		fs.readFileSync(constants.worldPaths.metaFile, "utf8")
+	);
+	check(
+		"C5: el horno roto desaparece de world.json",
+		Array.isArray(metaC5.furnaces) && metaC5.furnaces.length === 0,
+		`furnaces=${metaC5.furnaces?.length}`
+	);
+}
+
+// ============================================================
+// C1 (REN-1/SV-4): saveWorldAsync guarda por lotes con setImmediate, sin
+// bloquear el event loop, y drena dirtyChunks escribiendo cada archivo.
+// ============================================================
+{
+	state.dirtyChunks.clear();
+	state.chunks.clear();
+	const empty = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+	for (let i = 0; i < 20; i++) {
+		const key = `${i},${i}`;
+		state.chunks.set(key, empty);
+		state.dirtyChunks.add(key);
+	}
+	const waitTicks = (n) =>
+		new Promise((resolve) => {
+			const step = () => (n-- > 0 ? setImmediate(step) : resolve());
+			setImmediate(step);
+		});
+	(async () => {
+		save.saveWorldAsync();
+		// Dejar que la cola procese (20 chunks / 6 por lote ≈ 4 lotes + meta).
+		await waitTicks(16);
+		check(
+			"C1: saveWorldAsync drena dirtyChunks",
+			state.dirtyChunks.size === 0,
+			`dirty=${state.dirtyChunks.size}`
+		);
+		check(
+			"C1: saveWorldAsync escribe los archivos de chunk",
+			fs.existsSync(path.join(constants.worldPaths.chunksDir, "19_19.json"))
+		);
+		const metaC1 = JSON.parse(
+			fs.readFileSync(constants.worldPaths.metaFile, "utf8")
+		);
+		check(
+			"C1: saveWorldAsync escribe world.json al final",
+			typeof metaC1.seed === "string" && metaC1.schemaVersion === SCHEMA_VERSION
+		);
+		check(
+			"C1: atomicidad — no queda ningún .tmp",
+			!fs.existsSync(path.join(constants.worldPaths.chunksDir, "0_0.json.tmp"))
+		);
+	})().then(() => {
+		fs.rmSync(TMP, { recursive: true, force: true });
+		process.exit(fails ? 1 : 0);
+	});
+}

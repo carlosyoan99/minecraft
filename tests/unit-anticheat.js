@@ -240,4 +240,108 @@ function clearColumn(px, pz) {
 	check("la caída avanza la posición", p.y === 25 - 10 * 0.5, `p.y=${p.y}`);
 }
 
+// ============================================================
+// 6) C3 (SEC-1): hover en el aire y speedhack horizontal
+// ============================================================
+// Hover: mantener la altitud en el aire (dy = 0) más de ~1s era volar sin
+// límite — el anti-cheat vertical solo miraba `dy > 0`, así que el bypass
+// nunca cumplía la condición. Ahora el tiempo en el aire también cuenta con
+// dy = 0 (caer, dy < 0, sigue exento: la caída legítima dura >1s).
+{
+	const { ws, player: p } = connect();
+	clearColumn(9, 9);
+	p.x = 9.5;
+	p.z = 9.5;
+	p.y = 25; // en el aire (piedra en y=5)
+	p.airTimeMs = 1500; // ya lleva >1s en el aire sin tocar suelo
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "move",
+			data: { x: 9.5, y: 25, z: 9.5, yaw: 0, pitch: 0 } // dy = 0: hover
+		})
+	);
+	check(
+		"hover (dy=0) en el aire >1s → teleport (C3)",
+		ws.events("teleport").length === 1,
+		`teleports=${ws.events("teleport").length}`
+	);
+	check("hover: la posición no avanza", p.y === 25, `p.y=${p.y}`);
+}
+
+// Corredor de piedra: pre-generar el área (árboles incluidos) y allanar un
+// pasillo x=9..34 a z=9 con piedra en y=5 y aire encima, para que el jugador
+// SIEMPRE tenga suelo firme (inAir=false) y nada sólido en el camino — los
+// árboles generados con Math.random no deben falsear los tests.
+function paveRunway() {
+	world.ensureChunksAround(9, 9, 3);
+	for (let x = 9; x <= 34; x++) clearColumn(x, 9);
+}
+
+// Speedhack horizontal: una ráfaga de moves a 20/s con 0.8 bloques cada uno
+// son ~16 bloques/s sostenidos — el límite por-move (1.2) no los cazaba. Se
+// simula el reloj para que la ventana deslizante de ~1.2s vea el exceso.
+{
+	const { ws, player: p } = connect();
+	paveRunway();
+	p.x = 9.5;
+	p.z = 9.5;
+	p.y = 7; // en el suelo (piedra en y=5): el anti-cheat vertical no interviene
+	const origNow = Date.now;
+	let fakeNow = origNow();
+	Date.now = () => fakeNow;
+	const moveTo = (x) =>
+		ws.emit(
+			"message",
+			JSON.stringify({
+				event: "move",
+				data: { x, y: p.y, z: p.z, yaw: 0, pitch: 0 }
+			})
+		);
+	ws.sent.length = 0;
+	for (let i = 1; i <= 30; i++) {
+		fakeNow += 50; // 20 movimientos/s
+		moveTo(9.5 + i * 0.8);
+	}
+	Date.now = origNow;
+	check(
+		"speedhack horizontal sostenido (>10 bloques/s) → teleport (C3)",
+		ws.events("teleport").length >= 1,
+		`teleports=${ws.events("teleport").length}`
+	);
+}
+
+// El jugador LEGÍTIMO (caminar ~4.4 bloques/s) no se ve afectado por la
+// ventana horizontal.
+{
+	const { ws, player: p } = connect();
+	paveRunway();
+	p.x = 9.5;
+	p.z = 9.5;
+	p.y = 7;
+	const origNow = Date.now;
+	let fakeNow = origNow();
+	Date.now = () => fakeNow;
+	const moveTo = (x) =>
+		ws.emit(
+			"message",
+			JSON.stringify({
+				event: "move",
+				data: { x, y: p.y, z: p.z, yaw: 0, pitch: 0 }
+			})
+		);
+	ws.sent.length = 0;
+	for (let i = 1; i <= 30; i++) {
+		fakeNow += 50;
+		moveTo(9.5 + i * 0.22); // ~4.4 bloques/s
+	}
+	Date.now = origNow;
+	check(
+		"caminar normal (~4.4 bloques/s) → sin teleport (C3)",
+		ws.events("teleport").length === 0,
+		`teleports=${ws.events("teleport").length}`
+	);
+}
+
 process.exit(fails === 0 ? 0 : 1);

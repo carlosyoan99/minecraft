@@ -14,7 +14,8 @@ const crafting = require("../server/crafting.js");
 const mobs = require("../server/mobs.js");
 const mining = require("../server/mining.js");
 const playerHelpers = require("../server/players.js");
-const { B, I } = require("../server/constants.js");
+const constants = require("../server/constants.js");
+const { B, I } = constants;
 
 // Forzar generación fresca (sin leer el world/ real del proyecto).
 world.setDiskLoader(() => null);
@@ -1183,6 +1184,84 @@ function connect() {
 	check(
 		"rate-limit: un socket fake (tests) no se corta (no es flood real)",
 		!wsF.rateLimited
+	);
+	state.players.clear();
+}
+
+// ============================================================
+// C2 (SV-3/SEC-3): handlers con coordenadas inválidas se descartan sin
+// tocar el mundo ni el inventario (NaN/string/null — `NaN > 7` es false,
+// así que la guardia de distancia sola no bastaba).
+// ============================================================
+{
+	const { ws, player: p } = connect();
+	world.setBlock(0, 10, 0, B.FURNACE);
+	world.setBlock(2, 10, 0, B.CHEST);
+	p.x = 0.5;
+	p.y = 10;
+	p.z = 0.5;
+	crafting.getOrCreateFurnace("0,10,0");
+	state.chests.set("2,10,0", new Array(27).fill(null));
+	const send = (event, data) =>
+		ws.emit("message", JSON.stringify({ event, data }));
+	ws.sent.length = 0;
+	for (const bad of ["foo", null]) {
+		send("furnace_open", { x: bad, y: 10, z: 0 });
+		send("chest_open", { x: 0, y: bad, z: 0 });
+		send("block_action", {
+			action: "place",
+			x: bad,
+			y: 10,
+			z: 0,
+			itemId: B.DIRT
+		});
+		send("till", { x: 0, y: bad, z: 0 });
+		send("plant", { x: bad, y: 10, z: 0 });
+		send("bucket_use", { x: 0, y: bad, z: 0 });
+		send("door_use", { x: bad, y: 10, z: 0 });
+		send("bonemeal", { x: 0, y: bad, z: 0 });
+	}
+	check(
+		"C2: coords inválidas → no se abre el horno ni el cofre",
+		p.openFurnace === null && p.openChest === null
+	);
+	check(
+		"C2: coords inválidas → sin furnace_state ni chest_state",
+		ws.events("furnace_state").length === 0 &&
+			ws.events("chest_state").length === 0
+	);
+	check(
+		"C2: coords inválidas → no se crea estado de horno huérfano",
+		!state.furnaces.has("foo,10,0") && !state.furnaces.has("0,foo,0")
+	);
+	// Las coords válidas siguen funcionando (la guardia no rompió nada).
+	send("furnace_open", { x: 0, y: 10, z: 0 });
+	check(
+		"C2: con coords válidas el horno sí se abre",
+		p.openFurnace === "0,10,0" && ws.events("furnace_state").length === 1
+	);
+	state.players.clear();
+}
+
+// ============================================================
+// C4 (SEC-2): set_seed con cuota — 1 cambio cada 10s por jugador.
+// (Con la semilla ACTIVA el switch no escribe a disco: ruta "same".)
+// ============================================================
+{
+	const { ws, player: p } = connect();
+	const seed = constants.worldPaths.currentSeed;
+	ws.emit("message", JSON.stringify({ event: "set_seed", data: { seed } }));
+	check(
+		"C4: el primer set_seed reserva la cuota (10s)",
+		(p.seedCooldownUntil || 0) > Date.now()
+	);
+	ws.sent.length = 0;
+	ws.emit("message", JSON.stringify({ event: "set_seed", data: { seed } }));
+	const rej = ws.events("seed_rejected");
+	check(
+		"C4: set_seed inmediato → seed_rejected(cooldown)",
+		rej.length === 1 && rej[0].data.reason === "cooldown",
+		`reasons=${rej.map((r) => r.data.reason).join(",")}`
 	);
 	state.players.clear();
 }

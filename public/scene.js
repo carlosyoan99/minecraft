@@ -3,7 +3,7 @@
 // ============================================================
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
-import { QUALITY_DEFAULT, qualityProfile } from "./quality.js";
+import { QUALITY_DEFAULT, qualityPixelRatio, qualityProfile } from "./quality.js";
 
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
@@ -26,8 +26,10 @@ document.body.appendChild(renderer.domElement);
 // ============================================================
 export function applyQuality(name) {
 	const q = qualityProfile(name);
-	// setPixelRatio ya redimensiona el canvas; no hace falta setSize aquí.
-	renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixelRatio));
+	// Fase 16 (B6): el perfil ESCALA la resolución nativa (dpr × renderScale) —
+	// antes min(dpr, perfil) anulaba el efecto en pantallas dpr=1. setPixelRatio
+	// ya redimensiona el canvas; no hace falta setSize aquí.
+	renderer.setPixelRatio(qualityPixelRatio(name, window.devicePixelRatio));
 	renderer.shadowMap.enabled = q.shadows;
 	sun.shadow.mapSize.set(q.shadowSize, q.shadowSize);
 	// Recalcular el frustum del shadow map al cambiar su tamaño

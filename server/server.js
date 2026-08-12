@@ -85,7 +85,11 @@ if (loadResult === "rechazo") {
 }
 if (state.mobs.length === 0) for (let i = 0; i < 4; i++) mobs.spawnMobs();
 
-setInterval(save.saveWorld, SAVE_INTERVAL_MS);
+// C1 (REN-1/SV-4): el autosave usa la cola ASÍNCRONA (lotes con
+// setImmediate) — el guardado síncrono bloqueaba el event loop con muchos
+// chunks sucios. saveWorld() síncrono sigue existiendo para switchWorld y
+// SIGINT, que necesitan el resultado inmediato.
+setInterval(save.saveWorldAsync, SAVE_INTERVAL_MS);
 setInterval(save.unloadFarChunks, UNLOAD_INTERVAL_MS);
 process.on("SIGINT", () => {
 	save.saveWorld();

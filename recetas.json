@@ -821,7 +821,7 @@
     },
     "result": {
       "id": 48,
-      "count": 1
+      "count": 3
     }
   },
   "iron_door": {
@@ -835,6 +835,21 @@
     },
     "result": {
       "id": 49,
+      "count": 3
+    }
+  },
+  "tnt": {
+    "shape": [
+      "SGS",
+      "GSG",
+      "SGS"
+    ],
+    "ingredients": {
+      "S": 6,
+      "G": 256
+    },
+    "result": {
+      "id": 40,
       "count": 1
     }
   },

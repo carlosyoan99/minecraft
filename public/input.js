@@ -20,6 +20,7 @@ import { toggleDebug } from "./debug.js";
 import { mobMeshes } from "./mobs.js";
 import { isFlying, move, setFlying } from "./player.js";
 import { camera, controls, renderer, scene } from "./scene.js";
+import { toggleFullscreen } from "./settings.js"; // Fase 16 (E1): tecla F11
 import {
 	closePanels,
 	getHeldItem,
@@ -107,6 +108,12 @@ document.addEventListener("keydown", (e) => {
 			// Fase 6: visualizador de chunks (bordes + caras) para depurar el culling
 			e.preventDefault(); // evitar el buscador del navegador
 			toggleDebug();
+			break;
+		case "F11":
+			// Fase 16 (E1): pantalla completa (el navegador la alterna por
+			// defecto, pero este listener es un gesto válido para la API).
+			e.preventDefault();
+			toggleFullscreen();
 			break;
 	}
 });

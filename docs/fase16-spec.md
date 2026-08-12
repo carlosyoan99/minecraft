@@ -3,7 +3,8 @@
 > Documento creado a partir de: `docs/Notas del usuario.md`, `docs/auditoria-2026-08-10.md`
 > (la más reciente), `docs/reporte-paridad.md`, `TODO.md` y la entrevista con el usuario.
 > Fecha: 2026-08-11 · Proyecto: clon de Minecraft.
-> Estado: **prospectiva** (sin implementar).
+> Estado: **en curso** (WIP sin commitear; incluye el bloque G — auditoría de
+> cobertura de tests y documentación, §9).
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -344,3 +345,92 @@
 5. **Bloque E:** pantalla completa funcional; `unit-recetas.js` con
    cobertura.
 6. Auditoría final completa en verde y documentación actualizada.
+
+---
+
+## 9. Bloque G — Auditoría de cobertura de tests y documentación (2026-08-11)
+
+> Auditoría transversal solicitada por el usuario para mejorar la cobertura
+> de tests y la documentación. Los hallazgos verificados en el código se
+> registran aquí (la verdad de qué se encontró y cómo se cierra); el tracker
+> con los estados `[ ]`/`[x]` está en `TODO.md`.
+
+### 9.1 Hallazgos verificados (2026-08-11)
+
+**Infraestructura de tests:**
+- La suite tiene **51 unitarios + 6 E2E** registrados en `tests/run.js`
+  (el README aún dice 50; `unit-fase16.js` se registró sin actualizar el
+  conteo narrativo).
+- **BUG real:** `tests/run.js:206` usa `AUDIT` en el modo `--audit`, pero la
+  constante **no está definida** → `node tests/run.js --audit` lanza
+  `ReferenceError`. Es el comando que documentan `AGENTS.md`, `CLAUDE.md` y el
+  `README.md` → la auditoría de fases por runner está rota.
+- **Sin medición de cobertura:** no hay c8/istanbul ni `--all`; no se conoce
+  el % por módulo. Sin CI (no hay `.github/`).
+- El runner no permite filtrar tests ni muestra tiempos por test.
+
+**Cobertura servidor (`server/*.js` — nº de tests que lo importan):**
+- Bien cubiertos: `world.js` (30), `state.js` (29), `players.js` (20),
+  `net.js` (17), `mobs.js` (12), `crafting.js` (10).
+- **Poco cubiertos:** `chests.js` (3), `commands.js` (3), `save.js` (3),
+  `mining.js` (2), `items.js` (1), `tnt.js` (1). `server.js` (entrada) no se
+  ejercita (correcto).
+
+**Cobertura cliente (`public/*.js`):**
+- Con algún test (import ESM vía `file://`): `constants`, `world`, `lod`,
+  `geopool`, `ui`, `input`, `lighting`, `skycolors`, `scene`, `recipeCategories`,
+  `quality`, `mobtextures`, `itemicons`, `chunkGeometry`.
+- **SIN NINGÚN TEST (11 módulos):** `audio.js` (616 l.), `player.js` (442),
+  `network.js` (334), `settings.js` (204), `debug.js` (166), `clouds.js`
+  (133), `loading.js` (130), `daynight.js` (104), `particles.js` (104),
+  `connection.js` (41), `client.js` (16).
+
+**E2E:**
+- `tests/test.log` (2026-08-11): **4/6 rojos** (`e2e-durabilidad`,
+  `e2e-reload`, `e2e-cofre`, `e2e-templo`) — timeouts cuya causa raíz es el
+  guardado síncrono (REN-1/SV-4, bloque C1). `e2e-mascotas` es flaky por azar
+  (cobertura de taiga en el área de spawn, `fase15-spec.md`).
+
+**Estado del working tree:**
+- Fase 16 con **implementación sin commitear** (32 archivos, ~1139
+  inserciones): guardado asíncrono (C1), `waterfog.js` (B1), cofres Shift (B2),
+  horno combustible (D1), drops zombi/creeper (D2), puertas ×3 (D3), vidrio 200
+  t (D4), carbón vegetal (D5), XP (D6), calidad `renderScale` (B6),
+  `unit-fase16.js` y ampliaciones de `unit-recetas`/`unit-red`/`unit-anticheat`.
+
+**Documentación:**
+- Muy completa (16 specs + `docs/server` + `docs/public` + 2 auditorías). Huecos:
+  `README.md` §Tests desactualizado (conteo y lista); mecánicas de la Fase 16
+  (guardado asíncrono, `FUEL_TICKS`, cofres Shift, niebla ≥2 bloques,
+  anti-cheat v2, `set_seed` cooldown, hornos huérfanos, `/give` 64, `/tp` clamp,
+  `renderScale`) sin documentar en `docs/server/mecanicas.md` /
+  `docs/public/mecanicas.md`; mapa de módulos de `docs/public/README.md` sin
+  `waterfog.js`/`chunkWorker.js` actualizados; no hay matriz `módulo → test`
+  ni guía de cómo añadir tests.
+
+### 9.2 Plan G (cierre de la auditoría)
+
+| # | Tarea | Criterio |
+|---|-------|----------|
+| G0.1 | Commitear el WIP de Fase 16 y dejar la suite en verde | HEAD limpio, unit verde, E2E 6/6 en solitario, `audit-altura` 72/72 |
+| G0.2 | Definir `AUDIT` en `tests/run.js` (audit-fase3..7 + audit-altura) | `node tests/run.js --audit` corre las 6 auditorías |
+| G1.1 | c8 (devDep) + `npm run test:coverage` (`c8 --all --src=server --src=public node tests/run.js --unit`) | Reporte por archivo; módulos no importados al 0% |
+| G1.2 | `coverage/` en `.gitignore` | `git status` limpio tras correr c8 |
+| G1.3 | `tests/helpers.js` (check/reporte `# checks fallidos`, `mkPlayer`, `withRandom`, loader ESM tmp) | Tests nuevos lo usan; reporte uniforme parseable por `run.js` |
+| G1.4 | Runner: `--filter <regex>` + tiempos por test | Correr un subconjunto sin tocar el resto |
+| G2.1 | Unit de guardado asíncrono (C1) + migración v5→v6 | Cola por lotes, idempotencia, chunk ensuciado durante guardado, error sin bucle, `.bak`, `world.json` al final |
+| G2.2 | `unit-red`: coords `NaN`/string/null (C2) sin mutar estado; parse WS try/catch + default (CL-3); anti-cheat v2 (C3) | Handlers rechazan sin mutar estado ni disco |
+| G2.3 | `unit-commands`: `/give` 64 (SV-5), `/tp` clamp (SV-6), `set_seed` cooldown (C4) | cada caso en verde |
+| G2.4 | Hornos huérfanos (C5) + `FUEL_TICKS` completo (D1) | romper horno lo elimina de `state` y `world.json` |
+| G2.5 | `ItemStack` (`items.js`): serialización, merge/clamp, durabilidad | ampliar `unit-poo-entities` |
+| G2.6 | TNT: cadenas, cráter con bedrock, knockback | ampliar `unit-fase11` |
+| G3 | Cliente puro: `network` (parse), `settings` (validate/apply), `daynight`, `clouds`, `particles`, `audio` (pitch/scheduling) | units nuevos con el loader ESM tmp |
+| G3.7 | Ampliar `audit-fase7` (CDP): calidad B6, niebla B1, inventario B4, libro B5 | checks de render nuevos |
+| G4 | E2E: cofre Shift (B2), libro de recetas abrir/cerrar (B5); E2E 6/6 en solitario | E2E verdes sin timeouts |
+| G5.1 | `docs/tests.md`: matriz módulo → test (alimentada por c8) + guía "cómo añadir un test" + umbrales | matriz completa por módulo |
+| G5.2 | `README.md` §Tests actualizado (51+, `test:coverage`, `--audit` corregido) | coincide con `run.js` |
+| G5.3 | `docs/server/mecanicas.md`: C1, D1, D2, B2, C3, C4, C5, C6 | mecánicas de F16 documentadas |
+| G5.4 | `docs/public/mecanicas.md`: B1 (niebla), B6 (renderScale), B5 (libro) | mecánicas de F16 documentadas |
+| G5.5 | `docs/server/README.md` (persistencia asíncrona) + `docs/public/README.md` (mapa: `waterfog.js`, `chunkWorker.js`) | docs de arquitectura al día |
+| G5.6 | `AGENTS.md`/`CLAUDE.md` (suite 51+, comando coverage, convención matriz) + `docs/README.md` + `TODO.md` | docs transversales al día |
+| G6 | Cierre: unit verde, E2E 6/6, c8 con umbrales en módulos críticos, `biome` 0, `node --check`, auditorías sin regresión | todo en verde + spec actualizada |

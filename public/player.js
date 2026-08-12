@@ -23,6 +23,7 @@ import {
 } from "./constants.js";
 import { isDoorOpen } from "./network.js"; // Fase 13 (L2): estado local de puertas
 import { setUnderwater, updateDayNight } from "./daynight.js";
+import { shouldUnderwaterFog } from "./waterfog.js"; // Fase 16 (B1): niebla con inmersión real
 import { camera, controls, renderer, scene, sun } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
 import {
@@ -247,12 +248,17 @@ function animate() {
 		// feedback auditivo de la inmersión, como en Minecraft.
 		if (inWater && !wasInWater) playSplash();
 		wasInWater = inWater;
-		// Fase 10 (E3) + Notas: niebla azulada y densa solo cuando la cámara
-		// está sumergida de verdad, con los ojos a ≥2 bloques bajo la
-		// superficie (nadando en la superficie no debe verse la niebla).
-		let surfaceY = Math.ceil(camera.position.y);
-		while (isWaterAt(camera.position.x, surfaceY, camera.position.z)) surfaceY++;
-		setUnderwater(inWater && surfaceY - camera.position.y >= 2);
+		// Fase 10 (E3) + Notas + Fase 16 (B1): niebla azulada y densa solo con
+		// inmersión REAL — ojos a ≥2 bloques bajo la superficie del agua
+		// (nadando en la superficie, con los ojos a 1 bloque o fuera, no se
+		// ve). La decisión vive en waterfog.js (pura, testeable).
+		setUnderwater(
+			shouldUnderwaterFog(
+				camera.position.y,
+				inWater,
+				(y) => isWaterAt(camera.position.x, y, camera.position.z)
+			)
+		);
 
 		let dx = 0,
 			dz = 0;

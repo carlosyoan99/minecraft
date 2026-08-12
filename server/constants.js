@@ -373,7 +373,11 @@ const I = {
 	FEATHER: 253,
 	// Fase 13 (L5): compás — crafteable (4 lingotes de hierro + redstone) como
 	// en MC. Ítem de colección sin mecánica propia (sin brújula funcional).
-	COMPASS: 254
+	COMPASS: 254,
+	// Fase 16 (D2): carne podrida (drop del zombi) y pólvora (drop del creeper
+	// y material del TNT) — paridad con Minecraft.
+	ROTTEN_FLESH: 255,
+	GUNPOWDER: 256
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -449,6 +453,17 @@ const FUEL_ITEMS = new Set([
 	I.COAL, // Fase 14 (Bloque B): el carbón también arde
 	I.STICK
 ]);
+// Fase 16 (D1): ticks de fundido por unidad de combustible (paridad MC). El
+// horno consume la unidad real (fuelCount) y se apaga al agotar sus ticks.
+const FUEL_TICKS = {
+	[B.OAK_LOG]: 300,
+	[B.BIRCH_LOG]: 300,
+	[B.SPRUCE_LOG]: 300,
+	[B.JUNGLE_LOG]: 300,
+	[B.PLANKS]: 300,
+	[I.COAL]: 1600, // un carbón funde 8 ítems de 200 ticks
+	[I.STICK]: 100
+};
 
 // ============================================================
 // COMIDA (valores de hambre y saturación por ítem, escala 0-20)
@@ -1142,6 +1157,8 @@ module.exports = {
 	isDoor,
 	SHAPED_SOLIDS,
 	GRAVITY_BLOCKS,
+	FUEL_ITEMS,
+	FUEL_TICKS,
 	TNT_FUSE_MS,
 	TNT_RADIUS,
 	TNT_DAMAGE,
