@@ -285,8 +285,15 @@ export function updateMobs(list) {
 		}
 		// Fase 10 ("mobs en caja"): balancear las patas si el mob se movió
 		// respecto a la snapshot anterior (el servidor manda posición por tick).
+		const sitting = !!m.sitting;
 		const last = mesh.userData.lastPos;
-		if (last) {
+		if (sitting) {
+			// Auditoría CL-2 (mascotas sentadas): un mob sentado NO camina — con
+			// micro-jitter de posición del servidor setMobWalk activaba el
+			// balanceo de un lobo/gato que el servidor tiene "sentado". Siempre
+			// pose quieta (patas en su base), nunca la animación de paso.
+			resetMobWalk(mesh);
+		} else if (last) {
 			const dx = m.x - last.x,
 				dz = m.z - last.z;
 			if (Math.hypot(dx, dz) > 0.001) setMobWalk(mesh, dx, dz);
@@ -299,8 +306,11 @@ export function updateMobs(list) {
 		// Fase 12 (A): el slime escala por tamaño y el lobo domado lleva el
 		// collar rojo (visual de la doma, ver A5 del spec).
 		const slimeS = m.type === "slime" ? slimeScale(m.slimeSize) : 1;
+		// Auditoría CL-2: la mascota sentada se agazapa (menos altura) en vez
+		// de renderizarse de pie; el servidor manda `sitting` en el snapshot.
+		const sitY = sitting ? 0.72 : 1;
 		const s = (m.isBaby ? 0.5 : 1) * (MOB_SCALE[m.type] || 1) * slimeS;
-		mesh.scale.set(s, s, s);
+		mesh.scale.set(s, s * sitY, s);
 		if (m.type === "wolf" && m.ownerId && !mesh.userData.collar) {
 			mesh.userData.collar = true;
 			// Collar rojo: caja fina alrededor del cuello del lobo.
@@ -327,12 +337,12 @@ export function updateMobs(list) {
 		const fusing = !!m.fuse;
 		if (fusing && !mesh.userData.fusing) {
 			mesh.userData.fusing = true;
-			mesh.scale.set(s * 1.25, s * 1.25, s * 1.25);
+			mesh.scale.set(s * 1.25, s * 1.25 * sitY, s * 1.25);
 			if (material) material.color.setHex(0xffffff);
 			if (m.type === "creeper") playCreeperHiss();
 		} else if (!fusing && mesh.userData.fusing) {
 			mesh.userData.fusing = false;
-			mesh.scale.set(s, s, s);
+			mesh.scale.set(s, s * sitY, s);
 			if (material) {
 				material.color.setHex(
 					mesh.userData.burning ? 0xff7710 : mesh.userData.baseColor

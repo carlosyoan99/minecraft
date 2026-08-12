@@ -175,6 +175,21 @@ ctx.ws.emit(
 );
 check("dormir a >7 bloques → ignorado", ctx.ws.events("sleep_ok").length === 0);
 
+// F16-04 (C2, residual): coords inválidas → ignorado sin efectos
+p.respawnPoint = null;
+setNight();
+ctx.ws.sent.length = 0;
+ctx.ws.emit(
+	"message",
+	JSON.stringify({ event: "sleep", data: { x: "foo", y: by, z: bz } })
+);
+check(
+	"F16-04: dormir con coords inválidas → ignorado",
+	ctx.ws.events("sleep_ok").length === 0 &&
+		ctx.ws.events("sleep_rejected").length === 0 &&
+		!p.respawnPoint
+);
+
 // ============================================================
 // RESPAWN EN LA CAMA AL MORIR
 // ============================================================
