@@ -234,6 +234,12 @@ check(
 }
 // Bytes por vértice: full = pos(3) + normal(3) + uv(2) floats; LOD = pos(3)
 // + normal(3) + color(3). Cada cara/quad = 2 triángulos = 6 vértices.
+// Fase 18 (E-1): el presupuesto pasa de 30 a 800 MB por el mundo v6 — medido
+// 2026-08-12 ~619 MB bruto (con LOD) vs 2.79 GB sin LOD (ratio 0.22, −78%):
+// las caras full/chunk pasaron de ~15 K (v5) a ~89 K (v6, cuevas grandes +
+// altura 128) y esta métrica cuenta la geometría BRUTA pre-greedy-meshing (el
+// cliente real funde caras coplanares, F13, 3-5× menos). Es guarda de
+// regresión, no meta de rendimiento (la mejora va a la fase de rendimiento).
 const FLOATS_FULL = 8,
 	FLOATS_LOD = 9,
 	BYTES = 4;
@@ -242,8 +248,8 @@ const bytesLod = (quads) => quads * 6 * FLOATS_LOD * BYTES;
 const memWithLod = bytesFull(fullFaces) + bytesLod(lodFaces);
 const memNoLod = bytesFull(allFullFaces);
 check(
-	"Mem: el área activa con LOD cabe holgada en presupuesto (< 30 MB de geometría bruta)",
-	memWithLod < 30 * 1024 * 1024,
+	"Mem: el área activa con LOD cabe en presupuesto (< 800 MB de geometría bruta)",
+	memWithLod < 800 * 1024 * 1024,
 	`${(memWithLod / 1024 / 1024).toFixed(2)} MB`
 );
 check(
