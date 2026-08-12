@@ -635,6 +635,29 @@
 
 ---
 
+## Fase 18 — Refactor a convenciones, cierre de fases y pulido
+
+> Especificación (la verdad de la fase): [`docs/fase18-spec.md`](docs/fase18-spec.md)
+> **Prospectiva (en preparación)** — A1 y E-2 cerrados; el resto pendiente.
+
+- [x] A1 Commitear el WIP de la auditoría 2026-08-11 (`db1c366`, `17deb8c`,
+      `5303e73`) y dejar la suite en verde (53 ✅, verificado 2026-08-12)
+- [ ] Bloque C — Paridad completa con MC: C-1 día/noche por franjas, C-2
+      minerales al mundo v6, C-3 zanahoria/patata comestibles, C-4 carbón
+      vegetal como ítem, C-5 `MOB_XP` coherente en `unit-paridad.js`, C-6
+      horno (desperdicio/encolado), C-7 recetas de mena muertas, C-8 XP al
+      morir recuperable, C-9 sonidos de paridad
+- [ ] Bloque D — Refactor a convenciones CLAUDE.md (módulos >~500 líneas,
+      empezando por `server/net.js` 2282 → ...); sin cambiar protocolo WS,
+      IDs B/I ni formato de guardado
+- [x] E-2 Biome 0 errores (`bd49412`): `npx biome check .` → 0 errores
+      (169 warnings/16 infos tolerados), suite en verde
+- [ ] E-1 Recalibrar `audit-fase3/4/6/7` al mundo v6 y documentar
+- [ ] Bloque F — Documentación al día (F-1..F-3)
+- [ ] Bloque G — Cierre: todo verde, auditoría final de fase obligatoria
+
+---
+
 ## Fuera de alcance (Won't)
 
 - BD externa, autenticación/cuentas, redstone, dimensiones, aldeas
