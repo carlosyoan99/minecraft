@@ -48,8 +48,8 @@ TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterato
 - Extender tests con los nuevo cambio y correcciones.
 - Cerrar huecos - no inventar bloques/items nuevos, solo craftear lo que ya está.
 - Extender `unit-recetas.js` para verificar cobertura, no solo integridad de lo ya existente.
-- Agregar posibilidad de escoger skins: Steve, Alex, Noor, Sunny, Ari, Zuri, Makena, Kai y Efe.
-- Persistenci de datos del lado del cliente que sea seguro mantener de este lado: configuración, preferencias, nombre, skins.
+- Agregar posibilidad de escoger skins: Steve, Alex, Noor, Sunny, Ari, Zuri, Makena, Kai y Efe. **(✔ implementado — selector en el menú con los 9 skins oficiales procedurales; preferencia del cliente `mc_skin` y propagación en vivo con `player_skin`)**
+- Persistenci de datos del lado del cliente que sea seguro mantener de este lado: configuración, preferencias, nombre, skins. **(✔ implementado — configuración/preferencias en `mc_settings`, nombre en `mc_name` y skins en `mc_skin`)**
 - **Biomas más grandes en extensión y nuevos biomas** (lista completa con 20 biomas característicos). Se deben implementar con sus bloques, vegetación, mobs y climas asociados. A continuación se detallan:
 
   1. **Llanura (Plains)**: Zona plana y verde con árboles de roble, ideal para empezar. Aparecen caballos.

@@ -75,7 +75,10 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   `tests/unit-sync.js`.
 - `TOOL_DURABILITY` (servidor) ↔ `DURABILITY` (cliente): lo audita
   `tests/audit-fase5.js`.
-- **Regla:** añadir bloque/ítem/herramienta → actualizar AMBOS lados
+- `PLAYER_SKINS` (servidor, `server/constants.js`) ↔ `SKINS` (cliente,
+  `public/skins.js`): la lista oficial de skins de jugador. Lo audita
+  `tests/unit-skins.js`.
+- **Regla:** añadir bloque/ítem/herramienta/skin → actualizar AMBOS lados
   y añadir la receta si aplica.
 - **Formato de guardado:** `SCHEMA_VERSION` (actual 6), archivos por
   chunk en `world/<semilla>/chunks/` + `world/<semilla>/world.json`

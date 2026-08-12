@@ -793,6 +793,10 @@ function tickPlayer(player, dtMs) {
 class Player {
 	constructor(fields = {}) {
 		Object.assign(this, fields);
+		// Fase 17: skin del jugador (preferencia del cliente, la valida
+		// net.js contra constants.PLAYER_SKINS). Default defensivo: cualquier
+		// instancia sin skin (tests, restore) tiene una válida.
+		this.skin = fields.skin || "steve";
 	}
 
 	// --- Inventario (Fase 13, C3) ---

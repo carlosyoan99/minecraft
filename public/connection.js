@@ -2,6 +2,7 @@
 // CONEXIÓN WEBSOCKET (socket + envío de mensajes)
 // ============================================================
 import { setProgress, setStatus, showConnectionError } from "./loading.js";
+import { isValidSkin } from "./skins.js";
 
 const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
 
@@ -21,8 +22,26 @@ export function setStoredName(name) {
 	localStorage.setItem("mc_name", name);
 }
 
+// Skin del jugador (Fase 17): preferencia del CLIENTE persistida en
+// localStorage (mc_skin), como el nombre. Viaja en la URL del WebSocket
+// (?skin=) y el servidor la valida contra su lista oficial; el selector del
+// menú (ui.js) también la envía con set_skin al cambiar.
+const SKIN_KEY = "mc_skin";
+export function defaultSkin() {
+	let s = localStorage.getItem(SKIN_KEY);
+	if (!isValidSkin(s)) {
+		s = "steve";
+		localStorage.setItem(SKIN_KEY, s);
+	}
+	return s;
+}
+
+export function setStoredSkin(skin) {
+	if (isValidSkin(skin)) localStorage.setItem(SKIN_KEY, skin);
+}
+
 export const socket = new WebSocket(
-	`${wsProtocol}://${location.host}/?name=${encodeURIComponent(defaultName())}`
+	`${wsProtocol}://${location.host}/?name=${encodeURIComponent(defaultName())}&skin=${defaultSkin()}`
 );
 
 export function send(event, data = {}) {

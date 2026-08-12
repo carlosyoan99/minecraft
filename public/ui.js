@@ -3,7 +3,13 @@
 // ============================================================
 
 import { isMuted, playChestClose, playChestOpen, setMuted } from "./audio.js"; // Fase 10 (F2): cofres
-import { defaultName, send, setStoredName } from "./connection.js";
+import {
+	defaultName,
+	defaultSkin,
+	send,
+	setStoredName,
+	setStoredSkin
+} from "./connection.js";
 import {
 	ARMOR_DURABILITY,
 	ARMOR_SLOT_NAMES,
@@ -22,6 +28,7 @@ import {
 	settingUiValue,
 	toggleFullscreen // Fase 16 (E1): pantalla completa
 } from "./settings.js";
+import { isValidSkin, paintHeadPreview, SKINS } from "./skins.js"; // Fase 17: skins de jugador
 
 // Estado que dibuja el HUD (lo actualiza la red; lo lee el input)
 let inventory = new Array(36).fill(null);
@@ -376,6 +383,48 @@ nameInput.addEventListener("change", () => {
 nameInput.addEventListener("keydown", (e) => {
 	if (e.key === "Enter") startBtn.click();
 });
+
+// ============================================================
+// SELECTOR DE SKINS (Fase 17)
+// Grid de los 9 skins oficiales (Steve, Alex, Noor, Sunny, Ari,
+// Zuri, Makena, Kai, Efe) con miniatura procedural de la cabeza.
+// La elección se persiste en localStorage (mc_skin, connection.js)
+// y se envía al servidor con set_skin (lo propaga a los demás en
+// vivo con player_skin). Es preferencia del CLIENTE, como el
+// nombre: no viaja en el guardado de mundos.
+// ============================================================
+let selectedSkin = defaultSkin();
+const skinGrid = document.getElementById("skin-grid");
+function selectSkin(id) {
+	if (!isValidSkin(id) || id === selectedSkin) return;
+	selectedSkin = id;
+	setStoredSkin(id);
+	send("set_skin", { skin: id });
+	refreshSkinSelector();
+}
+function refreshSkinSelector() {
+	for (const card of skinGrid.children)
+		card.classList.toggle("selected", card.dataset.skin === selectedSkin);
+}
+// Se construye una vez: miniatura 56px (escala 3) + nombre bajo la cabeza.
+for (const s of SKINS) {
+	const card = document.createElement("button");
+	card.type = "button";
+	card.className = "skin-card";
+	card.dataset.skin = s.id;
+	card.title = `Skin de ${s.label}`;
+	const c = document.createElement("canvas");
+	c.width = c.height = 48;
+	const g = c.getContext("2d");
+	g.imageSmoothingEnabled = false;
+	paintHeadPreview(g, s.id, 48);
+	const label = document.createElement("span");
+	label.textContent = s.label;
+	card.append(c, label);
+	card.addEventListener("click", () => selectSkin(s.id));
+	skinGrid.appendChild(card);
+}
+refreshSkinSelector();
 
 // Fase 17 (A2): «Un jugador» muestra la lista de mundos (el flujo de
 // set_seed directo queda solo para el modo clásico con SEED).

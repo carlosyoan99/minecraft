@@ -19,7 +19,8 @@ import {
 	spawnRemotePlayer,
 	updateArrows,
 	updateMobs,
-	updateRemotePlayer
+	updateRemotePlayer,
+	updateRemotePlayerSkin // Fase 17: skins en vivo (player_skin)
 } from "./mobs.js";
 import { spawnBlockBreak, spawnBlockPlace } from "./particles.js"; // Fase 7: partículas
 import { teleport } from "./player.js";
@@ -116,7 +117,7 @@ socket.addEventListener("message", (e) => {
 				setFire(!!data.burning); // Fase 10 (A2): reconectando ardiendo
 				initDayNight(data.dayTime, data.moonTime); // Fase 8 (B8): + fase lunar
 				for (const p of data.otherPlayers)
-					spawnRemotePlayer(p.id, p.x, p.y, p.z, p.name);
+					spawnRemotePlayer(p.id, p.x, p.y, p.z, p.name, p.skin);
 				// Fase 6: cerrar la pantalla de carga (esperando el init de la semilla
 				// pedida si se cambió de mundo desde el menú)
 				onWorldLoaded(data.seed);
@@ -191,7 +192,18 @@ socket.addEventListener("message", (e) => {
 				setCrackStage(data.stage, data.x, data.y, data.z);
 				break; // Fase 6: grietas de rotura
 			case "player_join":
-				spawnRemotePlayer(data.id, data.x, data.y, data.z, data.name);
+				spawnRemotePlayer(
+					data.id,
+					data.x,
+					data.y,
+					data.z,
+					data.name,
+					data.skin
+				);
+				break;
+			case "player_skin":
+				// Fase 17: cambio de skin en vivo — reconstruye el humanoide remoto.
+				updateRemotePlayerSkin(data.id, data.skin);
 				break;
 			case "player_move":
 				updateRemotePlayer(data.id, data.x, data.y, data.z, data.yaw);

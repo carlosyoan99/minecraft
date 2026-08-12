@@ -622,6 +622,11 @@
 - [x] C1 pantalla de pausa estilo Minecraft (Esc: Continuar / Ajustes /
       Volver al menú principal)
 - [x] C2 estética del menú (interfaz 100% Minecraft; sin adelantar la F19)
+- [x] C3 skins de jugador: selector en el menú con los 9 skins oficiales
+      (Steve/Alex/Noor/Sunny/Ari/Zuri/Makena/Kai/Efe), skins procedurales
+      (`public/skins.js` puro + `skintextures.js` atlas), preferencia del
+      cliente (`mc_skin`, como el nombre) y protocolo `set_skin`/
+      `player_skin` con lista oficial sincronizada (`unit-skins` 17/17)
 - [x] D1 controles táctiles básicos (joystick + mirar + botones) — HUD
       adaptativo móvil, mouse+teclado intactos
 - [x] Auditoría de Fase 17 (implementación): suite unit 53/53 en verde

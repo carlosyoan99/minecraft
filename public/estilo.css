@@ -1411,6 +1411,71 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 .world-action:active {
 	transform: scale(0.92);
 }
+/* Selector de skins (Fase 17): grid de miniaturas de cabeza + nombre */
+.skin-field {
+	margin-top: 2px;
+}
+.skin-field-title {
+	display: block;
+	font-size: 13px;
+	color: #3f3f3f;
+	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+	margin-bottom: 6px;
+}
+.skin-grid {
+	display: grid;
+	grid-template-columns: repeat(9, 1fr);
+	gap: 6px;
+}
+.skin-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 3px;
+	padding: 5px 3px 4px;
+	cursor: pointer;
+	background: #6f6f6f;
+	background-image: linear-gradient(
+		rgba(255, 255, 255, 0.16),
+		rgba(0, 0, 0, 0.16)
+	);
+	border: 2px solid;
+	border-color: #fff #3a3a3a #3a3a3a #fff;
+	color: #fff;
+	font-family: inherit;
+	font-size: 10px;
+	font-weight: bold;
+	letter-spacing: 0.5px;
+	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+	transition:
+		filter 0.1s,
+		transform 0.1s;
+}
+.skin-card canvas {
+	width: 48px;
+	height: 48px;
+	image-rendering: pixelated;
+	background: rgba(0, 0, 0, 0.25);
+	border: 1px solid #3a3a3a;
+}
+.skin-card:hover {
+	filter: brightness(1.2);
+	transform: translateY(-2px);
+}
+.skin-card:active {
+	border-color: #3a3a3a #fff #fff #3a3a3a;
+	transform: scale(0.95);
+}
+.skin-card.selected {
+	background: #4a8a2e;
+	border-color: #dfffdf #2a5a2a #2a5a2a #dfffdf;
+	box-shadow: 0 0 10px rgba(120, 220, 80, 0.55);
+}
+@media (max-width: 640px) {
+	.skin-grid {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
 
 /* ============================================================
 FASE 17 (D1): CONTROLES TÁCTILES (móvil). Solo visibles si el JS

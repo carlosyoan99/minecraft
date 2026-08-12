@@ -218,7 +218,14 @@ function sendInit(p) {
 				].filter((id, i, a) => a.indexOf(id) === i), // sin duplicados
 				otherPlayers: Array.from(state.players.values())
 					.filter((q) => q.id !== p.id)
-					.map((q) => ({ id: q.id, name: q.name, x: q.x, y: q.y, z: q.z }))
+					.map((q) => ({
+						id: q.id,
+						name: q.name,
+						x: q.x,
+						y: q.y,
+						z: q.z,
+						skin: q.skin || "steve" // Fase 17: skin del jugador remoto
+					}))
 			}
 		})
 	);
@@ -314,6 +321,21 @@ function nameFromRequest(req) {
 	}
 }
 
+// Skin del jugador (Fase 17): llega en la URL del WebSocket (?skin=), como el
+// nombre. Se valida contra la lista oficial (PLAYER_SKINS); cualquier otra
+// cosa (o ausencia) devuelve null y el cliente queda con el default "steve".
+// Es preferencia del CLIENTE (persistida en localStorage): no se persiste en
+// los mundos ni en el jugador guardado.
+function skinFromRequest(req) {
+	try {
+		const u = new URL(req.url, "http://localhost");
+		const s = u.searchParams.get("skin");
+		return constants.PLAYER_SKINS.includes(s) ? s : null;
+	} catch {
+		return null;
+	}
+}
+
 function handleConnection(ws, req) {
 	// Auditoría 2026-08-09 (§3.1): el rate-limit de mensajes solo aplica a
 	// conexiones reales (las que llegan con request HTTP de upgrade). Los
@@ -366,6 +388,9 @@ function handleConnection(ws, req) {
 	// cualquiera en la lista OPS (env var OPS="Nombre1,Nombre2"). Permiso para
 	// /tp /give /time /gamemode /reload /op (ver commands.js).
 	const playerName = nameFromRequest(req) || `Jugador-${playerId.slice(0, 4)}`;
+	// Fase 17: skin del jugador (preferencia del cliente; la valida la lista
+	// oficial — ver skinFromRequest).
+	const playerSkin = skinFromRequest(req) || "steve";
 	// Fase 13 (C3): POO — el jugador es una instancia de Player (clase de
 	// players.js) construida desde los mismos campos planos de siempre. El
 	// resto del servidor lo sigue tratando por propiedades; los métodos de
@@ -374,6 +399,7 @@ function handleConnection(ws, req) {
 		id: playerId,
 		ws,
 		name: playerName, // Fase 7: nombre visible
+		skin: playerSkin, // Fase 17: skin (Steve por defecto)
 		isOp:
 			state.players.size === 0 || constants.OPS.has(playerName.toLowerCase()),
 		x: spawnX,
@@ -499,7 +525,14 @@ function handleConnection(ws, req) {
 		sendInit(player);
 		broadcast(
 			"player_join",
-			{ id: playerId, name: player.name, x: spawnX, y: spawnY, z: spawnZ },
+			{
+				id: playerId,
+				name: player.name,
+				x: spawnX,
+				y: spawnY,
+				z: spawnZ,
+				skin: player.skin || "steve" // Fase 17
+			},
 			playerId
 		);
 	}
@@ -768,6 +801,19 @@ function handleConnection(ws, req) {
 					if (!name) break;
 					p.name = name;
 					broadcast("player_rename", { id: playerId, name });
+					break;
+				}
+
+				case "set_skin": {
+					// Fase 17: cambio de skin (selector del menú). Preferencia del
+					// cliente; el servidor solo la valida contra la lista oficial y
+					// la propaga a los demás en vivo (player_skin → el cliente
+					// reconstruye el humanoide remoto con el atlas nuevo).
+					const skin = typeof data?.skin === "string" ? data.skin : "";
+					if (!constants.PLAYER_SKINS.includes(skin)) break;
+					if (p.skin === skin) break;
+					p.skin = skin;
+					broadcast("player_skin", { id: playerId, skin });
 					break;
 				}
 
@@ -1255,7 +1301,14 @@ function handleConnection(ws, req) {
 					sendInit(p); // confirmación: el cliente la usa para cerrar la carga
 					broadcast(
 						"player_join",
-						{ id: playerId, name: p.name, x: p.x, y: p.y, z: p.z },
+						{
+							id: playerId,
+							name: p.name,
+							x: p.x,
+							y: p.y,
+							z: p.z,
+							skin: p.skin || "steve" // Fase 17
+						},
 						playerId
 					);
 					break;

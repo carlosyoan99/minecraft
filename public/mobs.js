@@ -12,6 +12,8 @@ import * as THREE from "three";
 import { playCreeperHiss, playSheepBaa } from "./audio.js";
 import { getMobAtlas, MOB_PARTS, mobPartRects } from "./mobtextures.js";
 import { scene } from "./scene.js";
+import { isValidSkin } from "./skins.js";
+import { getSkinAtlas } from "./skintextures.js"; // skins de jugador
 
 const remotePlayers = new Map(); // id -> mesh
 export const mobMeshes = new Map(); // id -> mesh (grupo raíz)
@@ -38,6 +40,18 @@ function disposeMesh(mesh) {
 		if (nt.tag.material.map?.dispose) nt.tag.material.map.dispose();
 		nt.tag.material.dispose();
 	}
+}
+
+// Fase 17: libera el CanvasTexture del atlas de skin del humanoide (el
+// `map` del material compartido). disposeMesh NO toca material.map a
+// propósito (los atlas de mobs pueden estar cacheados/compartidos); el de
+// skin se crea NUEVO por humanoide en getSkinAtlas, así que se dispone
+// aquí, en los caminos exclusivos de jugador (removeRemotePlayer y
+// updateRemotePlayerSkin). Sin esto, cada cambio de skin en vivo y cada
+// desconexión de un jugador remoto filtraba la textura en GPU.
+function disposeSkinAtlas(mesh) {
+	const shared = mesh.userData?.material;
+	if (shared?.map?.dispose) shared.map.dispose();
 }
 
 // ============================================================
@@ -103,13 +117,28 @@ function buildPartGroup(parts, material, rects = null) {
 }
 
 // Esqueleto humanoide genérico para jugadores remotos (misma silueta que el
-// zombi: cabeza + cuerpo + brazos + piernas) con el color plano del jugador.
+// zombi: cabeza + cuerpo + brazos + piernas). Con skin se texturiza con el
+// atlas procedural de public/skintextures.js (cada parte a su tesela); sin
+// skin válida cae al color plano histórico (defensivo).
 const HUMANOID_PARTS = MOB_PARTS.zombie?.parts || [];
 
-// buildPartGroup ya pone castShadow en cada parte; el material es plano.
-function makeHumanoid(color) {
-	const material = new THREE.MeshLambertMaterial({ color });
-	return buildPartGroup(HUMANOID_PARTS, material);
+function makeHumanoid(skinId) {
+	if (isValidSkin(skinId)) {
+		const { texture, rects } = getSkinAtlas(skinId);
+		const material = new THREE.MeshLambertMaterial({
+			map: texture,
+			color: 0xffffff
+		});
+		const group = buildPartGroup(HUMANOID_PARTS, material, rects);
+		group.userData.material = material;
+		group.userData.skin = skinId;
+		return group;
+	}
+	const material = new THREE.MeshLambertMaterial({ color: 0xdd4444 });
+	const group = buildPartGroup(HUMANOID_PARTS, material);
+	group.userData.material = material;
+	group.userData.skin = "steve";
+	return group;
 }
 
 // ============================================================
@@ -171,14 +200,41 @@ function makeNameTag(name) {
 	return { tag, draw };
 }
 
-export function spawnRemotePlayer(id, x, y, z, name = "") {
-	const mesh = makeHumanoid(0xdd4444);
+export function spawnRemotePlayer(id, x, y, z, name = "", skin) {
+	const mesh = makeHumanoid(skin);
 	mesh.position.set(x, y, z);
 	const nameTag = makeNameTag(name || id.slice(0, 6));
 	mesh.add(nameTag.tag);
 	mesh.userData.nameTag = nameTag;
+	mesh.userData.playerName = name;
 	scene.add(mesh);
 	remotePlayers.set(id, mesh);
+}
+
+// Cambio de skin en vivo (broadcast player_skin del servidor): reconstruye el
+// humanoide con el atlas nuevo conservando posición, yaw y nametag. Si el
+// jugador aún no está en escena (llegó antes que el player_join) no hay nada
+// que actualizar: el init/player_join trae la skin ya actualizada.
+export function updateRemotePlayerSkin(id, skin) {
+	const mesh = remotePlayers.get(id);
+	if (!mesh || !isValidSkin(skin) || skin === mesh.userData.skin) return;
+	const x = mesh.position.x,
+		y = mesh.position.y,
+		z = mesh.position.z;
+	const yaw = mesh.rotation.y;
+	const name = mesh.userData.playerName || "";
+	disposeSkinAtlas(mesh); // Fase 17: atlas de skin anterior (material.map)
+	disposeMesh(mesh);
+	scene.remove(mesh);
+	const fresh = makeHumanoid(skin);
+	fresh.position.set(x, y, z);
+	fresh.rotation.y = yaw;
+	const nameTag = makeNameTag(name);
+	fresh.add(nameTag.tag);
+	fresh.userData.nameTag = nameTag;
+	fresh.userData.playerName = name;
+	scene.add(fresh);
+	remotePlayers.set(id, fresh);
 }
 
 export function renameRemotePlayer(id, name) {
@@ -193,6 +249,7 @@ export function removeRemotePlayer(id) {
 		// Antes solo se quitaba de la escena: los buffers GPU de las cajas del
 		// humanoid, del Lambert y del CanvasTexture del nametag quedaban
 		// retenidos hasta que el GC los recogiera.
+		disposeSkinAtlas(mesh); // Fase 17: atlas de skin (material.map)
 		disposeMesh(mesh);
 		scene.remove(mesh);
 		remotePlayers.delete(id);

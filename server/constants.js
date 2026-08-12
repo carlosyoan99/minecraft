@@ -64,6 +64,22 @@ const SEED = process.env.SEED || "miSemilla2026";
 // recibir `join_world`; al quedarse vacío el servidor vuelve al menú.
 const MENU_MODE = !process.env.SEED;
 
+// Skins oficiales de jugador (Fase 17): el servidor es la fuente de verdad
+// del wire (los valida en ?skin= y set_skin); el cliente tiene la lista
+// paralela en public/skins.js (SKINS). Lo audita tests/unit-skins.js
+// (sincronía entre ambos lados, patrón de B/I y DURABILITY).
+const PLAYER_SKINS = [
+	"steve",
+	"alex",
+	"noor",
+	"sunny",
+	"ari",
+	"zuri",
+	"makena",
+	"kai",
+	"efe"
+];
+
 // Física del jugador (Fase 7): el cliente envía la posición del OJO en `move`
 // (altura del ojo EYE_HEIGHT sobre los pies) y el servidor la usa para inferir
 // el suelo al calcular el daño por caída. Mantener en sincronía con EYE_HEIGHT
@@ -1141,6 +1157,7 @@ module.exports = {
 	DESPAWN_DIST,
 	SEED,
 	MENU_MODE, // Fase 17 (A1): sin SEED el servidor arranca sin mundo activo
+	PLAYER_SKINS, // Fase 17: lista oficial de skins (cliente: public/skins.js)
 	OPS,
 	EYE_HEIGHT,
 	FALL_DAMAGE_FREE_BLOCKS,
