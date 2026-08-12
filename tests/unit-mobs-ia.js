@@ -367,6 +367,67 @@ check(
 	resetPlayers();
 }
 
+// --- 6c) B3 (auditoría 2026-08-11): el mob REACCIONA a ser flechado ---
+// La flecha/tridente del jugador daña y provoca reacción igual que el golpe a
+// mano (hostil → aggro, pasivo → huye). Los proyectiles de mob (flecha de
+// esqueleto, tridente de ahogado) NO provocan reacción: los mobs no se agreden
+// entre sí (paridad MC).
+{
+	resetPlayers();
+	state.arrows = [];
+	// Jugador lejano (no recibe el impacto) y zombie justo en la flecha.
+	const p = mkPlayer({ id: "pB3", x: 30, y: 10, z: 0 });
+	state.players.set(p.id, p);
+	const z = new mobs.Mob("zombie", 3, 10, 0);
+	state.mobs = [z];
+	state.arrows.push({
+		x: 3,
+		y: 10,
+		z: 0,
+		vx: 0,
+		vy: 0,
+		vz: 0,
+		damage: 3,
+		life: 2500,
+		from: p.id // la flecha es del jugador
+	});
+	mobs.tickArrows(50);
+	check(
+		"la flecha del jugador hace daño al mob",
+		z.health === 17,
+		`health=${z.health}`
+	);
+	check(
+		"la flecha del jugador provoca AGGRO en el hostil (B3)",
+		z.isAggroed() && z.aggroTarget === p.id,
+		`aggroUntil=${z.aggroUntil} target=${z.aggroTarget}`
+	);
+	// Proyectil de MOB (esqueleto): daña pero NO provoca aggro.
+	const z2 = new mobs.Mob("zombie", 6, 10, 0);
+	state.mobs = [z2];
+	state.arrows = [
+		{
+			x: 6,
+			y: 10,
+			z: 0,
+			vx: 0,
+			vy: 0,
+			vz: 0,
+			damage: 3,
+			life: 2500,
+			from: "sk-uu1" // no está en state.players → no es jugador
+		}
+	];
+	mobs.tickArrows(50);
+	check(
+		"la flecha de un mob daña pero NO genera aggro (paridad MC)",
+		z2.health === 17 && !z2.isAggroed(),
+		`health=${z2.health} aggroUntil=${z2.aggroUntil}`
+	);
+	state.arrows = [];
+	resetPlayers();
+}
+
 // --- 7) enderman: teletransporta cerca del jugador ---
 {
 	resetPlayers();

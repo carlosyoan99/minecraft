@@ -208,6 +208,50 @@ check("xpToNext(31) = 121", xpToNext(31) === 121);
 	check("zombie: 20 HP (MC)", mkMob("zombie").health === 20);
 }
 
+// --- Auditoría 2026-08-11 (D6): XP del slime por tamaño y del lobo ---
+// Duplicado de unit-fase16 para que la SUITE DE PARIDAD también lo clave: si
+// alguien borra los casos especiales de mobXp() (mobs.js), la tabla MOB_XP
+// vuelve a valores contradictorios sin que lo note otro test (riesgo de la
+// tabla muerta que la auditoría reportó).
+{
+	const mobs = require("../server/mobs.js");
+	const mkMob = (type) => new mobs.Mob(type, 0, 80, 0);
+	const slimeGrande = mkMob("slime");
+	slimeGrande.slimeSize = 2;
+	const slimeMediano = mkMob("slime");
+	slimeMediano.slimeSize = 1;
+	const slimePequeno = mkMob("slime");
+	slimePequeno.slimeSize = 0;
+	check(
+		"D6: slime grande (2) da 4 XP",
+		mobs.mobXp(slimeGrande) === 4,
+		`=${mobs.mobXp(slimeGrande)}`
+	);
+	check(
+		"D6: slime mediano (1) da 2 XP",
+		mobs.mobXp(slimeMediano) === 2,
+		`=${mobs.mobXp(slimeMediano)}`
+	);
+	check("D6: slime pequeño (0) da 1 XP", mobs.mobXp(slimePequeno) === 1);
+	// El lobo es aleatorio (1-3): se fija Math.random para probar los límites y
+	// demostrar que el caso especial sigue vivo (si se borra, cae al fallback
+	// MOB_XP.wolf = 2 y ambos límites fallan).
+	const realRandom = Math.random;
+	Math.random = () => 0.99;
+	check(
+		"D6: lobo con random alto da 3 XP (caso especial vivo)",
+		mobs.mobXp(mkMob("wolf")) === 3,
+		`=${mobs.mobXp(mkMob("wolf"))}`
+	);
+	Math.random = () => 0;
+	check(
+		"D6: lobo con random bajo da 1 XP (caso especial vivo)",
+		mobs.mobXp(mkMob("wolf")) === 1,
+		`=${mobs.mobXp(mkMob("wolf"))}`
+	);
+	Math.random = realRandom;
+}
+
 // biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 console.log(`${ok} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

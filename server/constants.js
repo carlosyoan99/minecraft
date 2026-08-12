@@ -903,7 +903,10 @@ const MOB_XP = {
 	skeleton: 5, // Fase 14 (Bloque B): 5 (era 7)
 	enderman: 5, // Fase 14 (Bloque B): 5 (era 9)
 	spider: 5, // Fase 14 (Bloque B): 5 (era 7)
-	wolf: 8,
+	// Fase 16 (D6): wolf y slime los sobrescribe mobXp() (mobs.js) — la tabla
+	// de aquí es solo el fallback si se elimina ese caso especial, y debe
+	// reflejar la media real para no inducir regresiones:
+	wolf: 2, // D6: suelta 1-3 aleatorio (2 = media del fallback)
 	cow: 3,
 	pig: 3,
 	chicken: 2,
@@ -911,7 +914,7 @@ const MOB_XP = {
 	rabbit: 2,
 	bee: 1, // Fase 9 (Bloque F): pasivo volador (versión simplificada)
 	// Fase 12 (Bloque A): XP de los mobs por bioma
-	slime: 1, // por tamaño (el grande 2, el pequeño 1)
+	slime: 1, // por tamaño (grande 4, mediano 2, pequeño 1) — lo aplica mobXp()
 	ocelot: 2,
 	cat: 2,
 	drowned: 5

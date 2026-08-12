@@ -328,6 +328,13 @@ function tickArrows(dtMs) {
 				if (lanzadorJugador && m.ownerId === a.from) continue;
 				if (Math.hypot(m.x - a.x, m.y - a.y, m.z - a.z) < ARROW_HIT_DIST) {
 					m.health -= a.damage || ARROW_DAMAGE;
+					// B3 (auditoría 2026-08-11): el mob REACCIONA a ser flechado
+					// por un jugador — hostil aggro al lanzador, pasivo huye. Igual
+					// que al ser golpeado a mano; mobHit ya ignora a los creativos
+					// (Fase 17, B6). Los proyectiles de mob (flecha de esqueleto,
+					// tridente de ahogado) NO provocan reacción: los mobs no se
+					// agreden entre sí (paridad MC).
+					if (lanzadorJugador) m.mobHit(players.get(a.from));
 					if (m.health <= 0) {
 						// El slime se divide antes de morir (como en attack_mob).
 						m.onDeath(); // C2: el slime se divide (hook por especie)
