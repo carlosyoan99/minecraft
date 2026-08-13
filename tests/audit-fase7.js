@@ -130,22 +130,40 @@ class CDP {
 			});
 		});
 	}
-	send(method, params = {}) {
+	send(method, params = {}, timeoutMs = 15000) {
 		const id = ++this.id;
 		return new Promise((resolve, reject) => {
 			const timer = setTimeout(() => {
 				this.pending.delete(id);
 				reject(new Error(`CDP ${method} sin respuesta`));
-			}, 15000);
+			}, timeoutMs);
 			this.pending.set(id, { resolve, timer });
 			this.ws.send(JSON.stringify({ id, method, params }));
 		});
 	}
-	async eval(expression) {
-		const r = await this.send("Runtime.evaluate", {
-			expression,
-			returnByValue: true
-		});
+	async eval(expression, timeoutMs = 15000) {
+		const r = await this.send(
+			"Runtime.evaluate",
+			{
+				expression,
+				returnByValue: true,
+				awaitPromise: true // G3.7: esperar los async IIFE (imports dinámicos)
+			},
+			timeoutMs
+		);
+		// Una excepción DENTRO de la página (exceptionDetails) devuelve el eval
+		// sin `value`: si no se detecta, un throw silencioso se ve como un check
+		// fallido sin causa (G3.7 B4/B5). Se convierte en error real para que
+		// uiEval lo loguee y lo reporte.
+		if (r.result?.exceptionDetails) {
+			const ex = r.result.exceptionDetails;
+			const desc =
+				ex.exception?.description ||
+				ex.exception?.value ||
+				ex.text ||
+				"excepción en la página";
+			throw new Error(`página: ${desc}`);
+		}
 		const v = r.result?.result;
 		return v && v.value !== undefined ? v.value : undefined;
 	}
@@ -298,6 +316,201 @@ async function auditCdp() {
 				// Muestreo tolerante: un error de CDP puntual no tumba la auditoría.
 			}
 		}
+
+		// ============================================================
+		// Fase 16 (G3.7): checks de UI/calidad en el cliente REAL (CDP).
+		// Cierra G3b (network/settings/particles/audio se ejercitan en el
+		// navegador sin excepciones — si alguno reventara, el bucle de render
+		// o el flujo de red que ya se muestreó arriba lo habría roto) y
+		// verifica los bugs del usuario: niebla B1, calidad B6, inventario
+		// B4 y libro de recetas B5. IMPORTANTE: va ANTES de cdp.close() —
+		// con el WebSocket CDP cerrado todo Runtime.evaluate cuelga.
+		// ============================================================
+		// G3.7: los evals CDP con awaitPromise + import() dinámico son frágiles
+		// bajo carga (SwiftShader + tick lento por el relleno de chunks): la
+		// respuesta del Runtime.evaluate espera a que resuelva la promesa y se
+		// agota el timeout. Estrategia robusta: TODO eval es SÍNCRONO; el
+		// import() se lanza al vuelo (fire-and-forget) y se sondea hasta que
+		// window.__mcMods tiene los módulos. Un eval que falle se loguea y
+		// registra check fallido (uiEval) o se reintenta en silencio (poll) —
+		// nunca tumba la auditoría.
+		const uiEval = async (label, expression, timeoutMs = 15000) => {
+			try {
+				return await cdp.eval(expression, timeoutMs);
+			} catch (e) {
+				// biome-ignore lint/suspicious/noConsole: diagnóstico de la auditoría
+				console.log(`   ⚠ G3.7 (CDP ${label}): ${e.message}`);
+				check(`G3.7 (CDP ${label})`, false, `error: ${e.message}`);
+				return null;
+			}
+		};
+
+		// Sondeo síncrono con reintento silencioso: eval corto; si falla o da
+		// falsy se reintenta (un timeout CDP puntual no debe contar como fallo).
+		const poll = async (expression, tries = 15, delayMs = 700) => {
+			for (let i = 0; i < tries; i++) {
+				try {
+					const v = await cdp.eval(expression, 8000);
+					if (v) return v;
+				} catch {}
+				await sleep(delayMs);
+			}
+			return null;
+		};
+
+		// Los módulos ya están en el grafo de la página (client.js los importa),
+		// así que import() sale de caché: se lanzan los 5 sin esperarlos y se
+		// sondea la aparición de window.__mcMods.
+		await cdp.eval(
+			"window.__mcMods = window.__mcMods || {}; " +
+				"['waterfog','quality','scene','connection','ui'].forEach((n) => " +
+				"import('/' + n + '.js').then((m) => { window.__mcMods[n] = m; }).catch(() => {})); true",
+			8000
+		);
+		const modsReady = await poll(
+			"Object.keys(window.__mcMods || {}).length === 5"
+		);
+		check(
+			"G3.7: módulos del cliente accesibles desde CDP (waterfog/quality/scene/connection/ui)",
+			modsReady === true
+		);
+
+		// B1 — niebla submarina (waterfog.js, lógica pura): ojos en la
+		// superficie (a 1 bloque) NO activan la niebla; a 2+ bloques SÍ
+		// (columna de agua en y∈[10,11], ojos en 11 → depth 1, en 10 → depth 2).
+		const fog = await uiEval(
+			"B1-niebla",
+			"(() => { const m = window.__mcMods.waterfog; " +
+				"const at = (eyeY) => m.shouldUnderwaterFog(eyeY, true, (y) => y >= 10 && y <= 11); " +
+				"return { surf: at(12), oneDeep: at(11), twoDeep: at(10) }; })()"
+		);
+		check(
+			"G3.7 B1: niebla submarina solo a ≥2 bloques de profundidad (1 bloque → sin niebla)",
+			fog &&
+				fog.surf === false &&
+				fog.oneDeep === false &&
+				fog.twoDeep === true,
+			JSON.stringify(fog)
+		);
+
+		// B6 — calidad con efecto REAL: los perfiles escalan la resolución
+		// (renderScale) y el pixelRatio efectivo difiere entre perfiles en la
+		// MISMA pantalla (el bug era que en dpr=1 los tres niveles quedaban
+		// idénticos). Además, applyQuality redimensiona el canvas de verdad.
+		const quality = await uiEval(
+			"B6-calidad",
+			"(() => { const q = window.__mcMods.quality; const s = window.__mcMods.scene; " +
+				"const pr = (n) => q.qualityPixelRatio(n, 1); " +
+				"const w = () => { const c = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)[0]; return c ? c.width : -1; }; " +
+				"s.applyQuality('baja'); const wBaja = w(); " +
+				"s.applyQuality('alta'); const wAlta = w(); " +
+				"s.applyQuality('media'); " +
+				"return { scales: [q.QUALITY_PROFILES.baja.renderScale, q.QUALITY_PROFILES.media.renderScale, q.QUALITY_PROFILES.alta.renderScale], prBaja: pr('baja'), prAlta: pr('alta'), wBaja, wAlta }; })()"
+		);
+		check(
+			"G3.7 B6: perfiles con renderScale distinto (baja < media < alta) y pixelRatio efectivo menor en baja",
+			quality &&
+				quality.scales[0] < quality.scales[1] &&
+				quality.scales[1] < quality.scales[2] &&
+				quality.prBaja < quality.prAlta,
+			JSON.stringify(quality && quality.scales)
+		);
+		check(
+			"G3.7 B6: applyQuality cambia la resolución real del canvas (baja < alta)",
+			typeof quality?.wBaja === "number" &&
+				quality.wBaja > 0 &&
+				quality.wBaja < quality.wAlta,
+			`baja=${quality?.wBaja}px · alta=${quality?.wAlta}px`
+		);
+
+		// Sondeo DOM: el servidor va lento (relleno de chunks domina el tick),
+		// así que en vez de esperas fijas se sondea hasta que el estado aparece
+		// (o se agota el intento). Devuelve el valor o null. Un error CDP
+		// puntual se reintenta en silencio (no es un fallo del juego).
+		const waitDom = async (label, expression, tries = 15, delayMs = 700) => {
+			for (let i = 0; i < tries; i++) {
+				try {
+					const v = await cdp.eval(expression, 8000);
+					if (v) return v;
+				} catch {}
+				await sleep(delayMs);
+			}
+			return null;
+		};
+
+		// B4 — inventario con texturas y sin fallback de texto: /give 1 tablón
+		// (el primer jugador conectado es operador; el tablón entra al slot 0
+		// = hotbar 1), esperar a que aparezca en la hotbar, abrir el inventario
+		// y comprobar que el panel muestra iconos (.item-ico) y ningún
+		// .item-txt (fallback de texto).
+		await uiEval(
+			"B4-give",
+			"(() => { window.__mcMods.connection.send('chat', { message: '/give 7 1' }); return true; })()"
+		);
+		const gave = await waitDom(
+			"B4-hotbar",
+			"document.querySelectorAll('#hotbar .item-ico').length > 0"
+		);
+		await uiEval(
+			"B4-open",
+			"(() => { window.__mcMods.ui.toggleInventory(); return true; })()"
+		);
+		const invState = await waitDom(
+			"B4-state",
+			"(() => { const panel = document.getElementById('crafting-ui'); const open = panel && !panel.classList.contains('hidden'); const txt = document.querySelectorAll('#crafting-ui .item-txt').length; const ico = document.querySelectorAll('#crafting-ui .item-ico').length; return open && txt === 0 && ico > 0 ? { open, txt, ico } : null; })()"
+		);
+		check(
+			"G3.7 B4: inventario abre con iconos y sin fallback de texto (.item-txt)",
+			!!gave &&
+				!!invState &&
+				invState.open &&
+				invState.ico > 0 &&
+				invState.txt === 0,
+			JSON.stringify({ gave: !!gave, inv: invState })
+		);
+		await uiEval(
+			"B4-close",
+			"(() => { window.__mcMods.ui.closePanels(); return true; })()"
+		);
+
+		// B5 — libro de recetas: abre con el mouse liberado (pointer lock OFF),
+		// muestra las recetas con iconos y se cierra con Escape.
+		await uiEval(
+			"B5-open",
+			"(() => { window.__mcMods.ui.toggleRecipeBook(); return true; })()"
+		);
+		const bookState = await waitDom(
+			"B5-state",
+			"(() => { const book = document.getElementById('recipe-book'); const open = book && !book.classList.contains('hidden'); const txt = document.querySelectorAll('#recipe-book .item-txt').length; const ico = document.querySelectorAll('#recipe-book .item-ico').length; return open && txt === 0 && ico > 0 ? { open, txt, ico, pointerLocked: document.pointerLockElement !== null } : null; })()"
+		);
+		check(
+			"G3.7 B5: libro abre con mouse liberado y recetas con iconos (sin fallback de texto)",
+			bookState &&
+				bookState.open &&
+				!bookState.pointerLocked &&
+				bookState.ico > 0 &&
+				bookState.txt === 0,
+			JSON.stringify(bookState)
+		);
+		await uiEval(
+			"B5-escape",
+			"document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true })); true"
+		);
+		// Diagnóstico: tras el Escape, ¿el libro cerró, se abrió la pausa (rama
+		// controls.isLocked) o quedó abierto? El resultado se loguea para saber
+		// qué rama tomó el handler de input.js en headless.
+		const escState = await uiEval(
+			"B5-esc-state",
+			"(() => { const book = document.getElementById('recipe-book'); const pause = document.getElementById('menu-pause'); const c = window.__mcMods.scene.controls; return { bookHidden: book.classList.contains('hidden'), pauseOpen: !pause.classList.contains('hidden'), isLocked: !!c.isLocked, pointerLocked: document.pointerLockElement !== null }; })()"
+		);
+		// biome-ignore lint/suspicious/noConsole: diagnóstico de la auditoría
+		console.log(`   [B5-esc] ${JSON.stringify(escState)}`);
+		const bookClosed = await waitDom(
+			"B5-closed",
+			"(() => { const book = document.getElementById('recipe-book'); return !book || book.classList.contains('hidden'); })()"
+		);
+		check("G3.7 B5: libro se cierra con Escape", bookClosed === true);
+
 		cdp.close();
 
 		check(

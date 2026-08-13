@@ -54,7 +54,14 @@ const DIRS = [
 	[0, -1]
 ];
 let dirIdx = 0;
-const WORLD_H = 64; // altura del mundo (world.js)
+// Fase 15 (D5)/v6: el mundo es de 128 bloques (Y −64..+63) y el chunkData del
+// wire está indexado por Y LOCAL (0..127 = absoluto −64..63). Este test venía
+// calibrado al mundo v5 (64 bloques, local == absoluto) y su stoneNear/groundY
+// traducían el índice local directo a Y de mundo: con el offset −64 los
+// candidatos caían en coordenadas equivocadas y el break no completaba.
+const ARRAY_H = 128; // alto del array del chunk (Y local 0..127)
+const WORLD_MIN_Y = -64; // Y absoluta del fondo del mundo
+const toAbs = (ly) => ly + WORLD_MIN_Y; // Y local del array → Y de mundo
 
 const results = [];
 let finished = false;
@@ -63,7 +70,7 @@ const worldMap = new Map(); // "cx,cz" -> array de ids (init + chunks_add)
 let breakCandidates = [];
 let pickSlot = -1;
 let breaksSent = 0; // roturas enviadas (el wire confirma 1 a 1)
-let cur = { x: 0, y: 64, z: 0 }; // posición actual conocida del jugador
+let cur = { x: 0, y: 0, z: 0 }; // posición actual conocida del jugador
 let walkTimer = null;
 let walked = 0; // bloques caminados en total
 let phase = "init";
@@ -98,14 +105,14 @@ const timer = setTimeout(() => {
 // ============================================================
 function groundY(wx, wz) {
 	const arr = worldMap.get(`${Math.floor(wx / 16)},${Math.floor(wz / 16)}`);
-	if (!arr) return 4; // chunk desconocido: asumir superficie baja
+	if (!arr) return 2; // chunk desconocido: asumir superficie v6 baja (~0)
 	const x = ((wx % 16) + 16) % 16,
 		z = ((wz % 16) + 16) % 16;
-	for (let y = WORLD_H - 1; y >= 0; y--) {
-		const id = arr[(y * 16 + z) * 16 + x];
-		if (id !== 0 && id !== WATER) return y;
+	for (let ly = ARRAY_H - 1; ly >= 0; ly--) {
+		const id = arr[(ly * 16 + z) * 16 + x];
+		if (id !== 0 && id !== WATER) return toAbs(ly);
 	}
-	return 0;
+	return WORLD_MIN_Y;
 }
 
 // Altura de la superficie del agua en la columna (nivel al que nadar), o null.
@@ -114,8 +121,8 @@ function waterTopY(wx, wz) {
 	if (!arr) return null;
 	const x = ((wx % 16) + 16) % 16,
 		z = ((wz % 16) + 16) % 16;
-	for (let y = WORLD_H - 1; y >= 0; y--) {
-		if (arr[(y * 16 + z) * 16 + x] === WATER) return y + 1;
+	for (let ly = ARRAY_H - 1; ly >= 0; ly--) {
+		if (arr[(ly * 16 + z) * 16 + x] === WATER) return toAbs(ly) + 1;
 	}
 	return null;
 }
@@ -131,7 +138,7 @@ function stoneNear(x, y, z) {
 				lz = Math.floor(i / 16) % 16,
 				ly = Math.floor(i / 256);
 			const wx = cx * 16 + lx,
-				wy = ly,
+				wy = toAbs(ly), // v6: el índice del array es Y LOCAL (absoluto = local − 64)
 				wz = cz * 16 + lz;
 			if (Math.hypot(wx - x, wy - y, wz - z) <= REACH)
 				found.push({ x: wx, y: wy, z: wz });

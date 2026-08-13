@@ -7,7 +7,7 @@
 	"scripts": {
 		"start": "node server.js",
 		"test": "node tests/run.js",
-		"test:coverage": "c8 --all --src=server --src=public --reporter=text node tests/run.js --unit",
+		"test:coverage": "c8 --all --src=server --src=public --reporter=text --check-coverage=50 --thresholds=\"server/*.js:80:80:80:75\" --thresholds=\"public/*.js:15:50:15:50\" node tests/run.js --unit",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write ."

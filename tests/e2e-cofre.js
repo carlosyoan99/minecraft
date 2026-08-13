@@ -5,9 +5,11 @@
 //   3) chest_open → chest_state con 27 slots
 //   4) /give 5 adoquines → chest_action put → el cofre los guarda
 //   5) chest_action take → vuelven al inventario (slot del cofre vacío)
-//   6) chest_action close → se cierra
-//   7) break → la minería fina rompe el cofre (~1.5s a mano) y el item
-//      vuelve al inventario (drop) con block_update de aire
+//   6) Fase 16 (G4/B2): dejar 1 adoquín DENTRO, cerrar y romper el cofre
+//      CON contenido → el item cae al inventario y el contenido también
+//      (drops) con block_update de aire
+//   7) Fase 16 (G4/B5): roundtrip recipe_book — el servidor responde las
+//      tablas de crafteo y horno
 //
 // Requiere un servidor vivo: WS_URL (por defecto ws://localhost:3998).
 // Ejecutar contra un servidor DESECHABLE (modifica el mundo: coloca y rompe
@@ -33,6 +35,11 @@ let _chestSlot = -1; // slot del cofre en el inventario
 let placeAt = null; // {x,y,z} donde se colocó el cofre
 let _breaksSent = false; // ¿se envió el break del cofre?
 let takeInventoryOk = false; // ¿el inventory_update del take confirmó el adoquín?
+// G4 (B2): inventario del take — capturar el conteo de adoquines previo al
+// put-drop (el break debe devolver el inventario a ese mismo conteo: el
+// adoquín metido en el cofre cae al romperlo) y el slot para re-meterlo.
+let _cobbleBefore = 0;
+let _cobbleSlot = -1;
 
 function check(name, ok, _info) {
 	results.push({ name, ok });
@@ -352,6 +359,8 @@ ws.on("message", (d) => {
 		);
 		if (cobble < 5) return; // esperar el inventory_update del take
 		takeInventoryOk = true;
+		_cobbleBefore = cobble;
+		_cobbleSlot = m.data.inventory.findIndex((s) => s && s.id === COBBLESTONE);
 		return;
 	}
 
@@ -367,8 +376,43 @@ ws.on("message", (d) => {
 				? "adoquín confirmado por inventory_update"
 				: "sin inventory_update con el adoquín"
 		);
+		// Fase 16 (G4/B2): dejar la pila de adoquines DENTRO antes de romper —
+		// al romper un cofre el servidor reparte su contenido al inventario
+		// (players.js). El put mueve la pila COMPLETA (como el shift-click de
+		// Minecraft): el cofre se queda con los 5 y el inventario con 0.
+		if (_cobbleSlot === -1) {
+			check("put-drop: hay adoquín en el inventario para dejar dentro", false);
+			finish(1);
+			return;
+		}
+		send("chest_action", { action: "put", invSlot: _cobbleSlot });
+		phase = "put-drops";
+		return;
+	}
+
+	// ============ PUT-DROPS → CERRAR → ROMPER EL COFRE CON CONTENIDO ============
+	if (phase === "put-drops" && m.event === "chest_state") {
+		const stored = m.data.slots.filter((s) => s && s.id === COBBLESTONE);
+		check(
+			"put-drops: el cofre guarda la pila de adoquines antes de romper",
+			stored.length === 1 && stored[0].count === _cobbleBefore,
+			JSON.stringify(m.data.slots.filter(Boolean).map((s) => [s.id, s.count]))
+		);
 		send("chest_action", { action: "close" });
-		phase = "close";
+		phase = "close-full";
+		return;
+	}
+
+	if (phase === "close-full" && m.event === "chest_state") {
+		// El close responde otro chest_state; romper el cofre (aún con contenido)
+		send("block_action", {
+			action: "break",
+			x: placeAt.x,
+			y: placeAt.y,
+			z: placeAt.z
+		});
+		_breaksSent = true;
+		phase = "break-full";
 		return;
 	}
 
@@ -387,8 +431,11 @@ ws.on("message", (d) => {
 	}
 
 	// El break devuelve block_update (cofre → aire) y, al completarse la
-	// minería, inventory_update con el cofre de vuelta (drop).
-	if (phase === "break" && m.event === "block_update") {
+	// minería, inventory_update con el cofre de vuelta (drop) y el CONTENIDO
+	// (Fase 16, G4/B2): la pila guardada (5) cae al romper el cofre — el
+	// inventario vuelve al conteo previo (_cobbleBefore). Si el contenido NO
+	// cayera, el conteo sería 0 (el put vació el inventario).
+	if (phase === "break-full" && m.event === "block_update") {
 		if (
 			m.data.x === placeAt.x &&
 			m.data.y === placeAt.y &&
@@ -402,16 +449,48 @@ ws.on("message", (d) => {
 		}
 		return;
 	}
-	if (phase === "break" && m.event === "inventory_update") {
+	if (phase === "break-full" && m.event === "inventory_update") {
 		const back = m.data.inventory.some((s) => s && s.id === CHEST);
+		const cobble = m.data.inventory.reduce(
+			(acc, s) => acc + (s && s.id === COBBLESTONE ? s.count : 0),
+			0
+		);
 		check(
 			"break: el cofre cae como item al inventario (drop con la mano)",
 			back
 		);
+		check(
+			"break: el contenido del cofre cae al romperlo (drops)",
+			cobble === _cobbleBefore,
+			`adoquín=${cobble} (esperado ${_cobbleBefore})`
+		);
 		if (back) {
-			phase = "done";
-			finish();
+			// Fase 16 (G4/B5): roundtrip del libro de recetas — el servidor
+			// responde las tablas completas al mismo socket. IMPORTANTE: data
+			// debe ser objeto ({} como el send del cliente) — la guardia del
+			// handler descarta mensajes sin data.
+			send("recipe_book", {});
+			phase = "recipe-book";
 		}
+		return;
+	}
+
+	// ============ RECIPE BOOK (G4/B5): abrir (pedir tablas) y verificar ============
+	if (phase === "recipe-book" && m.event === "recipe_book") {
+		const c = m.data?.crafting;
+		const f = m.data?.furnace;
+		check(
+			"recipe_book: el servidor responde las tablas de crafteo",
+			c && typeof c === "object" && Object.keys(c).length > 0,
+			`${c ? Object.keys(c).length : 0} recetas`
+		);
+		check(
+			"recipe_book: el servidor responde las tablas de horno",
+			f && typeof f === "object" && Object.keys(f).length > 0,
+			`${f ? Object.keys(f).length : 0} recetas`
+		);
+		phase = "done";
+		finish();
 		return;
 	}
 
