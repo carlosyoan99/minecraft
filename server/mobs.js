@@ -5,7 +5,6 @@
 // ============================================================
 const { v4: uuidv4 } = require("uuid");
 const {
-	CHUNK_SIZE,
 	MOB_COLORS,
 	HOSTILE,
 	BURNS_IN_SUN,
@@ -18,10 +17,11 @@ const {
 	WORLD_HEIGHT,
 	WORLD_MAX_Y,
 	MOB_XP, // Fase 12 (A4): XP del mob asesinado con un proyectil
-	TNT_DAMAGE, // Fase 14 (Bloque B): el creeper explota con el daño del TNT
-	BOW_DAMAGE, // Fase 13 (L1): daño de la flecha del jugador (9, paridad MC)
-	worldPaths
+	TNT_DAMAGE // Fase 14 (Bloque B): el creeper explota con el daño del TNT
 } = require("./constants.js");
+// Fase 18 (D-2): CHUNK_SIZE y worldPaths solo los usaban el spawn (ahora en
+// mob-spawn.js); la zona segura y las tablas por bioma también viven allí.
+const mobSpawn = require("./mob-spawn.js");
 
 // Auditoría 2026-08-09 (§4.1): XP real del mob al morir. El slime grande (2)
 // da 4 XP y el mediano/pequeño 1 (MC); el resto usa MOB_XP[type]. Antes todo
@@ -35,30 +35,9 @@ function mobXp(m) {
 	return MOB_XP[m.type] || 0;
 }
 
-// ============================================================
-// ZONA SEGURA DEL SPAWN (Fase 8, B2)
-// Radio alrededor del punto de aparición del mundo en el que los hostiles
-// NO spawnean ni targetean a los jugadores: el recién llegado no muere sin
-// defensa (diagnóstico B2: hostiles a <40 bloques del spawn, un zombi a 3).
-// Al salir del radio, el jugador vuelve a ser objetivo normal.
-// 0 desactiva la zona (lo usan los tests de IA pura). El centro es
-// findSpawn(0,0), determinista por semilla: se cachea y se invalida al
-// cambiar de mundo (set_seed cambia worldPaths.currentSeed).
-// ============================================================
-let spawnSafeRadius = 32;
-let safeSpawnCache = { seed: null, x: 0, z: 0 };
-
-function getSafeSpawn() {
-	if (safeSpawnCache.seed !== worldPaths.currentSeed) {
-		const s = world.findSpawn(0, 0);
-		safeSpawnCache = { seed: worldPaths.currentSeed, x: s.x, z: s.z };
-	}
-	return safeSpawnCache;
-}
-
-function setSpawnSafeRadius(r) {
-	spawnSafeRadius = r;
-}
+// Fase 18 (D-2): la ZONA SEGURA DEL SPAWN (B2 — radio, caché y getters)
+// vive ahora en mob-spawn.js junto al resto del spawn; aquí se accede vía
+// `mobSpawn.spawnSafeRadius` / `mobSpawn.getSafeSpawn()`.
 
 // Salud por tipo (por defecto: hostiles 20, pasivos 10); la araña es frágil
 // pero rápida, el lobo es un hostil más resistente. Fase 14 (Bloque B):
@@ -95,312 +74,21 @@ const world = require("./world.js");
 // jugador se retira al lanzarlo y vuelve al inventario al impactar/expirar
 // (simplificación de "recogerlo del suelo": no hay entidades de item en el
 // suelo en este clon). players.js no importa mobs.js, así que es seguro.
+// Fase 18 (D-2): addToInventory/removeFromInventory solo las usaba el bloque
+// de proyectiles, que ahora vive en projectiles.js (requiere players.js
+// directamente). Aquí quedan damagePlayer (ataque del mob a mano/TNT) y addXp
+// (XP recogida de los orbes).
 const {
 	damagePlayer,
-	addToInventory,
-	removeFromInventory,
 	addXp // Fase 12 (A4): el tridente que mata un mob da XP a su lanzador
 } = require("./players.js");
 const tnt = require("./tnt.js"); // Fase 10 (D2): el creeper encadena TNT
 
 const { players } = state;
-
-// ============================================================
-// FLECHAS DEL ESQUELETO (Fase 9, Bloque D)
-// Primera entidad proyectil del juego: física simple de gravedad y vida
-// limitada (~2.5s). El esqueleto dispara si el jugador está a 6-16 bloques
-// (con cooldown); la flecha viaja hacia donde estaba el jugador con una
-// parábola de tiro y hace daño al acercarse a un jugador. Se replica por
-// `arrows_update` (broadcast del bucle principal).
-// ============================================================
-const ARROW_LIFE_MS = 2500;
-const ARROW_SPEED = 14; // bloques/s
-const ARROW_GRAVITY = 16; // bloques/s² (como la gravedad del jugador)
-const ARROW_DAMAGE = 3;
-const ARROW_HIT_DIST = 0.7;
-// Fase 12 (Bloque A): tridente — misma física que la flecha (state.arrows),
-// distinto daño y `kind: "trident"` para que el cliente lo dibuje como tal.
-const TRIDENT_DAMAGE = 6; // ahogado
-const TRIDENT_PLAYER_DAMAGE = 8; // lanzado por el jugador
-const TRIDENT_SPEED = 16; // algo más veloz que la flecha
-
-function shootArrow(shooter, target) {
-	const dx = target.x - shooter.x,
-		dz = target.z - shooter.z;
-	const dist = Math.max(1, Math.hypot(dx, dz));
-	const vx = (dx / dist) * ARROW_SPEED;
-	const vz = (dz / dist) * ARROW_SPEED;
-	// Parábola de tiro: apuntar un poco alto según la distancia para que el
-	// arco caiga sobre el objetivo (física simple, sin solución exacta).
-	const vy = 3.5 + (dist / ARROW_SPEED) * (ARROW_GRAVITY / 2);
-	state.arrows.push({
-		x: shooter.x,
-		y: shooter.y + 1.4,
-		z: shooter.z,
-		vx,
-		vy,
-		vz,
-		life: ARROW_LIFE_MS,
-		from: shooter.id
-	});
-}
-
-// Fase 12 (Bloque A4): el ahogado arroja tridentes reusando la física de las
-// flechas (misma gravedad, distinta velocidad y daño, kind "trident").
-function shootTrident(shooter, target) {
-	const dx = target.x - shooter.x,
-		dz = target.z - shooter.z;
-	const dist = Math.max(1, Math.hypot(dx, dz));
-	const vx = (dx / dist) * TRIDENT_SPEED;
-	const vz = (dz / dist) * TRIDENT_SPEED;
-	const vy = 3.5 + (dist / TRIDENT_SPEED) * (ARROW_GRAVITY / 2);
-	state.arrows.push({
-		x: shooter.x,
-		y: shooter.y + 1.4,
-		z: shooter.z,
-		vx,
-		vy,
-		vz,
-		life: ARROW_LIFE_MS,
-		from: shooter.id,
-		kind: "trident",
-		damage: TRIDENT_DAMAGE
-	});
-}
-
-// Fase 12 (Bloque A4/E8): el JUGADOR lanza su tridente (clic derecho) hacia
-// donde mira. Se le retira del inventario al lanzarlo; al impactar en un
-// bloque o agotar su vida vuelve a su inventario (no hay items en el suelo,
-// simplificación documentada — ver fase12-spec §E12). Devuelve true si se
-// lanzó.
-function throwPlayerTrident(player) {
-	const held = player.inventory?.[player.selectedSlot || 0];
-	if (!held || held.id !== I.TRIDENT) return false;
-	if (!addToInventory) return false;
-	// Dirección de la mirada (yaw/pitch en radianes, convención three.js: el
-	// cliente los envía como camera.rotation.y / camera.rotation.x).
-	const yaw = player.yaw || 0;
-	const pitch = player.pitch || 0;
-	const cp = Math.cos(pitch);
-	const dx = -Math.sin(yaw) * cp;
-	const dy = Math.sin(pitch);
-	const dz = -Math.cos(yaw) * cp;
-	removeFromInventory(player, I.TRIDENT, 1);
-	state.arrows.push({
-		x: player.x,
-		y: player.y + 1.4,
-		z: player.z,
-		vx: dx * TRIDENT_SPEED,
-		vy: dy * TRIDENT_SPEED,
-		vz: dz * TRIDENT_SPEED,
-		life: ARROW_LIFE_MS,
-		from: player.id,
-		kind: "trident",
-		damage: TRIDENT_PLAYER_DAMAGE
-	});
-	return true;
-}
-
-// Devuelve el tridente al jugador que lo lanzó (simplificación de la recogida
-// del suelo: al impactar/expirar, el tridente vuelve a su inventario).
-function returnPlayerTrident(a) {
-	if (a.kind !== "trident" || !a.from) return;
-	const owner = players.get(a.from);
-	if (owner?.inventory) addToInventory(owner, I.TRIDENT, 1);
-}
-
-// Fase 13 (L1): el JUGADOR dispara una flecha con su arco (clic derecho)
-// hacia donde mira. Consume 1 ARROW del inventario y lanza el proyectil con
-// la MISMA física de las flechas del esqueleto (state.arrows) pero con daño
-// 9 (BOW_DAMAGE) y la marca `playerArrow: true` para que, al impactar o
-// agotar su vida, la flecha vuelva a su inventario (recogible, como el
-// tridente). Devuelve true si se disparó (el llamador desgasta el arco).
-function shootPlayerArrow(player) {
-	const held = player.inventory?.[player.selectedSlot || 0];
-	if (!held || held.id !== I.BOW) return false;
-	const yaw = player.yaw || 0;
-	const pitch = player.pitch || 0;
-	const cp = Math.cos(pitch);
-	const dx = -Math.sin(yaw) * cp;
-	const dy = Math.sin(pitch);
-	const dz = -Math.cos(yaw) * cp;
-	removeFromInventory(player, I.ARROW, 1);
-	state.arrows.push({
-		x: player.x,
-		y: player.y + 1.4,
-		z: player.z,
-		vx: dx * ARROW_SPEED,
-		vy: dy * ARROW_SPEED,
-		vz: dz * ARROW_SPEED,
-		life: ARROW_LIFE_MS,
-		from: player.id,
-		kind: "arrow",
-		damage: BOW_DAMAGE,
-		playerArrow: true
-	});
-	return true;
-}
-
-// Devuelve la flecha del JUGADOR a su inventario al impactar/expirar (la
-// recogida del suelo se simplifica igual que con el tridente: no hay
-// entidades de item en el suelo en este clon). Las flechas del esqueleto
-// (sin playerArrow) no vuelven a nadie.
-function returnPlayerArrow(a) {
-	if (a.kind !== "arrow" || !a.playerArrow || !a.from) return;
-	const owner = players.get(a.from);
-	if (owner?.inventory) addToInventory(owner, I.ARROW, 1);
-}
-
-// Avanza las flechas (dtMs) y aplica daño al primer jugador que intersecten.
-// Devuelve las flechas vivas para el broadcast (arrows_update).
-function tickArrows(dtMs) {
-	const dt = dtMs / 1000;
-	const alive = [];
-	for (const a of state.arrows) {
-		a.life -= dtMs;
-		// Fase 12 (A4/E8): el tridente del jugador que expira (supera su vida)
-		// vuelve a su inventario ANTES de descartarse — no hay entidades de
-		// item en el suelo en este clon, así que la "recogida" es automática.
-		if (a.life <= 0) {
-			returnPlayerTrident(a);
-			returnPlayerArrow(a);
-			continue;
-		}
-		// Posición previa: necesaria para el barrido anti-tunneling (la flecha a
-		// 14 bloques/s avanza 0.7 bloques por tick — podría saltarse una pared de
-		// 1 bloque si solo se comprobara el punto final).
-		const px = a.x,
-			py = a.y,
-			pz = a.z;
-		// Gravedad: la flecha cae (la Y de los ojos es la de los pies + 1.4).
-		a.vy -= ARROW_GRAVITY * dt;
-		a.x += a.vx * dt;
-		a.y += a.vy * dt;
-		a.z += a.vz * dt;
-		// Colisión con un jugador (distancia simple, sin raycast exacto). Se
-		// comprueba ANTES que los bloques A PROPÓSITO: un impacto válido a 0.7
-		// bloques gana a la pared en la que el jugador está de pie, y el test 6
-		// de unit-mobs-ia depende de este orden (flecha estática sobre el
-		// jugador con mock de bloques sólidos). Caso borde aceptado: un jugador
-		// pegado a una pared y a <0.7 de la flecha podría recibir daño a través
-		// de ella.
-		// Fase 12: el daño puede ser por flecha (3) o tridente (6/8) y el
-		// tridente del JUGADOR no daña a su propio lanzador (from = id de
-		// jugador): el salto se hace para no auto-dañarse al lanzarlo. La
-		// atribución del daño (source) distingue quién disparó: un tridente de
-		// jugador cuenta como ataque de jugador, el del ahogado/esqueleto como
-		// ataque de mob (la pantalla de muerte no culpa al "drowned" cuando el
-		// atacante fue otro jugador).
-		let hit = false;
-		const lanzadorJugador = typeof a.from === "string" && players.has(a.from);
-		for (const p of players.values()) {
-			if (a.from === p.id) continue; // el lanzador no se golpea a sí mismo
-			if (Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) < ARROW_HIT_DIST) {
-				const lanzador = players.get(a.from);
-				damagePlayer(p, a.damage || ARROW_DAMAGE, {
-					source: lanzador ? "player" : "mob",
-					meta: lanzador
-						? { playerName: lanzador.name, projectile: true }
-						: {
-								mobType: a.kind === "trident" ? "drowned" : "skeleton",
-								projectile: true
-							}
-				});
-				hit = true;
-				break;
-			}
-		}
-		// Fase 12 (A4/E8): los proyectiles también impactan en MOBS (no solo en
-		// jugadores) — el tridente del jugador caza mientras que antes solo
-		// calaba contra los jugadores. Reglas fieles al ataque a mano:
-		//  - el PROYECTIL NO daña a su propio lanzador (si es un mob, a.from
-		//    es su id; si es el jugador, ya se excluyó arriba);
-		//  - las MASCOTAS del lanzador no reciben fuego amigo;
-		//  - un slime que muere se divide (splitSlime) antes de desactivarse.
-		if (!hit) {
-			for (const m of state.mobs) {
-				if (!m.alive) continue;
-				// El lanzador no se daña a sí mismo (por ejemplo el ahogado que
-				// arroja no se clava su propio tridente).
-				if (a.from === m.id) continue;
-				// Las mascotas del lanzador (si el lanzador es jugador) no sufren
-				// el proyectil: no friendly-fire al lobo/gato aliado.
-				if (lanzadorJugador && m.ownerId === a.from) continue;
-				if (Math.hypot(m.x - a.x, m.y - a.y, m.z - a.z) < ARROW_HIT_DIST) {
-					m.health -= a.damage || ARROW_DAMAGE;
-					// B3 (auditoría 2026-08-11): el mob REACCIONA a ser flechado
-					// por un jugador — hostil aggro al lanzador, pasivo huye. Igual
-					// que al ser golpeado a mano; mobHit ya ignora a los creativos
-					// (Fase 17, B6). Los proyectiles de mob (flecha de esqueleto,
-					// tridente de ahogado) NO provocan reacción: los mobs no se
-					// agreden entre sí (paridad MC).
-					if (lanzadorJugador) m.mobHit(players.get(a.from));
-					if (m.health <= 0) {
-						// El slime se divide antes de morir (como en attack_mob).
-						m.onDeath(); // C2: el slime se divide (hook por especie)
-						m.alive = false;
-						// Si el lanzador es un jugador que está conectado, recibe los
-						// drops y la XP del mob (que es quien aprieta mejor que con la
-						// mano: misma regla de recompensa de attack_mob en net.js).
-						const lanzador = players.get(a.from);
-						if (lanzador) {
-							const drops = mobDrops(m);
-							if (drops)
-								for (const d of drops) addToInventory(lanzador, d.id, d.count);
-							// auditoría §4.1: mobXp (slime 4/1 por tamaño, MC)
-							addXp(lanzador, mobXp(m));
-						}
-					}
-					hit = true;
-					break;
-				}
-			}
-		}
-		// Colisión con bloques sólidos: barrido del segmento recorrido este tick
-		// en pasos de ~0.25 bloques. Una pared de 1 bloque detiene la flecha
-		// (antes la atravesaba y golpeaba a quien estuviera detrás).
-		if (!hit) {
-			const dx = a.x - px,
-				dy = a.y - py,
-				dz = a.z - pz;
-			const dist = Math.hypot(dx, dy, dz) || 0.0001;
-			const steps = Math.max(1, Math.ceil(dist / 0.25));
-			for (let s = 1; s <= steps; s++) {
-				const t = s / steps;
-				const bx = Math.floor(px + dx * t);
-				const by = Math.floor(py + dy * t);
-				const bz = Math.floor(pz + dz * t);
-				if (isSolidBlock(world.getBlock(bx, by, bz))) {
-					hit = true;
-					break;
-				}
-			}
-		}
-		// Fase 12: el tridente del jugador que impacta (o expira) vuelve a su
-		// inventario (no hay entidades de item en el suelo en este clon).
-		// Fase 13 (L1): las flechas del jugador también vuelven (recogibles).
-		if (hit || a.life <= 0) {
-			returnPlayerTrident(a);
-			returnPlayerArrow(a);
-		}
-		if (!hit) alive.push(a);
-	}
-	state.arrows = alive;
-	return alive;
-}
-
-function arrowSnapshot(a) {
-	return {
-		x: a.x,
-		y: a.y,
-		z: a.z,
-		vx: a.vx,
-		vy: a.vy,
-		vz: a.vz,
-		// Fase 12: kind distingue flecha de tridente para el dibujo del cliente.
-		kind: a.kind || "arrow"
-	};
-}
+// Fase 18 (D-2): proyectiles extraídos a su módulo (flechas/tridentes). Las
+// fachadas se re-exportan abajo en module.exports; los hooks mobDrops/mobXp
+// se inyectan al cargar para evitar el ciclo de require mobs→projectiles→mobs.
+const projectiles = require("./projectiles.js");
 
 class Mob {
 	constructor(type, x, y, z) {
@@ -488,13 +176,13 @@ class Mob {
 		}
 		let nearest = null,
 			best = Infinity;
-		const safe = spawnSafeRadius > 0 ? getSafeSpawn() : null;
+		const safe = mobSpawn.spawnSafeRadius > 0 ? mobSpawn.getSafeSpawn() : null;
 		for (const p of players.values()) {
 			if (p.gamemode === "creative") continue; // B6: sin aggro a creativos
 			// B2: los hostiles no targetean a jugadores dentro de la zona segura
 			// del spawn (el recién llegado se orienta; al salir del radio vuelven
 			// a ser objetivo).
-			if (safe && Math.hypot(p.x - safe.x, p.z - safe.z) < spawnSafeRadius)
+			if (safe && Math.hypot(p.x - safe.x, p.z - safe.z) < mobSpawn.spawnSafeRadius)
 				continue;
 			const d = this.distTo(p);
 			if (d < best) {
@@ -893,7 +581,7 @@ class Mob {
 				);
 			else if (dist > 12) this.chase(nearest, 0.03);
 			if (dist < 18 && Date.now() > this.shootCooldown) {
-				shootArrow(this, nearest);
+				projectiles.shootArrow(this, nearest);
 				this.shootCooldown = Date.now() + 2500;
 			}
 		} else {
@@ -1152,7 +840,7 @@ class Mob {
 				Date.now() > this.shootCooldown &&
 				Math.random() < 0.5
 			) {
-				shootTrident(this, nearest);
+				projectiles.shootTrident(this, nearest);
 				this.shootCooldown = Date.now() + 3000;
 			}
 		} else {
@@ -1178,223 +866,38 @@ class Mob {
 // la clase base conserva el switch en tickSpecies SOLO para compatibilidad
 // con `new Mob(tipo)` de los tests (unit-mobs-ia, unit-fase12, ...).
 // ============================================================
-
-class Zombie extends Mob {
-	constructor(x, y, z) {
-		super("zombie", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickZombie(isNight, nearest, dist);
-	}
-}
-
-class Spider extends Mob {
-	constructor(x, y, z) {
-		super("spider", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickSpider(isNight, nearest, dist);
-	}
-}
-
-class Wolf extends Mob {
-	constructor(x, y, z) {
-		super("wolf", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickWolf(isNight, nearest, dist);
-	}
-}
-
-class Slime extends Mob {
-	constructor(x, y, z) {
-		super("slime", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickSlime(isNight, nearest, dist);
-	}
-	// Al morir se divide (grande → 2 medianos → 2 pequeños); el hook evita
-	// que los llamadores repitan el `if (type === "slime") splitSlime(...)`.
-	onDeath() {
-		if (this.alive) splitSlime(this);
-	}
-}
-
-class Drowned extends Mob {
-	constructor(x, y, z) {
-		super("drowned", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickDrowned(isNight, nearest, dist);
-	}
-}
-
-class Creeper extends Mob {
-	constructor(x, y, z) {
-		super("creeper", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickCreeper(isNight, nearest, dist);
-	}
-}
-
-class Skeleton extends Mob {
-	constructor(x, y, z) {
-		super("skeleton", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickSkeleton(isNight, nearest, dist);
-	}
-}
-
-class Enderman extends Mob {
-	constructor(x, y, z) {
-		super("enderman", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickEnderman(isNight, nearest, dist);
-	}
-}
-
-// Pasivos: el genérico tickPassive (huida/rebaño/sueño) es el común; el
-// ocelote y la abeja conservan su IA propia de la base. El gato domado usa
-// la clase Ocelot con type "cat" (applyTame lo cambia en runtime, como MC).
-class Cow extends Mob {
-	constructor(x, y, z) {
-		super("cow", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickPassive(isNight, nearest, dist);
-	}
-}
-
-class Pig extends Mob {
-	constructor(x, y, z) {
-		super("pig", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickPassive(isNight, nearest, dist);
-	}
-}
-
-class Chicken extends Mob {
-	constructor(x, y, z) {
-		super("chicken", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickPassive(isNight, nearest, dist);
-	}
-}
-
-class Sheep extends Mob {
-	constructor(x, y, z) {
-		super("sheep", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickPassive(isNight, nearest, dist);
-	}
-}
-
-class Rabbit extends Mob {
-	constructor(x, y, z) {
-		super("rabbit", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		this.tickPassive(isNight, nearest, dist);
-	}
-}
-
-class Bee extends Mob {
-	constructor(x, y, z) {
-		super("bee", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		tickBee(this);
-	}
-}
-
-class Ocelot extends Mob {
-	constructor(x, y, z) {
-		super("ocelot", x, y, z);
-	}
-	tickSpecies(isNight, nearest, dist) {
-		// Domado → type "cat" (runtime, ver applyTame): el gato usa tickCat.
-		if (this.type === "cat") this.tickCat(nearest, dist);
-		else this.tickOcelot(nearest, dist);
-	}
-}
-
-// Registro tipo → clase (C2): createMob elige aquí. Los tipos sin clase
-// (p. ej. "cat" solo existe como type runtime de Ocelot) caen en Mob base.
-const MOB_CLASSES = {
-	zombie: Zombie,
-	spider: Spider,
-	wolf: Wolf,
-	slime: Slime,
-	drowned: Drowned,
-	creeper: Creeper,
-	skeleton: Skeleton,
-	enderman: Enderman,
-	cow: Cow,
-	pig: Pig,
-	chicken: Chicken,
-	sheep: Sheep,
-	rabbit: Rabbit,
-	bee: Bee,
-	ocelot: Ocelot
-};
-
-// Crea un mob de la clase correcta según el tipo (fábrica tipo→clase).
-function createMob(type, x, y, z) {
-	const Cls = MOB_CLASSES[type];
-	return Cls ? new Cls(x, y, z) : new Mob(type, x, y, z);
-}
-
+// ESPECIES Y SPAWN (Fase 18, D-2)
+// Las subclases por especie (mob-species.js) y el spawn por bioma con su
+// zona segura (mob-spawn.js) se extrajeron a módulos propios; aquí solo se
+// cablean: la fábrica recibe la clase base Mob y los hooks splitSlime/
+// tickBee (declaraciones hoisted, ya definidas en este punto del cargue) y
+// devuelve las clases + MOB_CLASSES + createMob. mobs.js queda con la clase
+// base Mob (tick/chase/flee/attack), helpers, snapshot/broadcast y orbes.
 // ============================================================
-// SPAWN DE MOBS (Fase 6: IA hostil más fiel)
-// Los HOSTILES solo aparecen de NOCHE; de día solo generan pasivos. La
-// posición se elige en CUALQUIER chunk cargado del mapa dentro del radio de
-// render del jugador (antes: siempre a <25 bloques del jugador, de día y de
-// noche). Reglas tipo Minecraft:
-//  - hostiles: distancia mínima de 24 bloques al jugador (no spawn en la
-//    cara) y nunca sobre agua.
-//  - pasivos: pueden aparecer cerca, de día o de noche (la comida sigue
-//    existiendo de noche, como en Minecraft).
-// Devuelve los mobs creados (para tests) o [].
-// ============================================================
-const SPAWN_MIN_PLAYER_DIST = 24; // bloques: hostiles nunca a menos de esto
-// Mobs por bioma (Fase 12, Bloque C — E7): además de la tabla base, cada
-// bioma tiene su mob propio. El lobo (antes hostil genérico de la noche)
-// pasa a ser EXCLUSIVO de taiga (deja de spawnear en el resto de biomas).
-// Sin pesos complejos: si el bioma del punto tiene mobs propios, el 60% de
-// las veces se elige uno de ellos y 40% la tabla base ("mobs propios + resto
-// igual", decisión E7). getBiome devuelve: snow|taiga|desert|swamp|jungle|
-// forest|plains|mountain (los ríos/océanos no son bioma: se detectan como
-// columna de agua con columnFloorY y se asocian al ahogado).
-const SPAWN_TYPES = {
-	day: ["cow", "pig", "chicken", "sheep", "rabbit", "bee"],
-	night: [
-		"zombie",
-		"creeper",
-		"skeleton",
-		"spider",
-		"cow",
-		"pig",
-		"chicken",
-		"sheep",
-		"rabbit",
-		"bee"
-	]
-};
-const BIOME_SPAWN = {
-	taiga: { day: [], night: ["wolf"] },
-	swamp: { day: [], night: ["slime"] }, // el slime solo aparece de NOCHE (como MC)
-	jungle: { day: ["ocelot"], night: [] } // el ocelote es pasivo y solo de DÍA
-};
-// Los ahogados viven en cualquier columna de agua (océano, río o lago): se
-// eligen como mob propio del "agua" de día y de noche (E4), y se colocan
-// bajo la superficie (wy = fondo + 2) en vez de sobre el terreno.
-const WATER_SPAWN = ["drowned"];
+const {
+	Zombie,
+	Spider,
+	Wolf,
+	Slime,
+	Drowned,
+	Creeper,
+	Skeleton,
+	Enderman,
+	Cow,
+	Pig,
+	Chicken,
+	Sheep,
+	Rabbit,
+	Bee,
+	Ocelot,
+	MOB_CLASSES,
+	createMob
+} = require("./mob-species.js").createSpecies(Mob, splitSlime, tickBee);
+
+// El spawn (mob-spawn.js) consume createMob: no puede requerir este módulo
+// sin crear un ciclo, así que se lo inyectamos al cargar.
+mobSpawn.setCreateMob(createMob);
+
 
 // ============================================================
 // FASE 12 (Bloque A): helpers de los mobs por bioma
@@ -1483,118 +986,8 @@ function petsJoinAttack(target, player) {
 	return n;
 }
 
-function spawnMobs(isNight) {
-	if (state.mobs.length > 30 || players.size === 0) return [];
-	const types = SPAWN_TYPES[isNight ? "night" : "day"];
-	const anyPlayer = players.values().next().value;
-	const created = [];
-	for (let i = 0; i < 3; i++) {
-		// Buscar una posición en el mapa cargado: un chunk dentro del radio de
-		// render del jugador (los chunks del servidor fuera del radio activo no
-		// se generan o se descargan; el mundo cargado = el área de render).
-		const rd = Math.max(2, Math.min(10, anyPlayer.renderDistance || 6));
-		let placed = null;
-		for (let attempt = 0; attempt < 8 && !placed; attempt++) {
-			const ccx = Math.floor(anyPlayer.x / CHUNK_SIZE);
-			const ccz = Math.floor(anyPlayer.z / CHUNK_SIZE);
-			const cx = ccx + Math.floor((Math.random() * 2 - 1) * rd);
-			const cz = ccz + Math.floor((Math.random() * 2 - 1) * rd);
-			const key = `${cx},${cz}`;
-			// Solo chunks ya cargados en memoria: el spawn nunca fuerza generación
-			// (spawnMobs se llama desde el bucle, fuera del flujo de generación).
-			if (!state.chunks.has(key)) continue;
-			const wx = cx * CHUNK_SIZE + Math.floor(Math.random() * CHUNK_SIZE) + 0.5;
-			const wz = cz * CHUNK_SIZE + Math.floor(Math.random() * CHUNK_SIZE) + 0.5;
-			const hx = Math.floor(wx),
-				hz = Math.floor(wz);
-			// Fase 12 (Bloque C): el tipo se elige SEGÚN el bioma del punto (E7).
-			// Columna de agua (océano, río o lago) → mob propio "agua" (ahogado);
-			// si no, el mob propio del bioma cuando lo hay. El sorteo consume UN
-			// solo Math.random (unidad de disparo de los tests deterministas):
-			// si el bioma tiene mobs propios, 60% mob propio y 40% tabla base;
-			// si no los tiene, el mismo valor elige en la tabla base como antes.
-			const floorY = world.columnFloorY(hx, hz);
-			const isWater = floorY !== null;
-			const r = Math.random();
-			const biomePool = isWater
-				? WATER_SPAWN
-				: BIOME_SPAWN[world.getBiome(hx, hz)]?.[isNight ? "night" : "day"] ||
-					[];
-			// Un solo Math.random decide (determinismo de los tests). Cuando el
-			// bioma tiene pool propio: r<0.6 → mob propio; r≥0.6 → tabla base
-			// REMAPeada a [0.6,1)→[0,1) para no sesgar hacia los últimos tipos
-			// (sin el remape, zombie/creeper/skeleton/spider nunca salían por
-			// tabla base en taiga/pantano/jungla/agua — revisión Fase 12).
-			let type;
-			if (biomePool.length > 0) {
-				type =
-					r < 0.6
-						? biomePool[Math.floor((r / 0.6) * biomePool.length)]
-						: types[Math.floor(((r - 0.6) / 0.4) * types.length)];
-			} else {
-				type = types[Math.floor(r * types.length)];
-			}
-			// El ahogado solo vive en el agua (se coloca bajo la superficie);
-			// el resto de terrestres nunca spawnean sobre agua (ni lagos ni
-			// océanos/ríos): un pasivo hundido se ahogaría, un hostil no podría
-			// perseguir — el rechazo de lagos de la Fase 0 queda cubierto aquí.
-			if (type === "drowned") {
-				if (!isWater) continue;
-			} else if (isWater) {
-				continue;
-			}
-			if (HOSTILE.has(type)) {
-				// Hostiles: a ≥ 24 bloques del jugador más cercano.
-				let minDist = Infinity;
-				for (const p of players.values())
-					minDist = Math.min(minDist, Math.hypot(wx - p.x, wz - p.z));
-				if (minDist < SPAWN_MIN_PLAYER_DIST) continue;
-				// B2: los hostiles tampoco spawnean dentro de la zona segura del
-				// spawn (no aparecen en la cara del recién llegado).
-				if (spawnSafeRadius > 0) {
-					const s = getSafeSpawn();
-					if (Math.hypot(wx - s.x, wz - s.z) < spawnSafeRadius) continue;
-				}
-			}
-			const surfaceH = world.getHeight(hx, hz);
-			// Fase 10 (A6): hostiles también de DÍA, solo en zonas oscuras
-			// (cuevas con techo opaco) — las notas pedían "solo por la noche o
-			// en zonas oscuras como las cuevas". De noche siguen saliendo en
-			// superficie; de día se buscan celdas de cueva oscuras. El ahogado
-			// es la excepción (E4): sale de día y de noche en su agua, y se
-			// coloca bajo la superficie (wy = fondo + 2, dentro del agua).
-			let wy;
-			if (type === "drowned") {
-				// Fase 15 (D5): columnFloorY devuelve el fondo en ESPACIO DE DISEÑO
-				// (1..4). La Y de MUNDO del lecho es floorY − DESIGN_OFFSET (−7..−4)
-				// y el ahogado nace 2 bloques sobre él; el clamp al techo del agua
-				// (WORLD_SEA_LEVEL − 1 = −4) garantiza que NUNCA nazca sobre la
-				// superficie aunque el agua sea poco profunda (antes nacía a y 3..6,
-				// en el aire sobre el agua).
-				wy = Math.min(
-					floorY - world.DESIGN_OFFSET + 2,
-					world.WORLD_SEA_LEVEL - 1
-				);
-			} else if (HOSTILE.has(type) && !isNight) {
-				const caveY = world.findDarkCaveY(hx, hz, surfaceH);
-				if (caveY == null) continue; // sin cueva en esta columna: no spawn de día
-				wy = caveY + 0.5;
-			} else {
-				wy = surfaceH + 1;
-			}
-			const mob = createMob(type, wx, wy, wz);
-			// Fase 9 (Bloque D): el punto de origen es el rebaño del pasivo (vuelven a
-			// él si se alejan). Las abejas vuelan alrededor de su panal (el origen).
-			mob.homeX = wx;
-			mob.homeZ = wz;
-			if (type === "bee") mob.homeY = wy + 2;
-			state.mobs.push(mob);
-			created.push(mob);
-			placed = mob;
-		}
-	}
-	return created;
-}
+// Fase 18 (D-2): spawnMobs (con SPAWN_TYPES/BIOME_SPAWN/WATER_SPAWN y la zona
+// segura) vive en mob-spawn.js — aquí solo se re-exporta en module.exports.
 
 // ============================================================
 // ORBES DE XP (Fase 18, C-8 — B12: XP al morir recogible)
@@ -1864,6 +1257,12 @@ function tickBee(mob) {
 	mob.state = "fly";
 }
 
+// Fase 18 (D-2): inyectar mobDrops/mobXp al módulo de proyectiles (evita el
+// ciclo mobs→projectiles→mobs; las funciones son declaraciones hoisted, así
+// que ya están definidas en este punto del cargue).
+projectiles.setMobDrops(mobDrops);
+projectiles.setMobXp(mobXp);
+
 module.exports = {
 	Mob,
 	// Fase 13 (C2): herencia por especie — clases y fábrica tipo→clase.
@@ -1884,7 +1283,8 @@ module.exports = {
 	Ocelot,
 	createMob,
 	MOB_CLASSES,
-	spawnMobs,
+	// Fase 18 (D-2): el spawn vive en mob-spawn.js (re-exportado como fachada).
+	spawnMobs: mobSpawn.spawnMobs,
 	mobSnapshot,
 	restoreMobs,
 	mobDrops,
@@ -1893,12 +1293,15 @@ module.exports = {
 	canShear,
 	applyShear,
 	SHEAR_RANGE,
-	getSafeSpawn,
-	setSpawnSafeRadius,
-	tickArrows,
-	arrowSnapshot,
-	shootPlayerArrow,
-	returnPlayerArrow,
+	getSafeSpawn: mobSpawn.getSafeSpawn,
+	setSpawnSafeRadius: mobSpawn.setSpawnSafeRadius,
+	// Fase 18 (D-2): fachadas de proyectiles — el bloque vive en projectiles.js
+	// y se re-exporta aquí para no cambiar ni los imports de net.js ni los de
+	// los tests (unit-mobs-ia, unit-fase12, unit-lagunas, e2e-templo).
+	tickArrows: projectiles.tickArrows,
+	arrowSnapshot: projectiles.arrowSnapshot,
+	shootPlayerArrow: projectiles.shootPlayerArrow,
+	returnPlayerArrow: projectiles.returnPlayerArrow,
 	mobXp, // auditoría §4.1: XP por tamaño (slime)
 	canTame,
 	applyTame,
@@ -1906,15 +1309,16 @@ module.exports = {
 	catNearby,
 	splitSlime,
 	petsJoinAttack,
-	shootTrident,
-	throwPlayerTrident,
+	shootTrident: projectiles.shootTrident,
+	throwPlayerTrident: projectiles.throwPlayerTrident,
 	// Fase 12 (Bloque B): trampa del templo — las flechas del dispensador
 	// reusan shootArrow con un shooter sintético (from: null → dañan a todos).
-	shootArrow,
+	shootArrow: projectiles.shootArrow,
 	// Fase 12 (Bloque C): spawn por bioma — la tabla BIOME_SPAWN y el pool de
 	// agua (la prueban los tests de muestreo determinista de unit-fase12).
-	BIOME_SPAWN,
-	WATER_SPAWN,
+	// Fase 18 (D-2): ahora viven en mob-spawn.js (re-exportadas como fachada).
+	BIOME_SPAWN: mobSpawn.BIOME_SPAWN,
+	WATER_SPAWN: mobSpawn.WATER_SPAWN,
 	// Fase 18 (C-8): orbes de XP al morir (recogibles en el punto de muerte)
 	spawnXpOrb,
 	tickXpOrbs,
