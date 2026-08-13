@@ -1962,10 +1962,13 @@ function handleConnection(ws, req) {
 					// Fase 8 (B10): feedback del golpe para TODOS los que ven el mob —
 					// flash de daño y sonido en el cliente (mob_hit). Antes el golpe no
 					// producía ninguna reacción visible: el jugador creía que no servía.
+					// Fase 18 (C-9): `tool` viaja en mob_hit para que el cliente varíe
+					// el sonido del golpe por tipo de arma (espada metálica vs sorda).
 					broadcast("mob_hit", {
 						id: mob.id,
 						dmg: dmg + petsHit * 3,
-						health: mob.health
+						health: mob.health,
+						tool
 					});
 					// Fase 8 (B10): knockback — el mob retrocede un poco en la dirección
 					// contraria al atacante (se replica con el próximo mobs_update).

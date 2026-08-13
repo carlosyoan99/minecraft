@@ -329,6 +329,12 @@ mobs visibles en escena).
   comer, comer crudo, cría, agua, salpicaduras, cofres, TNT, hiss del
   creeper y balido de oveja (Fase 11), ambiente (viento de día, grillos
   de noche).
+- **Sonidos de paridad (Fase 18, C-9):** muerte de mob (tono descendente
+  por tipo — hostil grave, abeja aguda, `mob_death`), golpe por arma
+  (espada metálica vs golpe sordo, `mob_hit` lleva el `tool` del
+  atacante), flecha al impactar (thock al desaparecer del broadcast de
+  flechas) y beber (sorbo que acompaña al comer — el clon no tiene ítems
+  bebibles, leche/pociones fuera de alcance).
 - **Música ambiental generativa (Fase 10):** pad pentatónico procedural
   (`startMusic`/`padNote`) que varía con el día/noche y con el **contexto**
   (`setMusicContext`): cueva → notas graves y espaciadas, desierto →

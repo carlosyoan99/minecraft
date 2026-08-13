@@ -2,7 +2,13 @@
 // RED: MANEJO DE MENSAJES DEL SERVIDOR
 // ============================================================
 
-import { playCrack, playHit, playTntExplode, playTntFuse } from "./audio.js"; // Fase 10 (F2): sonidos de TNT
+import {
+	playCrack,
+	playHit,
+	playMobDeath,
+	playTntExplode,
+	playTntFuse
+} from "./audio.js"; // Fase 10 (F2): sonidos de TNT
 import { setStoredName, socket } from "./connection.js";
 import { TORCH } from "./constants.js";
 import { initDayNight } from "./daynight.js";
@@ -229,12 +235,17 @@ socket.addEventListener("message", (e) => {
 				window.__mcChunkGenMs = data.chunkGenMs;
 				break;
 			case "mob_death":
+				// Fase 18 (C-9): sonido de muerte por tipo — el mesh aún existe
+				// (el tipo viaja en userData.mobType), así que se lee antes de
+				// eliminar el mob.
+				playMobDeath(mobMeshes.get(data.id)?.userData?.mobType);
 				removeMob(data.id);
 				break;
 			case "mob_hit":
 				// Fase 8 (B10): feedback del golpe — flash de daño + sonido.
+				// Fase 18 (C-9): el golpe varía por el arma del atacante (tool).
 				flashMob(data.id);
-				playHit();
+				playHit(data.tool);
 				break;
 			case "mob_breed":
 				spawnHearts(data.x, data.y, data.z);

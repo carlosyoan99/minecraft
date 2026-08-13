@@ -223,20 +223,101 @@ export function playCrack() {
 // ============================================================
 // GOLPE DE COMBATE (Fase 8, B10): ruido seco + golpe grave corto.
 // Feedback auditivo al golpear un mob (mob_hit) — antes el golpe era
-// silencioso y el jugador no sabía si había acertado.
+// silencioso y el jugador no sabía si había acertado. Fase 18 (C-9):
+// variación POR TIPO de arma (paridad §2.2) — la espada suena metálica
+// (agudo + siseo), el resto sordo; `tool` es el ID del arma del atacante
+// (lo manda el servidor en mob_hit) y sin él se usa el golpe genérico.
 // ============================================================
-export function playHit() {
+export function playHit(tool) {
 	if (!ensureCtx()) return;
 	const t = ctx.currentTime + 0.001;
+	// Espadas (200-204 + 4): golpe metálico — ruido agudo corto + thud grave.
+	const isSword = typeof tool === "number" && tool >= 200 && tool <= 208;
 	noiseBurst({
 		t,
-		freq: 1800 * pitchVar(),
-		q: 1,
-		vol: 0.45,
-		dur: 0.06,
+		freq: (isSword ? 3400 : 1800) * pitchVar(),
+		q: isSword ? 2.2 : 1,
+		vol: isSword ? 0.5 : 0.45,
+		dur: isSword ? 0.09 : 0.06,
 		type: "bandpass"
 	});
-	thud({ t: t + 0.01, freq: 110 * pitchVar(), vol: 0.5, dur: 0.1 });
+	thud({
+		t: t + 0.01,
+		freq: (isSword ? 90 : 110) * pitchVar(),
+		vol: isSword ? 0.55 : 0.5,
+		dur: 0.1
+	});
+}
+
+// ============================================================
+// MUERTE DE MOB (Fase 18, C-9, paridad §2.2): tono descendente por tipo.
+// Los hostiles caen grave (voz gutural corta), los pasivos agudo y suave.
+// Se dispara desde el broadcast mob_death (network.js) con el tipo del mob.
+// ============================================================
+export function playMobDeath(type) {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	// Fallback genérico: 180 → 60 Hz (golpe grave que se apaga).
+	let f0 = 180;
+	const hostile = ["zombie", "creeper", "skeleton", "spider", "enderman", "drowned", "wolf"].includes(type);
+	if (hostile) f0 = 150; // hostil: grave
+	else if (type === "bee") f0 = 600; // abeja: agudo
+	else if (type === "sheep") f0 = 340; // oveja: su balido se corta
+	const f1 = f0 * 0.35; // desciende a un tercio
+	const osc = ctx.createOscillator();
+	osc.type = "sine";
+	osc.frequency.setValueAtTime(f0, t);
+	osc.frequency.exponentialRampToValueAtTime(f1, t + 0.18);
+	const g = ctx.createGain();
+	g.gain.setValueAtTime(0.0001, t);
+	g.gain.exponentialRampToValueAtTime(0.3, t + 0.005);
+	g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+	osc.connect(g);
+	g.connect(sfxGain);
+	osc.start(t);
+	osc.stop(t + 0.25);
+	// Cola de ruido (impacto del cuerpo al caer).
+	noiseBurst({ t: t + 0.01, freq: 500 * pitchVar(), q: 1.5, vol: 0.15, dur: 0.1 });
+}
+
+// ============================================================
+// FLECHA AL IMPACTAR (Fase 18, C-9, paridad §2.2): thock — golpe seco de
+// madera/metal al clavarse. Se dispara en el cliente cuando una flecha
+// desaparece del broadcast (impactó o expiró).
+// ============================================================
+export function playArrowHit() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	noiseBurst({ t, freq: 2200 * pitchVar(), q: 2, vol: 0.4, dur: 0.05 });
+	thud({ t: t + 0.005, freq: 160 * pitchVar(), vol: 0.35, dur: 0.08 });
+}
+
+// ============================================================
+// BEBER (Fase 18, C-9, paridad §2.2): sorbo — dos blips que suben de tono
+// (tragar). El clon no tiene ítems bebibles (leche/pociones, fuera de
+// alcance), así que acompaña al comer (la única acción de consumir).
+// ============================================================
+export function playDrink() {
+	if (!ensureCtx()) return;
+	const t = ctx.currentTime + 0.001;
+	for (const [dt, f0, v] of [
+		[0, 500, 0.16],
+		[0.11, 640, 0.13]
+	]) {
+		const osc = ctx.createOscillator();
+		osc.type = "sine";
+		osc.frequency.setValueAtTime(f0, t + dt);
+		osc.frequency.linearRampToValueAtTime(f0 * 1.3, t + dt + 0.07);
+		const g = ctx.createGain();
+		g.gain.setValueAtTime(0.0001, t + dt);
+		g.gain.exponentialRampToValueAtTime(v, t + dt + 0.015);
+		g.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.09);
+		osc.connect(g);
+		g.connect(sfxGain);
+		osc.start(t + dt);
+		osc.stop(t + dt + 0.12);
+	}
+	noiseBurst({ t: t + 0.02, freq: 900, q: 3, vol: 0.06, dur: 0.06, type: "bandpass" });
 }
 
 // ============================================================

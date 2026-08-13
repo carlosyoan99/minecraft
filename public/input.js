@@ -2,7 +2,7 @@
 // INPUT: TECLADO (movimiento, hotbar, paneles) Y RATÓN (romper/colocar/atacar)
 // ============================================================
 import * as THREE from "three";
-import { playBreak, playEat, playFeed, playPlace } from "./audio.js";
+import { playBreak, playDrink, playEat, playFeed, playPlace } from "./audio.js";
 import { send } from "./connection.js";
 import {
 	ARMOR_ITEMS,
@@ -593,9 +593,12 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	}
 
 	// Comer con clic derecho: si llevas comida en la mano, se come sin
-	// necesidad de apuntar a un bloque (como en Minecraft).
+	// necesidad de apuntar a un bloque (como en Minecraft). Fase 18 (C-9):
+	// el sorbo de beber acompaña al comer (paridad §2.2 — el clon no tiene
+	// ítems bebibles, leche/pociones están fuera de alcance).
 	if (e.button === 2 && held && FOOD_ITEMS.has(held.id)) {
 		playEat();
+		playDrink();
 		send("eat", {});
 		return;
 	}

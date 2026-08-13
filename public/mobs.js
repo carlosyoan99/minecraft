@@ -9,7 +9,7 @@
 // raycast de combate (input.js intersecta los hijos y sube al raíz).
 // ============================================================
 import * as THREE from "three";
-import { playCreeperHiss, playSheepBaa } from "./audio.js";
+import { playArrowHit, playCreeperHiss, playSheepBaa } from "./audio.js";
 import { getMobAtlas, MOB_PARTS, mobPartRects } from "./mobtextures.js";
 import { scene } from "./scene.js";
 import { isValidSkin } from "./skins.js";
@@ -569,11 +569,14 @@ export function updateArrows(arrows) {
 		arrowLastSeen.set(id, now);
 	}
 	// Limpiar flechas que ya no están en el broadcast (impactaron o expiraron).
+	// Fase 18 (C-9): al desaparecer (impacto o fin de vida) suena el thock —
+	// la flecha se clava, paridad §2.2 (antes el impacto era silencioso).
 	for (const [id, m] of arrowMeshes) {
 		if (!seen.has(id) && now - (arrowLastSeen.get(id) || 0) > ARROW_LIFE_MS) {
 			scene.remove(m.group);
 			arrowMeshes.delete(id);
 			arrowLastSeen.delete(id);
+			playArrowHit();
 		}
 	}
 }
