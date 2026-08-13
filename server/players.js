@@ -380,6 +380,15 @@ function setBroadcastHandler(fn) {
 	broadcastHandler = fn;
 }
 
+// Hook de orbes de XP (Fase 18, C-8): net.js lo conecta a mobs.spawnXpOrb
+// (mobs.js importa players.js — inyectarlo aquí evita el ciclo de require).
+// Al morir en survival se llama con (player, xpSoltada) para que el orbe
+// nazca en la posición de muerte.
+let xpDropHandler = null;
+function setXpDropHandler(fn) {
+	xpDropHandler = fn;
+}
+
 // ============================================================
 // RESPAWN (Fase 7: según gamemode + caída del mundo)
 // Reaparece al jugador tras morir (lo llama damagePlayer al llegar a 0 de
@@ -414,6 +423,17 @@ function respawnPlayer(player, cause) {
 		};
 		player.craftingGrid = new Array(9).fill(null);
 		sendInventory(player); // el HUD del cliente se vacía
+		// Fase 18 (C-8, B12): en survival la XP se PIERDE al morir — se suelta
+		// un orbe con ella en el punto de muerte (recogible al caminar encima).
+		// En creative se conserva (keepInventory). El orbe viaja en el snapshot
+		// de mobs; tickXpOrbs (net.js mainLoop) lo recoge y la re-añade.
+		const droppedXp = player.xp || 0;
+		if (droppedXp > 0 && xpDropHandler) {
+			xpDropHandler(player, droppedXp);
+			player.xp = 0;
+			player.level = 0;
+			sendXp(player);
+		}
 	}
 	// La caída en curso no sobrevive al respawn (el daño por caída se reinicia).
 	player.fallFromY = null;
@@ -890,6 +910,7 @@ module.exports = {
 	sendXp,
 	finishMining,
 	setBroadcastHandler,
+	setXpDropHandler, // Fase 18 (C-8): orbe de XP al morir
 	respawnPlayer,
 	fallDamage,
 	applyFallDamage,

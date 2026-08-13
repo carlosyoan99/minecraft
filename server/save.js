@@ -50,7 +50,9 @@ function buildMeta() {
 		worldSize: P.worldSize,
 		lastSaved: new Date().toISOString(),
 		mobs: state.mobs
-			.filter((m) => m.alive)
+			// Fase 18 (C-8): los orbes de XP NO se persisten (se pierden al
+			// reiniciar, como en sesiones cortas del clon — decisión de la spec).
+			.filter((m) => m.alive && m.type !== "xp_orb")
 			.map((m) => ({
 				id: m.id,
 				type: m.type,

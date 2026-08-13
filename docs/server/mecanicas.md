@@ -237,6 +237,15 @@ primer soporte, TNT explota con cráter y el bedrock sobrevive).
 - **Muerte y respawn** (`respawnPlayer`): al morir se suelta el inventario,
   se restaura salud/comida, se reaparece en el spawn del mundo (o en la
   cama si se durmió) y se aplica la gracia de spawn (30 s sin daño de mobs).
+- **XP al morir recogible** (Fase 18, C-8/B12): en survival la XP se
+  PIERDE al morir — el servidor suelta un **orbe de XP** (entidad `xp_orb`
+  en `state.mobs`, esferita verde en el cliente) con toda la XP del
+  jugador en el punto de muerte; al caminar encima (radio 2 bloques) se
+  recoge y la XP vuelve con la curva MC (`addXp`). Los orbes **no se
+  persisten** (filtro en `save.js` — se pierden al reiniciar, como en
+  sesiones cortas del clon) y **expiran a los 5 min** (paridad MC;
+  `tickXpOrbs` en el mainLoop). En creative la XP se conserva (nunca se
+  suelta orbe).
 
 ### Por qué así
 
@@ -255,7 +264,9 @@ primer soporte, TNT explota con cráter y el bedrock sobrevive).
 ### Verificación
 
 `tests/unit-damage.js`, `tests/unit-armadura.js`, `tests/unit-respawn.js`,
-`tests/unit-mobs-ia.js` (ataques, fuse, flechas), `audit-fase5.js`.
+`tests/unit-mobs-ia.js` (ataques, fuse, flechas), `audit-fase5.js`,
+`tests/unit-fase18.js` (orbes de XP: suelte en survival, recogida al pisar,
+creative conserva y no se persisten).
 
 ---
 

@@ -68,7 +68,8 @@ const UNIT = [
 	"unit-fase16.js", // Fase 16: niebla (B1), cofre Shift (B2), horno combustible (D1), drops (D2), puertas/vidrio/carbón (D3-D5), XP (D6)
 	"unit-dia.js", // Fase 16 (G3): matemática pura del ciclo día/noche (public/daymath.js)
 	"unit-fase17.js", // Fase 17: menú (A1), persistencia por nombre (B1), plantas (B4), creativo (B6), cuevas (B5)
-	"unit-skins.js" // Fase 17: skins de jugador — píxeles puros, sync cliente-servidor y protocolo set_skin/player_skin
+	"unit-skins.js", // Fase 17: skins de jugador — píxeles puros, sync cliente-servidor y protocolo set_skin/player_skin
+	"unit-fase18.js" // Fase 18 (C-8): orbes de XP al morir — suelte en survival, recogida, creative conserva y no se persisten
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de

@@ -2163,6 +2163,10 @@ function mainLoop() {
 			state.mobs = state.mobs.filter((m) => {
 				if (!m.alive) return false; // los muertos se limpian igualmente
 				if (m.ownerId) return true; // las mascotas siguen al jugador
+				// Fase 18 (C-8): los orbes de XP NO se despawnean por distancia —
+				// expiran por su propio TTL (5 min) en tickXpOrbs; si no, un
+				// jugador que muere lejos del spawn perdería el orbe al instante.
+				if (m.type === "xp_orb") return true;
 				return playersArr.some(
 					(pl) =>
 						Math.hypot(m.x - pl.x, m.z - pl.z) <= DESPAWN_DIST &&
@@ -2172,6 +2176,9 @@ function mainLoop() {
 		}
 	}
 	state.mobs = state.mobs.filter((m) => m.alive);
+	// Fase 18 (C-8): recogida y expiración de orbes de XP (se llama ANTES del
+	// snapshot para que un orbe recogido este tick no se envíe al cliente).
+	mobs.tickXpOrbs();
 	const mobsData = state.mobs.map(mobs.mobSnapshot);
 	const mobsJson = JSON.stringify(mobsData);
 	if (mobsJson !== lastMobsJson) {

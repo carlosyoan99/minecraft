@@ -149,7 +149,40 @@ export function makeHumanoid(skinId) {
 // de una fila. Un material compartido por mob (base blanco con mapa):
 // la quema solar y el flash tiñen el grupo entero multiplicativamente.
 // ============================================================
+// ============================================================
+// ORBE DE XP (Fase 18, C-8): esferita verde brillante estilo MC, con un
+// halo. El tamaño escala con la XP del snapshot (más XP = orbe más grande).
+// ============================================================
+function makeXpOrbMesh() {
+	const group = new THREE.Group();
+	const core = new THREE.Mesh(
+		new THREE.SphereGeometry(0.22, 12, 10),
+		new THREE.MeshBasicMaterial({ color: 0x7cf67c }) // verde brillante
+	);
+	core.position.y = 0.22; // levitar sobre el suelo (como en MC)
+	const glow = new THREE.Mesh(
+		new THREE.SphereGeometry(0.34, 12, 10),
+		new THREE.MeshBasicMaterial({
+			color: 0xb6f7b6,
+			transparent: true,
+			opacity: 0.35,
+			depthWrite: false
+		})
+	);
+	glow.position.y = 0.22;
+	group.add(glow);
+	group.add(core);
+	// Material compartido para el flash de daño (no aplica, pero el código
+	// de quema lo consulta) — se usa el del core.
+	group.userData.material = core.material;
+	group.userData.textured = false;
+	return group;
+}
+
 function makeMobMesh(type, fallbackColor = 0x999999) {
+	// Fase 18 (C-8): los orbes de XP son entidades con render propio (no
+	// usan MOB_PARTS ni atlas de mobs).
+	if (type === "xp_orb") return makeXpOrbMesh();
 	const atlas = getMobAtlas(type);
 	const material = atlas
 		? new THREE.MeshLambertMaterial({ map: atlas, color: 0xffffff })
@@ -368,7 +401,14 @@ export function updateMobs(list) {
 		// Auditoría CL-2: la mascota sentada se agazapa (menos altura) en vez
 		// de renderizarse de pie; el servidor manda `sitting` en el snapshot.
 		const sitY = sitting ? 0.72 : 1;
-		const s = (m.isBaby ? 0.5 : 1) * (MOB_SCALE[m.type] || 1) * slimeS;
+		// Fase 18 (C-8): el orbe de XP escala con la cantidad (más XP → más
+		// grande, como en Minecraft); no se aplican ni bebé ni MOB_SCALE.
+		let s = (m.isBaby ? 0.5 : 1) * (MOB_SCALE[m.type] || 1) * slimeS;
+		if (m.type === "xp_orb") {
+			// 1..2 según XP: poca XP (1) → base, mucha (100+) → doble tamaño.
+			const orbScale = 1 + Math.min(1, (m.xp || 1) / 100);
+			s = orbScale;
+		}
 		mesh.scale.set(s, s * sitY, s);
 		if (m.type === "wolf" && m.ownerId && !mesh.userData.collar) {
 			mesh.userData.collar = true;

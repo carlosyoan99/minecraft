@@ -1596,6 +1596,64 @@ function spawnMobs(isNight) {
 	return created;
 }
 
+// ============================================================
+// ORBES DE XP (Fase 18, C-8 — B12: XP al morir recogible)
+// Al morir en survival el servidor suelta un orbe con la XP del jugador en
+// su posición de muerte (entidad tipo `xp_orb` dentro de state.mobs, reusa
+// el patrón de proyección de mobs). Al caminar encima (radio ~2 bloques) se
+// recoge y la XP vuelve al jugador. NO se persisten: se pierden al reiniciar
+// el servidor (como en sesiones cortas del clon — documentado en
+// docs/server/mecanicas.md) y el filtro de guardado de save.js los excluye.
+// En creative la XP se conserva (no se suelta orbe). El cliente los pinta
+// como esferitas verdes (MOB_SCALE xp_orb en public/mobs.js).
+// ============================================================
+const XP_ORB_RADIUS = 2; // radio de recogida (bloques, como MC)
+const XP_ORB_TTL_MS = 5 * 60 * 1000; // expiran a los 5 min (paridad MC)
+
+// Crea el orbe en la posición de muerte con la XP del jugador.
+function spawnXpOrb(x, y, z, xp) {
+	if (!(xp > 0)) return null;
+	const orb = {
+		id: uuidv4(),
+		type: "xp_orb",
+		x,
+		y,
+		z,
+		xp,
+		alive: true,
+		state: "idle",
+		color: 0x63e463, // verde brillante estilo MC
+		bornAt: Date.now()
+	};
+	state.mobs.push(orb);
+	return orb;
+}
+
+// Recorre los orbes vivos: expira los viejos (5 min) y recoge los que un
+// jugador pise (radio XP_ORB_RADIUS en 2D — como MC, el orbe se recoge al
+// caminar encima). La XP recogida se re-añade con addXp (curva MC).
+function tickXpOrbs() {
+	const now = Date.now();
+	const playersArr = [...state.players.values()];
+	for (const orb of state.mobs) {
+		if (!orb.alive || orb.type !== "xp_orb") continue;
+		// Expiración: los orbes se pierden si no se recogen (paridad MC 5 min).
+		if (now - (orb.bornAt || 0) > XP_ORB_TTL_MS) {
+			orb.alive = false;
+			continue;
+		}
+		// Recogida: jugador a radio 2 (horizontal; el orbe está en el suelo).
+		for (const p of playersArr) {
+			if (p.inMenu) continue;
+			if (Math.hypot(p.x - orb.x, p.z - orb.z) <= XP_ORB_RADIUS) {
+				addXp(p, orb.xp);
+				orb.alive = false;
+				break;
+			}
+		}
+	}
+}
+
 function mobSnapshot(m) {
 	return {
 		id: m.id,
@@ -1607,6 +1665,9 @@ function mobSnapshot(m) {
 		state: m.state,
 		isBaby: m.isBaby,
 		burning: m.burning,
+		// Fase 18 (C-8): los orbes de XP llevan su cantidad (el cliente escala
+		// el tamaño del orbe con ella, como el tamaño del slime).
+		xp: m.type === "xp_orb" ? m.xp : undefined,
 		// Fase 9 (Bloque D): creeper en fuse (silbando antes de explotar) — el
 		// cliente escala el mob para la animación.
 		fuse: m.state === "fuse" ? 1 : 0,
@@ -1853,5 +1914,9 @@ module.exports = {
 	// Fase 12 (Bloque C): spawn por bioma — la tabla BIOME_SPAWN y el pool de
 	// agua (la prueban los tests de muestreo determinista de unit-fase12).
 	BIOME_SPAWN,
-	WATER_SPAWN
+	WATER_SPAWN,
+	// Fase 18 (C-8): orbes de XP al morir (recogibles en el punto de muerte)
+	spawnXpOrb,
+	tickXpOrbs,
+	XP_ORB_RADIUS
 };

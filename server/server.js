@@ -29,6 +29,11 @@ world.setBlockChangeHandler((x, y, z, block) =>
 );
 save.setUnloadHandler((keys) => net.broadcast("chunks_unload", { keys }));
 playerHelpers.setBroadcastHandler((event, data) => net.broadcast(event, data));
+// Fase 18 (C-8): orbe de XP al morir — el orbe nace en la posición de muerte
+// con la XP del jugador (recogible al caminar encima).
+playerHelpers.setXpDropHandler((player, xp) =>
+	mobs.spawnXpOrb(player.x, player.y, player.z, xp)
+);
 // Fase 10 (D2): TNT (mecha/explosión) → broadcast a todos los clientes.
 tnt.setBroadcastHandler((event, data) => net.broadcast(event, data));
 
