@@ -1,7 +1,7 @@
 # Mi Minecraft — Clon Node.js + Three.js
 
 ![Estado de desarrollo](https://img.shields.io/badge/estado-en%20desarrollo-yellow)
-![Fases completadas](https://img.shields.io/badge/fases-0-15%20completadas-blue)
+![Fases completadas](https://img.shields.io/badge/fases-0-17%20completadas-blue)
 
 Copia jugable de Minecraft, no idéntica pero fiel a sus mecánicas
 distintivas: mundo por chunks, biomas, cuevas, día/noche, mobs con IA,
@@ -275,21 +275,37 @@ propio servidor sin `SEED`).
   (Y ∈ −64..+63, `SCHEMA_VERSION` 6 con migración retrocompatible v5→v6)**
   auditado por `tests/audit-altura.js`.
 
-### 🏁 Roadmap completado (fases 0-15)
+### 🏁 Roadmap completado (fases 0-17)
 
 *(Todas las fases del roadmap están completadas y auditadas. El detalle
 de cada una vive en su spec `docs/faseN-spec.md`; el estado de cada
 tarea, en `TODO.md`.)*
 
-### 🔧 Fase 16 — en curso (prospectiva, sin implementar)
+### ✅ Fase 16 — cerrada y auditada
 
-La fase **actual** es la **Fase 16** (`docs/fase16-spec.md`, tareas `[ ]`
-en `TODO.md`): corrección de la auditoría 2026-08-10
-(`docs/auditoria-2026-08-10.md`), bugs de `docs/Notas del usuario.md` y
-paridad restante. **Prerrequisito A1:** commitear el WIP del D5 — la
-implementación del mundo de 128 bloques está en el working tree **sin
-commitear** y la suite tiene 12 unitarios pendientes de recalibración
-(ver `tests/test.log`).
+La **Fase 16** (`docs/fase16-spec.md`) corrigió la auditoría 2026-08-10
+(`docs/auditoria-2026-08-10.md`), los bugs de `docs/Notas del usuario.md`
+y la paridad restante: niebla submarina ≥2 bloques, cofres eliminables
+con Shift, IA de mobs con aggro, inventario con texturas/tooltip, libro
+de recetas corregido, calidad con `renderScale`, guardado asíncrono,
+validación de coordenadas, anti-cheat v2, horno con `FUEL_TICKS` reales,
+drops de zombi/creeper, puertas ×3, vidrio 200 t, carbón vegetal, XP de
+slime/lobo, pantalla completa y el bloque G de cobertura de tests y docs
+(`audit-fase7` CDP ampliado, `e2e-cofre` +16 checks, c8 con umbrales,
+`e2e-durabilidad` recalibrado al mundo v6).
+
+### ✅ Fase 17 — cerrada y auditada
+
+La **Fase 17** (`docs/fase17-spec.md`) trajo el menú inicial tipo
+Minecraft: servidor en modo menú sin cargar mundo (A1), pantalla
+principal, gestión completa de mundos (reproducir/clonar/renombrar/
+cambiar modo/eliminar), ajustes en pestañas, flujo `join_world`, 7 bugs
+del usuario (persistencia de inventario por nombre, heartbeat, watchdog
+de chunks, flor/hierba, cuevas largas, mobs en creativo, minado
+continuo), pausa estilo Minecraft, **skins de jugador** (9 oficiales con
+selector y vista previa 3D) y controles táctiles. Auditoría final
+completa: 54/54 unitarios, E2E 7/7 en solitario y verificación en
+navegador del flujo completo.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -522,20 +538,21 @@ en el servidor y `public/network.js` en el cliente).
 
 ### Resultados (agosto 2026)
 
-Suite completa: **52 tests unitarios + 6 E2E** (si hay servidor) — ver la
-matriz en [`docs/tests.md`](docs/tests.md). La suite cubre persistencia, IA
-de mobs, handlers de red, integridad de recetas, sincronización
+Suite completa: **54 tests unitarios + 7 E2E** (si hay servidor; el E2E
+del menú levanta el suyo) — ver la matriz en
+[`docs/tests.md`](docs/tests.md). La suite cubre persistencia, IA de
+mobs, handlers de red, integridad de recetas, sincronización
 servidor↔cliente, hot-reload, minería fina, LOD, pool de geometrías, greedy
 meshing + worker, cofre, antorchas, cama, armadura, terreno, caída/void,
 anti-cheat (vuelo + v2 velocidad/hover), crack, métricas, raycast/pool con
 three real, cámara, biomas de Fase 11, mecánicas de Fase 11/12/16,
-matemática del ciclo día/noche (F16 G3), POO del
+matemática del ciclo día/noche (F16 G3), Fase 17 (modo menú, persistencia
+por nombre, plantas, creativo, cuevas) y skins (F17 C3), POO del
 servidor (F13), paridad de valores (F13), lagunas L1-L5 y el mundo de 128
 bloques (`audit-altura.js`, 72 checks). Los E2E contra un servidor real con
-mundo fresco cubren comer, durabilidad, cofre, reload, mascotas y templo.
-Los E2E necesitan el flujo de selección de mundo del modo menú de la Fase 17
-para quedar en verde; la verificación final antes de cerrar fase se detalla
-en `docs/tests.md`.
+mundo fresco cubren comer, durabilidad, cofre, reload, mascotas, templo y
+el flujo de menú (con `SEED` para los clásicos, sin `SEED` el del menú).
+La verificación final antes de cerrar fase se detalla en `docs/tests.md`.
 
 ## Cómo contribuir
 

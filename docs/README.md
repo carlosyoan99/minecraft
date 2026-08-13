@@ -29,8 +29,12 @@ aquí.
 | 13 — Paridad 1.0, rendimiento, POO y tests de paridad | [`fase13-spec.md`](fase13-spec.md) | Prospectiva (reporte de paridad + entrevista) | ✅ Completada y auditada | Paridad de valores fijada por `unit-paridad.js` (vida 20, curva XP oficial, espadas 4/5/6/7, armadura por puntos, durezas/durabilidades); lagunas L1-L5 (arco, puertas, escaleras/losas/vallas, cubo, recetas — `unit-lagunas.js`); **POO completa del servidor** (`ItemStack`, `World`/`Chunk`, `Player`/`createPlayer`, subclases de mobs + `createMob` — `unit-mobs-poo.js`, `unit-poo-entities.js`); greedy meshing + worker de chunks (`unit-greedy`, `unit-workers`). Auditoría de cierre con suite completa en verde |
 | 14 — Auditoría y cierre de Fases 12-13 | [`fase14-spec.md`](fase14-spec.md) | Prospectiva (auditoría) | ✅ Completada y auditada | Bloques A (spawn por bioma, persistencia `SCHEMA_VERSION` 5, tridente contra mobs, slime determinista), B (drop de menas con `ORE_DROP`, tier de pico por mineral, comida/combustible, salud/XP de mobs, boom de creeper = `TNT_DAMAGE`) y C (un solo rayo por `pointermove`, broadcast solo si cambia, rebuild de vecinos, luz de antorcha stale, `sendInit` liviano con relleno progresivo) implementados y en verde. Auditoría de cierre: unit 3666 OK, E2E 4/4, `audit-fase7` CDP OK, `biome` 0 errores |
 | 15 — Corrección de auditoría y mejoras del usuario | [`fase15-spec.md`](fase15-spec.md) | Prospectiva (auditoría) | ✅ Completada y auditada | Cierre de los pendientes del reporte de paridad: copas de árboles completas en bordes de chunk (A2, `pendingLeaves` + test determinista en `unit-arboles`), nubes semitransparentes con variedad (D1), tooltip estilizado del hotbar (D3) y **D5: mundo de 128 bloques (Y ∈ −64..+63, `SCHEMA_VERSION` 6, migración v5→v6)** auditado por `tests/audit-altura.js` (§9). El resto del plan (A1 uuid, A3/A4 WIP, L1-L5 arco/puertas/escaleras-cubos-recetas y POO) se cerró junto a la Fase 13. Suite de 50 unitarios en verde + registro de `unit-ao`/`unit-muerte` |
-| 16 — Corrección de la auditoría 2026-08-10, bugs del usuario y paridad restante | [`fase16-spec.md`](fase16-spec.md) | Prospectiva (auditoría + notas del usuario + entrevista) | ⏳ **En curso** | Cerrado el bloque G (cobertura + docs) hasta donde no depende del navegador ni del modo menú de F17: G1.3 helpers (`tests/helpers.js`), G3 `public/daymath.js` + cableado día/noche (test unit-dia), G2.5/G2.6 (ampliados unit-poo-entities / unit-fase11 determinista), G5 docs sincronizadas. Suite **52 unitarios en verde**. Pendientes: G3b (network/settings/particles/audio, módulos DOM), G3.7 (render CDP), G4 (E2E 6/6) y G6 (audit-fase4/6/7) — bloqueados por la recalibración del modo menú de la Fase 17 y por carga de máquina |
-| 17 — Menú inicial tipo Minecraft, UI/UX y móvil | [`fase17-spec.md`](fase17-spec.md) | Prospectiva (notas del usuario + entrevista) | ⏳ **Implementada — pendiente auditoría final (Bloque E)** | Servidor en modo menú sin cargar mundo al arrancar (A1, con `SEED` arranca directo para E2E), pantalla principal (A2), lista de mundos con reproducir/eliminar/clonar/cambiar modo/renombrar (A3), ajustes en pestañas (A4), flujo cliente menú → `join_world` (A5); 7 bugs del usuario corregidos (B1-B7: persistencia de inventario por nombre, heartbeat B2, watchdog de chunks B3, flor/hierba B4, cuevas largas B5, mobs en creativo B6, minar con clic mantenido B7); UI/UX (C1 pausa estilo MC, C2 estética) y móvil acotado (D1 controles táctiles). Tests: 53/53 unitarios, E2E de menú 7/7 (servidor propio sin SEED), E2E clásicos con SEED. Suite del Bloque E pendiente de cierre formal |
+| 16 — Corrección de la auditoría 2026-08-10, bugs del usuario y paridad restante | [`fase16-spec.md`](fase16-spec.md) | Prospectiva (auditoría + notas del usuario + entrevista) | ✅ **Completada y auditada** | A-E (niebla, cofres Shift, IA, inventario/libro/calidad, guardado asíncrono, coords, anti-cheat, hornos, paridad) + bloque G de cobertura completo: `audit-fase7` CDP ampliado (G3.7: niebla/inventario/libro/calidad), `e2e-cofre` +16 checks y `e2e-durabilidad` recalibrado al mundo v6 (G4), c8 con umbrales y `biome` 0 (G6). Suite **53 unitarios**, E2E **7/7 en solitario** (6 clásicos con SEED + menú), auditorías **6/6** |
+| 17 — Menú inicial tipo Minecraft, UI/UX y móvil | [`fase17-spec.md`](fase17-spec.md) | Prospectiva (notas del usuario + entrevista) | ✅ **Completada y auditada** | Servidor en modo menú sin cargar mundo al arrancar (A1, con `SEED` arranca directo para E2E), pantalla principal (A2), lista de mundos con reproducir/eliminar/clonar/cambiar modo/renombrar (A3), ajustes en pestañas (A4), flujo cliente menú → `join_world` (A5); 7 bugs del usuario corregidos (B1-B7: persistencia de inventario por nombre, heartbeat B2, watchdog de chunks B3, flor/hierba B4, cuevas largas B5, mobs en creativo B6, minar con clic mantenido B7); UI/UX (C1 pausa estilo MC, C2 estética), skins de jugador (C3: 9 skins procedurales + selector + vista previa 3D + `set_skin`/`player_skin`) y móvil acotado (D1 controles táctiles). Bloque E cerrado: 53/53 unitarios, E2E de menú 7/7, E2E clásicos 6/6 en solitario, auditorías 6/6 y verificación en navegador del flujo completo (menú → mundo → pausa → volver al menú) con 0 errores de consola |
+| 18 — Refactor a convenciones, cierre de fases y pulido | [`fase18-spec.md`](fase18-spec.md) | Prospectiva (notas + auditoría 2026-08-11 + entrevista) | ⏳ **En preparación** | A1 (WIP auditoría 2026-08-11 commiteado), E-1 (auditorías recalibradas al mundo v6, `--audit` 6/6) y E-2 (biome 0 errores) cerrados; pendientes: Bloque C paridad completa (día/noche por franjas, minerales v6, comida, carbón vegetal, `MOB_XP`, horno, recetas de mena, orbes de XP, sonidos), Bloque D refactor de módulos >500 líneas, Bloque F docs y Bloque G cierre |
+| 19 — Texturas de ítems, interfaces y pulido visual | [`fase19-spec.md`](fase19-spec.md) | Prospectiva (notas + borrador + entrevista) | 📝 **Prospectiva (sin implementar)** | Prerrequisito: F18 cerrada. Cobertura total de iconos por ID, rediseño MC de inventario/cofre/horno/libro (fondos texturizados + biseles), hotbar/tooltip unificados, **arrastrar y soltar**, hot-reload del atlas de iconos, táctil/responsivo y auditoría visual CDP |
+| 20 — Rolling release (ciclo de estabilización y paridad) | [`fase20-spec.md`](fase20-spec.md) | Prospectiva (notas + borrador + entrevista) | 📝 **Prospectiva (sin implementar)** | Prerrequisito: F18 cerrada (y F16/F17). Ciclo de iteraciones v20.x (solo bugs, paridad de lo documentado como limitado y rendimiento si el presupuesto lo permite; Won't excluido) con la primera iteración v20.1 definida (cierre de restos F16/F17, bugs de estabilidad, paridad F18 restante, rendimiento, release) y auditoría por iteración obligatoria |
+| 21 — Biomas ampliados, estructuras y más mobs | [`fase21-spec.md`](fase21-spec.md) | Prospectiva (notas del usuario: Mejoras) | 📝 **Prospectiva (sin implementar)** | Prerrequisito: F20 cerrada. Mejoras grandes de las notas: biomas más grandes y nuevos (tundra nevada, badlands, champiñones, bosque oscuro, abedules, taiga gigante, picos, desierto, sabana; lush/dripstone en 2ª tanda), estructuras estáticas pasivas/activas (pozo, iglú, geoda, pirámide, cabaña, puesto, mansión, fortaleza, oceánicas) y mobs nuevos (vaca, gallina, pulpo, enderman, zombified piglin, abeja) + mejora de IA; Won't respetado (aldeanos/villas, jefes, blaze/ghast, gólem, Nether/End) |
 
 ## Reporte comparativo 1:1
 
@@ -58,7 +62,7 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
 | Documento | Descripción |
 | --- | --- |
 | [`Notas del usuario.md`](Notas%20del%20usuario.md) | Auditoría manual del usuario: bugs, nuevas características, debug y "valorar implementar" — base de las fases 9, 10 y 11 |
-| [`tests.md`](tests.md) | Suite de tests y cobertura: comandos del runner, matriz módulo→test (51 unitarios + 6 E2E + auditorías), cobertura con c8 y umbrales |
+| [`tests.md`](tests.md) | Suite de tests y cobertura: comandos del runner, matriz módulo→test (54 unitarios + 7 E2E + auditorías), cobertura con c8 y umbrales |
 
 ## Cómo usar estas specs
 
@@ -68,7 +72,7 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
   arquitectura actual y para no romper invariantes (p. ej. paridad de
   `constants.js` auditable por `unit-sync.js`, formato de guardado con
   `SCHEMA_VERSION`, reglas de culling/LOD).
-- **Prospectivas (fases 9-16):** especifican el trabajo pendiente y son la
+- **Prospectivas (fases 9-21):** especifican el trabajo pendiente y son la
   fuente de verdad de las decisiones de diseño; guían la implementación por
   bloques, cada bloque con su test (convención de `AGENTS.md`). Las fases 12,
   13 y 14 están **cerradas y auditadas**: la 12 con los bloques A-D
@@ -76,12 +80,15 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
   del servidor (`ItemStack`, `World`/`Chunk`, `Player`, `createMob`) y la 14
   con la paridad real + rendimiento del Bloque C. La **15** queda cerrada con
   la corrección de auditoría (copas de árboles, nubes, tooltip y el mundo de
-  128 bloques D5) y el registro de los tests pendientes, con la suite de 50
-  unitarios en verde. La **16 es la fase actual (prospectiva, sin
-  implementar)**: su prerrequisito A1 es commitear el WIP del D5 (working
-  tree sin commitear; 12 unitarios pendientes de recalibración). La **17 es
-  la siguiente fase prospectiva** (menú inicial tipo Minecraft, UI/UX y
-  móvil — `fase17-spec.md`); su prerrequisito es la Fase 16 cerrada.
+  128 bloques D5),  con la suite de 50 unitarios en verde. La **16** está **cerrada y
+  auditada** (A-E y bloque G completo: G3b/G3.7 CDP, G4 E2E, G6 cierre con
+  umbrales). La **17** está **cerrada y auditada** (menú tipo MC, bugs
+  B1-B7, pausa, skins C3, móvil D1 y Bloque E con verificación en
+  navegador del flujo completo). La **18 está en preparación** (paridad
+  completa + refactor a convenciones; A1/E-1/E-2 cerrados). Las **19
+  (texturas/UI visual + drag & drop), 20 (rolling release) y 21 (biomas/
+  estructuras/mobs) son prospectivas** sin implementar — cada una declara su
+  prerrequisito (19 y 20 exigen la 18 cerrada; la 21 exige la 20).
 - El estado real de cada tarea (checkboxes `[ ]`/`[x]`) vive en
   `TODO.md` (tracker, sin detalle narrativo); el detalle de cada fase se
   documenta en su spec de este índice. Al cerrar una fase se marcan sus

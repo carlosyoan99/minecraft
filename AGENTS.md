@@ -17,7 +17,7 @@ build step desde `public/`. Todo el código, docs y commits en español.
 ```bash
 npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
-node tests/run.js               # 52 unitarios + 6 E2E si hay servidor vivo
+node tests/run.js               # 54 unitarios + 7 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
 node tests/run.js --unit --filter <regex>   # solo los que casan (con tiempo por test)
 node tests/run.js --audit       # solo auditorías por fase standalone (3-6 + altura)
@@ -129,17 +129,19 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   y auditada (paridad real + rendimiento). La **Fase 15** está cerrada y
   auditada (copas de árboles en bordes de chunk, nubes semitransparentes,
   tooltip del hotbar y **D5: mundo de 128 bloques −64..+63, `SCHEMA_VERSION`
-  6** auditado por `tests/audit-altura.js`; el grueso de su spec se cerró
-  junto a la Fase 13; la suite tiene 50 unitarios). La **Fase 16** (corrección
-  de la auditoría 2026-08-10, bugs del usuario y paridad restante) es la fase
-  **actual, prospectiva** (spec `docs/fase16-spec.md`, tareas `[ ]` en
-  `TODO.md`): su prerrequisito **A1** (commitear el WIP del D5) está cerrado y
-  el bloque G (cobertura + docs) avanzado — suite de **52 unitarios en verde**
-  (`node tests/run.js --unit`, exit 0, verificado 2026-08-11). La **Fase 17**
-  (modo menú A1, gestión de mundos A3, persistencia B1) está **en curso**: el
-  cambio de SEED a `null` por defecto puede dejar algunos unitarios en rojo
-  mientras se recalibran. No
-  adelantar trabajo más allá de lo que `TODO.md` marque.
+  6** auditado por `tests/audit-altura.js`).  La **Fase 16** está
+  **cerrada y auditada** (auditoría 2026-08-10 + bugs + paridad + bloque G
+  de cobertura: unit 53/53, E2E 7/7 en solitario, auditorías 6/6, c8 con
+  umbrales). La **Fase 17** está **cerrada y auditada** (modo menú A1,
+  gestión de mundos A3, persistencia B1, bugs B1-B7, pausa y skins C3,
+  táctil D1; verificación en navegador del Bloque E completa). La
+  **Fase 18 está en preparación** (spec `docs/fase18-spec.md`): paridad
+  completa C-1..C-9 + refactor a convenciones; A1/E-1/E-2 cerrados. Las
+  **Fases 19 (texturas/UI visual + drag & drop), 20 (rolling release) y 21
+  (biomas/estructuras/mobs) son prospectivas** (`docs/fase19-spec.md`,
+  `fase20-spec.md`, `fase21-spec.md`): la 19 y la 20 exigen la **Fase 18
+  cerrada**; la 21 exige la 20. No adelantar trabajo más allá de lo que
+  `TODO.md` marque.
 
 ## Documentación
 

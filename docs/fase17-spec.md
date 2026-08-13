@@ -4,12 +4,13 @@
 > modificaciones recientes), `docs/fase16-spec.md`, `docs/auditoria-2026-08-10.md`
 > y la entrevista con el usuario (2026-08-11, Tandas 1-3).
 > Fecha: 2026-08-11 · Proyecto: clon de Minecraft.
-> Estado: **implementada** (commit `a2d0437` + mejoras de la auditoría
-> 2026-08-11 en `server/net.js`: F16-03 anti-cheat de hundimiento, F16-05
-> blindaje del mainLoop, F16-07 fuera de bordes en el relleno de chunks y
-> C6-REN-3 envío de chunks fragmentado). Pendiente solo la auditoría final
-> documentada en el Bloque E (los tests unitarios 53/53 y el E2E de menú
-> 7/7 están en verde; los E2E clásicos requieren `SEED` desde A1).
+> Estado: **cerrada y auditada** (2026-08-12) — commit `a2d0437` + mejoras
+> de la auditoría 2026-08-11 en `server/net.js` (F16-03 anti-cheat de
+> hundimiento, F16-05 blindaje del mainLoop, F16-07 fuera de bordes en el
+> relleno de chunks y C6-REN-3 envío de chunks fragmentado) + cierre del
+> Bloque E: suite unit 54/54, E2E de menú 7/7, E2E clásicos 6/6 en
+> solitario, auditorías 6/6, c8 con umbrales y verificación en navegador
+> del flujo completo (menú → mundo → pausa → volver al menú).
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -319,18 +320,31 @@
 
 **Estado al cierre de la implementación (2026-08-12):**
 
-- Suite unitaria completa: **53/53 en verde** (`unit-fase17` incluido,
-   `unit-commands` tolera la deriva de 1 ms del `worldTime`).
+- Suite unitaria completa: **54/54 en verde** (`unit-fase17` y
+   `unit-skins` incluidos; `unit-commands` tolera la deriva de 1 ms del
+   `worldTime`).
 - E2E de menú (`tests/e2e-menu.js`): **7/7 en verde** — levanta su propio
    servidor sin `SEED` en :3997 (menu_state → join_world → init →
    leave_world → menu_state + cooldown anti-spam C4) y limpia su mundo.
-- E2E clásicos (con `SEED=miSemilla2026 PORT=3998 node server.js`): 6/7 —
-   `e2e-durabilidad` con TIMEOUT en fase "breaking" (preexistente, ya
-   documentado en la auditoría 2026-08-11; sin crash).
-- Auditorías por fase: sin regresiones (mismo estado que la auditoría
-   2026-08-11: `fase5` y `altura` en verde; `fase3/4/6/7` rojas por
-   presupuestos descalibrados del mundo v6 y render SwiftShader).
+- E2E clásicos (con `SEED` por test y mundo fresco, en solitario): **6/6 en
+   verde** — `e2e-durabilidad` quedó **recalibrado al mundo v6** (la Y
+   absoluta = localY − 64; antes los candidatos de piedra caían en
+   coordenadas equivocadas y la fase "breaking" agotaba el timeout).
+- Auditorías por fase: **6/6 en verde** (`node tests/run.js --audit`:
+   `audit-fase3`-`fase7` + `audit-altura` 72/72) — ver cierre de la Fase 16.
+- `audit-fase7` CDP ampliado (G3.7 de la F16): checks de render B1 (niebla
+   `waterfog`), B4 (inventario con ítems), B5 (libro de recetas abrir/cerrar
+   con Esc) y B6 (calidad `pixelRatio`) — **en verde** (evals síncronos con
+   precache de módulos y sondeo DOM; los `import()` dinámicos con
+   `awaitPromise` eran frágiles bajo carga).
+- Verificación manual en navegador (Bloque E punto 4): **completa** — flujo
+   menú → `Un jugador` → lista de mundos → reproducir `verifBloqueE` →
+   Escape (pausa) → `Volver al menú principal` vuelve al menú con la carga
+   cerrada; 0 errores de consola (el "fallo" previo del paso 7 era el fade
+   mínimo de ~1.2 s de la pantalla de carga, no un bug).
 - `node --check` y `biome` 0 errores en los archivos tocados.
+- **Cierre (2026-08-12): Fase 17 auditada — pendiente solo el commit del
+   cierre y el tracker en `TODO.md`.**
 
 1. Suite unitaria completa en verde (`node tests/run.js --unit`) tras cada
    commit; **E2E completos en solitario** (`SEED=miSemilla2026 PORT=3998

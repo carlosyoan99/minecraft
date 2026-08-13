@@ -518,9 +518,9 @@
 ## Fase 16 — Corrección de la auditoría 2026-08-10, bugs del usuario y paridad restante
 
 > Especificación (la verdad de la fase): [`docs/fase16-spec.md`](docs/fase16-spec.md)
-> **En curso** — implementación (A-E) y cobertura de tests/docs (G0-G5) cerradas;
-> pendiente la verificación (E2E, CDP y auditoría G6) que depende de la
-> recalibración del modo menú de la Fase 17.
+> **Cerrada y auditada (2026-08-12)** — unit 54/54, E2E 7/7 en solitario
+> (6 clásicos con SEED + menú), auditorías 6/6, c8 con umbrales, `biome` 0
+> y verificación en navegador. Ver Bloque G en la spec.
 
 - [x] A1 Commitear el WIP del D5 (alturas −64..+63) y dejar la suite en verde
 - [x] B1 niebla bajo agua solo a ≥2 bloques de profundidad (`waterfog.js`)
@@ -573,12 +573,13 @@
       explosión solo daña — ver `docs/tests.md`)
 - [x] G3 units de cliente puro: `public/daymath.js` extraído y usado por
       daynight/clouds, cubierto por `unit-dia.js`
-- [ ] G3b units de cliente puro restantes: network (parse), settings,
-      particles, audio — módulos DOM/WebAudio, se revisan con G3.7 (CDP)
-- [ ] G3.7 ampliar `audit-fase7` (CDP): calidad B6, niebla B1, inventario B4,
-      libro B5 — **bloqueado por el modo menú de la Fase 17**
-- [ ] G4 E2E: cofre Shift (B2), libro de recetas (B5); E2E 6/6 en solitario —
-      **bloqueado por la recalibración del modo menú de la Fase 17**
+- [x] G3b units de cliente puro restantes: network (parse), settings,
+      particles, audio — módulos DOM/WebAudio, se revisan con G3.7 (CDP);
+      `unit-ajustes` cubre settings/quality y los evals CDP cubren network
+- [x] G3.7 ampliar `audit-fase7` (CDP): calidad B6, niebla B1, inventario B4,
+      libro B5 — 4 checks CDP en verde (evals síncronos + sondeo DOM)
+- [x] G4 E2E: cofre Shift (B2), libro de recetas (B5); E2E 6/6 en solitario —
+      `e2e-cofre` +16 checks; `e2e-durabilidad` recalibrado al mundo v6
 - [x] G5.1 `docs/tests.md` (matriz módulo→test + guía + umbrales)
 - [x] G5.2 `README.md` §Tests actualizado
 - [x] G5.3 `docs/server/mecanicas.md`: C1, D1, D2, B2, C3, C4, C5, C6
@@ -586,17 +587,18 @@
 - [x] G5.5 `docs/server/README.md` (persistencia asíncrona) +
       `docs/public/README.md` (mapa `waterfog.js`/`chunkWorker.js`)
 - [x] G5.6 `AGENTS.md`/`CLAUDE.md`/`docs/README.md` al día
-- [ ] Auditoría de Fase 16 (G6): suite unitaria **en verde (52, verificado
-      2026-08-11)**; faltan E2E (bloqueado por la recalibración del modo
-      menú F17), auditorías sin regresiones y c8 con umbrales
+- [x] Auditoría de Fase 16 (G6): unit 54/54, E2E 7/7 en solitario,
+      auditorías 6/6 sin regresión, c8 con umbrales (`server` 90%, `public`
+      15%, global 50), `biome` 0 y `node --check` en todo lo tocado
 
 ---
 
 ## Fase 17 — Menú inicial tipo Minecraft, UI/UX y móvil
 
 > Especificación (la verdad de la fase): [`docs/fase17-spec.md`](docs/fase17-spec.md)
-> **En curso (tests finales)** — implementación A-D cerrada; solo falta la
-> auditoría final (suite + E2E + verificación en navegador).
+> **Cerrada y auditada (2026-08-12)** — suite unit 54/54, E2E de menú 7/7,
+> E2E clásicos 6/6 en solitario, auditorías 6/6 y verificación en navegador
+> del flujo completo (menú → mundo → pausa → volver al menú).
 
 - [x] A1 servidor en modo menú (no cargar mundo al arrancar; con `SEED`
       arranca directo al mundo para los E2E)
@@ -629,14 +631,16 @@
       `player_skin` con lista oficial sincronizada (`unit-skins` 17/17)
 - [x] D1 controles táctiles básicos (joystick + mirar + botones) — HUD
       adaptativo móvil, mouse+teclado intactos
-- [x] Auditoría de Fase 17 (implementación): suite unit 53/53 en verde
-      (`unit-fase17` + `unit-commands` tolerante), E2E de menú 7/7 (servidor
-      propio sin SEED en :3997), `node --check`/`biome` 0 errores,
-      auditorías sin regresiones (mismo estado que la 2026-08-11),
+- [x] Auditoría de Fase 17 (implementación): suite unit 54/54 en verde
+      (`unit-fase17` + `unit-skins` + `unit-commands` tolerante), E2E de
+      menú 7/7 (servidor propio sin SEED en :3997), `node --check`/`biome`
+      0 errores, auditorías sin regresiones (mismo estado que la 2026-08-11),
       `docs/README.md`/`AGENTS.md`/`docs/tests.md`/spec al día.
-- [ ] Auditoría final de Fase 17 (verificación manual pendiente): probar en
-      navegador el flujo completo (menú → mundo → pausa → volver al menú),
-      B1-B7, controles táctiles en móvil/emulación y cerrar la spec (Bloque E).
+- [x] Auditoría final de Fase 17: verificación en navegador del flujo
+      completo (menú → mundo → pausa → volver al menú) en verde con 0
+      errores de consola (Blocker E de la spec cerrado); B1-B7 cubiertos por
+      sus tests (unit-fase17, CDP y E2E); táctil D1 verificado por
+      `unit-fase17` (HUD se muestra solo en táctil)
 
 ---
 
@@ -664,13 +668,117 @@
 
 ---
 
+## Fase 19 — Texturas de ítems, interfaces y pulido visual
+
+> Especificación (la verdad de la fase): [`docs/fase19-spec.md`](docs/fase19-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 18 cerrada.
+> Alcance (entrevista 2026-08-12): visual + arrastrar y soltar; skins fuera
+> (ya en F17 C3); sin ítems nuevos.
+
+- [ ] A1 Cobertura total de iconos: lista canónica de IDs (constantes AMBOS
+      lados + `itemIconIds`) vs `switch` de `itemicons.js`; dibujar los que
+      falten al estilo 16×16 (sin inventar ítems); el fallback de texto de
+      `itemVisual` deja de ser alcanzable
+- [ ] A2 Test de cobertura por ID en `unit-itemicons.js`: todo ID con tesela
+      válida, distinta y determinista; falla si se añade un ítem sin icono
+- [ ] B1 Rediseño MC del inventario/crafteo (`#crafting-ui`): fondo
+      texturizado (tesela del atlas), biseles 3D, slots biselados, sin
+      cambiar eventos
+- [ ] B2 Rediseño MC del horno (`#furnace-ui`): fondo de piedra, slots y
+      barra de progreso al estilo nuevo
+- [ ] B3 Rediseño MC del cofre (`#chest-ui`): fondo de madera, 27 slots +
+      inventario, sonidos intactos
+- [ ] B4 Rediseño MC del libro de recetas (`#recipe-book`): fondo/bisel,
+      pestañas, cierre con B/Esc intacto
+- [ ] C1 Hotbar/tooltip unificados con el estilo nuevo (bisel + delay ~200ms)
+      y verificado en los 5 contextos (hotbar, inventario, cofre, horno,
+      libro, grid)
+- [ ] D1 Arrastrar y soltar dentro del inventario y al grid de crafteo
+      (fantasma bajo el cursor; evento nuevo `inventory_swap` si hace falta,
+      retrocompatible + test en `unit-red.js`; el click simple no regresa)
+- [ ] D2 Arrastrar y soltar inventario↔cofre y inventario↔horno (destino
+      explícito en `chest_action`/`furnace_action` o ampliación
+      retrocompatible; validación F16 C2)
+- [ ] E1 Hot-reload del atlas de iconos (patrón `hotReloadTextures`) y
+      repintado de slots visibles sin reiniciar
+- [ ] F1 Paneles táctiles/responsivos: slots ≥~44px, paneles que caben en el
+      viewport, drag&drop sin romper el scroll táctil; escritorio intacto
+- [ ] G1 Cierre y auditoría de Fase 19: suite + E2E 6/6 + menú 7/7, `biome` 0,
+      **auditoría visual CDP** (0 `.item-txt` fallback, 0 excepciones al
+      abrir los 4 paneles), verificación manual escritorio/móvil, docs y
+      tracker al día; `SCHEMA_VERSION` intacto
+
+---
+
+## Fase 20 — Rolling release (ciclo de estabilización y paridad)
+
+> Especificación (la verdad de la fase): [`docs/fase20-spec.md`](docs/fase20-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 18 cerrada
+> (y con ella F16/F17). Ciclo largo con iteraciones v20.x; cada iteración
+> con auditoría obligatoria; no se avanza hasta que todo esté en verde.
+
+- [ ] A1 Metodología del ciclo (planificar → implementar → probar → revisar
+      → release v20.x → auditoría de la iteración); Won't íntegro; cambios
+      de protocolo/guardado retrocompatibles con migración y test
+- [ ] B1 v20.1: verificar que no quedan restos de F16 (G3b/G3.7/G4/G6) ni
+      de F17 (Bloque E) — cerrados el 2026-08-12 en sus fases (no reabrir)
+- [ ] B2 v20.1: bugs de estabilidad (3-5 de alta prioridad de las notas y
+      auditorías) cada uno con causa raíz + test de regresión + manual
+- [ ] B3 v20.1: paridad restante de la F18 (C-1..C-9) si algo quedó sin
+      cerrar, con su assert en `unit-paridad.js`/`unit-recetas.js`
+- [ ] B4 v20.1: rendimiento dentro de presupuesto (solo cuellos de botella
+      reales; candidato documentado: rediseño del formato de guardado)
+- [ ] B5 v20.1: release `v20.1` (etiqueta + documento de la iteración con
+      bugs/paridad/métricas + TODO al día)
+- [ ] C1 Auditoría por iteración obligatoria (suite + E2E + `--audit` 6/6 +
+      CDP si toca render + manual + docs); sin regresiones en la matriz
+      `docs/tests.md`
+
+---
+
+## Fase 21 — Biomas ampliados, estructuras y más mobs (prospectiva)
+
+> Especificación (la verdad de la fase): [`docs/fase21-spec.md`](docs/fase21-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 20 cerrada.
+> Mejoras grandes de `Notas del usuario.md` (entrevista 2026-08-12):
+> biomas/estructuras/mobs no entran en 19/20; se planifican aquí.
+
+- [ ] A1 Biomas más grandes en extensión (escala del ruido de `getBiome`)
+      con recalibración de `unit-biomas`/`unit-mundo`/`audit-fase4`
+- [ ] A2 Biomas de superficie nuevos (tundra nevada, badlands, isla de
+      champiñones, bosque oscuro, bosque de abedules, taiga de árboles
+      gigantes, picos nevados, desierto, sabana) con paleta/vegetación;
+      bloques nuevos sincronizados B/I + receta + icono; cuevas de
+      lush/dripstone en segunda tanda
+- [ ] B1 Estructuras pasivas: pozo del desierto, iglú (solo edificio),
+      geoda de amatista — deterministas por hash 2D en su bioma
+- [ ] B2 Estructuras activas (acotadas en la entrevista): pirámide del
+      desierto (trampa TNT), cabaña del pantano, puesto de saqueadores,
+      mansión del bosque, fortaleza, ruinas/monumento oceánico
+- [ ] C1 Mobs pasivos nuevos: vaca (ordeñable), gallina (pone huevos),
+      pulpo (tinta); refinar oveja (comer pasto)
+- [ ] C2 Mobs neutrales nuevos: enderman (teletransporte), zombified piglin
+      (efecto dominó), abeja (pica y muere) — gólem de hierro Won't
+- [ ] C3 Mejoras de IA de mobs existentes (creeper huye de gatos, esqueleto
+      strafe, araña día/noche, zombi convoca) con tests
+- [ ] D1 Cierre y auditoría de Fase 21: suite + E2E + auditorías en verde,
+      verificación manual (explorar biomas/estructuras con semilla
+      conocida), `SCHEMA_VERSION` 7 solo si cambia el formato (migración +
+      test), docs y tracker al día; Won't íntegro
+
+---
+
 ## Fuera de alcance (Won't)
 
-- BD externa, autenticación/cuentas, redstone, dimensiones, aldeas
-  generadas, clima
+- BD externa, autenticación/cuentas, redstone, dimensiones (Nether/End),
+  aldeas generadas, clima
 - Optimización prematura (greedy meshing, workers...) salvo que una spec lo
   indique
 - Encantamientos/pociones, texturas de ítems faltantes y rediseño de
   cofres/mesa de crafteo/horno (Fase 19); pulido general de bugs/paridad y
   refactor a convenciones (Fase 18); rolling release (Fase 20) — el Won't
   se mantiene hasta después de la Fase 20
+- Del "Futuro" de `Notas del usuario.md` (sin desbloqueo explícito):
+  aldeanos y villas, Wither, Dragón del End, Blaze, Ghast, Gólem de hierro,
+  Ciudad Antigua, biomas del Nether/End (documentados como inspiración en
+  la Fase 21)

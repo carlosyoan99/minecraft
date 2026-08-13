@@ -38,11 +38,25 @@ La suite entera puede medirse con [c8](https://github.com/bcoe/c8) (devDep,
 v12):
 
 ```bash
-npm run test:coverage   # c8 --all --src=server --src=public node tests/run.js --unit
+npm run test:coverage   # c8 con --check-coverage y umbrales (ver abajo)
 ```
 
 El informe en consola muestra `% Statements / Branch / Functions / Lines` por
 archivo de `server/` y `public/`. `coverage/` está en `.gitignore`.
+
+**Umbrales de c8 (G6, guardas de regresión — medidos 2026-08-12):** el script
+falla si algún directorio baja de su mínimo:
+
+| Ámbito | Líneas | Funciones | Statements | Branch |
+| --- | --- | --- | --- | --- |
+| Global | 50 % | — | 50 % | — |
+| `server/*.js` (módulos críticos) | 80 % | 80 % | 80 % | 75 % |
+| `public/*.js` (cliente DOM/Three) | 15 % | 50 % | 15 % | 50 % |
+
+Los módulos del servidor se cubren en Node (medido ~90 %); el cliente está
+acoplado a DOM/Three/Web Audio y se cubre por CDP/E2E y lógica pura extraída
+(medido ~20 % de statements — los huecos por archivo están documentados en la
+sección *Cobertura*).
 
 **Lógica pura del cliente testeada en Node** (precedente a seguir para
 añadir cobertura nueva): `quality.js` (`unit-ajustes.js`), `lod.js`
@@ -58,7 +72,7 @@ Three/DOM para forzarlos.
 > reporte uniforme que parsea `run.js` (`N OK, M FAIL` + `# checks
 > fallidos`), `mkPlayer`, `withRandom` (LCG determinista) y `loaderESM`.
 
-## Suite unitaria (52 tests)
+## Suite unitaria (54 tests)
 
 > Orden de `UNIT` en `tests/run.js`. El `(*)` marca tests que importan código
 > del cliente (`public/`) como ESM.
@@ -117,6 +131,8 @@ Three/DOM para forzarlos.
 | `unit-muerte.js` | Causas de `player_die` (caída, mob, fuego, ...) |
 | `unit-fase16.js` | Fase 16: niebla submarina (B1), cofre Shift (B2), horno `FUEL_TICKS` (D1), drops (D2), puertas ×3/vidrio 200 t/carbón vegetal (D3-D5), XP del slime y lobo (D6) |
 | `unit-dia.js` | Matemática pura del ciclo día/noche (`public/daymath.js`): `dayFactor`, `duskFactor` (pico real en d≈0.402), `fogDistances` (30/70→75/200) y `cloudTint` + `CLOUD_TINT_STEP` (G3) |
+| `unit-fase17.js` | Fase 17: modo menú (A1), persistencia por nombre (B1), romper el bloque bajo una flor/hierba (B4), hostiles no agreden en creativo (B6), cuevas largas (B5), heartbeat (B2), minado continuo (B7), táctil (D1) |
+| `unit-skins.js` | Fase 17 (C3): skins de jugador — píxeles puros de los 9 skins (`public/skins.js`), sincronía `PLAYER_SKINS` ↔ `SKINS` y protocolo `set_skin`/`player_skin` (17 checks) |
 
 ## Auditorías standalone
 
@@ -151,11 +167,11 @@ Three/DOM para forzarlos.
   `handleConnection` para inyectar un WebSocket falso (`unit-red.js`).
 - **Cambios de guardado** exigen subir `SCHEMA_VERSION` + migración
   retrocompatible + test (modelo: `unit-persistencia.js`).
-- **Cobertura** se mide con `npm run test:coverage`; los huecos grandes
-  actuales están en los módulos de cliente acoplados a DOM/Three (audio,
-  player, network, settings, clouds, particles) — se cubren por CDP/E2E y por
-  extracción de lógica pura (como ya se hizo con `quality.js`/`lod.js` y con
-  `daymath.js` en G3).
+- **Cobertura** se mide con `npm run test:coverage` (con umbrales c8, ver
+  arriba); los huecos grandes actuales están en los módulos de cliente
+  acoplados a DOM/Three (audio, player, network, settings, clouds, particles)
+  — se cubren por CDP/E2E y por extracción de lógica pura (como ya se hizo
+  con `quality.js`/`lod.js` y con `daymath.js` en G3).
 - **Gap conocido:** el TNT no aplica knockback a jugadores (solo daño por
   distancia, `server/tnt.js`); el test de G2.6 lo verifica como tal.
 - Antes de cerrar una fase: suite unitaria en verde, auditorías sin

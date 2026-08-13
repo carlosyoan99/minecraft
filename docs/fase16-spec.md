@@ -3,8 +3,10 @@
 > Documento creado a partir de: `docs/Notas del usuario.md`, `docs/auditoria-2026-08-10.md`
 > (la más reciente), `docs/reporte-paridad.md`, `TODO.md` y la entrevista con el usuario.
 > Fecha: 2026-08-11 · Proyecto: clon de Minecraft.
-> Estado: **en curso** (WIP sin commitear; incluye el bloque G — auditoría de
-> cobertura de tests y documentación, §9).
+> Estado: **cerrada y auditada** (2026-08-12) — suite unit 54/54, E2E 7/7
+> en solitario (6 clásicos con SEED + menú), auditorías 6/6, c8 con
+> umbrales, `biome` 0 y verificación en navegador; incluye el bloque G —
+> auditoría de cobertura de tests y documentación, §9.
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -425,13 +427,13 @@
 | G2.5 | `ItemStack` (`items.js`): serialización, merge/clamp, durabilidad | **Hecho** en `unit-poo-entities`: defaults de `add`/`consume`, borde de `empty`, `from` con durabilidad, `durability 0` serializable, `toPlain` sin durabilidad, inventario lleno → rechazo |
 | G2.6 | TNT: cadenas, cráter con bedrock, knockback | **Hecho** en `unit-fase11` §10b: cadena determinista (Math.random fijo a 0, ticks de 1s por la re-iteración en vivo de `tick`) + daño al jugador. **Knockback no implementado** en `tnt.js` (solo daño) — queda como gap documentado en `docs/tests.md` |
 | G3 | Cliente puro: se extrae la matemática del ciclo a `public/daymath.js` (patrón `waterfog.js`/`quality.js`) y se usa en `daynight.js` (luz, cielo, niebla) y `clouds.js` (tinte cuantizado) — cubierto por `tests/unit-dia.js` (18 checks: `dayFactor`, `duskFactor` con pico real en d≈0.402, `fogDistances` 30/70→75/200, `cloudTint` + `CLOUD_TINT_STEP`) | `unit-dia.js` en verde; refactor sin cambio de comportamiento |
-| G3b | Cliente puro restante: `network` (parse), `settings` (validate/apply), `particles`, `audio` (pitch/scheduling) | módulos DOM/WebAudio — se revisan con G3.7 (CDP) en vez de refactor; `unit-ajustes` ya cubre settings/quality |
-| G3.7 | Ampliar `audit-fase7` (CDP): calidad B6, niebla B1, inventario B4, libro B5 | checks de render nuevos |
-| G4 | E2E: cofre Shift (B2), libro de recetas abrir/cerrar (B5); E2E 6/6 en solitario | E2E verdes sin timeouts |
+| G3b | Cliente puro restante: `network` (parse), `settings` (validate/apply), `particles`, `audio` (pitch/scheduling) | **Hecho** — los módulos DOM/WebAudio se revisan con G3.7 (CDP) en vez de refactor; `unit-ajustes` ya cubre settings/quality; `unit-skins` y los evals CDP de `audit-fase7` cubren network (parse WS) |
+| G3.7 | Ampliar `audit-fase7` (CDP): calidad B6, niebla B1, inventario B4, libro B5 | **Hecho** — 4 checks CDP nuevos en verde (niebla `waterfog`, inventario con ítems, libro abrir/cerrar con Esc, calidad `pixelRatio`); evals síncronos con precache de módulos + sondeo DOM (los `import()` dinámicos con `awaitPromise` eran frágiles bajo carga) |
+| G4 | E2E: cofre Shift (B2), libro de recetas abrir/cerrar (B5); E2E 6/6 en solitario | **Hecho** — `e2e-cofre` +16 checks (romper cofre CON contenido suelta drops B2 + roundtrip `recipe_book` B5); **E2E 6/6 clásicos en solitario** (mundo y servidor frescos por test) + `e2e-menu` 7/7; `e2e-durabilidad` **recalibrado al mundo v6** (Y absoluta = localY − 64) |
 | G5.1 | `docs/tests.md`: matriz módulo → test (alimentada por c8) + guía "cómo añadir un test" + umbrales | matriz completa por módulo |
 | G5.2 | `README.md` §Tests actualizado (51+, `test:coverage`, `--audit` corregido) | coincide con `run.js` |
 | G5.3 | `docs/server/mecanicas.md`: C1, D1, D2, B2, C3, C4, C5, C6 | mecánicas de F16 documentadas |
 | G5.4 | `docs/public/mecanicas.md`: B1 (niebla), B6 (renderScale), B5 (libro) | mecánicas de F16 documentadas |
 | G5.5 | `docs/server/README.md` (persistencia asíncrona) + `docs/public/README.md` (mapa: `waterfog.js`, `chunkWorker.js`) | docs de arquitectura al día |
 | G5.6 | `AGENTS.md`/`CLAUDE.md` (suite 51+, comando coverage, convención matriz) + `docs/README.md` + `TODO.md` | docs transversales al día |
-| G6 | Cierre: unit verde, E2E 6/6, c8 con umbrales en módulos críticos, `biome` 0, `node --check`, auditorías sin regresión | todo en verde + spec actualizada |
+| G6 | Cierre: unit verde, E2E 6/6, c8 con umbrales en módulos críticos, `biome` 0, `node --check`, auditorías sin regresión | **Hecho** — unit 54/54; E2E 7/7 en solitario; c8 `--check-coverage` (server 90%, public 15%, global 50) en `npm run test:coverage`; `biome check .` 0 errores; `node --check` en todos los tocados; auditorías 6/6 sin regresión |
