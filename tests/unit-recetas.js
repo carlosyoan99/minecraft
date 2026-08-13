@@ -444,15 +444,25 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 		);
 		check("el TNT sale como bloque TNT", r?.result && r.result.id === B.TNT);
 	}
-	// D5: el carbón vegetal se obtiene fundiendo troncos (cualquier tipo de
-	// tronco → carbón 101), además del carbón mineral (9).
+	// D5/C-4 (Fase 18): el carbón vegetal (257) se obtiene fundiendo troncos
+	// (cualquier tipo → 257), ítem DISTINTO del carbón (101) que solo sale de
+	// la mena (9). El comentario histórico decía "tronco → carbón 101": ahora
+	// la receta usa CHARCOAL (paridad MC, tabla #9).
 	const troncosHorno = ["4", "28", "30", "41"]; // roble, abedul, abeto, jungla
 	check(
-		"todos los troncos funden a carbón vegetal (D5)",
+		"todos los troncos funden a carbón vegetal (257, no 101)",
 		troncosHorno.every((t) => {
 			const r = horno[t];
-			return r && r.result.id === I.COAL && r.result.count === 1;
+			return r && r.result.id === I.CHARCOAL && r.result.count === 1;
 		})
+	);
+	check(
+		"la mena de carbón sigue fundiendo a COAL (101) — C-4",
+		horno["9"] && horno["9"].result.id === I.COAL
+	);
+	check(
+		"COAL (101) ya no sale de los troncos (solo la mena) — C-4",
+		troncosHorno.every((t) => horno[t] && horno[t].result.id !== I.COAL)
 	);
 	// D4: la arena se funde a vidrio en 200 ticks (paridad con Minecraft; antes 150).
 	check(

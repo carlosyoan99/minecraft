@@ -309,7 +309,8 @@ export const ITEM_NAMES = {
 	253: "Pluma", // drop del pollo; material de las flechas
 	254: "Compás", // Fase 13 (L5): 4 lingotes de hierro + redstone
 	255: "Carne podrida", // Fase 16 (D2): drop del zombi
-	256: "Pólvora" // Fase 16 (D2): drop del creeper; material del TNT
+	256: "Pólvora", // Fase 16 (D2): drop del creeper; material del TNT
+	257: "Carbón vegetal" // Fase 18 (C-4): tronco al horno (ítem distinto del carbón)
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;

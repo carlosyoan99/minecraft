@@ -7,7 +7,7 @@
 //   D2: drops zombi (carne podrida) y creeper (pólvora) + ítems nuevos
 //   D3: puertas craftean ×3
 //   D4: vidrio fundido a 200 ticks
-//   D5: carbón vegetal (tronco → carbón)
+//   D5: carbón vegetal (tronco → 257, C-4)
 //   D6: XP del slime mediano (2) y del lobo (1-3)
 // ============================================================
 const path = require("node:path");
@@ -246,11 +246,12 @@ const mkPlayer = (over = {}) => ({
 			furnace["6"] && furnace["6"].time === 200,
 			`${furnace["6"]?.time}`
 		);
-		// D5: carbón vegetal — tronco → carbón (101) a 200 ticks.
+		// D5/C-4 (Fase 18): carbón vegetal — tronco → CHARCOAL (257) a 200
+		// ticks, ítem DISTINTO del carbón (101, solo de la mena).
 		check(
-			"D5: carbón vegetal (tronco → carbón)",
+			"D5: carbón vegetal (tronco → 257, no 101)",
 			furnace["4"] &&
-				furnace["4"].result.id === I.COAL &&
+				furnace["4"].result.id === I.CHARCOAL &&
 				furnace["4"].time === 200,
 			JSON.stringify(furnace["4"])
 		);

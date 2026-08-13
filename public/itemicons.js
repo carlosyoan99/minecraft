@@ -748,6 +748,28 @@ function drawRabbit(g, cooked) {
 	rect(g, 11, 3, 2, 1, dark);
 }
 
+// Fase 18 (C-4): carbón vegetal — misma forma que el carbón (drawCoal) pero
+// con tono azulado y brillo distinto, como el ítem de MC (el carbón es
+// negro puro; el vegetal conserva un matiz azul-grisáceo de la madera).
+function drawCharcoal(g) {
+	const base = "#2f3640",
+		dark = "#1a1e24",
+		shine = "#5a6b7a";
+	for (let y = 4; y <= 11; y++) {
+		for (let x = 3; x <= 12; x++) {
+			const dx = x - 7.5,
+				dy = y - 7.5;
+			if ((dx * dx) / 26 + (dy * dy) / 30 <= 1) set(g, x, y, base);
+		}
+	}
+	set(g, 5, 5, shine);
+	set(g, 6, 5, shine);
+	set(g, 5, 6, shine);
+	set(g, 10, 9, dark);
+	set(g, 11, 10, dark);
+	set(g, 8, 7, "#7a8a9a"); // veta de madera carbonizada
+}
+
 // Fase 18 (C-3): patata (cruda: óvalo marrón con motas y yemas) y patata al
 // horno (más oscura, con corte dorado y brillo de asado).
 function drawPotato(g, rng, baked) {
@@ -1360,6 +1382,8 @@ ICONS[120] = drawString;
 // Fase 18 (C-3): patata y patata al horno (comida nueva)
 ICONS[121] = (g, rng) => drawPotato(g, rng, false);
 ICONS[122] = (g, rng) => drawPotato(g, rng, true);
+// Fase 18 (C-4): carbón vegetal (257)
+ICONS[257] = drawCharcoal;
 ICONS[132] = drawLeather;
 // Fase 9 (F): pan, pescado (crudo/cocinado), hueso, tintes, harina de hueso, miel
 ICONS[133] = drawBread;

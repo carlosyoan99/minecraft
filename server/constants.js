@@ -429,7 +429,11 @@ const I = {
 	// Fase 16 (D2): carne podrida (drop del zombi) y pólvora (drop del creeper
 	// y material del TNT) — paridad con Minecraft.
 	ROTTEN_FLESH: 255,
-	GUNPOWDER: 256
+	GUNPOWDER: 256,
+	// Fase 18 (C-4): carbón vegetal — 1 tronco → 1 CHARCOAL (horno), como en
+	// MC. El COAL (101) sigue saliendo SOLO de la mena; el CHARCOAL es ítem
+	// distinto (paridad tabla #9).
+	CHARCOAL: 257
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -509,6 +513,8 @@ const FUEL_ITEMS = new Set([
 	B.JUNGLE_LOG,
 	B.PLANKS,
 	I.COAL, // Fase 14 (Bloque B): el carbón también arde
+	// Fase 18 (C-4): el carbón vegetal arde igual que el carbón (1600 t, MC)
+	I.CHARCOAL,
 	I.STICK
 ]);
 // Fase 16 (D1): ticks de fundido por unidad de combustible (paridad MC). El
@@ -520,6 +526,7 @@ const FUEL_TICKS = {
 	[B.JUNGLE_LOG]: 300,
 	[B.PLANKS]: 300,
 	[I.COAL]: 1600, // un carbón funde 8 ítems de 200 ticks
+	[I.CHARCOAL]: 1600, // Fase 18 (C-4): carbón vegetal, mismo poder que el carbón
 	[I.STICK]: 100
 };
 
@@ -1072,6 +1079,7 @@ const CREATIVE_ITEMS = [
 	B.REDSTONE_ORE,
 	B.EMERALD_ORE,
 	I.COAL,
+	I.CHARCOAL, // Fase 18 (C-4): carbón vegetal en el creativo
 	I.IRON_INGOT,
 	I.GOLD_INGOT,
 	I.DIAMOND,
