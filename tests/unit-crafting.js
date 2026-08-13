@@ -289,6 +289,94 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 	check("enfriado hasta 0", f.progress === 0, `progress=${f.progress}`);
 }
 
+// 19b) Fase 18 (C-6): DESPERDICIO — el combustible se sigue quemando aunque
+// el insumo se agote a mitad de quema (como Minecraft). Con 1 carbón (1600
+// t) y 1 mineral (200 t): tras cocer, quedan 1400 t de fuego que se queman
+// igualmente hasta 0 (antes se congelaban para siempre).
+{
+	const f = freshFurnace({
+		inputItem: { id: 9, count: 1 },
+		fuelItem: 101, // carbón
+		fuelCount: 1
+	});
+	for (let i = 0; i < 200; i++) crafting.tickFurnaces(); // termina la receta
+	check(
+		"C-6: receta completada",
+		f.outputItem === 101 && f.outputCount === 1,
+		`out=${f.outputItem}x${f.outputCount}`
+	);
+	check(
+		"C-6: tras cocer quedan 1400 t de fuego",
+		f.fuelTicksLeft === 1400,
+		`ticks=${f.fuelTicksLeft}`
+	);
+	// Sin insumo: el fuego se desperdicia (se consume hasta 0).
+	for (let i = 0; i < 1400; i++) crafting.tickFurnaces();
+	check(
+		"C-6: el fuego se desperdicia hasta 0 (no se congela)",
+		f.fuelTicksLeft === 0 && f.fuelItem === null,
+		`ticks=${f.fuelTicksLeft} fuel=${f.fuelItem}`
+	);
+}
+
+// 19c) Fase 18 (C-6): DESPERDICIO con combustible SOBRANTE en el tanque —
+// tras agotar la primera unidad sin insumo, la siguiente unidad del tanque
+// NO entra sola (MC: el horno solo arranca si hay algo que cocinar).
+{
+	const f = freshFurnace({
+		inputItem: { id: 9, count: 1 },
+		fuelItem: 101, // carbón
+		fuelCount: 2 // dos unidades cargadas
+	});
+	for (let i = 0; i < 200; i++) crafting.tickFurnaces(); // receta completa
+	for (let i = 0; i < 1400; i++) crafting.tickFurnaces(); // quema el resto de la 1ª
+	check(
+		"C-6: 1ª unidad de carbón agotada (fuego a 0)",
+		f.fuelTicksLeft === 0,
+		`ticks=${f.fuelTicksLeft} fuel=${f.fuelItem}`
+	);
+	// La 2ª unidad queda en el tanque (fuelCount 1, fuelItem 101) — no
+	// arranca sin insumo (MC solo desperdicia la unidad YA encendida).
+	check(
+		"C-6: la 2ª unidad NO se quema sin insumo (queda en el tanque)",
+		f.fuelItem === 101 && f.fuelCount === 1,
+		`fuel=${f.fuelItem} count=${f.fuelCount}`
+	);
+}
+
+// 19d) Fase 18 (C-6): ENCOLADO FIFO — con una unidad de carbón en el tanque
+// y otra de otro combustible en la cola, al agotarse el carbón (con insumo
+// pendiente) entra el encolado y se quema en orden.
+{
+	const f = freshFurnace({
+		inputItem: { id: 9, count: 9 }, // 9 recetas = 1800 t (más que 1 carbón)
+		fuelItem: 101, // carbón en el tanque (1600 t = 8 recetas)
+		fuelCount: 1,
+		fuelQueue: [{ id: 7, count: 1 }] // tablones encolados (FIFO, 300 t)
+	});
+	for (let i = 0; i < 1600; i++) crafting.tickFurnaces(); // carbón agotado
+	check(
+		"C-6: el carbón cocinó 8 recetas y se agotó",
+		f.outputItem === 101 && f.outputCount === 8 && f.fuelTicksLeft === 0,
+		`out=${f.outputItem}x${f.outputCount} ticks=${f.fuelTicksLeft}`
+	);
+	// Queda 1 mineral sin cocinar: con insumo, entra la unidad encolada. El
+	// tick de encendido ya quema 1 t (paridad D1: carga+quema en el mismo
+	// tick), así que quedan 299 t del tablón y la cola se vació.
+	crafting.tickFurnaces();
+	check(
+		"C-6: con insumo pendiente, al agotar el carbón entra el encolado (300 t)",
+		f.fuelTicksLeft === 299 && f.fuelCount === 0 && f.fuelQueue.length === 0,
+		`ticks=${f.fuelTicksLeft} count=${f.fuelCount} q=${f.fuelQueue.length}`
+	);
+	for (let i = 0; i < 200; i++) crafting.tickFurnaces();
+	check(
+		"C-6: el tablón encolado completa la 9ª receta",
+		f.outputCount === 9,
+		`out=${f.outputItem}x${f.outputCount}`
+	);
+}
+
 // 20) Salida ocupada con otro ítem: el resultado se pierde (horno lleno, simplificado)
 {
 	const f = freshFurnace({

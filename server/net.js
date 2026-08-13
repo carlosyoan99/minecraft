@@ -1150,16 +1150,23 @@ function handleConnection(ws, req) {
 					const f = crafting.getOrCreateFurnace(key);
 					if (data.action === "add_fuel") {
 						const slot = p.inventory[data.invSlot];
-						if (
-							slot &&
-							FUEL_ITEMS.has(slot.id) &&
-							(!f.fuelItem || f.fuelItem === slot.id)
-						) {
-							f.fuelItem = slot.id;
-							// Fase 16 (D1): registrar la unidad REAL cargada (fuelCount) —
-							// sin esto el horno nunca arrancaba (canCook exige fuelCount > 0)
-							// y el combustible añadido no se consumía nunca.
-							f.fuelCount = (f.fuelCount || 0) + 1;
+						if (slot && FUEL_ITEMS.has(slot.id)) {
+							if (!f.fuelItem || f.fuelItem === slot.id) {
+								// Mismo combustible (o tanque vacío): se carga directo.
+								f.fuelItem = slot.id;
+								// Fase 16 (D1): registrar la unidad REAL cargada (fuelCount) —
+								// sin esto el horno nunca arrancaba (canCook exige fuelCount > 0)
+								// y el combustible añadido no se consumía nunca.
+								f.fuelCount = (f.fuelCount || 0) + 1;
+							} else {
+								// Fase 18 (C-6): combustible DISTINTO con el tanque cargado →
+								// se ENCOLA (FIFO) como en Minecraft; se quema en orden al
+								// agotarse el actual. Antes se rechazaba el clic en silencio.
+								f.fuelQueue = f.fuelQueue || [];
+								const last = f.fuelQueue[f.fuelQueue.length - 1];
+								if (last && last.id === slot.id) last.count++;
+								else f.fuelQueue.push({ id: slot.id, count: 1 });
+							}
 							slot.count -= 1;
 							if (slot.count <= 0) p.inventory[data.invSlot] = null;
 							playerHelpers.sendInventory(p);

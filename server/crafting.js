@@ -172,6 +172,10 @@ function emptyFurnace() {
 		fuelItem: null,
 		fuelCount: 0, // Fase 16 (D1): unidades de combustible cargadas (se consumen de una en una)
 		fuelTicksLeft: 0,
+		// Fase 18 (C-6): cola FIFO de combustibles encolados (MC encola al
+		// añadir otro tipo con uno cargado). NO se persiste (decisión de la
+		// spec: detalle menor, se pierde al reiniciar — documentado).
+		fuelQueue: [],
 		inputItem: null,
 		progress: 0,
 		requiredTicks: 0,
@@ -200,6 +204,7 @@ function isEmptyFurnace(f) {
 		f.fuelItem == null &&
 		(f.fuelCount || 0) === 0 &&
 		!f.fuelTicksLeft &&
+		(f.fuelQueue || []).length === 0 && // C-6: la cola evita la poda
 		f.inputItem == null &&
 		!f.progress &&
 		f.outputItem == null &&
@@ -212,6 +217,9 @@ function furnaceSnapshot(f) {
 		fuelItem: f.fuelItem,
 		fuelCount: f.fuelCount || 0,
 		fuelTicksLeft: f.fuelTicksLeft,
+		// Fase 18 (C-6): cola FIFO de combustibles encolados (el cliente puede
+		// mostrarla; no se persiste en world.json).
+		fuelQueue: (f.fuelQueue || []).map((q) => ({ id: q.id, count: q.count })),
 		inputItem: f.inputItem ? f.inputItem.id : null,
 		inputCount: f.inputItem ? f.inputItem.count : 0,
 		progress: f.progress,
@@ -225,26 +233,58 @@ function isCookable(itemId) {
 	return !!furnaceRecipes[String(itemId)];
 }
 
+// Carga la siguiente unidad de combustible (tanque o cola FIFO) y devuelve
+// si el fuego quedó activo. Fase 18 (C-6): el DESPACHO de la cola vive aquí
+// para que el cambio de combustible encolado ocurra en el tick correcto.
+function loadFuelUnit(f) {
+	if (f.fuelTicksLeft > 0) return true;
+	if (f.fuelItem != null) {
+		// Fase 16 (D1): consumir UNA unidad REAL de combustible — se queman
+		// sus FUEL_TICKS oficiales (carbón 1600, palo 100, tablas/tronco
+		// 300) y la unidad se consume. Sin combustible el horno se apaga
+		// (antes quemaba 400 ticks eternos sin consumir nada).
+		f.fuelTicksLeft = FUEL_TICKS[f.fuelItem] || 100;
+		f.fuelCount = Math.max(0, (f.fuelCount || 0) - 1);
+		if (f.fuelCount <= 0) f.fuelItem = null;
+		return true;
+	}
+	// Fase 18 (C-6): cola FIFO — el siguiente combustible encolado entra al
+	// tanque cuando el actual se agota (MC encola al añadir otro tipo).
+	const next = (f.fuelQueue || []).shift();
+	if (next && FUEL_TICKS[next.id] != null) {
+		f.fuelItem = next.id;
+		f.fuelCount = next.count;
+		f.fuelTicksLeft = FUEL_TICKS[next.id] || 100;
+		f.fuelCount = Math.max(0, f.fuelCount - 1);
+		if (f.fuelCount <= 0) f.fuelItem = null;
+		return true;
+	}
+	return false;
+}
+
 function tickFurnaces() {
 	for (const [key, f] of furnaces) {
 		const recipe = f.inputItem ? furnaceRecipes[String(f.inputItem.id)] : null;
-		const canCook =
-			recipe &&
-			f.inputItem.count > 0 &&
-			(f.fuelTicksLeft > 0 || (f.fuelItem != null && (f.fuelCount || 0) > 0));
+		const canCook = recipe && f.inputItem.count > 0;
 
-		if (canCook) {
-			if (f.fuelTicksLeft <= 0 && f.fuelItem != null) {
-				// Fase 16 (D1): consumir UNA unidad REAL de combustible — se queman
-				// sus FUEL_TICKS oficiales (carbón 1600, palo 100, tablas/tronco
-				// 300) y la unidad se consume. Sin combustible el horno se apaga
-				// (antes quemaba 400 ticks eternos sin consumir nada).
-				f.fuelTicksLeft = FUEL_TICKS[f.fuelItem] || 100;
-				f.fuelCount = Math.max(0, (f.fuelCount || 0) - 1);
-				if (f.fuelCount <= 0) f.fuelItem = null;
-			}
-			if (f.fuelTicksLeft > 0) {
-				f.fuelTicksLeft--;
+		// Fase 18 (C-6): DESPERDICIO como MC — la unidad de combustible YA
+		// encendida se sigue quemando aunque el insumo se agote a mitad de
+		// quema (no se congela el fuego). Pero una unidad NUEVA (del tanque o
+		// de la cola FIFO) solo se enciende si hay algo que cocinar: sin
+		// insumo el horno se apaga al agotar la unidad actual (las restantes
+		// quedan en el tanque/cola intactas, como en Minecraft).
+		const burning = f.fuelTicksLeft > 0;
+		if (burning) {
+			f.fuelTicksLeft--;
+		} else if (canCook && loadFuelUnit(f)) {
+			// Se acaba de encender una unidad nueva (tanque o cola): quema este
+			// mismo tick (paridad con el comportamiento anterior — 1 tablón de
+			// 300 t rinde 200 de cocción y deja 100).
+			f.fuelTicksLeft--;
+		}
+
+		if (burning || (canCook && f.fuelTicksLeft > 0)) {
+			if (canCook && f.fuelTicksLeft >= 0) {
 				f.requiredTicks = recipe.time;
 				f.progress++;
 				if (f.progress >= f.requiredTicks) {
@@ -279,6 +319,9 @@ function restoreFurnaces(entries) {
 		// un fuelItem persistido equivale a 1 unidad real (se consume y apaga).
 		if (v && v.fuelItem != null && typeof v.fuelCount !== "number")
 			v.fuelCount = 1;
+		// Fase 18 (C-6): la cola FIFO NO se persiste (decisión de la spec — se
+		// pierde al reiniciar, detalle menor documentado).
+		if (v) v.fuelQueue = [];
 		furnaces.set(k, v);
 	}
 }
