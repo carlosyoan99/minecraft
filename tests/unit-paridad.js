@@ -272,6 +272,42 @@ check("xpToNext(31) = 121", xpToNext(31) === 121);
 	Math.random = realRandom;
 }
 
+// --- Fase 18 (C-5): coherencia MOB_XP ↔ mobXp() (rec. 9 de la auditoría) ---
+// La tabla MOB_XP de constants.js es el FALLBACK de mobXp() (mobs.js): para
+// los tipos normales debe coincidir 1:1 (un desvío cambiaría la XP real);
+// para wolf/slime es SOLO fallback (los sobrescribe el caso especial) y
+// debe reflejar la media real para no inducir regresiones si se borra.
+{
+	const mobs = require("../server/mobs.js");
+	const constants = require("../server/constants.js");
+	const mkMob = (type) => new mobs.Mob(type, 0, 80, 0);
+	// Tipos normales: mobXp() delega en MOB_XP → paridad 1:1.
+	for (const type of ["zombie", "creeper", "skeleton", "spider", "cow", "pig"]) {
+		check(
+			`C-5: mobXp(${type}) usa MOB_XP.${type} (${constants.MOB_XP[type]})`,
+			mobs.mobXp(mkMob(type)) === constants.MOB_XP[type]
+		);
+	}
+	// Coherencia con MC: los hostiles dan 5 XP y los pasivos 1-3 (Java 1.9+).
+	check(
+		"C-5: hostiles (zombi/creeper/esqueleto/araña/ahogado) dan 5 XP",
+		[constants.MOB_XP.zombie, constants.MOB_XP.creeper, constants.MOB_XP.skeleton, constants.MOB_XP.spider, constants.MOB_XP.drowned].every(
+			(v) => v === 5
+		)
+	);
+	// wolf: el fallback debe ser la MEDIA de 1-3 (2) — si alguien lo cambia a
+	// 8 (valor histórico), el caso especial lo oculta hasta que se borre.
+	check(
+		"C-5: MOB_XP.wolf = 2 (media de 1-3, fallback coherente)",
+		constants.MOB_XP.wolf === 2
+	);
+	// slime: el fallback es 1 (el caso especial aplica 4/2/1 por tamaño).
+	check(
+		"C-5: MOB_XP.slime = 1 (fallback; mobXp aplica 4/2/1)",
+		constants.MOB_XP.slime === 1
+	);
+}
+
 // ============================================================
 // TABLA #8 — COMIDA (Fase 18, C-3): hambre/saturación MC Java 1.9+
 // Zanahoria 3/3,6 · patata 1/0,6 · patata al horno 5/6 · trigo/carne cruda
