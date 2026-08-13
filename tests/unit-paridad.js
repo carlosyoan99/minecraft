@@ -26,7 +26,10 @@ const {
 	ARMOR_DURABILITY,
 	BLOCK_HARDNESS,
 	applyArmorDamageReduction,
-	xpToNext
+	xpToNext,
+	FOOD_VALUES,
+	BREED_FOOD,
+	CREATIVE_ITEMS // Fase 18 (C-3): tabla #8 comida
 } = require("../server/constants.js");
 
 let ok = 0;
@@ -267,6 +270,47 @@ check("xpToNext(31) = 121", xpToNext(31) === 121);
 		`=${mobs.mobXp(mkMob("wolf"))}`
 	);
 	Math.random = realRandom;
+}
+
+// ============================================================
+// TABLA #8 — COMIDA (Fase 18, C-3): hambre/saturación MC Java 1.9+
+// Zanahoria 3/3,6 · patata 1/0,6 · patata al horno 5/6 · trigo/carne cruda
+// (cruda 107-110: 3/1,8 · cocinada 111-114: 8/12,8 · conejo 3/1,8 y asado
+// 5/6 · pan 5/6 · pescado 2/0,4 y cocinado 5/6). Paridad tabla #8 de la
+// spec Fase 18 (C-3): zanahoria y patata ahora son COMIDA (antes solo cría).
+// ============================================================
+{
+	const f = (id) => {
+		const v = FOOD_VALUES[id];
+		return v ? `${v.food}/${v.saturation}` : "—";
+	};
+	const eq = (id, food, sat) => {
+		const v = FOOD_VALUES[id];
+		return !!v && v.food === food && v.saturation === sat;
+	};
+	check("T8: zanahoria 3/3,6 (MC)", eq(I.CARROT, 3, 3.6), f(I.CARROT));
+	check("T8: patata 1/0,6 (MC)", eq(I.POTATO, 1, 0.6), f(I.POTATO));
+	check(
+		"T8: patata al horno 5/6 (MC)",
+		eq(I.BAKED_POTATO, 5, 6),
+		f(I.BAKED_POTATO)
+	);
+	// Cocinada > cruda (progresión del horno, como el resto de la comida)
+	check(
+		"T8: patata al horno restaura más que la patata cruda",
+		eq(I.BAKED_POTATO, 5, 6) && eq(I.POTATO, 1, 0.6)
+	);
+	// La zanahoria ya era comida de cría: ahora también se come (no hay
+	// conflicto — la cría usa BREED_FOOD y el clic derecho decide por target).
+	check(
+		"T8: zanahoria sigue siendo comida de cría (pig/rabbit)",
+		Object.values(BREED_FOOD).includes(I.CARROT)
+	);
+	// Sincronía: la zanahoria/patata están en el inventario creativo
+	check(
+		"T8: patata y patata al horno en el creativo",
+		CREATIVE_ITEMS.includes(I.POTATO) && CREATIVE_ITEMS.includes(I.BAKED_POTATO)
+	);
 }
 
 // biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)

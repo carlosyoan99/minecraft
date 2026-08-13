@@ -332,6 +332,10 @@ const I = {
 	RABBIT: 118,
 	COOKED_RABBIT: 119, // conejo crudo (Fase 5: nuevo pasivo) y asado
 	STRING: 120, // hilo: drop de la araña (Fase 5)
+	// Fase 18 (C-3): zanahoria ya existía (116); patata y patata al horno son
+	// ítems NUEVOS (121/122) sincronizados en ambos constants + receta de horno.
+	POTATO: 121, // patata cruda — comestible (1 hambre), se cocina al horno
+	BAKED_POTATO: 122, // patata al horno — 5 hambre (MC)
 	LEATHER: 132, // cuero: drop de la vaca y el conejo, material de la armadura de cuero (Fase 7)
 	// Fase 9 (Bloque F): comida y materiales nuevos
 	BREAD: 133, // pan: 3 trigo → 1 pan
@@ -538,7 +542,13 @@ const FOOD_VALUES = {
 	// Fase 9 (Bloque F): pan y pescado (crudo/cocinado), valores estilo MC
 	[I.BREAD]: { food: 5, saturation: 6 },
 	[I.COD]: { food: 2, saturation: 0.4 },
-	[I.COOKED_COD]: { food: 5, saturation: 6 }
+	[I.COOKED_COD]: { food: 5, saturation: 6 },
+	// Fase 18 (C-3): zanahoria y patata ahora son COMIDA (antes solo cría/
+	// creativo). Valores MC Java: zanahoria 3/3,6, patata 1/0,6, patata al
+	// horno 5/6 (paridad tabla #8).
+	[I.CARROT]: { food: 3, saturation: 3.6 },
+	[I.POTATO]: { food: 1, saturation: 0.6 },
+	[I.BAKED_POTATO]: { food: 5, saturation: 6 }
 };
 const isFood = (id) => !!FOOD_VALUES[id];
 const isPickaxe = (id) => id >= 200 && id <= 204;
@@ -1073,6 +1083,9 @@ const CREATIVE_ITEMS = [
 	I.LEATHER,
 	I.WHEAT,
 	I.CARROT,
+	// Fase 18 (C-3): patata y patata al horno en el creativo
+	I.POTATO,
+	I.BAKED_POTATO,
 	I.SEEDS,
 	// Fase 11 (C): tijeras (esquilar ovejas)
 	I.SHEARS,

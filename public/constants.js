@@ -237,6 +237,9 @@ export const ITEM_NAMES = {
 	118: "Conejo crudo",
 	119: "Conejo asado", // Fase 5: nuevo pasivo y su cocinado
 	120: "Hilo", // Fase 5: drop de la araña (4 hilos → lana)
+	// Fase 18 (C-3): patata y patata al horno (comida nueva)
+	121: "Patata", // cruda — se cocina al horno
+	122: "Patata al horno", // horno: patata → patata al horno
 	132: "Cuero", // Fase 7: drop de la vaca/conejo, material de la armadura de cuero
 	133: "Pan", // Fase 9 (F)
 	134: "Pescado crudo", // Fase 9 (F)
@@ -393,8 +396,10 @@ export const BOW_DURABILITY = 384;
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)
 // Fase 9 (F): pan y pescado (crudo/cocinado).
+// Fase 18 (C-3): zanahoria (116) y patata (121/122) ahora son comida.
+// OJO: este Set se parsea con regex en unit-sync — sin comentarios dentro.
 export const FOOD_ITEMS = new Set([
-	107, 108, 109, 110, 111, 112, 113, 114, 118, 119, 133, 134, 135
+	107, 108, 109, 110, 111, 112, 113, 114, 118, 119, 133, 134, 135, 116, 121, 122
 ]);
 // Azadas (Fase 9, C): convierten tierra/césped en tierra arada (clic derecho).
 export const HOES = new Set([240, 241, 242, 243, 244]);

@@ -1652,7 +1652,12 @@ const OTHER_DROPS = {
 	drowned: { id: I.TRIDENT, min: 0, max: 1 },
 	// Fase 16 (D2): paridad MC — el zombi suelta carne podrida (0-2) y el
 	// creeper pólvora (0-2, material de la receta de TNT).
-	zombie: { id: I.ROTTEN_FLESH, min: 0, max: 2 },
+	// Fase 18 (C-3): el zombi suelta además patata ~2,5 % (paridad MC — en MC
+	// los zombis dropean zanahorias/patatas raramente; aquí solo patata).
+	zombie: [
+		{ id: I.ROTTEN_FLESH, min: 0, max: 2 },
+		{ id: I.POTATO, min: 1, max: 1, chance: 0.025 }
+	],
 	creeper: { id: I.GUNPOWDER, min: 0, max: 2 }
 };
 
@@ -1678,6 +1683,8 @@ function mobDrops(mob) {
 		// Fase 12 (A4): el tridente del ahogado cae ~15% (roll explícito; el
 		// rango 0..1 de la tabla daría 50%).
 		if (table.id === I.TRIDENT && Math.random() >= 0.15) continue;
+		// Fase 18 (C-3): drops con probabilidad (chance) — patata del zombi 2,5%.
+		if (table.chance != null && Math.random() >= table.chance) continue;
 		const count =
 			table.min + Math.floor(Math.random() * (table.max - table.min + 1));
 		if (count > 0) drops.push({ id: table.id, count });

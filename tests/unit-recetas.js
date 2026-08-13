@@ -337,6 +337,8 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 	//   250/251     — cubo lleno: se obtiene usando el CUBO (249, con receta)
 	//   252/253     — pedernal (grava) / pluma (pollo)
 	//   255/256     — carne podrida (zombi) / pólvora (creeper) — Fase 16 (D2)
+	//   121          — patata: drop raro del zombi (2,5%, Fase 18 C-3); su
+	//                  cocinado (122) sale del horno (patata → patata al horno)
 	const DROPS_JUSTIFICADOS = new Set([
 		I.DIAMOND,
 		I.REDSTONE,
@@ -346,6 +348,7 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 		I.CHICKEN,
 		I.MUTTON,
 		I.RABBIT,
+		I.POTATO, // Fase 18 (C-3): drop raro del zombi
 		I.WHEAT,
 		I.CARROT,
 		I.SEEDS,

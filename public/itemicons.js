@@ -748,6 +748,42 @@ function drawRabbit(g, cooked) {
 	rect(g, 11, 3, 2, 1, dark);
 }
 
+// Fase 18 (C-3): patata (cruda: óvalo marrón con motas y yemas) y patata al
+// horno (más oscura, con corte dorado y brillo de asado).
+function drawPotato(g, rng, baked) {
+	const base = baked ? "#a07830" : "#c9a45b";
+	const dark = baked ? "#7a5820" : "#a08040";
+	const light = baked ? "#d4b060" : "#e0c080";
+	// Cuerpo: óvalo vertical irregular (patata)
+	for (let y = 4; y <= 13; y++) {
+		const t = Math.abs(y - 8.5) / 4.5;
+		const w = Math.max(2, Math.round(5.5 * (1 - t)));
+		for (let x = 8 - w; x <= 8 + w; x++) set(g, x, y, base);
+	}
+	// Yemas y motas (2-3 huequitos como los ojos de la patata)
+	set(g, 6, 7, dark);
+	set(g, 10, 10, dark);
+	set(g, 7, 12, dark);
+	for (let i = 0; i < 4; i++)
+		set(g, 5 + Math.floor(rng() * 6), 6 + Math.floor(rng() * 6), dark);
+	// Al horno: corte en cruz con relleno dorado claro + brillo de asado
+	if (baked) {
+		set(g, 8, 5, "#f0d080");
+		set(g, 8, 6, "#f0d080");
+		set(g, 8, 11, "#f0d080");
+		set(g, 8, 12, "#f0d080");
+		set(g, 6, 8, "#f0d080");
+		set(g, 7, 8, "#f0d080");
+		set(g, 10, 8, "#f0d080");
+		set(g, 11, 8, "#f0d080");
+		set(g, 6, 5, light);
+		set(g, 7, 5, light);
+	} else {
+		set(g, 5, 5, light);
+		set(g, 6, 5, light);
+	}
+}
+
 // ============================================================
 // ÍTEMS DE LA FASE 9 (Bloque F): pan, pescado, hueso, tintes, miel
 // ============================================================
@@ -1321,6 +1357,9 @@ ICONS[117] = drawSeeds;
 ICONS[118] = (g) => drawRabbit(g, false);
 ICONS[119] = (g) => drawRabbit(g, true);
 ICONS[120] = drawString;
+// Fase 18 (C-3): patata y patata al horno (comida nueva)
+ICONS[121] = (g, rng) => drawPotato(g, rng, false);
+ICONS[122] = (g, rng) => drawPotato(g, rng, true);
 ICONS[132] = drawLeather;
 // Fase 9 (F): pan, pescado (crudo/cocinado), hueso, tintes, harina de hueso, miel
 ICONS[133] = drawBread;
