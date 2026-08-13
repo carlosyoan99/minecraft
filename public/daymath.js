@@ -6,12 +6,49 @@
 // las fórmulas, no la aplicación a la escena.
 // ============================================================
 
-// Factor de día: 1 al mediodía, 0 en la noche. Transición suave con seno
-// sobre la fase [0,1) (0 = amanecer, 0.25 = mediodía, 0.5 = atardecer,
-// 0.75 = medianoche). Nunca negativo: en el hemisferio nocturno (seno
-// negativo) el factor es 0.
+// Franjas del ciclo día/noche estilo MC (Fase 18, C-1): día 10 min /
+// atardecer 1,5 / noche 7 / amanecer 1,5 sobre DAY_CYCLE_MS (20 min).
+// Fracciones de la fase [0,1) (0 = amanecer). Mantener en sincronía con
+// DAY_PHASES de server/constants.js y public/constants.js (unit-sync).
+export const DAY_PHASES = {
+	dawnEnd: 0.075, // fin del amanecer → empieza el día
+	dayEnd: 0.575, // fin del día → empieza el atardecer
+	duskEnd: 0.65 // fin del atardecer → empieza la noche
+};
+
+// Segmento del ciclo en el que está la fase [0,1): "dawn" | "day" |
+// "dusk" | "night". Puro y testeable (unit-dia) — es la fuente para el
+// spawn hostil (night), la quema solar (day estricto) y el render.
+export function segmentOf(phase) {
+	if (phase < DAY_PHASES.dawnEnd) return "dawn";
+	if (phase < DAY_PHASES.dayEnd) return "day";
+	if (phase < DAY_PHASES.duskEnd) return "dusk";
+	return "night";
+}
+
+// ¿Es noche ESTRICTA? (spawn de hostiles, dormir): fase ≥ duskEnd.
+export function isNightPhase(phase) {
+	return phase >= DAY_PHASES.duskEnd;
+}
+
+// ¿Es día ESTRICTO (sin crepúsculos)? Quema solar de no-muertos.
+export function isDayPhase(phase) {
+	return phase >= DAY_PHASES.dawnEnd && phase < DAY_PHASES.dayEnd;
+}
+
+// Factor de día: 1 durante el día completo, 0 en la noche. Transición
+// LINEAL en los crepúsculos siguiendo las franjas MC (Fase 18, C-1): rampa
+// 0→1 en el amanecer [0, dawnEnd), meseta 1 en el día [dawnEnd, dayEnd),
+// rampa 1→0 en el atardecer [dayEnd, duskEnd), 0 en la noche [duskEnd, 1).
+// Antes era un seno que se apagaba en fase 0.5 (atardecer visual adelantado
+// a la franja de juego); con las franjas, el cielo sigue al reloj del
+// servidor (spawn hostil/quema solar usan los mismos límites).
 export function dayFactor(phase) {
-	return Math.max(0, Math.sin(phase * Math.PI * 2));
+	if (phase < DAY_PHASES.dawnEnd) return phase / DAY_PHASES.dawnEnd;
+	if (phase < DAY_PHASES.dayEnd) return 1;
+	if (phase < DAY_PHASES.duskEnd)
+		return 1 - (phase - DAY_PHASES.dayEnd) / (DAY_PHASES.duskEnd - DAY_PHASES.dayEnd);
+	return 0;
 }
 
 // Factor de atardecer/amanecer: cuánto naranja tiñe el cielo. Máximo cuando

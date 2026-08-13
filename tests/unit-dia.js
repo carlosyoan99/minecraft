@@ -13,24 +13,39 @@ const { Reporter, loaderESM } = require("./helpers.js");
 	const r = new Reporter();
 	const dm = await loaderESM("public/daymath.js");
 
-	// --- dayFactor: puntos clave del ciclo [0,1) ---
-	// 0 = amanecer, 0.25 = mediodía, 0.5 = atardecer, 0.75 = medianoche
+	// --- dayFactor: puntos clave del ciclo [0,1) (Fase 18, C-1) ---
+	// Perfil trapezoidal por franjas: 0 en el amanecer inicial, 1 durante
+	// todo el día, rampa en los crepúsculos, 0 en la noche. Antes era un
+	// seno que se apagaba en fase 0.5 (visual adelantada a la franja de juego).
 	r.check(
 		"dayFactor: mediodía (fase 0.25) = 1",
 		Math.abs(dm.dayFactor(0.25) - 1) < 1e-6
 	);
 	r.check("dayFactor: medianoche (fase 0.75) = 0", dm.dayFactor(0.75) === 0);
 	r.check(
-		"dayFactor: amanecer/atardecer (fase 0/0.5) ≈ 0",
-		dm.dayFactor(0) === 0 && Math.abs(dm.dayFactor(0.5)) < 1e-9
+		"dayFactor: inicio de amanecer (fase 0) = 0",
+		dm.dayFactor(0) === 0
 	);
 	r.check(
-		"dayFactor: nunca negativo (hemisferio nocturno → 0)",
-		dm.dayFactor(0.9) === 0 && dm.dayFactor(0.55) >= 0
+		"dayFactor: fase 0.5 sigue siendo DÍA (atardecer real en 0.575)",
+		dm.dayFactor(0.5) === 1
 	);
 	r.check(
-		"dayFactor: rango [0,1] para toda fase",
-		[0, 0.1, 0.2, 0.35, 0.6, 0.8, 0.99].every(
+		"dayFactor: rampa en el amanecer [0, 0.075)",
+		dm.dayFactor(0.0375) > 0 && dm.dayFactor(0.0375) < 1
+	);
+	r.check(
+		"dayFactor: rampa en el atardecer [0.575, 0.65)",
+		dm.dayFactor(0.6) > 0 && dm.dayFactor(0.6) < 1 &&
+			dm.dayFactor(0.6) < dm.dayFactor(0.585)
+	);
+	r.check(
+		"dayFactor: noche estricta (fase ≥ 0.65) = 0",
+		dm.dayFactor(0.65) === 0 && dm.dayFactor(0.9) === 0 && dm.dayFactor(0.99) === 0
+	);
+	r.check(
+		"dayFactor: nunca negativo y rango [0,1]",
+		[0, 0.1, 0.2, 0.35, 0.5, 0.6, 0.8, 0.99].every(
 			(p) => dm.dayFactor(p) >= 0 && dm.dayFactor(p) <= 1
 		)
 	);
@@ -115,6 +130,83 @@ const { Reporter, loaderESM } = require("./helpers.js");
 	r.check(
 		"daymath es determinista (misma entrada → mismo resultado)",
 		d1 === d2 && u1 === u2
+	);
+
+	// ============================================================
+	// FRANJAS DÍA/NOCHE ESTILO MC (Fase 18, C-1)
+	// Duración: día 10 min / atardecer 1,5 / noche 7 / amanecer 1,5 sobre
+	// DAY_CYCLE_MS (20 min) — fracciones 0.5 / 0.075 / 0.35 / 0.075.
+	// ============================================================
+	r.check(
+		"DAY_PHASES: dawnEnd = 0.075 (1,5 min de amanecer)",
+		Math.abs(dm.DAY_PHASES.dawnEnd - 0.075) < 1e-9
+	);
+	r.check(
+		"DAY_PHASES: dayEnd = 0.575 (10 min de día → 0.5 de duración)",
+		Math.abs(dm.DAY_PHASES.dayEnd - 0.575) < 1e-9
+	);
+	r.check(
+		"DAY_PHASES: duskEnd = 0.65 (atardecer de 1,5 min → 0.075)",
+		Math.abs(dm.DAY_PHASES.duskEnd - 0.65) < 1e-9
+	);
+	r.check(
+		"DAY_PHASES: la noche dura 7 min (0.35 del ciclo)",
+		Math.abs(1 - dm.DAY_PHASES.duskEnd - 0.35) < 1e-9
+	);
+	r.check(
+		"DAY_PHASES: las 4 franjas suman el ciclo completo (20 min)",
+		Math.abs(dm.DAY_PHASES.dawnEnd + (dm.DAY_PHASES.dayEnd - dm.DAY_PHASES.dawnEnd) + (dm.DAY_PHASES.duskEnd - dm.DAY_PHASES.dayEnd) + (1 - dm.DAY_PHASES.duskEnd) - 1) < 1e-9
+	);
+
+	// --- segmentOf: clasificación de fase ---
+	r.check("segmentOf: amanecer (0.03) → dawn", dm.segmentOf(0.03) === "dawn");
+	r.check("segmentOf: día (0.25 mediodía) → day", dm.segmentOf(0.25) === "day");
+	r.check(
+		"segmentOf: atardecer (0.6) → dusk",
+		dm.segmentOf(0.6) === "dusk"
+	);
+	r.check(
+		"segmentOf: noche (0.8) → night",
+		dm.segmentOf(0.8) === "night"
+	);
+	r.check(
+		"segmentOf: límites exactos — dawnEnd es día, duskEnd es noche",
+		dm.segmentOf(0.075) === "day" && dm.segmentOf(0.65) === "night"
+	);
+
+	// --- isNightPhase / isDayPhase (uso en spawn hostil y quema solar) ---
+	r.check(
+		"isNightPhase: noche estricta solo desde duskEnd (0.65)",
+		!dm.isNightPhase(0.6) && dm.isNightPhase(0.65) && dm.isNightPhase(0.9)
+	);
+	r.check(
+		"isDayPhase: día estricto sin crepúsculos (0.075..0.575)",
+		dm.isDayPhase(0.075) &&
+			dm.isDayPhase(0.25) &&
+			dm.isDayPhase(0.574) &&
+			!dm.isDayPhase(0.575) &&
+			!dm.isDayPhase(0.03) &&
+			!dm.isDayPhase(0.6)
+	);
+	r.check(
+		"isNightPhase e isDayPhase son complementarios en los extremos",
+		!dm.isNightPhase(0.25) && dm.isDayPhase(0.25) &&
+			dm.isNightPhase(0.8) && !dm.isDayPhase(0.8)
+	);
+
+	// --- Coherencia visual: mediodía y atardecer caen en sus franjas ---
+	r.check(
+		"dayFactor: máximo (1) dentro de la franja de día",
+		dm.segmentOf(0.25) === "day" && dm.dayFactor(0.25) === 1
+	);
+	r.check(
+		"dayFactor: 0 en la noche estricta (0.65..1)",
+		dm.isNightPhase(0.7) && dm.dayFactor(0.7) === 0
+	);
+	r.check(
+		"duskFactor: máximo visible en el atardecer (0.575..0.65)",
+		dm.segmentOf(0.6) === "dusk" &&
+			dm.duskFactor(dm.dayFactor(0.6)) > 0.05
 	);
 
 	r.done();

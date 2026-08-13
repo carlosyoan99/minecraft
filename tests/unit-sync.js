@@ -179,6 +179,25 @@ check(
 	parseNum("DAY_CYCLE_MS") === server.DAY_CYCLE_MS,
 	`cliente=${parseNum("DAY_CYCLE_MS")}`
 );
+// Fase 18 (C-1): las franjas día/noche MC deben ser idénticas en ambos lados
+// (el servidor decide spawn/quema con isNightTime/isDayTime; el cliente pinta
+// el ciclo con los mismos límites via daymath). Si divergen, la noche visual
+// no coincide con la noche de juego.
+{
+	const m = src.match(/export const DAY_PHASES = \{([\s\S]*?)\n\};/);
+	let equal = !!m;
+	if (m) {
+		for (const [k, v] of Object.entries(server.DAY_PHASES)) {
+			const cv = m[1].match(new RegExp(`${k}: (\\d+(?:\\.\\d+)?)`));
+			if (!cv || Number(cv[1]) !== v) equal = false;
+		}
+	}
+	check(
+		"DAY_PHASES cliente (dawnEnd/dayEnd/duskEnd) == servidor",
+		equal,
+		equal ? "" : "las franjas divergen"
+	);
+}
 // Fase 8 (B8): el ciclo lunar (8 días) debe ser idéntico en ambos lados — el
 // cliente extrapola la fase con MOON_CYCLE_MS y el servidor la deriva con el
 // mismo valor (si divergen, la máscara del disco lunar se desfasa del reloj).

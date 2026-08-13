@@ -20,6 +20,27 @@ const VIEW_DISTANCE_CHUNKS = 6; // Chunks generados alrededor de cada jugador al
 const UNLOAD_DISTANCE_CHUNKS = 10; // Chunks sin jugadores a menos de esta distancia (en chunks) se descargan
 const UNLOAD_INTERVAL_MS = 10000; // Cada 10s se buscan chunks lejanos que descargar
 const DAY_CYCLE_MS = 1200000; // 20 minutos como Minecraft: ~10 de día, ~10 de noche (atardecer/amanecer suaves en el cliente)
+// Fase 18 (C-1): franjas del ciclo día/noche estilo MC sobre DAY_CYCLE_MS
+// (20 min = día 10 / atardecer 1,5 / noche 7 / amanecer 1,5), expresadas
+// como fracción del ciclo. Fase 0 = amanecer, 0.25 = mediodía, 0.5 =
+// atardecer, 0.75 = medianoche. La NOCHE ESTRICTA (spawn hostil, dormir)
+// empieza al terminar el atardecer; la QUEMA SOLAR aplica fuera de ella.
+// Mantener en sincronía con public/constants.js (lo audita unit-sync) y con
+// public/daymath.js (helpers puros segmentOf/isNightPhase).
+const DAY_PHASES = {
+	dawnEnd: 0.075, // fin del amanecer (1,5 min) → empieza el día
+	dayEnd: 0.575, // fin del día (10 min) → empieza el atardecer
+	duskEnd: 0.65 // fin del atardecer (1,5 min) → empieza la noche (7 min)
+};
+// ¿Es noche ESTRICTA en el instante t (ms dentro del ciclo)? Antes el umbral
+// era DAY_CYCLE_MS/2 (binario 10/10); con las franjas MC la noche son 7 min
+// (fase ≥ duskEnd). Lo usan spawnMobs (hostiles), dormir y el mainLoop.
+const isNightTime = (t) => (t % DAY_CYCLE_MS) / DAY_CYCLE_MS >= DAY_PHASES.duskEnd;
+// ¿Es día ESTRICTO? (sin amanecer ni atardecer): quema solar y pasivos.
+const isDayTime = (t) => {
+	const f = (t % DAY_CYCLE_MS) / DAY_CYCLE_MS;
+	return f >= DAY_PHASES.dawnEnd && f < DAY_PHASES.dayEnd;
+};
 // Fase 8 (B8): fases lunares — ciclo completo cada 8 días de juego, derivado
 // del MISMO reloj del mundo (worldTime) + offset determinista por semilla.
 const MOON_DAYS = 8;
@@ -1150,6 +1171,9 @@ module.exports = {
 	UNLOAD_DISTANCE_CHUNKS,
 	UNLOAD_INTERVAL_MS,
 	DAY_CYCLE_MS,
+	DAY_PHASES, // Fase 18 (C-1): franjas día/noche estilo MC (fracciones del ciclo)
+	isNightTime, // C-1: noche estricta (fase ≥ duskEnd) — spawn hostil/dormir
+	isDayTime, // C-1: día estricto (sin crepúsculos) — quema solar
 	MOON_DAYS,
 	MOON_CYCLE_MS,
 	seedMoonOffsetMs,

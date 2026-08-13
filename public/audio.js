@@ -6,6 +6,7 @@
 // del usuario, como exigen los navegadores para permitir audio.
 // ============================================================
 import { currentPhase } from "./daynight.js";
+import { dayFactor as dayFactorOf } from "./daymath.js"; // Fase 18 (C-1)
 
 const MASTER_VOLUME = 0.8; // volumen general por defecto (el silencio lo pone a 0)
 // Volumen por categoría (Fase 7): master (todo), effects (bloques, pasos,
@@ -592,7 +593,10 @@ function cricketChirp() {
 // Barata: solo setTargetAtTime sobre AudioParams y comparaciones de tiempo.
 export function updateAmbient() {
 	if (!ctx || !wind) return; // sin gesto del usuario aún
-	const dayFactor = Math.max(0, Math.sin(currentPhase() * Math.PI * 2));
+	// Fase 18 (C-1): mismo perfil trapezoidal por franjas que el cielo
+	// (daymath.dayFactor) para que viento/pájaros/grillos sigan la noche
+	// REAL de juego (antes un seno que apagaba el día en fase 0.5).
+	const dayFactor = dayFactorOf(currentPhase());
 	const t = ctx.currentTime;
 	const now = performance.now();
 

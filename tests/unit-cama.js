@@ -11,7 +11,7 @@ const state = require("../server/state.js");
 const world = require("../server/world.js");
 const crafting = require("../server/crafting.js");
 const playerHelpers = require("../server/players.js");
-const { B, I, DAY_CYCLE_MS } = require("../server/constants.js");
+const { B, I, DAY_CYCLE_MS, DAY_PHASES } = require("../server/constants.js");
 
 world.setDiskLoader(() => null);
 crafting.loadRecipes();
@@ -61,8 +61,14 @@ function connect() {
 }
 
 function setNight() {
+	// Fase 18 (C-1): la noche ESTRICTA empieza en duskEnd (0.65 del ciclo), ya
+	// no en la mitad — dormir requiere fase ≥ 0.65 (antes el umbral binario
+	// estaba en DAY_CYCLE_MS/2).
 	state.timeOffset =
-		(DAY_CYCLE_MS / 2 + 5000 - (Date.now() % DAY_CYCLE_MS) + DAY_CYCLE_MS) %
+		(DAY_PHASES.duskEnd * DAY_CYCLE_MS +
+			5000 -
+			(Date.now() % DAY_CYCLE_MS) +
+			DAY_CYCLE_MS) %
 		DAY_CYCLE_MS;
 }
 function setDay() {
@@ -150,6 +156,11 @@ const t = ctx.ws.events("time_set")[0];
 check(
 	"time_set apunta al día (< mitad del ciclo)",
 	t && t.data.dayTime < DAY_CYCLE_MS / 2,
+	t ? `${t.data.dayTime}` : ""
+);
+check(
+	"time_set apunta al amanecer (fase 0, antes de dawnEnd)",
+	t && t.data.dayTime < DAY_PHASES.dawnEnd * DAY_CYCLE_MS,
 	t ? `${t.data.dayTime}` : ""
 );
 check(

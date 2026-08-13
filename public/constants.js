@@ -14,6 +14,16 @@ export const WORLD_MAX_Y = WORLD_MIN_Y + WORLD_HEIGHT - 1; // 63
 // cliente lo usa para extrapolar la fase visual del ciclo desde el dayTime
 // del init.
 export const DAY_CYCLE_MS = 1200000;
+// Fase 18 (C-1): franjas del ciclo día/noche estilo MC (20 min = día 10 /
+// atardecer 1,5 / noche 7 / amanecer 1,5), expresadas como fracción del
+// ciclo (fase 0 = amanecer). Mantener en sincronía con DAY_PHASES de
+// server-side constants.js — lo audita tests/unit-sync.js y lo usan los
+// helpers puros de public/daymath.js (segmentOf/isNightPhase).
+export const DAY_PHASES = {
+	dawnEnd: 0.075, // fin del amanecer (1,5 min) → empieza el día
+	dayEnd: 0.575, // fin del día (10 min) → empieza el atardecer
+	duskEnd: 0.65 // fin del atardecer (1,5 min) → empieza la noche (7 min)
+};
 // Fase 8 (B8): ciclo de fases lunares — 8 días de juego por ciclo completo,
 // derivado del MISMO reloj del mundo (dayTime) + offset de semilla. Mantener
 // en sincronía con MOON_DAYS/MOON_CYCLE_MS de server-side constants.js — lo

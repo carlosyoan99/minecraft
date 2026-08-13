@@ -14,6 +14,9 @@ const {
 	TICK_MS,
 	VIEW_DISTANCE_CHUNKS,
 	DAY_CYCLE_MS,
+	DAY_PHASES, // Fase 18 (C-1): franjas día/noche MC (fracciones del ciclo)
+	isNightTime, // C-1: noche estricta (fase ≥ duskEnd) — spawn hostil y dormir
+	isDayTime, // C-1: día estricto (sin crepúsculos) — quema solar
 	SPAWN_GRACE_MS,
 	DESPAWN_DIST,
 	VOID_Y,
@@ -1719,7 +1722,11 @@ function handleConnection(ws, req) {
 						bz = data.z;
 					if (Math.hypot(bx - p.x, by - p.y, bz - p.z) > 7) return;
 					if (world.getBlock(bx, by, bz) !== B.BED) return;
-					if (worldTime() < DAY_CYCLE_MS / 2) {
+					// Fase 18 (C-1): dormir solo en la NOCHE ESTRICTA (fase ≥ duskEnd).
+					// Antes el umbral era DAY_CYCLE_MS/2 (binario 10/10); con las
+					// franjas MC la noche son 7 min de 20 y el atardecer/amanecer no
+					// cuentan para dormir.
+					if (!isNightTime(worldTime())) {
 						p.ws.send(
 							JSON.stringify({
 								event: "sleep_rejected",
@@ -2132,8 +2139,13 @@ const perf = {
 let lastMobsJson = "";
 function mainLoop() {
 	const t0 = performance.now();
-	const isNight = worldTime() > DAY_CYCLE_MS / 2;
-	for (const m of state.mobs) if (m.alive) m.tick(isNight);
+	// Fase 18 (C-1): noche/día ESTRICTOS por franjas MC (día 10 / atardecer
+	// 1,5 / noche 7 / amanecer 1,5 sobre 20 min). El flag isNight pasa a los
+	// mobs para el spawn hostil y la quema solar (tickSunBurn usa el día
+	// estricto: solo arde fuera de la noche, incluido el crepúsculo como MC).
+	const isNight = isNightTime(worldTime());
+	const isDay = isDayTime(worldTime());
+	for (const m of state.mobs) if (m.alive) m.tick(isNight, isDay);
 	// Auditoría 2026-08-09 (§4.3): despawn por distancia como MC — un mob a
 	// >128 bloques de TODO jugador conectado (y sin dueño) se elimina. Antes
 	// los mobs se acumulaban indefinidamente lejos del pueblito (solo morían

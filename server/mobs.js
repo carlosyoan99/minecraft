@@ -622,9 +622,13 @@ class Mob {
 	// dan XP (como en Minecraft: solo se dropea si el golpe final es del
 	// jugador — aquí la muerte se gestiona en el bucle principal, fuera de
 	// attack_mob). Si es de noche, bajo techo o el tipo no arde, se apaga.
-	tickSunBurn(isNight) {
+	tickSunBurn(isNight, isDay) {
 		const burns = BURNS_IN_SUN.has(this.type);
-		if (!burns || isNight || !this.exposedToSky()) {
+		// Fase 18 (C-1): la quema solar ocurre solo en el DÍA ESTRICTO (sin
+		// crepúsculos). Retrocompatible: si llaman sin isDay (tests), se infiere
+		// de isNight como antes.
+		const isDayPhase = isDay !== undefined ? isDay : !isNight;
+		if (!burns || !isDayPhase || !this.exposedToSky()) {
 			this.burning = false;
 			return;
 		}
@@ -703,7 +707,7 @@ class Mob {
 		this.alive = false;
 	}
 
-	tick(isNight) {
+	tick(isNight, isDay) {
 		// Los bebés crecen con el tiempo hasta hacerse adultos
 		if (this.isBaby) {
 			this.age += TICK_MS;
@@ -711,8 +715,9 @@ class Mob {
 		}
 		// Quema solar: antes del comportamiento, para que un no-muerto en llamas
 		// no siga persiguiendo mientras arde (y para que el flag llegue al
-		// snapshot en el mismo tick).
-		this.tickSunBurn(isNight);
+		// snapshot en el mismo tick). Fase 18 (C-1): recibe además el día
+		// estricto de las franjas MC (opcional; sin él conserva !isNight).
+		this.tickSunBurn(isNight, isDay);
 		if (!this.alive) return; // murió por el sol: no actúa este tick
 		const { nearest, dist } = this.findNearestPlayer();
 		// Fase 13 (C2): POO — el comportamiento por especie es un método
