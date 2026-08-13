@@ -1088,36 +1088,49 @@ function generateChunk(cx, cz) {
 					// fuertes alcanzan la capa superior (boca de cueva).
 					if (y > WORLD_MIN_Y + 1 && isCaveBlock(wx, y, wz, y >= height - 3)) {
 						block = B.AIR;
-						if (y === height - 2) carvedTop = true;
-					} else {
-						block = B.STONE;
-						if (y > WORLD_MIN_Y + 4) {
-							// Fase 15 (D5): minerales por PROFUNDIDAD (mundo −64..+63) —
-							// diamante/redstone solo en lo profundo (y < −12/−20),
-							// oro/esmeralda bajo el mar, hierro/carbón en capas medias.
-							// Segunda octava de ruido para vetas más orgánicas.
-							// Fase 15 (cierre): early-exit — roll = oreRoll*0.7 +
-							// oreFine*0.3 con oreFine ≤ 1, y el umbral MÁS BAJO de
-							// mineral es el carbón (0.86): si oreRoll*0.7 + 0.3 ≤ 0.86
-							// (oreRoll ≤ 0.8) ningún oreFine alcanza NINGÚN mineral →
-							// se omite el noise2D de detalle en ~80% de las celdas
-							// de piedra. Bit-idéntico: solo se salta un cálculo que
-							// no podía cambiar la decisión.
-							const oreRoll =
-								(noise2D_ore(wx * 0.3 + y * 7.1, wz * 0.3) + 1) / 2;
-							if (oreRoll * 0.7 + 0.3 > 0.86) {
-								const oreFine =
-									(noise2D_detail(wx * 0.15 + y * 3.7, wz * 0.15) + 1) / 2;
-								const roll = oreRoll * 0.7 + oreFine * 0.3;
-								if (y < -20 && roll > 0.978) block = B.DIAMOND_ORE;
-								else if (y < -12 && roll > 0.968) block = B.REDSTONE_ORE;
-								else if (y < -4 && roll > 0.955) block = B.EMERALD_ORE;
-								else if (y < -4 && roll > 0.945) block = B.GOLD_ORE;
-								else if (y < 12 && roll > 0.9) block = B.IRON_ORE;
-								else if (y < 28 && roll > 0.86) block = B.COAL_ORE;
+						if (y === height - 2) carvedTop = true;						} else {
+							block = B.STONE;
+							if (y > WORLD_MIN_Y + 4) {
+								// Fase 18 (C-2): minerales por PROFUNDIDAD mapeados al mundo
+								// v6 (−64..+63, 128 bloques). Distribución MC 1.18 (mundo
+								// −64..+320, 384 bloques) mapeada POR PERCENTIL de columna:
+								//   MC −64..+16   (fondo 21 %)  → diamante y ≤ −38
+								//   MC −64..+16   (fondo 21 %)  → redstone y ≤ −32 (misma banda,
+								//        con umbral de rareza menor; antes y < −12/−20)
+								//   MC −64..+80   (fondo 37 %)  → oro y ≤ −16
+								//   MC −64..+256  (fondo 83 %)  → hierro y ≤ +42
+								//   MC 0..+256    (banda 17-83 %) → carbón −42 ≤ y ≤ +42
+								//   esmeralda: MC solo montañas (rango alto); aquí se mantiene
+								//   como mena rara media-profunda (y ≤ −20) por no haber
+								//   generación de montañas con esmeralda — decisión heredada
+								//   de la Fase 15, documentada.
+								// Antes (F15) los cortes eran absolutos (−20/−12/−4/12/28) y no
+								// seguían los percentiles MC; hierro/carbón quedaban en capas
+								// demasiado someras y diamante/redstone demasiado altos.
+								// Segunda octava de ruido para vetas más orgánicas.
+								// Fase 15 (cierre): early-exit — roll = oreRoll*0.7 +
+								// oreFine*0.3 con oreFine ≤ 1, y el umbral MÁS BAJO de
+								// mineral es el carbón (0.86): si oreRoll*0.7 + 0.3 ≤ 0.86
+								// (oreRoll ≤ 0.8) ningún oreFine alcanza NINGÚN mineral →
+								// se omite el noise2D de detalle en ~80% de las celdas
+								// de piedra. Bit-idéntico: solo se salta un cálculo que
+								// no podía cambiar la decisión.
+								const oreRoll =
+									(noise2D_ore(wx * 0.3 + y * 7.1, wz * 0.3) + 1) / 2;
+								if (oreRoll * 0.7 + 0.3 > 0.86) {
+									const oreFine =
+										(noise2D_detail(wx * 0.15 + y * 3.7, wz * 0.15) + 1) / 2;
+									const roll = oreRoll * 0.7 + oreFine * 0.3;
+									if (y < -38 && roll > 0.965) block = B.DIAMOND_ORE;
+									else if (y < -32 && roll > 0.955) block = B.REDSTONE_ORE;
+									else if (y < -20 && roll > 0.955) block = B.EMERALD_ORE;
+									else if (y < -16 && roll > 0.945) block = B.GOLD_ORE;
+									else if (y < 42 && roll > 0.9) block = B.IRON_ORE;
+									else if (y > -42 && y < 42 && roll > 0.86)
+										block = B.COAL_ORE;
+								}
 							}
 						}
-					}
 				} else if (y === height - 1) {
 					// Superficie: bloque del bioma dominante (tundra nevada, cumbres
 					// con nieve, desierto con arena, resto césped) o aire si hay boca

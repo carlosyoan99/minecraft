@@ -447,13 +447,15 @@ check("el pantano tiene césped", swampSurface > 0, `${swampSurface}`);
 // 5) MINERALES POR PROFUNDIDAD
 // ---------------------------------------------------------------
 console.log("== 5. Minerales por profundidad ==");
+// Fase 18 (C-2): bandas recalibradas a los percentiles MC mapeados al mundo
+// v6 (ver tabla documentada en server/world.js junto a generateOres).
 const oreLayers = {
-	[B.DIAMOND_ORE]: { max: -20, name: "diamante" },
-	[B.REDSTONE_ORE]: { max: -12, name: "redstone" },
-	[B.EMERALD_ORE]: { max: -4, name: "esmeralda" },
-	[B.GOLD_ORE]: { max: -4, name: "oro" },
-	[B.IRON_ORE]: { max: 12, name: "hierro" },
-	[B.COAL_ORE]: { max: 28, name: "carbón" }
+	[B.DIAMOND_ORE]: { max: -38, name: "diamante" },
+	[B.REDSTONE_ORE]: { max: -32, name: "redstone" },
+	[B.EMERALD_ORE]: { max: -20, name: "esmeralda" },
+	[B.GOLD_ORE]: { max: -16, name: "oro" },
+	[B.IRON_ORE]: { max: 42, name: "hierro" },
+	[B.COAL_ORE]: { max: 42, name: "carbón" }
 };
 const oreCounts = {};
 let oreViolations = 0;

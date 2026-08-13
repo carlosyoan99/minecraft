@@ -18,6 +18,7 @@ const UNIT = [
 	"unit-cria.js",
 	"unit-crafting.js",
 	"unit-mundo.js",
+	"unit-minerales.js", // Fase 18 (C-2): bandas de profundidad de menas por percentil MC
 	"unit-mobs-agua.js",
 	"unit-spawn.js",
 	"unit-biomas.js",

@@ -25,8 +25,25 @@
 - **Cuevas 3D** (`caveStrength` + `isCaveBlock`): ruido 3D que resta
   piedra; cerca de la superficie se estrechan para no agujerear el suelo.
 - **Minerales por altura estilo Minecraft** (`noise2D_ore` con el `y` en
-  la coordenada): umbrales por profundidad — el diamante solo aparece
-  abajo, el carbón en todas partes, etc.
+  la coordenada): bandas de profundidad mapeadas a los percentiles de
+  columna de MC 1.18 (Fase 18, C-2). MC genera en un mundo −64..+320
+  (384 bloques); el nuestro es −64..+63 (128), así que cada mena se ubica
+  en el mismo percentil de columna que en MC:
+
+  | Mena | Banda MC 1.18 | Percentil | Banda v6 (−64..+63) |
+  |---|---|---|---|
+  | Diamante | −64..+16 | fondo 21 % | y < −38 |
+  | Redstone | −64..+16 | fondo 21 % | y < −32 |
+  | Esmeralda | solo montañas | — | y < −20 (rara media-profunda, decisión heredada de F15) |
+  | Oro | −64..+80 | fondo 37 % | y < −16 |
+  | Hierro | −64..+256 | fondo 83 % | y < 42 |
+  | Carbón | 0..+256 | banda 17-83 % | −42 < y < 42 |
+
+  Antes (F15) los cortes eran absolutos (−20/−12/−4/12/28) y no seguían
+  los percentiles MC: hierro/carbón quedaban en capas demasiado someras y
+  diamante/redstone demasiado altos. La tabla completa con el razonamiento
+  vive en `server/world.js` junto a `generateOres` y la fija
+  `tests/unit-minerales.js` (cada mena aparece solo en su banda).
 - **Charcos** (`isPondAt`, `isLavaPondAt`): agua/lava decorativas en
   superficie (la lava solo en biomas cálidos, no en hielo), con `nearLake`
   que hace la transición agua→arena→tierra (playas). Los charcos de
