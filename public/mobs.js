@@ -122,7 +122,9 @@ function buildPartGroup(parts, material, rects = null) {
 // skin válida cae al color plano histórico (defensivo).
 const HUMANOID_PARTS = MOB_PARTS.zombie?.parts || [];
 
-function makeHumanoid(skinId) {
+// Exportado para la vista previa 3D del menú (skinpreview.js) y para los
+// jugadores remotos. Construye el humanoide SIN añadirlo a la escena.
+export function makeHumanoid(skinId) {
 	if (isValidSkin(skinId)) {
 		const { texture, rects } = getSkinAtlas(skinId);
 		const material = new THREE.MeshLambertMaterial({

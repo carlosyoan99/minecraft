@@ -28,6 +28,7 @@ import {
 	settingUiValue,
 	toggleFullscreen // Fase 16 (E1): pantalla completa
 } from "./settings.js";
+import { initSkinPreview, setPreviewSkin } from "./skinpreview.js"; // Fase 17: vista previa 3D del personaje
 import { isValidSkin, paintHeadPreview, SKINS } from "./skins.js"; // Fase 17: skins de jugador
 
 // Estado que dibuja el HUD (lo actualiza la red; lo lee el input)
@@ -401,6 +402,7 @@ function selectSkin(id) {
 	setStoredSkin(id);
 	send("set_skin", { skin: id });
 	refreshSkinSelector();
+	setPreviewSkin(id); // la figura 3D del menú cambia en vivo
 }
 function refreshSkinSelector() {
 	for (const card of skinGrid.children)
@@ -425,6 +427,8 @@ for (const s of SKINS) {
 	skinGrid.appendChild(card);
 }
 refreshSkinSelector();
+// Vista previa 3D giratoria del personaje (arranca con la skin guardada).
+initSkinPreview();
 
 // Fase 17 (A2): «Un jugador» muestra la lista de mundos (el flujo de
 // set_seed directo queda solo para el modo clásico con SEED).
