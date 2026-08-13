@@ -11,7 +11,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const crafting = require(path.join(ROOT, "server", "crafting.js"));
-const { B, I, isFood, FUEL_ITEMS, canHarvest } = require(
+const { B, I, isFood, FUEL_ITEMS, canHarvest, ORE_DROP } = require(
 	path.join(ROOT, "server", "constants.js")
 );
 
@@ -205,16 +205,22 @@ check(
 	pairingOk
 );
 
-// 9) Los minerales se funden en lingotes (9→101, 10→102, 11→103).
-// El diamante (12) NO se funde: se obtiene directamente al minar (como Minecraft).
-const smelt = { 9: I.COAL, 10: I.IRON_INGOT, 11: I.GOLD_INGOT };
+// 9) Los minerales dropean su ítem DIRECTAMENTE al minar (ORE_DROP) — la
+// cadena minar→gema/lingote/carbón está implícita, sin recetas de horno de
+// mena (Fase 18, C-7; el diamante ya era directo, como Minecraft).
 let smeltOk = true;
-for (const [ore, ingot] of Object.entries(smelt)) {
-	const r = horno[ore];
-	if (!r || r.result.id !== ingot) smeltOk = false;
+for (const [ore, ingot] of Object.entries(ORE_DROP)) {
+	// El resultado debe ser un ítem obtenible distinto de la mena misma.
+	if (Number(ore) === ingot || !KNOWN.has(ingot)) smeltOk = false;
 }
-check("los minerales se funden en sus lingotes/carbón", smeltOk);
-check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
+check(
+	"todas las menas dropean su ítem directo (ORE_DROP, sin receta de horno)",
+	smeltOk
+);
+check(
+	"ninguna mena tiene receta de horno (el fundido está en ORE_DROP)",
+	[9, 10, 11, 12, 13, 14].every((o) => !horno[String(o)])
+);
 
 // 10) CADENA DE OBTENCIÓN REAL de las 20 herramientas (Fase 6)
 // No basta con que la receta exista: cada ingrediente debe ser alcanzable
@@ -274,20 +280,19 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 		"el horno (16) se craftea de adoquín",
 		recetas.furnace && recetas.furnace.ingredients["#"] === B.COBBLESTONE
 	);
-	// Lingotes: el mineral se dropea con pico y se funde en el horno.
+	// Lingotes: el mineral se dropea con pico y ORE_DROP da el lingote directo
+	// (Fase 18, C-7: ya no hay receta de horno de mena).
 	check(
 		"hierro: pico de piedra cosecha hierro (madera no) → lingote directo",
 		canHarvest(201, B.IRON_ORE) &&
 			!canHarvest(200, B.IRON_ORE) &&
-			horno[String(B.IRON_ORE)] &&
-			horno[String(B.IRON_ORE)].result.id === I.IRON_INGOT
+			ORE_DROP[B.IRON_ORE] === I.IRON_INGOT
 	);
 	check(
 		"oro: pico de piedra cosecha oro (madera no) → lingote directo",
 		canHarvest(201, B.GOLD_ORE) &&
 			!canHarvest(200, B.GOLD_ORE) &&
-			horno[String(B.GOLD_ORE)] &&
-			horno[String(B.GOLD_ORE)].result.id === I.GOLD_INGOT
+			ORE_DROP[B.GOLD_ORE] === I.GOLD_INGOT
 	);
 	// Diamante: se mina directo con pico (no se funde, como Minecraft).
 	check(
@@ -328,6 +333,9 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 	);
 	const resultadoHorno = new Set(Object.values(horno).map((r) => r.result.id));
 	// Drop/uso justificado (sin receta, como en Minecraft):
+	//   101-103     — carbón/lingotes: ORE_DROP al minar la mena directo
+	//                  (Fase 18, C-7: sin receta de horno — la cadena
+	//                  minar→lingote está implícita en ORE_DROP)
 	//   104/105/106 — minerales que se minan directo (diamante sin horno)
 	//   107-110/118  — carnes crudas (drops de mobs; se cocinan en el horno)
 	//   115-117     — cosecha de cultivos (trigo/zanahoria/semillas)
@@ -340,6 +348,9 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 	//   121          — patata: drop raro del zombi (2,5%, Fase 18 C-3); su
 	//                  cocinado (122) sale del horno (patata → patata al horno)
 	const DROPS_JUSTIFICADOS = new Set([
+		I.COAL, // ORE_DROP (mena de carbón)
+		I.IRON_INGOT, // ORE_DROP (mena de hierro)
+		I.GOLD_INGOT, // ORE_DROP (mena de oro)
 		I.DIAMOND,
 		I.REDSTONE,
 		I.EMERALD,
@@ -456,9 +467,13 @@ check("el diamante NO se funde en el horno (se mina directo)", !horno["12"]);
 			return r && r.result.id === I.CHARCOAL && r.result.count === 1;
 		})
 	);
+	// C-7: no hay recetas de mena en el horno — ORE_DROP da el drop directo al
+	// minar (mena→gema es un dato muerto preexistente, eliminado). COAL (101) se
+	// obtiene minando mena de carbón o de los troncos como carbón vegetal (257).
+	const menasHorno = [B.COAL_ORE, B.IRON_ORE, B.GOLD_ORE, B.DIAMOND_ORE, B.REDSTONE_ORE, B.EMERALD_ORE];
 	check(
-		"la mena de carbón sigue fundiendo a COAL (101) — C-4",
-		horno["9"] && horno["9"].result.id === I.COAL
+		"ninguna receta de horno usa menas (ORE_DROP da el drop directo) — C-7",
+		menasHorno.every((m) => !horno[String(m)])
 	);
 	check(
 		"COAL (101) ya no sale de los troncos (solo la mena) — C-4",

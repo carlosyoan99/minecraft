@@ -130,9 +130,11 @@ try {
 		`${r5.crafting} crafteo / ${r5.furnace} horno`
 	);
 	// El tick usa recipe.time: al cocinar, requiredTicks refleja el cambio.
+	// (Fase 18, C-7: las menas ya no se funden — ORE_DROP da el drop directo;
+	// se verifica con el tronco → carbón vegetal, receta viva del horno.)
 	check(
-		"isCookable sigue funcionando tras recargar (mineral de carbón)",
-		crafting.isCookable(9) === true
+		"isCookable sigue funcionando tras recargar (tronco → carbón vegetal)",
+		crafting.isCookable(4) === true
 	);
 } finally {
 	// Restaurar las rutas originales y limpiar el directorio temporal.

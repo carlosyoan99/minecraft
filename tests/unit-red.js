@@ -599,7 +599,8 @@ function connect() {
 		ws.events("furnace_state").length >= 1 && p.openFurnace === key
 	);
 
-	// Añadir combustible (planks) e insumo (mineral de carbón). add_fuel
+	// Añadir combustible (planks) e insumo (tronco → carbón vegetal; Fase 18,
+	// C-7: las menas ya no se funden — ORE_DROP da el drop directo). add_fuel
 	// consume UNA unidad (2 → 1), no vacía el slot de golpe.
 	p.inventory[0] = { id: B.PLANKS, count: 2 };
 	ws.emit(
@@ -616,7 +617,7 @@ function connect() {
 		`count=${p.inventory[0]?.count}`
 	);
 
-	p.inventory[0] = { id: B.COAL_ORE, count: 1 };
+	p.inventory[0] = { id: B.OAK_LOG, count: 1 };
 	ws.emit(
 		"message",
 		JSON.stringify({
@@ -625,8 +626,8 @@ function connect() {
 		})
 	);
 	check(
-		"add_input: fija el insumo",
-		f.inputItem && f.inputItem.id === B.COAL_ORE,
+		"add_input: fija el insumo (tronco)",
+		f.inputItem && f.inputItem.id === B.OAK_LOG,
 		JSON.stringify(f.inputItem)
 	);
 	check("add_input: consume el slot", p.inventory[0] === null);
@@ -634,8 +635,8 @@ function connect() {
 	// Cocinar los 200 ticks necesarios
 	for (let i = 0; i < 200; i++) crafting.tickFurnaces();
 	check(
-		"cocinar 200 ticks → salida de carbón",
-		f.outputItem === I.COAL && f.outputCount === 1,
+		"cocinar 200 ticks → salida de carbón vegetal",
+		f.outputItem === I.CHARCOAL && f.outputCount === 1,
 		`out=${f.outputItem}x${f.outputCount}`
 	);
 
@@ -647,8 +648,8 @@ function connect() {
 		})
 	);
 	check(
-		"collect_output: entrega el carbón al inventario",
-		p.inventory.some((s) => s && s.id === I.COAL)
+		"collect_output: entrega el carbón vegetal al inventario",
+		p.inventory.some((s) => s && s.id === I.CHARCOAL)
 	);
 	check("collect_output: limpia la salida", f.outputItem === null);
 

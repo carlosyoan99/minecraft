@@ -157,7 +157,10 @@
 - **Drop de las menas** (Fase 14, Bloque B): cada mineral suelta
   DIRECTAMENTE su ítem usable — carbón → `I.COAL`, hierro/oro → lingote,
   diamante/redstone/esmeralda → gema (`ORE_DROP`); ya no cae el bloque de
-  mena (que no es útilizable).
+  mena (que no es útilizable). Por eso **no existen recetas de horno de
+  mena** (Fase 18, C-7): fundir mena sería un dato muerto inaccesible — la
+  cadena minar→lingote está implícita en `ORE_DROP` (se puede proponer el
+  fundido explícito en una fase de paridad futura, sin cambiar la cadena).
 - **Tier mínimo por mineral** (Fase 14, Bloque B): `PICKAXE_TIER`
   (madera 1, piedra 2, hierro 3, oro 1, diamante 4) frente a `ORE_TIER`
   (carbón 1, hierro/oro 2, redstone/diamante/esmeralda 3). Con pico de
@@ -328,7 +331,7 @@ primer soporte, TNT explota con cráter y el bedrock sobrevive).
 ### Cómo funciona
 
 - **Recetas en JSON con hot-reload:** `recetas.json` (55 recetas 3×3) y
-  `recetas_horno.json` (10 fundiciones). `watchRecipeFiles` las recarga en
+  `recetas_horno.json` (12 fundiciones). `watchRecipeFiles` las recarga en
   caliente con **swap atómico**: un JSON inválido conserva las anteriores.
 - **Match por patrón:** `matchRecipe(grid)` compara el grid 3×3 del
   jugador contra cada receta (forma e ingredientes); auto-craft al llenar
@@ -343,6 +346,12 @@ primer soporte, TNT explota con cráter y el bedrock sobrevive).
   la unidad de combustible real** (`fuelCount`) y se asigna el `fuelTicksLeft`
   de su ítem; al agotarlos el horno se apaga. Antes el combustible era un
   genérico 400 t que ardía para siempre (paridad PAR-1).
+- **Desperdicio de combustible y encolado** (Fase 18, C-6): la unidad de
+  combustible **encendida arde completa** aunque se agote el insumo
+  (paridad MC — antes se apagaba a mitad). El combustible extra que el
+  jugador mete con el horno encendido se **encola FIFO** (`fuelQueue`, no
+  se persiste) y se despacha solo cuando se apaga el fuego y hay insumo
+  (un horno vacío no quema combustible de la cola).
 - **Validación estructural** (`isValidRecipes`): receta malformada se
   rechaza al cargar, nunca deja el juego a medias.
 

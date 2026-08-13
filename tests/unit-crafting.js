@@ -180,10 +180,13 @@ function freshFurnace(over = {}) {
 	);
 }
 
-// 14) isCookable: minerales, arena y comida cruda sí; planks y aire no
-check("isCookable(9) mineral -> true", crafting.isCookable(9) === true);
+// 14) isCookable: tronco (carbón vegetal), arena y comida cruda sí; planks y
+// aire no. (Fase 18, C-7: las menas ya NO son cocinables — ORE_DROP da el
+// drop directo al minar; el tronco funde a carbón vegetal 257.)
+check("isCookable(4) tronco -> true", crafting.isCookable(4) === true);
 check("isCookable(107) carne cruda -> true", crafting.isCookable(107) === true);
 check("isCookable(6) arena -> true", crafting.isCookable(6) === true);
+check("isCookable(9) mena NO -> false", crafting.isCookable(9) === false);
 check("isCookable(7) planks no -> false", crafting.isCookable(7) === false);
 check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 
@@ -202,19 +205,20 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 	check("getOrCreateFurnace reutiliza instancia", a === b);
 }
 
-// 16) Ciclo completo: mineral de carbón (9) -> carbón (101) en 200 ticks
-// (Fase 16, D1: el combustible se consume de verdad — 1 unidad de tablones
+// 16) Ciclo completo: tronco (4) -> carbón vegetal (257) en 200 ticks
+// (Fase 18, C-7: las menas ya no se funden — ORE_DROP da el drop directo.
+// Fase 16, D1: el combustible se consume de verdad — 1 unidad de tablones
 // rinde FUEL_TICKS y se agota; aquí 1 tablón cubre los 200 ticks de la receta)
 {
 	const f = freshFurnace({
-		inputItem: { id: 9, count: 1 },
+		inputItem: { id: 4, count: 1 },
 		fuelItem: 7, // Fase 16 (D1): fuelItem es el ID numérico (igual que en el wire)
 		fuelCount: 1
 	});
 	for (let i = 0; i < 200; i++) crafting.tickFurnaces();
 	check(
-		"cocinar carbon -> output 101 x1",
-		f.outputItem === 101 && f.outputCount === 1,
+		"cocinar tronco -> carbón vegetal 257 x1",
+		f.outputItem === 257 && f.outputCount === 1,
 		`out=${f.outputItem}x${f.outputCount}`
 	);
 	check("input consumido", f.inputItem === null, JSON.stringify(f.inputItem));
@@ -237,14 +241,14 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 // ahora el carbón rinde FUEL_TICKS[101] = 1600 y se consume al encender)
 {
 	const f = freshFurnace({
-		inputItem: { id: 9, count: 2 },
+		inputItem: { id: 4, count: 2 },
 		fuelItem: 101, // carbón (ID numérico, formato D1 del wire)
 		fuelCount: 1
 	});
 	for (let i = 0; i < 400; i++) crafting.tickFurnaces();
 	check(
-		"2 minerales -> 2 carbon",
-		f.outputItem === 101 && f.outputCount === 2,
+		"2 troncos -> 2 carbón vegetal (257)",
+		f.outputItem === 257 && f.outputCount === 2,
 		`out=${f.outputItem}x${f.outputCount}`
 	);
 	check("input agotado", f.inputItem === null, JSON.stringify(f.inputItem));
@@ -275,7 +279,7 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 // 19) Sin combustible no se cocina y el progreso se enfría (-2 por tick)
 {
 	const f = freshFurnace({
-		inputItem: { id: 9, count: 1 },
+		inputItem: { id: 4, count: 1 }, // tronco → carbón vegetal (C-7: sin menas)
 		progress: 10,
 		requiredTicks: 200
 	});
@@ -291,18 +295,18 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 
 // 19b) Fase 18 (C-6): DESPERDICIO — el combustible se sigue quemando aunque
 // el insumo se agote a mitad de quema (como Minecraft). Con 1 carbón (1600
-// t) y 1 mineral (200 t): tras cocer, quedan 1400 t de fuego que se queman
-// igualmente hasta 0 (antes se congelaban para siempre).
+// t) y 1 tronco (200 t → carbón vegetal): tras cocer, quedan 1400 t de fuego
+// que se queman igualmente hasta 0 (antes se congelaban para siempre).
 {
 	const f = freshFurnace({
-		inputItem: { id: 9, count: 1 },
+		inputItem: { id: 4, count: 1 }, // tronco → carbón vegetal (C-7)
 		fuelItem: 101, // carbón
 		fuelCount: 1
 	});
 	for (let i = 0; i < 200; i++) crafting.tickFurnaces(); // termina la receta
 	check(
 		"C-6: receta completada",
-		f.outputItem === 101 && f.outputCount === 1,
+		f.outputItem === 257 && f.outputCount === 1,
 		`out=${f.outputItem}x${f.outputCount}`
 	);
 	check(
@@ -324,7 +328,7 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 // NO entra sola (MC: el horno solo arranca si hay algo que cocinar).
 {
 	const f = freshFurnace({
-		inputItem: { id: 9, count: 1 },
+		inputItem: { id: 4, count: 1 }, // tronco → carbón vegetal (C-7)
 		fuelItem: 101, // carbón
 		fuelCount: 2 // dos unidades cargadas
 	});
@@ -349,7 +353,7 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 // pendiente) entra el encolado y se quema en orden.
 {
 	const f = freshFurnace({
-		inputItem: { id: 9, count: 9 }, // 9 recetas = 1800 t (más que 1 carbón)
+		inputItem: { id: 4, count: 9 }, // 9 troncos = 1800 t (más que 1 carbón)
 		fuelItem: 101, // carbón en el tanque (1600 t = 8 recetas)
 		fuelCount: 1,
 		fuelQueue: [{ id: 7, count: 1 }] // tablones encolados (FIFO, 300 t)
@@ -357,10 +361,10 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 	for (let i = 0; i < 1600; i++) crafting.tickFurnaces(); // carbón agotado
 	check(
 		"C-6: el carbón cocinó 8 recetas y se agotó",
-		f.outputItem === 101 && f.outputCount === 8 && f.fuelTicksLeft === 0,
+		f.outputItem === 257 && f.outputCount === 8 && f.fuelTicksLeft === 0,
 		`out=${f.outputItem}x${f.outputCount} ticks=${f.fuelTicksLeft}`
 	);
-	// Queda 1 mineral sin cocinar: con insumo, entra la unidad encolada. El
+	// Queda 1 tronco sin cocinar: con insumo, entra la unidad encolada. El
 	// tick de encendido ya quema 1 t (paridad D1: carga+quema en el mismo
 	// tick), así que quedan 299 t del tablón y la cola se vació.
 	crafting.tickFurnaces();
@@ -380,7 +384,7 @@ check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 // 20) Salida ocupada con otro ítem: el resultado se pierde (horno lleno, simplificado)
 {
 	const f = freshFurnace({
-		inputItem: { id: 9, count: 1 },
+		inputItem: { id: 4, count: 1 }, // tronco → carbón vegetal (C-7)
 		fuelItem: 7, // tablones (formato D1: ID numérico)
 		fuelCount: 1,
 		outputItem: 999,
