@@ -19,8 +19,6 @@ const {
 	isDayTime, // C-1: día estricto (sin crepúsculos) — quema solar
 	SPAWN_GRACE_MS,
 	DESPAWN_DIST,
-	VOID_Y,
-	JUMP_SPEED,
 	WS_MAX_PAYLOAD,
 	MAX_CONNECTIONS,
 	MAX_MSG_RATE,
@@ -49,22 +47,20 @@ const mobs = require("./mobs.js");
 const commands = require("./commands.js");
 const mining = require("./mining.js");
 const tnt = require("./tnt.js"); // Fase 10 (D2)
+// Fase 18 (D-1): validación del move extraída — coords, void, bordes,
+// sólidos, parábola del salto/hover y ventana de velocidad (anticheat.js).
+const anticheat = require("./anticheat.js");
+const chunkFill = require("./chunk-fill.js"); // Fase 18 (D-1): relleno progresivo
+const worldSession = require("./world-session.js"); // Fase 18 (D-1): sesión de mundos
 
 // Reloj del mundo ajustable (/time set): el día/noche, el ambiente y la IA
 // de mobs siguen al mismo reloj (worldTime), así que el comando afecta a todo.
 const worldTime = () => commands.worldTime(state);
 
 // Fase 16 (C2, SV-3/SEC-3): valida que x/y/z sean números finitos ANTES de
-// usarlos en handlers. Sin esto, coords `NaN`/strings/null degeneraban claves
-// como "NaN,NaN" (chunks fantasma) y Math.hypot(NaN, ...) > 7 era false
-// (pasaban el guard de distancia y mutaban el mundo con claves basura).
-const validCoords = (x, y, z) =>
-	typeof x === "number" &&
-	typeof y === "number" &&
-	typeof z === "number" &&
-	Number.isFinite(x) &&
-	Number.isFinite(y) &&
-	Number.isFinite(z);
+// usarlos en handlers (extraído a anticheat.js en la Fase 18, D-1; se reexporta
+// aquí porque los handlers del switch lo usan por todo el archivo).
+const { validCoords } = anticheat;
 
 // Distancia máxima (bloques) a la que se ven las grietas de rotura de otro
 // jugador: la misma que el alcance de interacción (7), como en Minecraft el
@@ -595,164 +591,18 @@ function handleConnection(ws, req) {
 		try {
 			switch (event) {
 				case "move": {
-					const { x, y, z, yaw, pitch } = data;
-					// C2 (SV-3/SEC-3): `typeof number` deja pasar NaN; rechazarlo evita
-					// corromper p.x/p.y/p.z y los chunks generados "NaN,NaN".
-					if (!validCoords(x, y, z)) return;
-					// Fase 7: caer del mundo (void). Se comprueba ANTES del anti-cheat de
-					// velocidad: una caída acelerada supera el límite de 1.2 bloques/move y
-					// sus moves se rechazarían (teleport al último punto aceptado), por lo
-					// que el jugador nunca alcanzaría VOID_Y por debajo del mundo.
-					if (y < VOID_Y) {
-						playerHelpers.respawnPlayer(p, "void"); // Fase 10 (B2): causa
-						return;
-					}
-					// Fase 10 (B1): límites del mundo — el jugador no puede salirse; si
-					// el cliente reporta una posición fuera del borde se sujeta al límite
-					// (en vez de teletransportar de vuelta, que haría "rebotar" en la
-					// frontera de forma brusca).
-					const half = constants.worldHalfExtent();
-					const cx = Math.max(-half + 0.6, Math.min(half - 0.6, x));
-					const cz = Math.max(-half + 0.6, Math.min(half - 0.6, z));
-					const dist = Math.hypot(cx - p.x, cz - p.z, y - p.y);
-					if (dist > 1.2) {
-						// límite anti-cheat de velocidad
-						ws.send(
-							JSON.stringify({
-								event: "teleport",
-								data: { x: p.x, y: p.y, z: p.z }
-							})
-						);
-						return;
-					}
-					// El agua no es sólida: nadar (estar dentro de un bloque de agua) es
-					// legítimo. Solo se rechaza si el jugador está dentro de un sólido.
-					// Fase 13 (L2/L3): la validación usa world.isSolidAt (COLISIÓN POR
-					// FORMA), no isSolidBlock puro: una losa solo es sólida en su mitad
-					// inferior, una escalera en su escalón, y una puerta abierta no
-					// bloquea (state.doors). Sin esto, el servidor rechazaría al
-					// jugador parado sobre una losa (media caja) o dentro de una
-					// puerta abierta.
-					if (world.isSolidAt(x, y, z) || world.isSolidAt(x, y + 1.5, z)) {
-						ws.send(
-							JSON.stringify({
-								event: "teleport",
-								data: { x: p.x, y: p.y, z: p.z }
-							})
-						);
-						return;
-					}
-					// Fase 8 (mejora documentada): anti-cheat de vuelo — validar el
-					// ASCENSO contra la parábola del salto. Un salto legítimo parte de
-					// JUMP_SPEED bloques/s (máx ~0.35 bloques en un move de 50ms) y la
-					// gravedad lo frena; subir más rápido (o subir durante >1s seguido
-					// sin tocar suelo) es físicamente imposible aquí y denota un cliente
-					// alterado "volando" (el límite de velocidad solo limitaba el daño,
-					// no el ascenso sostenido). El dt se mide con mínimo de 50ms (el
-					// intervalo de envío del cliente) para no falsear la velocidad con
-					// ráfagas de red. En el agua no aplica (nadar hacia arriba es
-					// legítimo, SWIM_UP_SPEED).
-					const nowMs = Date.now();
-					const dtSec = Math.max(
-						0.05,
-						(nowMs - (p.lastMoveTime || nowMs - 50)) / 1000
-					);
-					const vyObs = (y - p.y) / dtSec; // bloques/s (negativo = cae)
-					p.vyObs = vyObs;
-					const feetBlock = world.getBlock(
-						Math.floor(x),
-						Math.floor(y - constants.EYE_HEIGHT - 0.1),
-						Math.floor(z)
-					);
-					const inWater = feetBlock === B.WATER;
-					const inAir = !isSolidBlock(feetBlock) && !inWater;
-					p.airTimeMs = inAir ? (p.airTimeMs || 0) + dtSec * 1000 : 0;
-					// Fase 9 (Bloque C): en CREATIVE el ascenso sostenido es VUELO
-					// legítimo (doble espacio), no un cheat: se salta la validación de la
-					// parábola del salto. El límite de velocidad y los sólidos siguen
-					// aplicando (el cliente colisiona; el servidor corrige si entra en un
-					// bloque).
-					// Fase 16 (C3, SEC-1): el anti-cheat también caza el HOVER — antes la
-					// condición `y - p.y > 0` excluía dy = 0, así que mantenerse en el
-					// aire >1s sin subir ni caer (flotar) no disparaba nada. Ahora, en el
-					// aire y sin descender (dy ≥ −0.001; la caída legítima, dy < 0, sigue
-					// exenta porque dura >1s), el tiempo acumulado cuenta igual.
-					const dy = y - p.y;
-					const hovering = dy >= -0.001; // sube o se mantiene (no cae)
-					// F16-03 (auditoría 2026-08-11, bypass B): hundimiento LENTO — dy
-					// entre −0.02 y −0.001 por move nunca daba `hovering` (dy ≥ −0.001)
-					// y un cliente podía "flotar" descendiendo indefinidamente. Se
-					// acumula el descenso total mientras se está en el aire (p.hoverSink):
-					// tras >1 s, una caída real ya ha bajado >3 bloques (GRAVITY 18, la
-					// parábola del salto), así que descender en total <2 bloques
-					// sostenido es flotar sin caer.
-					if (inAir) {
-						if (dy < 0) p.hoverSink = (p.hoverSink || 0) - dy;
-					} else {
-						p.hoverSink = 0; // al tocar suelo se descarta la deriva
-					}
-					if (inAir && p.gamemode !== "creative") {
-						// Parábola del salto: vy = JUMP_SPEED − GRAVITY·t (máx al iniciar
-						// el salto). Margen 1.5× por latencia/jitter; además ningún salto
-						// legítimo sube más de ~0.4s seguido (tras >1s en el aire, subir
-						// o flotar es volar).
-						const spike =
-							dy > 0 && (vyObs > JUMP_SPEED * 1.5 || p.airTimeMs > 1000);
-						const flotando =
-							(hovering || (dy < 0 && (p.hoverSink || 0) < 2)) &&
-							p.airTimeMs > 1000;
-						if (spike || flotando) {
-							ws.send(
-								JSON.stringify({
-									event: "teleport",
-									data: { x: p.x, y: p.y, z: p.z }
-								})
-							);
-							return;
-						}
-					}
-					// Fase 16 (C3, SEC-1): ventana deslizante de velocidad horizontal.
-					// Ráfagas de ~0.8 bloques a 20/s pasan el límite por-move (1.2) pero
-					// son ~16 bloques/s sostenidos. La ventana mide bloques/s reales sobre
-					// las muestras aceptadas (~1.2s). El sprint legítimo (~5.6 bloques/s)
-					// queda por debajo del umbral (7 bloques/s).
-					// F16-03 (auditoría 2026-08-11, bypass A): antes se clavaba cada
-					// intervalo a ≥50 ms (Math.max(0.05, s.t − prevT)) — a 30 msg/s el
-					// intervalo real es ~33 ms y el tiempo medido se inflaba a ~1,5× →
-					// la velocidad medida era ~2/3 de la real y ráfagas de 0.35
-					// bloques/move (10,5 bloques/s = 1,9× sprint) pasaban como ≤7. Ahora
-					// se mide la ventana REAL con los timestamps: velocidad = distancia
-					// total ÷ tiempo real transcurrido, con un piso de 0,1 s solo para
-					// no dividir por un micro-instante con un puñado de muestras.
-					if (p.gamemode !== "creative") {
-						const WINDOW_MS = 1200;
-						const MAX_SPEED = 7; // bloques/s sostenidos (sprint ≈ 5.6)
-						let sumDist = 0;
-						let first = Infinity,
-							last = 0,
-							n = 0;
-						for (const s of p.speedSamples) {
-							if (nowMs - s.t > WINDOW_MS) continue; // muestra vieja
-							sumDist += s.dist;
-							n++;
-							if (s.t < first) first = s.t;
-							if (s.t > last) last = s.t;
-						}
-						const realElapsed = (last - first) / 1000;
-						if (
-							n >= 2 &&
-							realElapsed >= 0.05 &&
-							sumDist / Math.max(0.1, realElapsed) > MAX_SPEED
-						) {
-							ws.send(
-								JSON.stringify({
-									event: "teleport",
-									data: { x: p.x, y: p.y, z: p.z }
-								})
-							);
-							return;
-						}
-					}
+					// Fase 18 (D-1): toda la validación del move (coords, void, bordes,
+					// sólidos, parábola del salto/hover y ventana de velocidad) vive en
+					// server/anticheat.js. Devuelve null si el move se rechazó (el
+					// teleport de corrección ya se envió) o los valores aceptados.
+					const res = anticheat.handleMove(p, ws, data, {
+						world,
+						constants,
+						isSolidBlock,
+						respawnPlayer: (pl, cause) => playerHelpers.respawnPlayer(pl, cause)
+					});
+					if (!res) break; // move rechazado (teleport enviado por anticheat)
+					const { x, y, z, cx, cz, yaw, pitch, vyObs, nowMs } = res;
 					// Fase 10 (B1): se asignan las coordenadas YA sujetas a los bordes
 					// (cx/cz calculados antes del anti-cheat).
 					// Fase 16 (C3): registrar la muestra horizontal del move aceptado
@@ -1239,142 +1089,28 @@ function handleConnection(ws, req) {
 					break;
 				}
 				case "join_world": {
-					// Fase 17 (A1/A5): el PRIMER jugador elige/crea el mundo activo
-					// desde el menú. Reutiliza switchWorld (persiste el mundo actual si
-					// lo hubiera, carga/genera el pedido y reenvía el init). Solo
-					// aplica a jugadores que aún están en el menú; los que conectan
-					// después de que el mundo esté activo reciben el init directo.
-					if (!p.inMenu) break;
-					if (typeof data.seed !== "string" || !data.seed.trim()) break;
-					// Fase 17 (C4, SEC-2/F16-02): cuota anti-spam compartida con
-					// set_seed — 1 cambio de mundo cada 10 s por jugador. join_world
-					// también re-ejecuta switchWorld (persistencia síncrona + ~441
-					// chunks dirty); sin cuota, encadenar join_world/leave_world en
-					// bucle llenaba el disco y congelaba el event loop (mismo vector
-					// que el set_seed de la Fase 16).
-					const nowCooldown = Date.now();
-					if (p.seedCooldownUntil && p.seedCooldownUntil > nowCooldown) {
-						p.ws.send(
-							JSON.stringify({
-								event: "seed_rejected",
-								data: { reason: "cooldown" }
-							})
-						);
-						break;
-					}
-					// Otro jugador ya está jugando (este cliente se quedó en el menú
-					// mientras el mundo se cargaba): no cambiarle el mundo bajo sus pies.
-					const someonePlaying = Array.from(state.players.values()).some(
-						(q) => q.id !== playerId && !q.inMenu
-					);
-					if (someonePlaying) {
-						p.ws.send(
-							JSON.stringify({
-								event: "seed_rejected",
-								data: { reason: "others" }
-							})
-						);
-						break;
-					}
-					// F16-03/F16-06 (auditoría 2026-08-11): la cuota se reserva SOLO
-					// cuando el cambio va a proceder — antes se reservaba antes de
-					// comprobar `someonePlaying` y un rechazo legítimo por "others"
-					// pagaba la cuota de 10 s igualmente.
-					p.seedCooldownUntil = nowCooldown + 10000; // 10 s (cuota)
-					// Fase 7: `name` (opcional) da nombre al mundo nuevo (world.json); si
-					// la semilla ya existe, el nombre guardado en disco gana (loadWorld).
-					// Fase 9 (Bloque B): `gamemode` fija el modo del mundo NUEVO.
-					// Fase 10 (B1): `size` el tamaño del mundo NUEVO.
-					const mode = constants.sanitizeGamemode(data.gamemode);
-					const size = constants.sanitizeWorldSize(data.size);
-					const seed = data.seed.trim();
-					let r = save.switchWorld(seed, data.name, mode, size);
-					if (r === "same" && !constants.worldPaths.currentSeed) {
-						// En modo menú currentSeed es null → seedDir(null) = "default"
-						// es el directorio del menú. Si el mundo pedido colisiona con él
-						// (p. ej. semilla "default"), cargarlo directamente con la
-						// semilla real (switchWorld devolvió "same" por la colisión).
-						constants.setWorldSeed(seed, data.name || seed, mode);
-						constants.worldPaths.worldSize = size;
-						world.reinitNoise(seed);
-						save.loadWorld();
-						r = true;
-					}
-					if (r === "rechazo" || r === "error") {
-						p.ws.send(
-							JSON.stringify({ event: "seed_rejected", data: { reason: r } })
-						);
-						break;
-					}
-					p.inMenu = false;
-					enterWorld(p);
-					sendInit(p); // confirmación: el cliente la usa para cerrar la carga
-					broadcast(
-						"player_join",
-						{
-							id: playerId,
-							name: p.name,
-							x: p.x,
-							y: p.y,
-							z: p.z,
-							skin: p.skin || "steve" // Fase 17
-						},
+					// Fase 17 (A1/A5) + Fase 18 (D-1): elegir/crear el mundo activo
+					// desde el menú (módulo server/world-session.js — cuota
+					// anti-spam, switchWorld y confirmación con init).
+					worldSession.handleJoinWorld(
+						{ state, save, world, constants, enterWorld, sendInit, broadcast },
+						p,
+						ws,
+						data,
 						playerId
 					);
 					break;
 				}
 
 				case "set_seed": {
-					// Fase 6: campo de semilla del menú del cliente. El servidor es la
-					// fuente de verdad: cambia el mundo activo (persistiendo el actual) y
-					// reenvía el init con el mundo de la semilla pedida. Servidor dedicado:
-					// solo se cambia si este jugador es el ÚNICO en línea (los demás verían
-					// el mundo cambiar bajo sus pies).
-					if (typeof data.seed !== "string" || !data.seed.trim()) break;
-					// Fase 16 (C4, SEC-2): cuota anti-spam — 1 cambio de semilla cada 10s
-					// por jugador. switchWorld persiste el mundo actual (I/O a disco); sin
-					// cuota un cliente podía martillear el evento y saturar el disco.
-					const nowCooldown = Date.now();
-					if (p.seedCooldownUntil && p.seedCooldownUntil > nowCooldown) {
-						p.ws.send(
-							JSON.stringify({
-								event: "seed_rejected",
-								data: { reason: "cooldown" }
-							})
-						);
-						break;
-					}
-					if (state.players.size > 1) {
-						p.ws.send(
-							JSON.stringify({
-								event: "seed_rejected",
-								data: { reason: "others" }
-							})
-						);
-						break;
-					}
-					// F16-03/F16-06 (auditoría 2026-08-11): la cuota se reserva SOLO
-					// cuando el cambio va a proceder — antes se reservaba antes de
-					// comprobar `state.players.size > 1` y un rechazo legítimo por
-					// "others" pagaba la cuota de 10 s igualmente.
-					p.seedCooldownUntil = nowCooldown + 10000; // 10 s (cuota)
-					const seed = data.seed.trim();
-					// Fase 7: `name` (opcional) da nombre al mundo nuevo (world.json); si la
-					// semilla ya existe, el nombre guardado en disco gana (loadWorld).
-					// Fase 9 (Bloque B): `gamemode` (opcional) fija el modo del mundo NUEVO
-					// (survival/creative); un mundo existente conserva el suyo.
-					const mode = constants.sanitizeGamemode(data.gamemode);
-					// Fase 10 (B1): tamaño del mundo nuevo (pequeño/medio/grande).
-					const size = constants.sanitizeWorldSize(data.size);
-					const r = save.switchWorld(seed, data.name, mode, size);
-					if (r === "rechazo" || r === "error") {
-						p.ws.send(
-							JSON.stringify({ event: "seed_rejected", data: { reason: r } })
-						);
-						break;
-					}
-					if (r === true) enterWorld(p); // mundo nuevo: entrar de cero
-					sendInit(p); // confirmación: el cliente la usa para cerrar la carga
+					// Fase 6 + Fase 18 (D-1): cambiar la semilla del mundo activo
+					// (módulo server/world-session.js).
+					worldSession.handleSetSeed(
+						{ state, save, constants, enterWorld, sendInit },
+						p,
+						ws,
+						data
+					);
 					break;
 				}
 
@@ -1468,136 +1204,39 @@ function handleConnection(ws, req) {
 				}
 
 				case "world_delete": {
-					// Auditoría 2026-08-09 (§1.3): borrar un mundo borra archivos del
-					// disco, así que es una operación SOLO de operadores (igual que
-					// /give, /tp, /gamemode). Antes cualquier cliente podía eliminar
-					// `world/<semilla>/` de mundos no activos.
-					if (!p.isOp) {
-						ws.send(
-							JSON.stringify({
-								event: "world_delete_result",
-								data: {
-									ok: false,
-									reason: "solo operadores",
-									worlds: save.listWorlds()
-								}
-							})
-						);
-						break;
-					}
-					// Fase 9 (Bloque B): borrar un mundo desde el menú. El servidor es la
-					// fuente de verdad: rechaza el mundo ACTIVO y valida el nombre del
-					// directorio (deleteWorld) antes de tocar el disco. Al terminar se
-					// reenvía la lista de mundos al mismo socket.
-					const r = save.deleteWorld(data?.seed);
-					ws.send(
-						JSON.stringify({
-							event: "world_delete_result",
-							data: {
-								ok: r.ok,
-								reason: r.ok ? null : r.reason,
-								worlds: save.listWorlds()
-							}
-						})
-					);
+					// Fase 9/17 (A3) + Fase 18 (D-1): borrar un mundo (solo
+					// operadores — toca disco; módulo server/world-session.js).
+					worldSession.handleWorldDelete({ save }, p, ws, data);
 					break;
 				}
 
-				// Fase 17 (A3): gestión completa de mundos — clonar, renombrar y
-				// cambiar el modo de juego desde el menú. Igual que world_delete,
-				// son operaciones SOLO de operadores (tocan disco); responden al
-				// MISMO socket con el resultado y la lista de mundos actualizada.
-				// El mundo ACTIVO se puede renombrar/cambiar de modo (refleja el
-				// estado en memoria) pero no clonarse/borrarse a sí mismo.
 				case "world_clone": {
-					if (!p.isOp) {
-						ws.send(
-							JSON.stringify({
-								event: "worlds_list",
-								data: { worlds: save.listWorlds() }
-							})
-						);
-						break;
-					}
-					const r = save.cloneWorld(data?.seed, data?.name);
-					ws.send(
-						JSON.stringify({
-							event: "world_clone_result",
-							data: {
-								ok: r.ok,
-								seed: r.seed || null,
-								reason: r.ok ? null : r.reason,
-								worlds: save.listWorlds()
-							}
-						})
-					);
+					// Fase 17 (A3) + Fase 18 (D-1): clonar un mundo (solo operadores).
+					worldSession.handleWorldClone({ save }, p, ws, data);
 					break;
 				}
 
 				case "world_rename": {
-					if (!p.isOp) break;
-					const r = save.renameWorld(data?.seed, data?.name);
-					ws.send(
-						JSON.stringify({
-							event: "worlds_list",
-							data: { worlds: save.listWorlds() }
-						})
-					);
-					if (!r.ok) {
-						ws.send(
-							JSON.stringify({
-								event: "flash",
-								data: { text: "🌍 No se pudo renombrar el mundo." }
-							})
-						);
-					}
+					// Fase 17 (A3) + Fase 18 (D-1): renombrar un mundo (solo op).
+					worldSession.handleWorldRename({ save }, p, ws, data);
 					break;
 				}
 
 				case "world_gamemode": {
-					if (!p.isOp) break;
-					const r = save.setWorldMode(data?.seed, data?.gamemode);
-					ws.send(
-						JSON.stringify({
-							event: "worlds_list",
-							data: { worlds: save.listWorlds() }
-						})
-					);
-					if (!r.ok) {
-						ws.send(
-							JSON.stringify({
-								event: "flash",
-								data: { text: "🌍 No se pudo cambiar el modo del mundo." }
-							})
-						);
-					}
+					// Fase 17 (A3) + Fase 18 (D-1): modo de juego de un mundo (solo op).
+					worldSession.handleWorldGamemode({ save }, p, ws, data);
 					break;
 				}
 
-				// Fase 17 (C1): volver al menú principal desde la pausa — el jugador
-				// abandona el mundo (se persiste su estado) y, si es el último, el
-				// servidor libera el mundo activo y vuelve al modo menú (A1). El
-				// cliente sigue conectado: recibe menu_state y muestra el menú.
+				// Fase 17 (C1) + Fase 18 (D-1): volver al menú principal desde la
+				// pausa (módulo server/world-session.js — persiste el estado, libera
+				// el mundo si es el último y envía menu_state).
 				case "leave_world": {
-					if (p.inMenu) break;
-					save.savePlayer(p);
-					p.inMenu = true;
-					// broadcast player_leave para que los demás clientes lo quiten.
-					broadcast("player_leave", { id: playerId });
-					if (constants.MENU_MODE && state.players.size === 1) {
-						save.releaseWorld();
-					} else {
-						// Otros jugadores siguen en el mundo: el estado en memoria se
-						// mantiene y este jugador deja de recibir broadcast de mundo.
-						p.x = 0;
-						p.y = 0;
-						p.z = 0;
-					}
-					ws.send(
-						JSON.stringify({
-							event: "menu_state",
-							data: { worlds: save.listWorlds() }
-						})
+					worldSession.handleLeaveWorld(
+						{ state, save, broadcast, constants },
+						p,
+						ws,
+						playerId
 					);
 					break;
 				}
@@ -2236,55 +1875,9 @@ function mainLoop() {
 	// también hostiles, en cualquier chunk cargado del área de render.
 	if (Math.random() < 0.03) mobs.spawnMobs(isNight);
 
-	// Fase 14 (M5/C5): relleno progresivo del radio de render. El init ya no
-	// envía los ~169 chunks de golpe: genera un lote por tick y jugador y los
-	// envía como chunks_add, sin bloquear el bucle. ensureChunksAround es
-	// idempotente (los chunks del movimiento/settings antiguos no se regeneran)
-	// y aquí solo se procesan los de dentro del radio NO generados aún.
-	for (const p of state.players.values()) {
-		if (p.inMenu) continue; // Fase 17 (A1): el menú no genera chunks
-		if (p.ws.readyState !== WebSocket.OPEN) continue;
-		const pcx = Math.floor(p.x / constants.CHUNK_SIZE),
-			pcz = Math.floor(p.z / constants.CHUNK_SIZE);
-		// Lista de claves del radio de render que faltan por generar
-		// (Chebyshev, misma malla que sendInit y que el filtro del cliente).
-		// Ordenadas por distancia Chebyshev (anillos): los chunks más cercanos
-		// se rellenan PRIMERO y el terreno se "va ladrando" desde el jugador
-		// hacia fuera, en vez de aparecer un cuadrado de bloques arbitrario.
-		const missing = [];
-		for (let dx = -p.renderDistance; dx <= p.renderDistance; dx++) {
-			for (let dz = -p.renderDistance; dz <= p.renderDistance; dz++) {
-				const cx = pcx + dx,
-					cz = pcz + dz;
-				const key = `${cx},${cz}`;
-				// F16-07 (auditoría 2026-08-11): fuera de los bordes generateChunk
-				// devuelve vacío SIN cachear → si estas claves entraran en `missing`
-				// nunca saldrían de ahí (el guard de abajo evita el crash pero el
-				// escaneo+sort O(r²) por tick seguiría sin converger en el borde).
-				if (world.outOfBounds(cx, cz)) continue;
-				if (!state.chunks.has(key))
-					missing.push({ key, ring: Math.max(Math.abs(dx), Math.abs(dz)) });
-			}
-		}
-		missing.sort((a, b) => a.ring - b.ring);
-		if (missing.length === 0) continue;
-		const batch = missing.slice(0, CHUNK_FILL_PER_TICK);
-		const DATA = {};
-		for (const { key } of batch) {
-			const [cx, cz] = key.split(",").map(Number);
-			world.generateChunk(cx, cz); // idempotente (cachea en state.chunks)
-			// Fase 16 (C2): fuera de los bordes generateChunk devuelve vacío SIN
-			// cachear → state.chunks.get(key) sería undefined y Array.from
-			// tiraba `undefined is not iterable`, matando el proceso (el crash
-			// de "al crear una semilla nueva el servidor se detiene"). Mismo
-			// guard que ensureChunksAround: solo enviar lo que quedó cacheado.
-			if (state.chunks.has(key)) DATA[key] = Array.from(state.chunks.get(key));
-		}
-		if (Object.keys(DATA).length)
-			p.ws.send(
-				JSON.stringify({ event: "chunks_add", data: { chunkData: DATA } })
-			);
-	}
+	// Fase 14 (M5/C5) + Fase 18 (D-1): relleno progresivo del radio de render
+	// (módulo server/chunk-fill.js) — lote por tick y jugador, por anillos.
+	chunkFill.fillForPlayers(state, world, constants.CHUNK_SIZE, CHUNK_FILL_PER_TICK);
 
 	// Fase 10 (D2): mechas de TNT (explotan al agotarse — cráter + cadena).
 	tnt.tick(TICK_MS);
