@@ -23,7 +23,15 @@ const CHEST = 22,
 	AIR = 0,
 	WATER = 20;
 const REACH = 6.0; // el servidor rechaza acciones a > 7 bloques
-const WORLD_H = 64;
+// Fase 15 (D5)/v6: el mundo es de 128 bloques (Y −64..+63) y el chunkData del
+// wire está indexado por Y LOCAL (0..127 = absoluto −64..63). Este test venía
+// calibrado al mundo v5 (64 bloques, local == absoluto) y su blockAt leía los
+// índices locales como Y de mundo: los candidatos caían en el subsuelo
+// (piedra/bedrock) y el place nunca completaba. Mismo patrón que
+// e2e-durabilidad.js (c50bb93).
+const ARRAY_H = 128; // alto del array del chunk (Y local 0..127)
+const WORLD_MIN_Y = -64; // Y absoluta del fondo del mundo
+const toAbs = (ly) => ly + WORLD_MIN_Y; // Y local del array → Y de mundo
 
 const results = [];
 let finished = false;
@@ -64,12 +72,13 @@ const timer = setTimeout(() => {
 // HELPERS SOBRE EL CHUNKDATA (mismo idx que world.js: (y*16+z)*16+x)
 // ============================================================
 function blockAt(wx, wy, wz) {
-	if (wy < 0 || wy >= WORLD_H) return AIR;
+	const ly = wy - WORLD_MIN_Y; // mundo v6: local = y − (−64)
+	if (ly < 0 || ly >= ARRAY_H) return AIR;
 	const arr = worldMap.get(`${Math.floor(wx / 16)},${Math.floor(wz / 16)}`);
 	if (!arr) return -1; // desconocido
 	const x = ((wx % 16) + 16) % 16,
 		z = ((wz % 16) + 16) % 16;
-	return arr[(wy * 16 + z) * 16 + x];
+	return arr[(ly * 16 + z) * 16 + x];
 }
 
 // Fase 10 (A6: lagos profundos en la generación): el spawn de una semilla
@@ -80,17 +89,15 @@ function blockAt(wx, wy, wz) {
 // para jugadores: ver commands.js).
 function nearestSolidColumn() {
 	let best = null;
-	for (const [key, arr] of worldMap) {
+	for (const [key] of worldMap) {
 		const [cx, cz] = key.split(",").map(Number);
 		for (let wx = cx * 16; wx < cx * 16 + 16; wx++) {
 			for (let wz = cz * 16; wz < cz * 16 + 16; wz++) {
-				const lx = ((wx % 16) + 16) % 16,
-					lz = ((wz % 16) + 16) % 16;
 				// Superficie sólida: primer bloque no aire/agua/lava bajando.
 				let solidY = null;
-				for (let wy = WORLD_H - 1; wy >= 0; wy--) {
-					const id = arr[(wy * 16 + lz) * 16 + lx];
-					if (id === AIR || id === WATER) continue;
+				for (let wy = toAbs(ARRAY_H - 1); wy >= WORLD_MIN_Y; wy--) {
+					if (blockAt(wx, wy, wz) === AIR || blockAt(wx, wy, wz) === WATER)
+						continue;
 					solidY = wy;
 					break;
 				}

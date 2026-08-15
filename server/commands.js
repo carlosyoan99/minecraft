@@ -14,6 +14,7 @@ const {
 	B,
 	I,
 	DAY_CYCLE_MS,
+	DAY_PHASES, // Fase 18 (C-1): franjas MC — /time set night = inicio de la noche estricta
 	MOON_CYCLE_MS,
 	seedMoonOffsetMs,
 	WORLD_HEIGHT,
@@ -353,7 +354,11 @@ function executeCommand(player, raw, ctx) {
 			const targets = {
 				day: 0,
 				noon: DAY_CYCLE_MS / 4,
-				night: DAY_CYCLE_MS / 2,
+				// Fase 18 (C-1): "night" ahora es el INICIO de la noche ESTRICTA
+				// (duskEnd, 65%) y no la mitad del ciclo (50%, que con las franjas
+				// MC cae en el ATARDECER y no spawneaba hostiles — regresión C-1
+				// detectada por e2e-mascotas). midnight sigue en la noche (75%).
+				night: DAY_CYCLE_MS * DAY_PHASES.duskEnd,
 				midnight: (DAY_CYCLE_MS * 3) / 4
 			};
 			let target;
@@ -378,7 +383,9 @@ function executeCommand(player, raw, ctx) {
 			broadcast("time_set", { dayTime: t, moonTime: moonTime(state) });
 			systemMessage(
 				player,
-				`Hora fijada a ${Math.round(t)} ms del ciclo (${t >= DAY_CYCLE_MS / 2 ? "noche" : "día"})`
+				`Hora fijada a ${Math.round(t)} ms del ciclo (${
+					t >= DAY_CYCLE_MS * DAY_PHASES.duskEnd ? "noche" : "día"
+				})`
 			);
 			break;
 		}

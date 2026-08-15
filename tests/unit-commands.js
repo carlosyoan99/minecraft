@@ -18,6 +18,8 @@ const playerHelpers = require("../server/players.js");
 const commands = require("../server/commands.js");
 const {
 	DAY_CYCLE_MS,
+	DAY_PHASES, // F18 C-1: /time set night = inicio de la noche estricta
+	isNightTime, // F18 C-1: guarda de regresión (spawn hostil tras /time set night)
 	B,
 	I,
 	TOOL_DURABILITY
@@ -269,15 +271,23 @@ const systemMsgs = (sent) =>
 }
 
 // --- /time set night ---
+// Fase 18 (C-1): con las franjas MC la noche ESTRICTA empieza en duskEnd
+// (65%); antes "night" caía en la mitad del ciclo (50% = atardecer) y no
+// spawneaban hostiles (regresión detectada por e2e-mascotas).
 {
 	const h = makeHarness();
 	commands.executeCommand(h.player, "/time set night", h.ctx);
 	const t = (Date.now() + state.timeOffset) % DAY_CYCLE_MS;
-	const drift = Math.abs(t - DAY_CYCLE_MS / 2);
+	const drift = Math.abs(t - DAY_CYCLE_MS * DAY_PHASES.duskEnd);
 	check(
-		"/time set night: reloj en mitad de ciclo (±250ms)",
+		"/time set night: reloj al inicio de la noche estricta (duskEnd, ±250ms)",
 		drift < 250,
 		`t=${t}`
+	);
+	check(
+		"/time set night: isNightTime true (noche estricta, spawn hostil)",
+		isNightTime(t),
+		`t=${t}, duskEnd=${DAY_PHASES.duskEnd}`
 	);
 	check(
 		"/time set night: broadcast time_set",
