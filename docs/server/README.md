@@ -50,21 +50,44 @@ independiente y testeable en Node (los tests requieren los módulos sin red).
 
 | Módulo | Responsabilidad | Depende de |
 |---|---|---|
-| `constants.js` | Constantes (IDs de bloques/ítems `B`/`I`, física, mundo), `worldPaths` mutable, curva XP, minería | — |
+| `constants.js` | Constantes (IDs de bloques/ítems `B`/`I`, física, mundo), `worldPaths` mutable, curva XP, minería, franjas día/noche MC (C-1) | — |
 | `state.js` | Estado compartido: chunks, players, furnaces, chests, crops, mobs, arrows, dirtyChunks, timeOffset, damageLog | — |
-| `world.js` | Generación por semilla (noise 2D/3D), acceso a bloques, minas, charcos, árboles, minerales, biomas de Fase 11, tamaño de mundo, mundo de 128 bloques (Y ∈ −64..+63, `DESIGN_OFFSET`, Fase 15 D5), archivos de chunk. **POO (F13):** clases `World`/`Chunk` — el export es una instancia de `World` | constants, state, chests |
-| `save.js` | Persistencia incremental por chunk (gzip), `world.json` (meta, mobs, hornos, cofres, cultivos, hora del mundo), migraciones, `switchWorld`, `deleteWorld`, descarga de chunks lejanos | constants, state, world, mobs, crafting, chests |
-| `players.js` | Inventario, salud, hambre, daño (con armadura), XP/curva MC, caídas, respawn, comer, quemaduras, tick del jugador. **POO (F13):** clase `Player` + factory `createPlayer` | world, state, constants |
+| `world.js` | Núcleo del mundo: clases `World`/`Chunk` (**POO F13**), `getBlock`/`setBlock`, límites (`DESIGN_OFFSET`, mundo de 128 bloques Y ∈ −64..+63, Fase 15 D5), serialización y `ensureChunksAround`. La generación vive en `noise.js`/`biomes.js`/`generation.js`/`structures.js` (Fase 18 D-3) | constants, state, chests |
+| `generation.js` | Ruido + `generateChunk` (columnas, cuevas, minerales C-2, árboles, pozos, lagos) — el bloque más pesado de la generación | constants, noise, biomes |
+| `biomes.js` | `getBiome`, transiciones, elevación y vegetación por bioma | constants |
+| `structures.js` | Templo de jungla, naufragio, minas, pozos y hash 2D de estructuras | constants |
+| `noise.js` | Ruido compartido (simplex/multi-octava) para terreno y biomas | constants |
+| `save.js` | Orquestador de persistencia (qué se guarda y cuándo). La escritura vive en `save-chunks.js` (cola asíncrona por lotes), `save-meta.js` (`world.json`, migraciones, `switchWorld`) y `save-players.js` (jugadores F17 B1) | constants, state, world, mobs, crafting, chests |
+| `save-chunks.js` | Cola `setImmediate` del autosave, `writeChunkFile` (gzip), atomicidad tmp+rename | constants, state |
+| `save-meta.js` | `world.json` (meta, `worldGamemode`, tamaño), migraciones v1→v6 y backup `.bak` | constants, state |
+| `save-players.js` | `savePlayer`/`restorePlayer` (F17 B1) con ruta por nombre saneada | constants |
+| `players.js` | Clase `Player` (**POO F13**, move/física/hambre/saturación, respawn, teleport) + fachadas históricas. El inventario vive en `inventory.js` y el combate/XP/muerte en `combat.js` (Fase 18 D-5) | world, state, constants |
+| `inventory.js` | `addToInventory`/`removeFromInventory`, fusión de stacks | items, constants |
+| `combat.js` | `damagePlayer`, armadura (puntos MC), `applyToolWear`, XP/niveles, hambre y muerte (con el orbe de C-8) | world, state, constants |
 | `items.js` | **POO (F13):** clase `ItemStack` — los slots de inventario/cofre/drop | — |
-| `mobs.js` | IA por especie (zombi, esqueleto, creeper, araña, pasivos, abeja), spawn por luz/hora, flechas, cría, esquilado, drops, zona segura de spawn. **POO (F13):** subclases por especie + `createMob`/`MOB_CLASSES` | constants |
-| `crafting.js` | Recetas 3×3 + hornos, hot-reload de `recetas.json`, tick de hornos | state, constants |
+| `mobs.js` | Clase base `Mob` (**POO F13**, tick/chase/flee/attack), fábricas, snapshot/broadcast y orbes de XP (C-8). Las especies viven en `mob-species.js`, el spawn en `mob-spawn.js` y los proyectiles en `projectiles.js` (Fase 18 D-2) | constants |
+| `mob-species.js` | Subclases por especie (`Zombie`, `Creeper`, `Slime`, ...) con IA plana por tipo, cría/doma/esquileo y IA de la abeja (Fase 18 D-2) | constants, state, world, projectiles |
+| `mob-spawn.js` | `BIOME_SPAWN`/`WATER_SPAWN`, `attemptSpawn`, zona segura de spawn y cuota de mobs | constants, world |
+| `projectiles.js` | `tickArrows`, `tickTridents`, impacto y recogida (flechas/tridentes con hooks inyectables) | constants, state |
+| `crafting.js` | Recetas 3×3 + hornos, hot-reload de `recetas.json`, tick de hornos (desperdicio/cola C-6), `emptyFurnace` | state, constants |
 | `mining.js` | Sesiones de rotura con progreso (dureza × herramienta), grietas al cliente | constants |
 | `tnt.js` | TNT: mechas, explosión con cráter, reacciones en cadena, knockback (Fase 10) | state, constants |
 | `chests.js` | Cofres (estado + snapshot), loot de minas abandonadas | state, constants |
 | `commands.js` | Comandos de chat (`/help`, `/tp`, `/give`, `/time`, `/gamemode`), reloj del mundo | constants |
-| `net.js` | HTTP + WebSocket, `sendInit`, handler de mensajes, `mainLoop` (tick 20 Hz), métricas | todos |
+| `anticheat.js` | Validación del `move`: coords, void, bordes, sólidos, parábola del salto/hover y ventana de velocidad (Fase 18 D-1) | constants, world |
+| `chunk-fill.js` | Relleno progresivo del radio de render (lote por tick y jugador, por anillos) | constants, world |
+| `world-session.js` | `set_seed`, `join_world`, `leave_world`, `world_*` (clonar/renombrar/modo/eliminar) y la cuota anti-spam (Fase 18 D-1) | constants, state, world, save |
+| `actions.js` | Handlers de juego del switch (crafteo, horno, cofre, armadura, cubo/puerta, cama/comida, mobs, agricultura, chat) con hooks de broadcast inyectados (Fase 18 D-1) | constants, state, world, players, crafting, chests, mobs, commands |
+| `timers.js` | Bucle principal (`mainLoop`, tick 20 Hz), trampa del templo, métricas y arranque HTTP/WS (`start`) con hooks de broadcast inyectados (Fase 18 D-1) | constants, state, world, players, mobs, crafting, mining, tnt, chunk-fill |
+| `net.js` | HTTP + WebSocket, `sendInit`, switch de mensajes (despacha a `actions.js`), broadcast y fachada `start`/`mainLoop` (→ `timers.js`) | todos |
 
-## El bucle principal (net.js `mainLoop`)
+## El bucle principal (timers.js `mainLoop`)
+
+> Fase 18 (D-1): el bucle, la trampa del templo, las métricas y el arranque
+> salieron de `net.js` a `server/timers.js`; `net.js` re-exporta `mainLoop`/
+> `getServerMetrics`/`start` como fachada (los tests y `server.js` no cambian).
+> Los hooks de broadcast (`broadcast`, `broadcastMining`, `worldTime`) se
+> inyectan desde `net.js` al cargar (patrón del arranque de `server.js`).
 
 El juego no usa un game loop cliente: corre a **20 ticks/s** (`TICK_MS = 50`)
 en el servidor. Cada tick:
@@ -103,14 +126,16 @@ compatibles (el wire y el guardado NO cambian):
   instancias de `Player` creadas con `createPlayer({...})`; sus métodos de
   entidad (`damage`, `heal`, `eat`, `addXp`, `addItem`, `applyToolWear`,
   ...) delegan en las fachadas históricas (`damagePlayer`, `eatFood`,
-  `addToInventory`, ...).
-- **Mobs por subclase** (`server/mobs.js`): 15 subclases de `Mob`
-  (`Zombie`, `Creeper`, `Skeleton`, `Spider`, `Enderman`, `Wolf`, `Slime`,
-  `Drowned`, pasivos y `Ocelot`) creadas con la fábrica `createMob(type, x,
-  y, z)` (`MOB_CLASSES` tipo→clase). La variación por especie vive en
-  métodos sobreescritos (`tickSpecies`, `onDeath`); la clase base conserva
-  el despacho por tipo para que `new Mob("zombie")` de los tests siga
-  funcionando.
+  `addToInventory`, ...). Desde la Fase 18 (D-5) la lógica de inventario
+  vive en `inventory.js` y el combate/XP/muerte en `combat.js`; `players.js`
+  las re-exporta.
+- **Mobs por subclase** (`server/mob-species.js`, Fase 18 D-2): 15
+  subclases de `Mob` (`Zombie`, `Creeper`, `Skeleton`, `Spider`, `Enderman`,
+  `Wolf`, `Slime`, `Drowned`, pasivos y `Ocelot`) creadas con la fábrica
+  `createMob(type, x, y, z)` (`MOB_CLASSES` tipo→clase, fachada de
+  `mobs.js`). La variación por especie vive en `tickSpecies`/`onDeath` que
+  delegan en la IA plana de este módulo; la clase base conserva el despacho
+  por tipo para que `new Mob("zombie")` de los tests siga funcionando.
 
 **Por qué así:** dar a las entidades un modelo de objeto (herencia por
 especie, métodos de entidad) sin tocar el protocolo ni el formato de
@@ -134,13 +159,13 @@ lo permite.
   ilegible (Fase 9.5).
 - **Versión de esquema (`SCHEMA_VERSION = 6`)** con migraciones
   retrocompatibles (`migrateWorldLayout`, `migrateLegacyWorld` y v5→v6 en
-  `world.js`). La **v6** es el mundo de 128 bloques: los chunks pasan de
-  `16×64×16` a `16×128×16` (Y ∈ −64..+63, el terreno anclado en ~0 con
-  `DESIGN_OFFSET`); un chunk v5 (local y == mundo y, 0..63) se migra subiendo
-  el dato a local 64..127 y rellenando el fondo nuevo con piedra. La **v5**
-  persistía mascotas (`ownerId/ownerName/sitting`) y el tamaño del slime
-  (`slimeSize`) en `world.json`; un mundo v4 sin esos campos carga igual
-  (mob salvaje, slime grande).
+  `save-meta.js`, Fase 18 D-4). La **v6** es el mundo de 128 bloques: los
+  chunks pasan de `16×64×16` a `16×128×16` (Y ∈ −64..+63, el terreno anclado
+  en ~0 con `DESIGN_OFFSET`); un chunk v5 (local y == mundo y, 0..63) se
+  migra subiendo el dato a local 64..127 y rellenando el fondo nuevo con
+  piedra. La **v5** persistía mascotas (`ownerId/ownerName/sitting`) y el
+  tamaño del slime (`slimeSize`) en `world.json`; un mundo v4 sin esos
+  campos carga igual (mob salvaje, slime grande).
 - **Guardado asíncrono por lotes** (`saveWorldAsync`, Fase 16 C1): el
   autosave periódico del `setInterval` escribe los chunks sucios **por lotes
   de 6 con `setImmediate`**, cediendo el turno al event loop entre lotes —

@@ -208,7 +208,12 @@ lados y añade la receta si aplica; el CI de tests lo audita.
   son `ItemStack` (`server/items.js`); `world.js` exporta una instancia de
   `World` (`getChunk` devuelve `Chunk`); los jugadores se crean con
   `createPlayer` (`Player` en `players.js`) y los mobs con `createMob`
-  (subclases por especie en `mobs.js`). Las clases NO cambian el wire ni el
+  (subclases por especie en `server/mob-species.js` desde la F18 D-2, con
+  `mobs.js` como fachada). Fase 18 (D-1..D-5): los módulos grandes se
+  dividieron por responsabilidad (`net.js`→actions/timers,
+  `world.js`→noise/biomes/generation/structures, `save.js`→
+  save-chunks/save-meta/save-players, `players.js`→inventory/combat) —
+  las **fachadas públicas no cambian**. Las clases NO cambian el wire ni el
   guardado (el JSON de una instancia es idéntico al de los literales
   anteriores): no reintroducir literales `{id, count, durability}` donde ya
   hay `ItemStack`, ni romper las fachadas (`world.getBlock`,

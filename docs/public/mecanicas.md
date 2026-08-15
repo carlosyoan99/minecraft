@@ -249,6 +249,12 @@ mobs visibles en escena).
   `moonTime` (ciclo lunar de 8 días) en el init; `daynight.js` los
   **extrapola con `performance.now()`** para saber la fase en todo momento
   sin depender del tick del servidor.
+- **Franjas MC (Fase 18, C-1):** `public/daymath.js` define `DAY_PHASES`
+  (día 10 / atardecer 1,5 / noche 7 / amanecer 1,5 sobre 20 min) y el
+  `dayFactor` por fase — el cielo, la luz, la niebla y las estrellas
+  interpolan con esos límites (antes el día/noche era binario). El
+  cliente y el servidor comparten las mismas franjas (`unit-dia` las
+  fija).
 - `updateDayNight` interpola colores de cielo (cenit/horizonte),
   luz ambiental, luz del sol y niebla por la fase (día/noche/atardecer).
 - **Niebla submarina (Fase 10, refinada en Fase 16/B1):**
@@ -281,7 +287,13 @@ mobs visibles en escena).
 
 ---
 
-## 9. Input (public/input.js)
+## 9. Input (public/input.js → game-input.js, raycast.js, menu-input.js, touch.js)
+
+> Fase 18 (D-8): `input.js` es un **despachador** que importa los módulos
+> y re-exporta `onBlockMined` (network.js). El input del juego vive en
+> `game-input.js`, el rayo + telemetría en `raycast.js`, el menú/pausa en
+> `menu-input.js` y los controles táctiles en `touch.js`. Mismo
+> comportamiento y mismo API público.
 
 ### Cómo funciona
 
@@ -293,12 +305,15 @@ mobs visibles en escena).
 - **Ratón (pointer lock):** mirar, clic izquierdo = minar/atacar, clic
   derecho = colocar/comer/interactuar (cama, cofre, horno, semillas,
   tijeras sobre oveja, bonemeal), **clic medio = pick-block** del bloque
-  apuntado en creativo (`creative_pick`, Fase 10).
-- **Raycast de minado/combate:** `input.js` lanza el rayo desde la cámara,
-  intersecta bloques y mobs (recursivo por partes, ver §6), y envía
-  `block_action` / `attack_mob` al servidor. Incluye telemetría de
-  diagnóstico (`window.__mcMiningTrace`, `__mcDebugMining`) del flujo
-  clic→mina (Fase 9, Bloque A).
+  apuntado en creativo (`creative_pick`, Fase 10). La **sesión de
+  minería** (mantener pulsado, re-minado al romper con el clic presionado
+  F17 B7) vive en `game-input.js`.
+- **Raycast de minado/combate:** `raycast.js` lanza el rayo desde la
+  cámara, intersecta bloques y mobs (recursivo por partes, ver §6), con
+  tolerancia de apuntado a mobs (`nearestMobOnRay`) y el resaltado del
+  bloque objetivo; envía `block_action` / `attack_mob` al servidor.
+  Incluye telemetría de diagnóstico (`window.__mcMiningTrace`,
+  `__mcDebugMining`) del flujo clic→mina (Fase 9, Bloque A).
 - **Paneles vs juego:** con un campo editable enfocado (`isTyping`) las
   teclas de juego se ignoran (fix B5: escribir el nombre no abría el
   inventario).
@@ -359,27 +374,33 @@ mobs visibles en escena).
 
 ---
 
-## 11. UI y HUD (public/ui.js, settings.js)
+## 11. UI y HUD (public/ui.js → hud.js, menus.js, panels.js, recipebook.js)
+
+> Fase 18 (D-6): `ui.js` es un **orquestador** que re-exporta el API de
+> `hud.js` (HUD en juego), `menus.js` (pantallas y pausa), `panels.js`
+> (inventario/cofre/horno/picker) y `recipebook.js` (libro). Los
+> consumidores (`input.js`, `network.js`, `debug.js`) no cambian.
 
 ### Cómo funciona
 
-- **HUD:** hotbar con durabilidad y tooltips, salud, comida con
-  saturación dorada, barra de XP (progreso dentro del nivel con la curva
-  MC: `xpInto`/`xpToNext` del servidor), badge de gamemode, coordenadas
-  opcionales.
-- **Menús:** principal (nombre, semilla), mundos (lista con badges de modo
-  y borrado 🗑️), ajustes (render distance, coords, controles invertidos,
-  FOV, sensibilidad, volúmenes, calidad).
-- **Paneles:** crafteo 3×3 + armadura equipada, horno, cofre — todos con
-  el servidor como fuente de verdad (`crafting_grid_update`,
-  `furnace_state`, `chest_state`).
-- **Libro de recetas (B):** todas las recetas por categorías (bloques/
-  herramientas/armadura/comida/materiales + fundición) sin desbloqueo;
-  `recipeCategories.js` decide la pestaña (lógica pura testeable). Cada
-  receta muestra sus ítems con `itemVisual` (iconos procedurales) y se
-  **cierra con B o Esc** (`toggleRecipeBook`, Fase 16/B5): al abrirlo el
-  pointer lock se libera sobre el panel (las pestañas son clicables) y al
-  cerrarlo se restaura sobre el canvas.
+- **HUD** (`hud.js`): hotbar con durabilidad y tooltips, salud, comida
+  con saturación dorada, barra de XP (progreso dentro del nivel con la
+  curva MC: `xpInto`/`xpToNext` del servidor), badge de gamemode,
+  coordenadas opcionales, silencio, chat y pantalla de muerte.
+- **Menús** (`menus.js`): principal (nombre, semilla), mundos (lista con
+  badges de modo y borrado 🗑️), ajustes (render distance, coords,
+  controles invertidos, FOV, sensibilidad, volúmenes, calidad), pausa
+  (F17 C1) y selector de skins (F17 C3).
+- **Paneles** (`panels.js`): crafteo 3×3 + armadura equipada, horno,
+  cofre — todos con el servidor como fuente de verdad
+  (`crafting_grid_update`, `furnace_state`, `chest_state`).
+- **Libro de recetas** (`recipebook.js`, B): todas las recetas por
+  categorías (bloques/herramientas/armadura/comida/materiales +
+  fundición) sin desbloqueo; `recipeCategories.js` decide la pestaña
+  (lógica pura testeable). Cada receta muestra sus ítems con `itemVisual`
+  (iconos procedurales) y se **cierra con B o Esc** (`toggleRecipeBook`,
+  Fase 16/B5): al abrirlo el pointer lock se libera sobre el panel (las
+  pestañas son clicables) y al cerrarlo se restaura sobre el canvas.
 - **Ajustes:** `mc_settings` en localStorage; los aplica `settings.js` en
   tiempo real (render distance notifica al servidor, calidad al renderer).
   La **calidad** (Fase 16/B6) escala la **resolución real** con

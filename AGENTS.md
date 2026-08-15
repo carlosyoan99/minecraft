@@ -134,14 +134,34 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   de cobertura: unit 53/53, E2E 7/7 en solitario, auditorías 6/6, c8 con
   umbrales). La **Fase 17** está **cerrada y auditada** (modo menú A1,
   gestión de mundos A3, persistencia B1, bugs B1-B7, pausa y skins C3,
-  táctil D1; verificación en navegador del Bloque E completa). La
-  **Fase 18 está en preparación** (spec `docs/fase18-spec.md`): paridad
-  completa C-1..C-9 + refactor a convenciones; A1/E-1/E-2 cerrados. Las
-  **Fases 19 (texturas/UI visual + drag & drop), 20 (rolling release) y 21
-  (biomas/estructuras/mobs) son prospectivas** (`docs/fase19-spec.md`,
-  `fase20-spec.md`, `fase21-spec.md`): la 19 y la 20 exigen la **Fase 18
-  cerrada**; la 21 exige la 20. No adelantar trabajo más allá de lo que
-  `TODO.md` marque.
+  táctil D1; verificación en navegador del Bloque E completa). La **Fase 18 está cerrada y auditada** (spec `docs/fase18-spec.md`):
+  **paridad completa
+  C-1..C-9** (franjas día/noche MC, minerales v6, zanahoria/patata,
+  carbón vegetal 257, `MOB_XP`, horno desperdicio/cola, recetas de mena
+  fuera, orbes de XP, sonidos) y **refactor a convenciones D-1..D-8** (los
+  módulos >500 líneas se dividieron por responsabilidad — ver los mapas de
+  `docs/server/README.md` y `docs/public/README.md` — con fachadas
+  intactas: `net.js`→actions/timers, `mobs.js`→mob-species/mob-spawn/
+  projectiles, `world.js`→noise/biomes/generation/structures, `save.js`→
+  save-chunks/save-meta/save-players, `players.js`→inventory/combat,
+  `ui.js`→hud/menus/panels/recipebook, `world.js` cliente→chunkstore/
+  lightclient/meshbuild/lodmesh, `input.js`→game-input/raycast/menu-input/
+  touch; `SCHEMA_VERSION` 6, protocolo WS e IDs B/I intactos). Auditorías
+  recalibradas (E-1, `--audit` 6/6) y biome 0 errores (E-2); docs al día
+  (F); cierre: suite **56 unitarios** en verde + E2E + auditorías. Las
+  **Fases 19 (texturas/UI visual + drag & drop), 19.5 (skills del proyecto:
+  audio por bioma + accesibilidad + refinamientos), 19.6 (motor 3D de riesgo
+  técnico), 20 (rolling release), 21 (biomas/estructuras/mobs) y 22
+  (profundidad, minerales y fauna 1.17–1.21) son
+  prospectivas** (`docs/fase19-spec.md`, `fase19.5-spec.md`,
+  `fase19.6-spec.md`, `fase20-spec.md`, `fase21-spec.md`,
+  `fase22-spec.md`): la 19 exige la **Fase 18 cerrada**; la 19.5 exige 18 y
+  19; la 19.6 exige la 19.5; la 20 exige la 18; la 21 exige la 20; la 22
+  exige la 21. La 19.5 adelanta a la 19.6 el motor 3D y a la F21 el audio por
+  bioma; la F22 aporta los bloques de amatista que la geoda de la F21 reusa y
+  confirma Won't propios (oxidación del cobre, renacuajos, Warden,
+  redstone/Crafter). No adelantar trabajo más allá de lo que `TODO.md`
+  marque.
 
 ## Documentación
 

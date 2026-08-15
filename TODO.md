@@ -647,24 +647,54 @@
 ## Fase 18 — Refactor a convenciones, cierre de fases y pulido
 
 > Especificación (la verdad de la fase): [`docs/fase18-spec.md`](docs/fase18-spec.md)
-> **Prospectiva (en preparación)** — A1 y E-2 cerrados; el resto pendiente.
+> **✅ CERRADA Y AUDITADA (2026-08-15)** — paridad C-1..C-9 completa,
+> refactor D-1..D-8 (servidor + cliente) con fachadas intactas, E-1/E-2
+> cerrados, docs F al día y cierre G: suite **56/56 unitarios**, E2E
+> 6/6 + menú 7/7, auditorías 6/6, biome 0 errores, `node --check` limpio.
 
 - [x] A1 Commitear el WIP de la auditoría 2026-08-11 (`db1c366`, `17deb8c`,
       `5303e73`) y dejar la suite en verde (53 ✅, verificado 2026-08-12)
-- [ ] Bloque C — Paridad completa con MC: C-1 día/noche por franjas, C-2
-      minerales al mundo v6, C-3 zanahoria/patata comestibles, C-4 carbón
-      vegetal como ítem, C-5 `MOB_XP` coherente en `unit-paridad.js`, C-6
-      horno (desperdicio/encolado), C-7 recetas de mena muertas, C-8 XP al
-      morir recuperable, C-9 sonidos de paridad
-- [ ] Bloque D — Refactor a convenciones CLAUDE.md (módulos >~500 líneas,
-      empezando por `server/net.js` 2282 → ...); sin cambiar protocolo WS,
-      IDs B/I ni formato de guardado
+- [x] Bloque C — Paridad completa con MC (commiteada, commits `2726033`..`0e05809`):
+      C-1 día/noche por franjas MC (`DAY_PHASES`, `2726033`), C-2 minerales al
+      mundo v6 por percentil MC 1.18 (`a9d3295`), C-3 zanahoria/patata
+      comestibles (`1c5ea78`), C-4 carbón vegetal como ítem 257 (`6049a77`),
+      C-5 `MOB_XP` coherente en `unit-paridad.js` (`4cf8456`), C-6 horno
+      (desperdicio/encolado FIFO, `7c6771b`), C-7 recetas de mena muertas
+      eliminadas (`dda8814`), C-8 XP al morir recuperable (orbes `0655aca`),
+      C-9 sonidos de paridad (`0e05809`)
+- [x] Bloque D — Refactor a convenciones CLAUDE.md, **completo (D-1..D-8)**,
+      sin cambiar protocolo WS, IDs B/I ni formato de guardado:
+      - D-1 servidor: net→anticheat/chunk-fill/world-session (`0d13980`) +
+        actions/timers (handlers de juego y bucle/arranque; `net.js` 1088)
+      - D-2 servidor: mobs→projectiles/mob-species/mob-spawn (`4c374df`) +
+        IA plana por especie en mob-species (mobs.js 795)
+      - D-3 servidor: world→noise/biomes/generation/structures (`d0b8db3`,
+        world.js 643)
+      - D-4 servidor: save→save-chunks/save-meta/save-players (`78c76f9`)
+      - D-5 servidor: players→inventory/combat (`204b7b7`)
+      - D-6 cliente: ui→hud/menus/panels/recipebook (ui.js 82 orquestador)
+      - D-7 cliente: world→chunkstore/lightclient/meshbuild/lodmesh
+        (world.js 520, ciclo de vida de mallas)
+      - D-8 cliente: input→game-input/raycast/menu-input/touch (input.js 14
+        despachador); suites 56/56 tras cada commit
 - [x] E-1 Recalibrar `audit-fase3/4/6/7` al mundo v6 y documentarlo
       (`6fa7851`: `--audit` 6/6 con presupuestos medidos y comentados)
 - [x] E-2 Biome 0 errores (`bd49412`): `npx biome check .` → 0 errores
       (169 warnings/16 infos tolerados), suite en verde
-- [ ] Bloque F — Documentación al día (F-1..F-3)
-- [ ] Bloque G — Cierre: todo verde, auditoría final de fase obligatoria
+- [x] Bloque F — Documentación al día (F-1..F-3): mapas de módulos en
+      `docs/server/README.md` y `docs/public/README.md`, mecánicas C-1..C-9
+      en ambos `mecanicas.md`, matriz de `docs/tests.md`, `README.md`,
+      `AGENTS.md`/`CLAUDE.md`, índice `docs/README.md` y decisiones
+      diferidas (§8 de la spec)
+- [x] Bloque G — Cierre (2026-08-15): suite unitaria **56/56**, E2E
+      clásicos 6/6 + menú 7/7 en solitario, auditorías 6/6, biome 0
+      errores (188 warnings tolerados), `node --check` limpio, verificación
+      manual en navegador (crepúsculos C-1, orbe C-8, sonidos C-9, HUD/
+      menú/pausa/táctil sin regresiones, flujo menú → mundo → pausa);
+      lagunas del cierre: `e2e-cofre` recalibrado al mundo v6 (estaba en
+      v5 y el place no completaba) y `/time set night` al inicio de la
+      noche estricta C-1 (`DAY_PHASES.duskEnd`, regresión de spawn hostil
+      detectada por `e2e-mascotas`) con guarda en `unit-commands.js`
 
 ---
 
@@ -710,12 +740,90 @@
 
 ---
 
+## Fase 19.5 — Skills del proyecto: audio ambiental por bioma, accesibilidad y refinamientos
+
+> Especificación (la verdad de la fase): [`docs/fase19.5-spec.md`](docs/fase19.5-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: F18 y F19 cerradas.
+> Creada desde el borrador `fase19.5-spec.md` (Descargas) + entrevista
+> 2026-08-15: skills no-motor + **audio por bioma adelantado de la F21** +
+> accesibilidad (menor prioridad); el **motor 3D sale a la F19.6**.
+
+- [ ] A1 Audio ambiental por bioma: paleta musical distinta por bioma
+      (escala/registro) en `public/audio.js` + contexto por bioma real en
+      `public/player.js` (ruido compartido cliente o `biome_update` ligero;
+      elegir el más barato y documentarlo); cueva sigue mandando; volumen
+      colchón intacto
+- [ ] B1 Accesibilidad: navegación por teclado completa en menús/paneles
+      (auditar cuáles no la tienen; cofre/horno/ajustes/mundos/pausa)
+- [ ] B2 Accesibilidad: contraste del HUD sobre fondos claros (nieve,
+      desierto) y oscuros (cuevas, lava)
+- [ ] B3 Accesibilidad: indicadores de estado (salud/hambre/oxígeno) con
+      forma/ícono además de color
+- [ ] B4 Accesibilidad: opción "reducir movimiento" en ajustes (atenúa bob de
+      cámara y FOV del sprint; persiste en `mc_settings`)
+- [ ] C1 Auditoría del raycasting (sin rediseño): candidatos razonables, 1
+      raycast por `pointermove`, highlight/retarget compartidos; veredicto
+      documentado
+- [ ] D1 Tokens de diseño (espaciado/tipografía/paleta/biseles) extraídos de
+      lo que F19 unifique, centralizados y reutilizables
+- [ ] E1 Servidor: `SIGTERM` además de `SIGINT` con guardado limpio
+- [ ] E2 Servidor: convención de niveles de log (`info`/`warn`/`error`) sobre
+      `console.*` sin dependencia; `tests/run.js` sigue parseando resúmenes
+- [ ] E3 Servidor: repaso de validación/errores vs F16 C2/C3 y skills de Node;
+      brechas reales documentadas
+- [ ] F Matriz de skills con veredicto "se adopta / se evalúa y se rechaza"
+      (incluye `seo` y `threejs-loaders` rechazadas; motor 3D → F19.6)
+- [ ] G1 Cierre y auditoría de Fase 19.5: suite + E2E 6/6 + menú 7/7 +
+      `--audit` 6/6, `biome` 0, verificación manual (música en 3+ biomas,
+      teclado, contraste, reducción de movimiento, señales), `SCHEMA_VERSION`
+      6 intacto, docs y tracker al día
+
+---
+
+## Fase 19.6 — Motor 3D: iluminación, materiales, shaders, instancing, texturas y animación
+
+> Especificación (la verdad de la fase): [`docs/fase19.6-spec.md`](docs/fase19.6-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: F19.5 cerrada.
+> Fase independiente de **riesgo técnico** decidida en la entrevista
+> 2026-08-15 (el motor 3D afecta al juego; va después de las skills
+> visuales). Regla dura: nada que degrade el rendimiento se activa por
+> defecto — se queda detrás de un toggle.
+
+- [ ] A1 Iluminación: `HemisphereLight` (cielo/suelo) junto al `AmbientLight`
+      actual; sin degradación medible (>2% → toggle)
+- [ ] A2 Luz puntual limitada en antorchas cercanas (máx 4-6 luces,
+      presupuesto coordinado con F20); si degrada → "evaluado y rechazado" o
+      toggle de calidad alta
+- [ ] B1 `MeshToonMaterial` como **toggle en ajustes, NO predefinido** (por
+      defecto sigue `MeshLambertMaterial`); swap de material reutilizando el
+      geopool; sin PBR (documentado)
+- [ ] C1 Agua animada: `ShaderMaterial` con offset de textura por tiempo
+      (patrón `sky.js`), sin reflejos; costo <1-2% de FPS
+- [ ] C2 Vaivén de viento en vegetación cross-mesh (vertex shader, onda por
+      celda, solo plantas altas)
+- [ ] D1 `InstancedMesh` para vegetación/partículas: medir draw calls/FPS
+      antes/después; adoptar con toggle solo si la mejora es medible; si no,
+      documentar rechazo
+- [ ] E1 Mipmapping/anisotropía del atlas (solo si no rompe el look pixel-art
+      ni el rendimiento; toggle de calidad si procede) + `dispose()` de
+      texturas intacto (geopool)
+- [ ] F1 Animación de mobs: caminar (balanceo por trigonometría con fase por
+      mob) y ataque básico (adelantar parte); "reducir movimiento" (F19.5 B4)
+      lo atenúa
+- [ ] G1 Cierre y auditoría de Fase 19.6: suite + E2E 6/6 + menú 7/7 +
+      `--audit` 6/6, `biome` 0, medición antes/después por bloque
+      documentada, CDP de render 0 excepciones, `SCHEMA_VERSION` 6 intacto,
+      docs y tracker al día
+
+---
+
 ## Fase 20 — Rolling release (ciclo de estabilización y paridad)
 
 > Especificación (la verdad de la fase): [`docs/fase20-spec.md`](docs/fase20-spec.md)
 > **Prospectiva (sin implementar)** — prerrequisito: Fase 18 cerrada
 > (y con ella F16/F17). Ciclo largo con iteraciones v20.x; cada iteración
 > con auditoría obligatoria; no se avanza hasta que todo esté en verde.
+> Integrado el backlog del borrador `fase20-spec.md` (Descargas) en B3/B4.
 
 - [ ] A1 Metodología del ciclo (planificar → implementar → probar → revisar
       → release v20.x → auditoría de la iteración); Won't íntegro; cambios
@@ -725,9 +833,15 @@
 - [ ] B2 v20.1: bugs de estabilidad (3-5 de alta prioridad de las notas y
       auditorías) cada uno con causa raíz + test de regresión + manual
 - [ ] B3 v20.1: paridad restante de la F18 (C-1..C-9) si algo quedó sin
-      cerrar, con su assert en `unit-paridad.js`/`unit-recetas.js`
+      cerrar + backlog del borrador: **TNT knockback** (hallazgo F16 G2.6),
+      **recetas de mena en el horno** (evaluar reponer fundido explícito),
+      **CSP + SRI de Three.js o servirlo local** (SEC-4) — cada uno con su
+      assert en `unit-paridad.js`/`unit-recetas.js`
 - [ ] B4 v20.1: rendimiento dentro de presupuesto (solo cuellos de botella
-      reales; candidato documentado: rediseño del formato de guardado)
+      reales; candidatos del borrador: formato de guardado coste/beneficio,
+      `switchWorld`/`releaseWorld` asíncronos, gzip en worker,
+      `SAVE_BATCH_SIZE` calibrado, perfilado c8 con umbrales, presupuestos
+      LOD, luz de antorcha `torchSet`)
 - [ ] B5 v20.1: release `v20.1` (etiqueta + documento de la iteración con
       bugs/paridad/métricas + TODO al día)
 - [ ] C1 Auditoría por iteración obligatoria (suite + E2E + `--audit` 6/6 +
@@ -740,8 +854,11 @@
 
 > Especificación (la verdad de la fase): [`docs/fase21-spec.md`](docs/fase21-spec.md)
 > **Prospectiva (sin implementar)** — prerrequisito: Fase 20 cerrada.
-> Mejoras grandes de `Notas del usuario.md` (entrevista 2026-08-12):
-> biomas/estructuras/mobs no entran en 19/20; se planifican aquí.
+> Mejoras grandes de `Notas del usuario.md` (entrevistas 2026-08-12 y
+> 2026-08-15): biomas/estructuras/mobs no entran en 19/19.5/19.6/20; se
+> planifican aquí. **Exclusiones de la entrevista 2026-08-15: el selector
+> de skins NO entra (ya en F17 C3) y el audio por bioma se adelantó a la
+> F19.5 (A1) — no se duplican aquí.**
 
 - [ ] A1 Biomas más grandes en extensión (escala del ruido de `getBiome`)
       con recalibración de `unit-biomas`/`unit-mundo`/`audit-fase4`
@@ -765,6 +882,72 @@
       verificación manual (explorar biomas/estructuras con semilla
       conocida), `SCHEMA_VERSION` 7 solo si cambia el formato (migración +
       test), docs y tracker al día; Won't íntegro
+- [ ] D2 (preparación) los bloques/ítems de amatista (`AMETHYST_BLOCK`,
+      `AMETHYST_CLUSTER`, `AMETHYST_SHARD`) los aporta la **Fase 22**
+      (B1); la geoda de la F21 los reusa y suelta shards — no añadir IDs
+      duplicados cuando se implemente
+
+---
+
+## Fase 22 — Profundidad, minerales y fauna 1.17–1.21 (Spec)
+
+> Especificación (la verdad de la fase): [`docs/fase22-spec.md`](docs/fase22-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 21 cerrada.
+> Creada desde el plan del usuario "Actualizaciones Minecraft 1.17 → 1.21"
+> (2026-08-15, nueva sección en `Notas del usuario.md`): **minerales en
+> bruto (se funden todos), deepslate bajo Y=0, cobre (solo el bloque),
+> catalejo con zoom real, Deep Dark (Sculk) en Y < −40 con propagación,
+> rana, terreno 1.18 y subida a 256 SOLO si los tests lo confirman**.
+> La geoda de amatista se mantiene en la F21 (D2); los biomas
+> manglar/cerezo/bambú quedan como candidatos de la F21.
+
+- [ ] A1 Evaluación de factibilidad de altura 256 (Y −64..191): test de
+      rendimiento/carga con el mundo actual (greedy+worker+LOD); veredicto
+      documentado en la spec — **solo se sube si los tests lo confirman**;
+      si sube: `SCHEMA_VERSION` 7 + migración v6→v7 + recalibración de
+      minerales/auditorías; si no, se mantiene 128 y se documenta
+- [ ] A2 Terreno estilo 1.18 dentro del rango vigente: montañas más altas
+      (hasta ~Y=60) y valles profundos, cuevas más grandes y conectadas
+      (recalibrar `caveStrength` multioctava), sin romper determinismo
+      (`unit-mundo`/`unit-biomas`/`audit-fase4` en verde)
+- [ ] A3 `DEEPSLATE` (bloque B nuevo): piedra por debajo de Y=0 sustituida;
+      menas siguen con su distribución por profundidad ya calibrada (se
+      generan también en el deepslate); B/I sincronizados + icono
+- [ ] A4 Minerales en bruto: `RAW_IRON`, `RAW_GOLD`, `RAW_COPPER` (ítems I
+      nuevos); minar hierro/oro/cobre suelta el **raw en todos los casos**
+      (se quita el lingote directo de `ORE_DROP`); horno funde raw → lingote
+      (recetas_horno); reajustar `unit-paridad` (drops) y E2E de minería
+- [ ] A5 Cobre (1.17): `COPPER_ORE` (bloque con distribución por altura ~Y
+      0..16) + `COPPER_INGOT` (horno) + `COPPER_BLOCK` (crafteo 9 lingotes);
+      **solo el bloque por ahora** — sin oxidación, sin cut/escaleras/losas
+      (decisión documentada: ampliación futura si es factible)
+- [ ] B1 Bloques/ítems de amatista: `AMETHYST_BLOCK`, `AMETHYST_CLUSTER`,
+      `AMETHYST_SHARD` (B/I nuevos) — la **estructura geoda se mantiene en
+      F21 (D2)**; aquí solo se definen los IDs que la F21 reusará; shard =
+      drop del cluster
+- [ ] B2 Catalejo (`SPYGLASS`): ítem nuevo + receta (shard + lingote de
+      cobre); **funcionamiento real de zoom** (reducir FOV al sostenerlo
+      con el botón de usar, `pointer lock` intacto — patrón `SPRINT_FOV` de
+      `player.js`); sin HUD extra
+- [ ] C1 Deep Dark (1.19) en Y < −40: `SCULK` y `SCULK_VEIN` (bloques B
+      nuevos) colocados en las capas profundas; propagación básica: al morir
+      un mob sobre sculk, convierte bloques circundantes (tierra/piedra) en
+      radio 2 — test determinista; **sin** Warden/shriekers/ciudad
+      antigua/crecimiento propio (limitaciones documentadas)
+- [ ] D1 Rana (1.19): mob pasivo nuevo (MOB_PARTS + textura + clase con
+      `tickSpecies`/`onDeath` + cría con `SLIME_BALL` + spawn por bioma:
+      pantano, y manglar cuando la F21 lo añada); salta y come slimes
+      pequeños; sin renacuajos por ahora (documentado)
+- [ ] E1 Tests específicos de la fase: `unit-fase22.js` cubriendo deepslate
+      bajo Y=0, raw ores (drop + horno), cobre (generación/receta/bloque),
+      amatista (IDs + shard), catalejo (receta + zoom), sculk (generación +
+      propagación), rana (salto/come slime/cría/spawn) y veredicto de altura
+      A1
+- [ ] F1 Cierre y auditoría de Fase 22: suite completa en verde + E2E + `--audit`
+      + unit-fase22 en verde + `node --check` + biome 0 + verificación
+      manual (minar deepslate, fundir raw, catalejo zoom, sculk, rana);
+      `SCHEMA_VERSION` 6 o 7 según veredicto A1; docs y tracker al día;
+      Won't de la fase documentado en la spec
 
 ---
 
@@ -782,3 +965,15 @@
   aldeanos y villas, Wither, Dragón del End, Blaze, Ghast, Gólem de hierro,
   Ciudad Antigua, biomas del Nether/End (documentados como inspiración en
   la Fase 21)
+- **Editor de skins personalizado** (añadido 2026-08-15: el selector de
+  skins predefinidas ya existe en F17 C3; un editor queda fuera de alcance
+  por ahora)
+- **Restricciones de la Fase 22** (plan 1.17→1.21, 2026-08-15): Redstone y
+  todo lo que dependa de ella (Crafter, comparadores, repetidores),
+  Trial Chambers y spawners de prueba, Arqueología (cepillo/barro
+  sospechoso), Aldeanos/Comercio/Aldeas y Warden (solo el bloque Sculk se
+  implementa en la F22), encantamientos/pociones, clima complejo, **oxidación
+  del cobre**, **brotes de amatista que crecen** y **renacuajos**
+  (limitaciones documentadas en la F22), acuíferos subterráneos, Sniffer y
+  Camello (montura), mobs del Nether (Hoglin/Piglin). Diferidos (no Won't):
+  Lush Caves, Breeze, Armor Trims, Tuff/Caliza → Fase 23.

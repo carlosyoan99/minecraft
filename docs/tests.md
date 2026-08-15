@@ -92,11 +92,11 @@ Three/DOM para forzarlos.
 | `unit-mobs-poo.js` | POO (F13): subclases por especie + `createMob` |
 | `unit-poo-entities.js` | POO (F13): `Player`/`World`/`Chunk`/`ItemStack` como clases (+ G2.5: serialización, merge/clamp, durabilidad 0, inventario lleno) |
 | `unit-lagunas.js` | Lagunas L1-L5: arco, puertas, escaleras/losas/vallas, cubo, recetas |
-| `unit-red.js` | Handlers de `net.js` con ws fake (sin servidor) + **C2 coords inválidas** + **C4 cooldown de `set_seed`** + CL-3 parse seguro |
+| `unit-red.js` | Handlers de `net.js` con ws fake (sin servidor) + **C2 coords inválidas** + **C4 cooldown de `set_seed`** + CL-3 parse seguro. F18 D-1: los handlers de juego viven en `actions.js` y el arranque/tick en `timers.js` (fachadas de `net.js` intactas) |
 | `unit-recetas.js` | Integridad de recetas + cadena de obtención de las 20 herramientas |
 | `unit-recipecats.js` | Categorías del libro de recetas |
 | `unit-sync.js` | Sincronía de IDs/constantes `server/constants.js` ↔ `public/constants.js` |
-| `unit-paridad.js` | Tabla oficial de MC fijada (vida 20, curva XP, espadas, armadura, durezas, durabilidad) |
+| `unit-paridad.js` | Tabla oficial de MC fijada (vida 20, curva XP, espadas, armadura, durezas, durabilidad) + **F18 C-5** `MOB_XP`↔`mobXp()` coherente (checks D6) + **C-3** comida (zanahoria/patata) + **C-1** franjas día/noche + sonidos C-9 (hooks) |
 | `unit-commands.js` | `/help` `/tp` `/give` `/time set` `/gamemode` `/reload` + **SV-5 `/give` tope 64** + **SV-6 `/tp` clamp** |
 | `unit-arboles.js` | Copas de árboles completas en bordes de chunk (`pendingLeaves`) |
 | `unit-reload.js` | Hot-reload de recetas (swap atómico, JSON inválido) |
@@ -118,7 +118,7 @@ Three/DOM para forzarlos.
 | `unit-armadura.js` | Reducción de daño, tope 0.8, desgaste, equipar/des-equipar |
 | `unit-respawn.js` | Respawn por gamemode: survival pierde inventario, creative conserva |
 | `unit-caida.js` | Daño por caída (fórmula MC), void, agua que anula |
-| `unit-anticheat.js` | Anti-cheat de vuelo (v1) + **C3 anti-cheat v2** (hover + ventana deslizante de velocidad) + `WS_MAX_PAYLOAD` |
+| `unit-anticheat.js` | Anti-cheat de vuelo (v1) + **C3 anti-cheat v2** (hover + ventana deslizante de velocidad) + `WS_MAX_PAYLOAD`. F18 D-1: la validación vive en `server/anticheat.js`; `timers.js` pasa `maxPayload` al `WebSocket.Server` |
 | `unit-crack.js` | Grieta de rotura sincronizada |
 | `unit-terreno.js` | Minas abandonadas con loot, pozos agua/lava, gzip del guardado |
 | `unit-itemicons.js` | Iconos procedurales de ítems (determinismo, distinguibilidad) |
@@ -133,6 +133,7 @@ Three/DOM para forzarlos.
 | `unit-dia.js` | Matemática pura del ciclo día/noche (`public/daymath.js`): `dayFactor`, `duskFactor` (pico real en d≈0.402), `fogDistances` (30/70→75/200) y `cloudTint` + `CLOUD_TINT_STEP` (G3) |
 | `unit-fase17.js` | Fase 17: modo menú (A1), persistencia por nombre (B1), romper el bloque bajo una flor/hierba (B4), hostiles no agreden en creativo (B6), cuevas largas (B5), heartbeat (B2), minado continuo (B7), táctil (D1) |
 | `unit-skins.js` | Fase 17 (C3): skins de jugador — píxeles puros de los 9 skins (`public/skins.js`), sincronía `PLAYER_SKINS` ↔ `SKINS` y protocolo `set_skin`/`player_skin` (17 checks) |
+| `unit-fase18.js` | Fase 18 (C-8): orbes de XP — suelte en survival, recogida al pisar (radio 2), creative conserva, no se persisten, expiran (5 min) |
 
 ## Auditorías standalone
 

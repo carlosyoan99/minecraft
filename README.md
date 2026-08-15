@@ -40,14 +40,18 @@ mi-minecraft/
 │   ├── server.js          Arranque (carga módulos, hooks, hot-reload, guardado)
 │   ├── constants.js       Fuente de verdad de IDs (B/I) y configuración (semilla, tiempos, altura −64..+63)
 │   ├── state.js           Estado mutable compartido (chunks, players, mobs, furnaces, chests)
-│   ├── world.js           Generación (biomas, cuevas, lagos) y archivos de chunk. POO: clase World/Chunk
+│   ├── world.js           Núcleo del mundo (clases World/Chunk, acceso a bloques); la generación vive en generation/biomes/structures/noise (F18 D-3)
+│   ├── generation.js      Ruido + generateChunk (columnas, cuevas, minerales, árboles, pozos, lagos)
 │   ├── items.js           POO (F13): clase ItemStack — slots de inventario/cofre/drop
-│   ├── crafting.js        Recetas de crafteo y hornos (tick de fundición)
+│   ├── crafting.js        Recetas de crafteo y hornos (tick de fundición, desperdicio/cola C-6)
 │   ├── chests.js          Cofres: inventario propio por bloque (27 slots, persistidos)
-│   ├── players.js         Inventario, hambre, salud, XP y daño de jugadores. POO: Player/createPlayer
-│   ├── mobs.js            IA de mobs (máquina de estados) y drops. POO: subclases + createMob
-│   ├── save.js            Persistencia incremental por chunk + descarga de chunks
-│   ├── net.js             HTTP/WebSocket, handlers y bucle principal
+│   ├── players.js         Clase Player (POO F13); inventario en inventory.js, combate/XP en combat.js (F18 D-5)
+│   ├── mobs.js            Clase base Mob + fábricas; especies en mob-species.js, spawn en mob-spawn.js, proyectiles en projectiles.js (F18 D-2)
+│   ├── save.js            Orquestador de persistencia; escritura en save-chunks/save-meta/save-players (F18 D-4)
+│   ├── net.js             HTTP/WebSocket, switch de mensajes y broadcast; handlers en actions.js, bucle en timers.js (F18 D-1)
+│   ├── actions.js         Handlers de juego del switch (crafteo, horno, cofre, mobs, chat, ...)
+│   ├── timers.js          Bucle principal (tick 20 Hz), métricas y arranque HTTP/WS
+│   ├── anticheat.js       Validación del move (coords, void, sólidos, velocidad)
 │   ├── mining.js          Sesiones de minería con progreso (Fase 6)
 │   ├── tnt.js             TNT: mechas, explosión con cráter y reacciones en cadena (Fase 10)
 │   └── commands.js        Consola de comandos (/help, /tp, /give, /time set, /gamemode)
@@ -64,15 +68,17 @@ mi-minecraft/
 │   ├── debug.js           Visualizador de chunks (F3): bordes + caras para depurar culling
 │   ├── connection.js      Socket WebSocket
 │   ├── network.js         Dispatcher de eventos servidor→cliente
-│   ├── world.js           Chunks: almacén + meshes, culling, LOD, dispose
+│   ├── world.js           Ciclo de vida de mallas (mapas, LOD, frustum, grietas); datos en chunkstore.js, luz en lightclient.js, geometría en meshbuild.js/lodmesh.js (F18 D-7)
+│   ├── chunkstore.js      Datos de chunks en cliente (Uint8Array→bloques, antorchas)
+│   ├── meshbuild.js       Construcción de mallas (materiales, pool, worker) — F18 D-7
 │   ├── chunkGeometry.js   Geometría pura de chunk (greedy meshing 2D por capas + luz/AO horneados)
 │   ├── chunkWorker.js     Worker ESM: construye la geometría fuera del hilo principal (F13)
 │   ├── texturemap.js      Selección de tesela del atlas por bloque/cara y UVs (antes dentro de world.js)
 │   ├── player.js          Física del jugador (gravedad, salto, natación)
 │   ├── scene.js           Escena, cámara, renderer y luces
 │   ├── mobs.js            Render de mobs (texturas por cara + escala por tipo)
-│   ├── input.js           Ratón (pointer lock), teclado, clics
-│   ├── ui.js              HUD (salud, hambre, XP, hotbar, durabilidad) + menú con semilla
+│   ├── input.js           Despachador de input; juego en game-input.js, rayo en raycast.js, menú en menu-input.js, táctil en touch.js (F18 D-8)
+│   ├── ui.js              Orquestador del HUD; HUD en hud.js, menús en menus.js, paneles en panels.js, libro en recipebook.js (F18 D-6)
 │   ├── audio.js           Sonidos procedurales (Web Audio, sin assets)
 │   ├── particles.js       Partículas de bloques al romper/colocar (pool con física)
 │   ├── textures.js        Atlas de texturas procedural de bloques (canvas 16x16 px)

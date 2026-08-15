@@ -227,13 +227,20 @@ primer soporte, TNT explota con cráter y el bedrock sobrevive).
   (`ARMOR_DURABILITY`).
 - **Hambre y regeneración:** la saturación se consume primero, decae más
   rápido en movimiento; con comida ≥18 el jugador regenera salud; con 0
-  muere de inanición (ignora armadura).
-- **XP con la curva OFICIAL de Minecraft** (Fase 13, paridad B2):
+  muere de inanición (ignora armadura).- **XP con la curva OFICIAL de Minecraft** (Fase 13, paridad B2):
   `xpToNext(level)` por tramos (2L+7 para L<16, 5L−38 para 16..30,
   9L−158 para L≥31); coste total hasta nivel 30 = **1.395 XP**. La
-  **salud máxima es SIEMPRE 20** (el nivel NO da vida, paridad B1). La XP
-  se conserva al morir. El HUD recibe `xpInto`/`xpToNext` para pintar el
-  progreso dentro del nivel.
+  **salud máxima es SIEMPRE 20** (el nivel NO da vida, paridad B1). El
+  HUD recibe `xpInto`/`xpToNext` para pintar el progreso dentro del
+  nivel. Fase 18 (C-8): la XP ya NO se conserva al morir en survival —
+  se suelta como orbe en el punto de muerte (siguiente bullet).
+- **Valores de comida MC** (Fase 18, C-3): `FOOD_VALUES` con hambre y
+  saturación oficiales — zanahoria **3/3,6**, patata **1/0,6**, patata al
+  horno **5/6** (receta `patata → patata al horno` en `recetas_horno.json`).
+- **`MOB_XP` coherente** (Fase 18, C-5): la tabla de fallback no
+  contradice `mobXp()` — hostiles 5 XP, lobo salvaje 2, slime por tamaño
+  4/2/1; paridad 1:1 en los tipos normales. `unit-paridad.js` fija la
+  coherencia (checks D6).
 - **Muerte y respawn** (`respawnPlayer`): al morir se suelta el inventario,
   se restaura salud/comida, se reaparece en el spawn del mundo (o en la
   cama si se durmió) y se aplica la gracia de spawn (30 s sin daño de mobs).
@@ -363,6 +370,15 @@ creative conserva y no se persisten).
   jugador mete con el horno encendido se **encola FIFO** (`fuelQueue`, no
   se persiste) y se despacha solo cuando se apaga el fuego y hay insumo
   (un horno vacío no quema combustible de la cola).
+- **Carbón vegetal como ítem** (Fase 18, C-4): la receta `tronco →
+  carbón vegetal` (200 t) produce `I.CHARCOAL` (257), un ítem NUEVO
+  sincronizado en ambos `constants.js` con su icono; `COAL` (101) sigue
+  saliendo solo de la mena de carbón (el drop directo de `ORE_DROP`).
+  Justificado por paridad (MC usa ítems distintos).
+- **Recetas de mena eliminadas** (Fase 18, C-7): `recetas_horno.json` ya
+  no tiene claves de mena→gema — el fundido está implícito en `ORE_DROP`
+  (minar da el lingote directo). Cobertura en `unit-recetas`: toda
+  receta del horno es alcanzable con ítems obtenibles.
 - **Validación estructural** (`isValidRecipes`): receta malformada se
   rechaza al cargar, nunca deja el juego a medias.
 
@@ -433,6 +449,14 @@ recetas vía `recipe_book`), `tests/e2e-comer.js`.
   DAY_CYCLE_MS`. El `timeOffset` (de `/time set` o dormir) **se persiste en
   `world.json`** (Fase 10): la hora del mundo continúa entre sesiones y los
   mundos nuevos arrancan al amanecer (`dawnOffsetMs`).
+- **Franjas día/noche MC** (Fase 18, C-1): `DAY_PHASES` en ambos
+  `constants.js` — **día 10 / atardecer 1,5 / noche 7 / amanecer 1,5**
+  sobre `DAY_CYCLE_MS` (20 min). `isNightTime` es la **noche estricta**
+  (fase ≥ atardecer) → spawn hostil y dormir; `isDayTime` es el **día
+  estricto** (sin crepúsculos) → quema solar. Dormir solo funciona de
+  noche estricta (antes el umbral era binario 10/10). El cliente usa las
+  mismas franjas en `public/daymath.js` (cielo/luz/niebla interpolan por
+  `dayFactor` con los límites ajustados).
 - **Fases lunares** (`moonTime`): ciclo de 8 días de juego
   (`MOON_CYCLE_MS = DAY_CYCLE_MS * 8`) con **offset determinista por
   semilla** (`seedMoonOffsetMs`): mismo mundo → misma fase lunar para

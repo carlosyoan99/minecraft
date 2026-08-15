@@ -6,11 +6,15 @@
 > establecidas en CLAUDE.md y mejorar la documentación en general"),
 > `docs/auditoria-2026-08-11.md` (la más reciente), `docs/reporte-paridad.md`,
 > `TODO.md` y la entrevista con el usuario (2026-08-12, Tandas 1-3).
-> Fecha: 2026-08-12 · Proyecto: clon de Minecraft.
-> Estado: **prospectiva (sin implementar)** — progreso 2026-08-12: **A1
-> cerrado** (WIP de la auditoría 2026-08-11 commiteado: `db1c366`, `17deb8c`,
-> `5303e73`), **E-2 bioma 0 errores cerrado** (commit `bd49412`) y **E-1
-> auditorías recalibradas cerrado** (commit `6fa7851`, `--audit` 6/6).
+> Fecha: 2026-08-12 (última actualización 2026-08-15) · Proyecto: clon de
+> Minecraft.
+> Estado: **✅ COMPLETADA Y AUDITADA (2026-08-15)** — paridad C-1..C-9
+> (commits `2726033`..`0e05809`), refactor D-1..D-8 (commits `0d13980`..
+> `204b7b7` + cierre de cliente), docs F y cierre G (ver secciones). Progreso
+> histórico: **A1 cerrado** (WIP de la auditoría 2026-08-11 commiteado:
+> `db1c366`, `17deb8c`, `5303e73`), **E-2 bioma 0 errores cerrado** (commit
+> `bd49412`) y **E-1 auditorías recalibradas cerrado** (commit `6fa7851`,
+> `--audit` 6/6).
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -416,6 +420,15 @@
 - **Criterio:** playtest rápido en navegador (HUD, menú, inventario, libro
   siguen igual) + `unit-ui.js`/`unit-itemicons.js` en verde; módulos nuevos
   <~500 (salvo `itemicons.js` que es tabla: ver nota).
+- **Estado (2026-08-15): ✅ CERRADO** — `public/ui.js` quedó en 82 líneas
+  como **orquestador** (re-exporta el API y orquesta `applyInventory`);
+  `hud.js` 339 (HUD en juego: hotbar, salud/comida/XP, tooltip, silencio,
+  badge de gamemode, chat y pantalla de muerte), `menus.js` 557 (pantallas
+  principal/mundos/crear/ajustes/pausa + skins), `panels.js` 377
+  (inventario/crafteo, armadura, horno, cofre, picker) y `recipebook.js` 137
+  (libro por categorías). `audit-fase5.js` recalibrado a `public/hud.js`
+  (la barra de durabilidad). Mismo DOM, mismo protocolo; los consumidores
+  (`input.js`, `network.js`, `debug.js`) no cambiaron.
 
 ### D-7 — `public/world.js` (1263 líneas) → estado/carga + luz client
 
@@ -428,10 +441,22 @@
   - `world.js` queda con el ciclo de vida de mallas (worker, `geopool`,
     LOD, frustum) y `unloadFarChunks`.
 - **Ficheros:** `public/world.js`, `public/chunkstore.js`,
-  `public/lightclient.js` (nuevos), `public/chunkWorker.js` (sin cambios),
+  `public/lightclient.js`, `public/meshbuild.js`, `public/lodmesh.js`
+  (nuevos), `public/chunkWorker.js` (sin cambios),
   `tests/unit-greedy.js`/`unit-workers.js` (imports), `docs/public/README.md`.
 - **Criterio:** `unit-greedy.js`, `unit-workers.js` y la auditoría CDP de
   render (`audit-fase7`) en verde; módulos nuevos <~600.
+- **Estado (2026-08-15): ✅ CERRADO** — además de `chunkstore.js` (122,
+  datos) y `lightclient.js` (158, luz horneada), la construcción de mallas
+  salió a `meshbuild.js` (438: materiales, pool, `groupFromBuffers`,
+  `buildChunkGeometry`, transporte del worker con handlers inyectados
+  `setWorkerMessageHandler`/`setWorkerFallback`) y la geometría LOD a
+  `lodmesh.js` (262: `buildLodGeometry`). `world.js` quedó en 520 líneas
+  con el ciclo de vida de mallas (mapas, render distance, frustum,
+  watchdog B3, rebuild, carga/descarga, grietas y resaltado) + fachada
+  (re-exporta `getClientBlock`/`setClientBlock`/`hasTorchNear`/
+  `geoPoolStats`/`updateLiquidAnimation`). Sin cambios de comportamiento:
+  `unit-greedy`/`unit-workers`/56 unitarios en verde.
 
 ### D-8 — `public/input.js` (1000 líneas) → juego + menú + táctil
 
@@ -443,10 +468,19 @@
     aquí.
   - `input.js` queda como despachador entre modos (juego/menú/táctil).
 - **Ficheros:** `public/input.js`, `public/game-input.js`,
-  `public/menu-input.js`, `public/touch.js` (nuevos),
+  `public/menu-input.js`, `public/touch.js`, `public/raycast.js` (nuevos),
   `docs/public/mecanicas.md`.
 - **Criterio:** `unit-input.js` si existe (o ampliarlo) + verificación
   manual de clic/pointer lock/táctil en navegador; módulos nuevos <500.
+- **Estado (2026-08-15): ✅ CERRADO** — `public/input.js` quedó en 14
+  líneas como **despachador** (importa game-input/menu-input/touch y
+  re-exporta `onBlockMined`); `game-input.js` 575 (teclado + ratón +
+  sesión de minería), `raycast.js` 250 (rayo + resaltado + telemetría
+  `__mcMiningTrace`/`__mcDebugMining` + `nearestMobOnRay`),
+  `menu-input.js` (pausa/menú) y `touch.js` 215 (táctil). El raycast y la
+  telemetría se extrajeron a su propio módulo para que game-input quedara
+  <600. Mismo flujo de puntero/pointer lock; `onBlockMined` (network.js)
+  intacto.
 
 ### D-9 — Nota: `public/itemicons.js` (1423 líneas) NO se divide en esta fase
 
@@ -554,6 +588,13 @@
 - **Ficheros:** `docs/server/*.md`, `docs/public/*.md`.
 - **Criterio:** cada mecánica nueva/cambiada tiene su sección; los mapas de
   módulos reflejan los archivos reales (verificar con `git status`/ls).
+- **Estado (2026-08-15): ✅ CERRADO** — `docs/server/README.md` y
+  `docs/public/README.md` con los mapas de módulos actualizados (15 módulos
+  de servidor + 11 de cliente nuevos/refactorizados), `docs/server/mecanicas.md`
+  con C-1 (franjas día/noche), C-3 (comida), C-4 (carbón vegetal), C-5
+  (`MOB_XP`), C-6 (horno), C-7 (mena implícita) y C-8 (orbes);
+  `docs/public/mecanicas.md` con C-1 (franjas cliente), C-9 (sonidos) y las
+  secciones de Input/UI apuntando a los módulos nuevos.
 
 ### F-2 — README, TODO y guías transversales
 
@@ -564,6 +605,11 @@
   (Fase 18 cerrada al final).
 - **Criterio:** contradicciones 0 entre docs y código (grep de nombres de
   módulos citados vs existentes).
+- **Estado (2026-08-15): ✅ CERRADO** — `README.md` (árbol de módulos
+  servidor/cliente), `docs/tests.md` (matriz: `unit-fase18` añadido,
+  `unit-red`/`unit-anticheat`/`unit-paridad` con los módulos nuevos),
+  `AGENTS.md`/`CLAUDE.md` (mapa de módulos y estado de fases),
+  `docs/README.md` (índice) y `TODO.md` (Fase 18 cerrada).
 
 ### F-3 — Decisiones diferidas documentadas
 
@@ -599,6 +645,29 @@
    `AGENTS.md` (estado de fases) y esta spec (secciones de resultado).
 7. `SCHEMA_VERSION` **sin cambios** (6); protocolo WS e IDs B/I intactos;
    sin archivos de jugador alterados (solo los ya existentes de F17 B1).
+
+- **Estado (2026-08-15): ✅ CERRADO** — suite unitaria **56/56** en verde
+  tras cada commit y al cierre; **E2E clásicos 6/6 + menú 7/7** en
+  solitario; `node tests/run.js --audit` **6/6** (fase3/4/5/6/7 + altura);
+  `biome check` **0 errores** (188 warnings de noConsole/useOptionalChain
+  toleradas como en E-2); `node --check` en todos los `.js` tocados;
+  `SCHEMA_VERSION` 6 intacto, protocolo WS e IDs B/I intactos; `TODO.md`/
+  `docs/README.md`/`AGENTS.md`/esta spec actualizadas. Verificación manual
+  en navegador: C-1 crepúsculos, C-8 orbe, C-9 sonidos, D-6/D-7/D-8 sin
+  regresiones (HUD/menú/pausa/táctil) y flujo menú → mundo → pausa intacto
+  (F17).
+- **Lagunas cerradas durante la verificación final (G):** (1) `e2e-cofre.js`
+  quedó calibrado a la v5 (64 bloques, índice local == absoluto) mientras el
+  wire es v6 (128, local = mundo − `WORLD_MIN_Y`): con el mundo v6 el test
+  leía el subsuelo como "terreno" y el place nunca completaba (timeout en
+  fase `place`) — recalibrado a v6 con el mismo patrón que
+  `e2e-durabilidad.js` (c50bb93); era la única laguna de E-1, que solo
+  cubrió las auditorías. (2) `/time set night` fijaba el reloj en
+  `DAY_CYCLE_MS/2` (50%) — con las franjas MC de C-1 la noche estricta
+  empieza en `duskEnd` (65%), así que el comando caía en el atardecer y no
+  spawneaban hostiles (`e2e-mascotas` 0/12) — ahora fija
+  `DAY_CYCLE_MS * DAY_PHASES.duskEnd` con guarda de regresión en
+  `unit-commands.js` (`isNightTime` true tras `/time set night`).
 
 ---
 
