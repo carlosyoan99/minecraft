@@ -1,41 +1,43 @@
 // ============================================================
-// ALMACÉN DE MUNDO EN CLIENTE (chunks + geometría, culling entre chunks)
+// ALMACÉN DE MUNDO EN CLIENTE (Fase 18, D-7): CICLO DE VIDA DE MALLAS.
+// Los datos de chunks (Uint8Array, acceso por bloque, antorchas) viven en
+// chunkstore.js; la luz de antorcha horneada en lightclient.js; la
+// construcción de geometría (materiales, pool, worker, LOD) en meshbuild.js
+// y lodmesh.js. Este módulo orquesta las mallas (mapas chunkMeshes/lodMeshes,
+// tier LOD, frustum, carga/descarga, grietas y resaltado) y conserva la
+// fachada pública que usaban world.js (network.js, player.js, settings.js,
+// debug.js e input.js no cambian).
 // ============================================================
 import * as THREE from "three";
-import { buildChunkGeometryData } from "./chunkGeometry.js";
+// Fase 18 (D-7): datos y luz extraídos a módulos por responsabilidad.
 import {
-	BLOCK_COLORS,
-	CHUNK_SIZE,
-	NON_SOLID_PLANTS,
-	TORCH,
-	WORLD_HEIGHT,
-	WORLD_MAX_Y,
-	WORLD_MIN_Y
-} from "./constants.js";
-import { createGeometryPool, setOrReuseAttribute } from "./geopool.js";
-import { computeChunkLight, LIGHT_RADIUS } from "./lighting.js";
+	chunkKeys,
+	hasChunkData,
+	removeChunkData,
+	storeChunkData
+} from "./chunkstore.js";
+import { CHUNK_SIZE } from "./constants.js";
+import { clearChunkLight } from "./lightclient.js";
 import { lodTierFor } from "./lod.js";
-import { camera, scene } from "./scene.js";
+import { buildLodGeometry } from "./lodmesh.js";
 import {
-	buildTerrainAtlas,
-	buildWaterTexture,
-	tileForFace,
-	tileRect
-} from "./textures.js";
+	buildChunkGeometry,
+	enqueueWorkerBatch,
+	geometryPool,
+	groupFromBuffers,
+	lavaMaterial,
+	setTexFns,
+	setWorkerFallback,
+	setWorkerMessageHandler,
+	terrainMaterial,
+	tryGetWorker,
+	waterMaterial,
+	workerPending
+} from "./meshbuild.js";
+import { camera, scene } from "./scene.js";
 
-const chunkStore = new Map(); // "cx,cz" -> Uint8Array
 export const chunkMeshes = new Map(); // "cx,cz" -> THREE.Group (detalle completo)
 export const lodMeshes = new Map(); // "cx,cz" -> THREE.Group (LOD: heightmap simplificado)
-
-// ============================================================
-// ILUMINACIÓN POR BLOQUE (Fase 6: antorchas)
-// torchSet: posiciones de antorchas conocidas ("wx,wy,wz" -> [wx,wy,wz]).
-// lightStore: luz horneada por chunk ("cx,cz" -> Float32Array o null si no
-// hay antorchas relevantes cerca). Se hornea al construir la geometría y se
-// re-hornea al colocar/romper una antorcha (rebuildAround de 3x3 chunks).
-// ============================================================
-const torchSet = new Map();
-const lightStore = new Map();
 
 // ============================================================
 // DISTANCIA DE RENDER (Fase 7, ajustable desde el menú de Ajustes)
@@ -57,426 +59,60 @@ function withinRenderDistance(cx, cz) {
 export function setRenderDistance(rd) {
 	renderDistance = Math.min(10, Math.max(2, Math.round(rd)));
 	const toRemove = [];
-	for (const key of chunkStore.keys()) {
+	for (const key of chunkKeys()) {
 		const [cx, cz] = key.split(",").map(Number);
 		if (!withinRenderDistance(cx, cz)) toRemove.push(key);
 	}
 	if (toRemove.length) unloadChunks(toRemove);
 }
 
-// Módulo de texturas activo: apunta al importado estáticamente, pero
-// hotReloadTextures() lo reemplaza por una instancia fresca (dynamic import
-// con cache-busting) para que la geometría reconstruida use las teselas/UVs
-// nuevos si cambió el layout del atlas (Fase 6, hot-reload).
-let tex = { tileForFace, tileRect };
-
-// Frustum culling (Fase 6): objetos reutilizados por frame (sin allocs).
+// ============================================================
+// FRUSTUM CULLING (Fase 6)
+// Marca visible=false los chunks cuya esfera envolvente queda fuera del campo
+// de visión: se evita el draw call (y el paso de la geometría al renderer).
+// Se ejecuta cada frame desde el bucle de animación (public/player.js).
+// Cubre los dos tiers (detalle completo + LOD). Devuelve cuántos chunks
+// quedaron visibles (para el HUD y la auditoría).
+// ============================================================
+// Objetos reutilizados por frame (sin allocs).
 const frustum = new THREE.Frustum();
 const projScreen = new THREE.Matrix4();
-// Margen sobre la esfera envolvente de cada chunk: evita parpadeo cuando la
-// geometría asoma por el borde de la pantalla justo antes de salir del frustum.
-const FRUSTUM_MARGIN = 1.05;
-
-// Esfera envolvente de un chunk a partir de su geometría real (no de la caja
-// completa de la columna, que sería demasiado conservadora en montañas/cuevas).
-// Se calcula UNA vez por chunk al construirlo y se guarda en userData.
-function computeChunkSphere(group) {
-	const box = new THREE.Box3();
-	group.traverse((o) => {
-		if (o.isMesh && o.geometry) box.expandByObject(o);
-	});
-	const sphere = box.getBoundingSphere(new THREE.Sphere());
-	sphere.radius *= FRUSTUM_MARGIN;
-	return sphere;
-}
-
-function cIdx(x, y, z) {
-	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
-}
-
-export function getClientBlock(wx, wy, wz) {
-	// Fase 15 (D5): el mundo va de WORLD_MIN_Y (−64) a WORLD_MAX_Y (+63).
-	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return 0;
-	const cx = Math.floor(wx / CHUNK_SIZE),
-		cz = Math.floor(wz / CHUNK_SIZE);
-	const chunk = chunkStore.get(`${cx},${cz}`);
-	if (!chunk) return -1; // -1 = desconocido (chunk no cargado): no dibujar cara para evitar huecos falsos
-	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	return chunk[cIdx(x, wy - WORLD_MIN_Y, z)]; // mundo → local
-}
-
-export function setClientBlock(wx, wy, wz, block) {
-	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return -1;
-	const cx = Math.floor(wx / CHUNK_SIZE),
-		cz = Math.floor(wz / CHUNK_SIZE);
-	const key = `${cx},${cz}`;
-	let chunk = chunkStore.get(key);
-	if (!chunk) {
-		chunk = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
-		chunkStore.set(key, chunk);
+export function applyFrustumCulling(camera) {
+	camera.updateMatrixWorld(); // asegura matrixWorldInverse actualizado
+	projScreen.multiplyMatrices(
+		camera.projectionMatrix,
+		camera.matrixWorldInverse
+	);
+	frustum.setFromProjectionMatrix(projScreen);
+	let visible = 0;
+	for (const [, group] of chunkMeshes) {
+		const s = group.userData.boundingSphere;
+		const on = !s || frustum.intersectsSphere(s); // sin esfera (defensivo) → visible
+		group.visible = on;
+		if (on) visible++;
 	}
-	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-	const wyL = wy - WORLD_MIN_Y; // mundo → local
-	const prev = chunk[cIdx(x, wyL, z)];
-	chunk[cIdx(x, wyL, z)] = block;
-	// Mantener el registro de antorchas (lo usa la iluminación). Devuelve el
-	// bloque anterior para que la red decida si reconstruir el vecindario.
-	const torchKey = `${wx},${wy},${wz}`;
-	if (prev === TORCH) torchSet.delete(torchKey);
-	if (block === TORCH) torchSet.set(torchKey, [wx, wy, wz]);
-	return prev;
-}
-
-// Material compartido por todos los chunks: un único atlas de texturas.
-// Se crea una sola vez; NUNCA se hace dispose de él al reconstruir/descargar
-// chunks (solo se libera la geometría).
-const atlasTexture = buildTerrainAtlas();
-// vertexColors: true en todos los materiales texturizados: el color por
-// vértice (luz de antorcha horneada) MULTIPLICA el atlas y la luz global.
-const terrainMaterial = new THREE.MeshLambertMaterial({
-	map: atlasTexture,
-	vertexColors: true
-});
-// El agua es translúcida: material aparte (misma tesela del atlas), para que
-// se vea el lecho del lago a través de la superficie sin volver opacas las
-// caras sólidas adyacentes.
-// Fase 10 (E2): el agua tiene su propia textura desplazable (buildWaterTexture)
-// — updateLiquidAnimation mueve su offset cada frame para simular la corriente,
-// cosa que el atlas compartido no permite. Además es MeshPhongMaterial con
-// un specular suave: la luz del sol deja un brillo "mojado" en la superficie
-// (reflejo barato sin shaders; shininess bajo para que no sature).
-const waterTexture = buildWaterTexture();
-const waterMaterial = new THREE.MeshPhongMaterial({
-	map: waterTexture,
-	transparent: true,
-	opacity: 0.65,
-	side: THREE.DoubleSide, // al nadar bajo la superficie, la cara superior se ve desde abajo
-	vertexColors: true,
-	shininess: 24,
-	specular: 0x9fc8e8
-});
-// Lava (Fase 7): como el agua, pero opaca (no se ve el lecho a través) y
-// DoubleSide por si el jugador cae dentro del charco. Emissive suave para
-// que brille de noche (es un líquido incandescente).
-const lavaMaterial = new THREE.MeshLambertMaterial({
-	map: atlasTexture,
-	transparent: false,
-	opacity: 1,
-	side: THREE.DoubleSide,
-	vertexColors: true,
-	emissive: 0x3a1200,
-	emissiveIntensity: 0.45
-});
-// Antorchas (Fase 6): dos planos cruzados translúcidos (la tesela tiene
-// fondo transparente), DoubleSide y sin depthWrite (que un plano no tape al
-// otro); vertexColors para que brillen de noche.
-const torchMaterial = new THREE.MeshLambertMaterial({
-	map: atlasTexture,
-	transparent: true,
-	side: THREE.DoubleSide,
-	depthWrite: false,
-	vertexColors: true
-});
-// LOD de chunks lejanos (Fase 6): material de COLOR PLANO por vértice (sin
-// textura ni teselas finas — geometría simplificada). Compartido por todos
-// los chunks LOD; igual que el atlas, se crea una vez y nunca se hace dispose.
-// vertexColors multiplica por la luz del día/noche (como el resto del mundo).
-// DoubleSide: los muros del caparazón pueden verse por detrás desde un valle
-// o desde muy arriba — es barato en un material sin textura.
-const lodMaterial = new THREE.MeshLambertMaterial({
-	vertexColors: true,
-	side: THREE.DoubleSide
-});
-
-// Pool de geometrías (Fase 6): las BufferGeometry se reutilizan entre chunks
-// en vez de dispose()+new. Por categoría (terrain/water/lod: cada una con su
-// set de attributes), con tope para acotar la memoria retenida. Exponer el
-// pool para la métrica del HUD (window.__mcGeoPool, ver player.js).
-const geometryPool = createGeometryPool({
-	makeGeometry: () => new THREE.BufferGeometry(),
-	maxPooled: 24,
-	categories: ["terrain", "water", "lod", "torch"]
-});
-export function geoPoolStats() {
-	return geometryPool.stats();
+	for (const [, group] of lodMeshes) {
+		const s = group.userData.boundingSphere;
+		const on = !s || frustum.intersectsSphere(s);
+		group.visible = on;
+		if (on) visible++;
+	}
+	window.__mcVisibleChunks = visible;
+	return visible;
 }
 
 // ============================================================
-// AGUA/LAVA ANIMADOS (Fase 9, Bloque E)
-// Barato: pulso suave de la opacidad del agua y del brillo de la lava con
-// una onda seno del reloj global. Sin shaders ni reconstrucción de
-// geometría — el efecto se nota en superficie (brillo cambiante) y apenas
-// cuesta nada por frame. Se llama desde el bucle de animación (player.js).
+// GESTOR DEL WORKER (Fase 13, A2) — mitad cliente: el transporte y la cola
+// viven en meshbuild.js; aquí se procesan las RESPUESTAS (los buffers se
+// aplican a chunkMeshes) y el watchdog de mallas (F17 B3). Se registran los
+// handlers al cargar (los inyecta meshbuild para evitar el ciclo de imports).
 // ============================================================
-let liquidTime = 0;
-export function updateLiquidAnimation() {
-	liquidTime += 0.016; // ~60 fps
-	const wave = Math.sin(liquidTime * 2.2) * 0.5 + 0.5; // 0..1
-	// Opacidad del agua: 0.58..0.72 (la superficie "respira"); la lava brilla
-	// y oscila su incandescencia (emissiveIntensity 0.35..0.6).
-	waterMaterial.opacity = 0.58 + wave * 0.14;
-	lavaMaterial.emissiveIntensity = 0.35 + wave * 0.25;
-	// Fase 10 (E2): la textura dedicada del agua se DESPLAZA lentamente con
-	// la onda (RepeatWrapping, así el patrón se repite sin costuras): simula
-	// la corriente sin reconstruir geometría. La lava conserva su pulso.
-	waterTexture.offset.x = (waterTexture.offset.x + 0.0016) % 1;
-	waterTexture.offset.y = (waterTexture.offset.y + 0.0008) % 1;
-}
-
-// ============================================================
-// CONSTRUCCIÓN DE GEOMETRÍA (Fase 13, A1/A2: greedy meshing + worker)
-// La generación de atributos (posiciones, UVs, colores, AO) vive en
-// chunkGeometry.js, un módulo puro (sin three): aquí solo se hornea la luz
-// de antorcha, se reúnen los datos del chunk y sus vecinos 3x3 y se crean
-// los meshes con el pool. Dos caminos producen el MISMO resultado:
-//   - síncrono: buildChunkGeometry() — ediciones de bloques, LOD, hot-reload;
-//   - worker:   el lote de loadChunkData se envía a chunkWorker.js y la
-//     respuesta se aplica con groupFromBuffers() (el pool, los materiales y
-//     el culling se quedan en el hilo principal, como pide la spec A2).
-// ============================================================
-function collectChunkData(cx, cz) {
-	// Datos del chunk + vecinos 3x3 (bloques y luz horneada) en coordenadas
-	// relativas "dx,dz" — el formato que consume buildChunkGeometryData.
-	const chunks = new Map();
-	const light = new Map();
-	for (let dx = -1; dx <= 1; dx++) {
-		for (let dz = -1; dz <= 1; dz++) {
-			const key = `${cx + dx},${cz + dz}`;
-			const arr = chunkStore.get(key);
-			if (!arr) continue;
-			chunks.set(`${dx},${dz}`, arr);
-			light.set(`${dx},${dz}`, lightStore.get(key) || null);
-		}
-	}
-	return { chunks, light };
-}
-
-// Convierte los buffers del greedy (Float32Array por atributo) en el
-// THREE.Group del chunk (un mesh por categoría con su material y el pool de
-// geometrías). Lo usan el camino síncrono y el worker.
-function groupFromBuffers(buffers) {
-	if (!buffers.terrain && !buffers.water && !buffers.lava && !buffers.torch)
-		return null;
-	const group = new THREE.Group();
-	if (buffers.terrain) {
-		const geo = geometryPool.acquire("terrain");
-		setOrReuseAttribute(
-			geo,
-			"position",
-			buffers.terrain.pos,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"normal",
-			buffers.terrain.norm,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"uv",
-			buffers.terrain.uv,
-			2,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"color",
-			buffers.terrain.col,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		const mesh = new THREE.Mesh(geo, terrainMaterial);
-		mesh.castShadow = true;
-		mesh.receiveShadow = true;
-		mesh.userData.isTerrain = true;
-		mesh.userData.poolCat = "terrain";
-		group.add(mesh);
-	}
-	if (buffers.water) {
-		const geo = geometryPool.acquire("water");
-		setOrReuseAttribute(
-			geo,
-			"position",
-			buffers.water.pos,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"normal",
-			buffers.water.norm,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"uv",
-			buffers.water.uv,
-			2,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"color",
-			buffers.water.col,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		const mesh = new THREE.Mesh(geo, waterMaterial);
-		mesh.renderOrder = 1; // translúcido: dibujar después del terreno opaco
-		mesh.userData.isTerrain = true;
-		mesh.userData.poolCat = "water";
-		group.add(mesh);
-	}
-	if (buffers.lava) {
-		const geo = geometryPool.acquire("water"); // misma categoría: geometría translúcida
-		setOrReuseAttribute(
-			geo,
-			"position",
-			buffers.lava.pos,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"normal",
-			buffers.lava.norm,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"uv",
-			buffers.lava.uv,
-			2,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"color",
-			buffers.lava.col,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		const mesh = new THREE.Mesh(geo, lavaMaterial);
-		mesh.renderOrder = 1; // tras el terreno opaco
-		mesh.userData.isTerrain = true;
-		mesh.userData.poolCat = "water";
-		group.add(mesh);
-	}
-	if (buffers.torch) {
-		const geo = geometryPool.acquire("torch");
-		setOrReuseAttribute(
-			geo,
-			"position",
-			buffers.torch.pos,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"normal",
-			buffers.torch.norm,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"uv",
-			buffers.torch.uv,
-			2,
-			THREE.Float32BufferAttribute
-		);
-		setOrReuseAttribute(
-			geo,
-			"color",
-			buffers.torch.col,
-			3,
-			THREE.Float32BufferAttribute
-		);
-		const mesh = new THREE.Mesh(geo, torchMaterial);
-		mesh.renderOrder = 2; // translúcida: tras el agua, para verse en las orillas
-		mesh.userData.isTorch = true;
-		mesh.userData.poolCat = "torch";
-		group.add(mesh);
-	}
-	group.userData.boundingSphere = computeChunkSphere(group);
-	return group;
-}
-
-// Camino síncrono (ediciones, LOD, hot-reload, fallback sin worker).
-function buildChunkGeometry(cx, cz) {
-	workerPending.delete(`${cx},${cz}`); // un build síncrono invalida jobs en vuelo
-	bakeChunkLight(cx, cz);
-	const { chunks, light } = collectChunkData(cx, cz);
-	const buffers = buildChunkGeometryData({
-		cx,
-		cz,
-		chunks,
-		light,
-		tileForFaceFn: tex.tileForFace,
-		tileRectFn: tex.tileRect
-	});
-	if (!buffers) return null;
-	return groupFromBuffers(buffers);
-}
-
-// ---- Gestor del worker (Fase 13, A2) ----
-// Se crea perezosamente la primera vez que hay un lote grande que construir;
-// si el entorno no tiene Worker (o el worker falla), workerBroken=true y el
-// juego usa para siempre el camino síncrono (misma función pura → mismo
-// resultado). workerPending + token detectan respuestas obsoletas (el chunk
-// se reconstruyó o descargó mientras el worker trabajaba).
-let chunkWorker = null;
-let workerBroken = false;
-const workerPending = new Map(); // "cx,cz" → token del job en vuelo
-let workerToken = 0;
-
-function tryGetWorker() {
-	if (workerBroken) return null;
-	if (chunkWorker) return chunkWorker;
-	try {
-		chunkWorker = new Worker(new URL("./chunkWorker.js", import.meta.url), {
-			type: "module"
-		});
-		window.__mcChunkWorker = true; // diagnóstico F3/auditoría: el worker está activo
-		chunkWorker.onmessage = (e) => onWorkerMessage(e.data);
-		chunkWorker.onerror = () => {
-			workerBroken = true;
-			window.__mcChunkWorker = false; // diagnóstico: ya no se usa el worker
-			if (chunkWorker) {
-				try {
-					chunkWorker.terminate();
-				} catch {
-					/* noop */
-				}
-			}
-			chunkWorker = null;
-			// Los pendientes se reconstruyen de forma síncrona (fallback).
-			for (const key of [...workerPending.keys()]) {
-				if (chunkStore.has(key) && !lodMeshes.has(key) && !chunkMeshes.has(key))
-					rebuildChunk(key);
-			}
-			workerPending.clear();
-		};
-	} catch {
-		workerBroken = true;
-		chunkWorker = null;
-	}
-	return chunkWorker;
-}
-
 function onWorkerMessage(msg) {
 	if (msg?.type !== "chunk_built") return;
 	const { id, key, buffers } = msg;
 	if (workerPending.get(key) !== id) return; // obsoleto (rebuild/descarga posterior)
 	workerPending.delete(key);
-	if (!chunkStore.has(key)) return; // descargado durante el vuelo
+	if (!hasChunkData(key)) return; // descargado durante el vuelo
 	// Auditoría 2026-08-09 (§2.2): swap limpio. Si el chunk ya tiene un mesh
 	// (borde completado, rebuild de vecino, cambio de tier), el viejo quedaba
 	// huérfano en la escena: dos geometrías idénticas superpuestas (z-fighting)
@@ -521,79 +157,29 @@ export function tickChunkWatchdog(dt) {
 	meshWatchdogT += dt;
 	if (meshWatchdogT < 0.5) return;
 	meshWatchdogT = 0;
-	for (const key of chunkStore.keys()) {
+	for (const key of chunkKeys()) {
 		if (chunkMeshes.has(key) || lodMeshes.has(key)) continue;
 		if (workerPending.has(key)) continue; // en vuelo: el worker lo añadirá
 		rebuildChunk(key);
 	}
 }
 
-function workerJobFor(cx, cz) {
-	// FIX revisión F13-A2: hornear SIEMPRE la luz antes de recolectarla — el
-	// camino del worker no pasa por buildChunkGeometry (que hornea en el
-	// síncrono) y sin esto lightStore estaría vacío y las antorchas no
-	// iluminarían en los chunks construidos por el worker. Barato: sin
-	// antorchas relevantes bakeChunkLight deja el chunk a null y retorna.
-	bakeChunkLight(cx, cz);
-	const { chunks, light } = collectChunkData(cx, cz);
-	const chunkKeys = [...chunks.keys()];
-	const chunkData = chunkKeys.map((k) => chunks.get(k).slice()); // copia transferible
-	const lightKeys = [...light.keys()];
-	const lightData = lightKeys.map((k) => {
-		const a = light.get(k);
-		return a ? a.slice() : null;
-	});
-	return { cx, cz, chunkKeys, chunkData, lightKeys, lightData };
-}
-
-function enqueueWorkerBatch(keys) {
-	const w = chunkWorker;
-	for (const key of keys) {
-		const [cx, cz] = key.split(",").map(Number);
-		const id = ++workerToken;
-		workerPending.set(key, id);
-		const job = workerJobFor(cx, cz);
-		const transfer = [];
-		for (const a of job.chunkData) transfer.push(a.buffer);
-		for (const a of job.lightData) if (a) transfer.push(a.buffer);
-		w.postMessage({ type: "build", id, key, job }, transfer);
+// Fallback del worker (B3): los pendientes con datos y sin mesh se
+// reconstruyen de forma síncrona (misma función pura → mismo resultado).
+setWorkerMessageHandler(onWorkerMessage);
+setWorkerFallback(() => {
+	for (const key of [...workerPending.keys()]) {
+		if (hasChunkData(key) && !lodMeshes.has(key) && !chunkMeshes.has(key))
+			rebuildChunk(key);
 	}
-}
+	workerPending.clear();
+});
 
-// FRUSTUM CULLING (Fase 6)
-// Marca visible=false los chunks cuya esfera envolvente queda fuera del campo
-// de visión: se evita el draw call (y el paso de la geometría al renderer).
-// Se ejecuta cada frame desde el bucle de animación (public/player.js).
-// Cubre los dos tiers (detalle completo + LOD). Devuelve cuántos chunks
-// quedaron visibles (para el HUD y la auditoría).
 // ============================================================
-export function applyFrustumCulling(camera) {
-	camera.updateMatrixWorld(); // asegura matrixWorldInverse actualizado
-	projScreen.multiplyMatrices(
-		camera.projectionMatrix,
-		camera.matrixWorldInverse
-	);
-	frustum.setFromProjectionMatrix(projScreen);
-	let visible = 0;
-	for (const [, group] of chunkMeshes) {
-		const s = group.userData.boundingSphere;
-		const on = !s || frustum.intersectsSphere(s); // sin esfera (defensivo) → visible
-		group.visible = on;
-		if (on) visible++;
-	}
-	for (const [, group] of lodMeshes) {
-		const s = group.userData.boundingSphere;
-		const on = !s || frustum.intersectsSphere(s);
-		group.visible = on;
-		if (on) visible++;
-	}
-	window.__mcVisibleChunks = visible;
-	return visible;
-}
-
-// Libera el mesh de un chunk (del tier que tenga: completo o LOD). La
+// LIBERA EL MESH DE UN CHUNK (del tier que tenga: completo o LOD). La
 // geometría vuelve al pool (se reutiliza en el siguiente chunk de su
 // categoría); los materiales (atlas / colores) son compartidos y no se tocan.
+// ============================================================
 function removeChunkMesh(key) {
 	const old = chunkMeshes.get(key) || lodMeshes.get(key);
 	if (old) {
@@ -642,253 +228,8 @@ export function rebuildChunk(key) {
 }
 
 // ============================================================
-// LOD: GEOMETRÍA SIMPLIFICADA DE CHUNKS LEJANOS (Fase 6)
-// Un "caparazón" por columna: un quad superior en la altura de la superficie
-// (color plano del bloque de superficie, sin teselas finas) + muros laterales
-// donde el vecino es más bajo (para que las laderas se vean sólidas, no
-// láminas flotantes). ~256 quads por chunk en vez de miles de caras.
+// TIER LOD (Fase 6) Y REBUILD DE VECINOS
 // ============================================================
-// Oscurece un color (para los muros: dan profundidad frente a las tapas).
-function darken(hex, f) {
-	const r = Math.min(255, Math.round(((hex >> 16) & 255) * f));
-	const g = Math.min(255, Math.round(((hex >> 8) & 255) * f));
-	const b = Math.min(255, Math.round((hex & 255) * f));
-	return (r << 16) | (g << 8) | b;
-}
-
-function pushQuadVertex(pos, norm, col, x, y, z, nx, ny, nz, color) {
-	pos.push(x, y, z);
-	norm.push(nx, ny, nz);
-	col.push(
-		((color >> 16) & 255) / 255,
-		((color >> 8) & 255) / 255,
-		(color & 255) / 255
-	);
-}
-
-// Empuja un quad (4 vértices → 2 triángulos) con su normal y color plano.
-function pushQuad(
-	pos,
-	norm,
-	col,
-	ax,
-	ay,
-	az,
-	bx,
-	by,
-	bz,
-	cx2,
-	cy,
-	cz2,
-	dx,
-	dy,
-	dz,
-	nx,
-	ny,
-	nz,
-	color
-) {
-	pushQuadVertex(pos, norm, col, ax, ay, az, nx, ny, nz, color);
-	pushQuadVertex(pos, norm, col, bx, by, bz, nx, ny, nz, color);
-	pushQuadVertex(pos, norm, col, cx2, cy, cz2, nx, ny, nz, color);
-	pushQuadVertex(pos, norm, col, ax, ay, az, nx, ny, nz, color);
-	pushQuadVertex(pos, norm, col, cx2, cy, cz2, nx, ny, nz, color);
-	pushQuadVertex(pos, norm, col, dx, dy, dz, nx, ny, nz, color);
-}
-
-// Altura de la superficie (primer bloque no vacío desde arriba; el agua
-// cuenta — la lámina de un lago se dibuja a su nivel) y su bloque. Devuelve
-// -1 si la columna está vacía (no debería pasar en el mundo).
-function columnSurface(chunk, x, z, wx, wz) {
-	// Fase 15 (D5): el índice local ly (0..127) se convierte a Y de MUNDO
-	// (ly + WORLD_MIN_Y) para el return y para muestrear vecinos.
-	for (let ly = WORLD_HEIGHT - 1; ly >= 0; ly--) {
-		const wy = ly + WORLD_MIN_Y;
-		const b =
-			x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE
-				? chunk[cIdx(x, ly, z)]
-				: getClientBlock(wx, wy, wz);
-		// Fase 9 (F): las plantas (hierba/flores/trigo) no cuentan como
-		// superficie — el LOD dibuja la lámina sobre el terreno real, no sobre
-		// el bulto de la planta (evita láminas flotantes de 1 bloque).
-		if (b !== 0 && b !== -1 && !NON_SOLID_PLANTS.has(b))
-			return { y: wy, block: b };
-	}
-	return { y: -1, block: 0 };
-}
-
-function buildLodGeometry(cx, cz) {
-	const chunk = chunkStore.get(`${cx},${cz}`);
-	if (!chunk) return null;
-	const baseX = cx * CHUNK_SIZE,
-		baseZ = cz * CHUNK_SIZE;
-	const pos = [],
-		norm = [],
-		col = [];
-
-	// Rejilla de alturas de superficie (local -1..16 → 18x18): el interior se
-	// lee del chunk y el anillo de borde se muestrea con getClientBlock para
-	// que los muros de las columnas del borde tengan vecinos reales. Se calcula
-	// UNA vez por chunk: los 4 vecinos de cada columna se leen de la rejilla en
-	// vez de re-escanear la columna (≈4x menos trabajo que escanear por lado).
-	const H = [];
-	for (let x = -1; x <= CHUNK_SIZE; x++) {
-		const row = [];
-		for (let z = -1; z <= CHUNK_SIZE; z++) {
-			row.push(columnSurface(chunk, x, z, baseX + x, baseZ + z).y);
-		}
-		H.push(row);
-	}
-	// H[x+1][z+1] es la altura de la columna local (x, z).
-	const hAt = (x, z) => H[x + 1][z + 1];
-
-	for (let x = 0; x < CHUNK_SIZE; x++) {
-		for (let z = 0; z < CHUNK_SIZE; z++) {
-			const wx = baseX + x,
-				wz = baseZ + z;
-			const h = hAt(x, z);
-			if (h < 0) continue;
-			const block = chunk[cIdx(x, h - WORLD_MIN_Y, z)]; // mundo → local
-			const topColor = BLOCK_COLORS[block] ?? 0x888888;
-			const wallColor = darken(topColor, 0.75);
-			const yTop = h + 1;
-			const x0 = wx,
-				x1 = wx + 1,
-				z0 = wz,
-				z1 = wz + 1;
-
-			// Tapa superior (vista desde arriba/lejos es lo que domina).
-			pushQuad(
-				pos,
-				norm,
-				col,
-				x0,
-				yTop,
-				z0,
-				x1,
-				yTop,
-				z0,
-				x1,
-				yTop,
-				z1,
-				x0,
-				yTop,
-				z1,
-				0,
-				1,
-				0,
-				topColor
-			);
-
-			// Muros: en cada lado, si el vecino es más bajo, la pared baja hasta él.
-			const nX = hAt(x + 1, z);
-			const pX = hAt(x - 1, z);
-			const nZ = hAt(x, z + 1);
-			const pZ = hAt(x, z - 1);
-			if (nX >= 0 && nX < h)
-				pushQuad(
-					pos,
-					norm,
-					col,
-					x1,
-					nX + 1,
-					z0,
-					x1,
-					yTop,
-					z0,
-					x1,
-					yTop,
-					z1,
-					x1,
-					nX + 1,
-					z1,
-					1,
-					0,
-					0,
-					wallColor
-				);
-			if (pX >= 0 && pX < h)
-				pushQuad(
-					pos,
-					norm,
-					col,
-					x0,
-					pX + 1,
-					z1,
-					x0,
-					yTop,
-					z1,
-					x0,
-					yTop,
-					z0,
-					x0,
-					pX + 1,
-					z0,
-					-1,
-					0,
-					0,
-					wallColor
-				);
-			if (nZ >= 0 && nZ < h)
-				pushQuad(
-					pos,
-					norm,
-					col,
-					x0,
-					nZ + 1,
-					z1,
-					x0,
-					yTop,
-					z1,
-					x1,
-					yTop,
-					z1,
-					x1,
-					nZ + 1,
-					z1,
-					0,
-					0,
-					1,
-					wallColor
-				);
-			if (pZ >= 0 && pZ < h)
-				pushQuad(
-					pos,
-					norm,
-					col,
-					x1,
-					pZ + 1,
-					z0,
-					x1,
-					yTop,
-					z0,
-					x0,
-					yTop,
-					z0,
-					x0,
-					pZ + 1,
-					z0,
-					0,
-					0,
-					-1,
-					wallColor
-				);
-		}
-	}
-
-	if (pos.length === 0) return null;
-	const geo = geometryPool.acquire("lod");
-	setOrReuseAttribute(geo, "position", pos, 3, THREE.Float32BufferAttribute);
-	setOrReuseAttribute(geo, "normal", norm, 3, THREE.Float32BufferAttribute);
-	setOrReuseAttribute(geo, "color", col, 3, THREE.Float32BufferAttribute);
-	const mesh = new THREE.Mesh(geo, lodMaterial);
-	mesh.userData.poolCat = "lod";
-	const group = new THREE.Group();
-	group.add(mesh);
-	group.userData.boundingSphere = computeChunkSphere(group);
-	return group;
-}
-
 // Recorre los chunks cargados y cambia de tier si la distancia del jugador
 // cruzó el umbral LOD (histéresis en lod.js). Solo reconstruye los que
 // cambian; se llama desde player.js con un throttle (~2-4 veces/s).
@@ -914,53 +255,6 @@ export function rebuildAffectedChunks(wx, wz) {
 	if (localZ === CHUNK_SIZE - 1) rebuildChunk(`${cx},${cz + 1}`);
 }
 
-// ============================================================
-// LUZ DE ANTORCHA (Fase 6)
-// ============================================================
-// Hornea la luz de antorcha de un chunk (lo llama buildChunkGeometry). Solo
-// aloja el array si hay antorchas relevantes en la caja de radio alrededor:
-// sin antorchas el chunk queda con null y chunkLightAt devuelve 0 (sin coste
-// de memoria para el mundo normal).
-function bakeChunkLight(cx, cz) {
-	const key = `${cx},${cz}`;
-	const chunk = chunkStore.get(key);
-	if (!chunk) return;
-	const x0 = cx * CHUNK_SIZE,
-		z0 = cz * CHUNK_SIZE;
-	const relevant = [];
-	for (const t of torchSet.values()) {
-		if (
-			t[0] >= x0 - LIGHT_RADIUS &&
-			t[0] <= x0 + CHUNK_SIZE - 1 + LIGHT_RADIUS &&
-			t[2] >= z0 - LIGHT_RADIUS &&
-			t[2] <= z0 + CHUNK_SIZE - 1 + LIGHT_RADIUS
-		) {
-			relevant.push(t);
-		}
-	}
-	if (relevant.length === 0) {
-		lightStore.set(key, null);
-		return;
-	}
-	lightStore.set(
-		key,
-		computeChunkLight(
-			cx,
-			cz,
-			CHUNK_SIZE,
-			WORLD_HEIGHT,
-			WORLD_MIN_Y,
-			getClientBlock,
-			relevant
-		)
-	);
-}
-
-// Luz de antorcha (0..1) de una celda de mundo; 0 si el chunk no está
-// horneado aún. El muestreo de luz en el build de geometría lo hace ahora
-// chunkGeometry.js (Fase 13, A1): aquí solo se hornea (bakeChunkLight) y se
-// conserva el array en lightStore para el camino del worker.
-
 // Reconstruye el vecindario 3x3 de chunks alrededor de un bloque: lo usa la
 // red cuando cambia una antorcha (el radio de luz cruza los bordes de chunk,
 // así que los vecinos también re-hornean). A diferencia de
@@ -971,66 +265,27 @@ export function rebuildAround(wx, wz) {
 	for (let dx = -1; dx <= 1; dx++) {
 		for (let dz = -1; dz <= 1; dz++) {
 			const key = `${cx + dx},${cz + dz}`;
-			if (chunkStore.has(key)) rebuildChunk(key);
+			if (hasChunkData(key)) rebuildChunk(key);
 		}
 	}
 }
 
-// Fase 14 (M4): ¿hay una antorcha conocida dentro del radio de luz (caja
-// horizontal 2*LIGHT_RADIUS+1 centrada en el bloque) que pueda verse
-// afectada por este cambio de bloque NO-antorcha? Solo la luz que puede
-// cruzar un borde de chunk (o un borde entre bloques) necesita un re-horneado
-// de vecinos; sin antorchas cerca, rebuildAffectedChunks basta. La BFS de
-// lighting.js se difracta arriba/abajo, así que se usa la distancia 3D.
-export function hasTorchNear(wx, wy, wz) {
-	const r = LIGHT_RADIUS;
-	const x0 = wx - r,
-		x1 = wx + r,
-		z0 = wz - r,
-		z1 = wz + r,
-		y0 = wy - r,
-		y1 = wy + r;
-	for (const t of torchSet.values()) {
-		if (
-			t[0] >= x0 &&
-			t[0] <= x1 &&
-			t[1] >= y0 &&
-			t[1] <= y1 &&
-			t[2] >= z0 &&
-			t[2] <= z1
-		)
-			return true;
-	}
-	return false;
-}
-
+// ============================================================
+// CARGA / DESCARGA DE CHUNKS (desde network.js)
+// ============================================================
 export function loadChunkData(chunkData) {
 	// Fase 14 (M3): vecinos ya presentes ANTES de este lote. Al llegar un
 	// chunk nuevo que completa el borde de un vecino anterior, ese vecino ya
 	// horneó sus caras mirando al vacío → necesita rebuild. Las reconstrucciones
 	// en cascada durante un init masivo (todos nuevos) se evitan: solo se
 	// reconstruyen los que YA estaban en chunkStore al empezar el lote.
-	const existingNeighbors = new Set(chunkStore.keys());
+	const existingNeighbors = new Set(chunkKeys());
 	const batch = []; // claves a construir (nuevas + vecinos previos afectados)
 	for (const [key, arr] of Object.entries(chunkData)) {
 		// Fase 7: no construir chunks fuera de la distancia de render elegida
 		const [cx, cz] = key.split(",").map(Number);
 		if (!withinRenderDistance(cx, cz)) continue;
-		const data = Uint8Array.from(arr);
-		chunkStore.set(key, data);
-		// Registrar las antorchas del chunk (puede venir con un mundo guardado).
-		for (let i = 0; i < data.length; i++) {
-			if (data[i] === TORCH) {
-				const lx = i % CHUNK_SIZE;
-				const lz = Math.floor(i / CHUNK_SIZE) % CHUNK_SIZE;
-				const ly = Math.floor(i / (CHUNK_SIZE * CHUNK_SIZE));
-				// Fase 15 (D5): el índice local es Y de mundo − WORLD_MIN_Y.
-				const wy = ly + WORLD_MIN_Y;
-				const wx = cx * CHUNK_SIZE + lx,
-					wz = cz * CHUNK_SIZE + lz;
-				torchSet.set(`${wx},${wy},${wz}`, [wx, wy, wz]);
-			}
-		}
+		storeChunkData(key, arr); // guarda Uint8Array + registra antorchas
 		batch.push(key);
 		// Fase 14 (M3): reconstruir el vecino previo para que reaparezcan las
 		// caras del borde que miraba al hueco (mismo orden Chebyshev con el que
@@ -1096,7 +351,7 @@ export async function hotReloadTextures() {
 	// usa el layout nuevo (los chunks ya construidos se reconstruyen debajo).
 	// Solo los chunks de detalle completo usan el atlas: los LOD (color plano)
 	// no dependen de él, pero igual se reconstruyen para refrescar el tier.
-	tex = { tileForFace: mod.tileForFace, tileRect: mod.tileRect };
+	setTexFns({ tileForFace: mod.tileForFace, tileRect: mod.tileRect });
 	for (const key of [...chunkMeshes.keys(), ...lodMeshes.keys()])
 		rebuildChunk(key);
 	return newAtlas;
@@ -1108,18 +363,8 @@ export function unloadChunks(keys) {
 		const [cx, cz] = key.split(",").map(Number);
 		const x0 = cx * CHUNK_SIZE,
 			z0 = cz * CHUNK_SIZE;
-		// Quitar las antorchas del chunk descargado y su luz horneada.
-		for (const [tKey, t] of torchSet) {
-			if (
-				t[0] >= x0 &&
-				t[0] < x0 + CHUNK_SIZE &&
-				t[2] >= z0 &&
-				t[2] < z0 + CHUNK_SIZE
-			)
-				torchSet.delete(tKey);
-		}
 		// Auditoría 2026-08-09 (§3.6): limpiar las grietas de mina del chunk.
-		// Antes charsquedaban flotando en la escena si se reducía la distancia
+		// Antes quedaban flotando en la escena si se reducía la distancia
 		// de render / se cambiaba de mundo (el crack es un overlay por bloque
 		// en coordenadas de mundo; sin esto no se ocultaba hasta un block_update
 		// o block_break_progress de ese bloque).
@@ -1136,8 +381,8 @@ export function unloadChunks(keys) {
 				cracks.delete(k);
 			}
 		}
-		lightStore.delete(key);
-		chunkStore.delete(key);
+		clearChunkLight(key);
+		removeChunkData(key); // antorchas del chunk + Uint8Array
 	}
 }
 
@@ -1261,3 +506,13 @@ export function setHighlightedBlock(x, y, z) {
 export function hideHighlight() {
 	if (highlight) highlight.visible = false;
 }
+
+// ============================================================
+// FACHADA (Fase 18, D-7): los consumidores (network.js, player.js,
+// settings.js, debug.js, input.js) importan getClientBlock/setClientBlock/
+// hasTorchNear/geoPoolStats/updateLiquidAnimation desde "./world.js" — se
+// re-exportan sin cambiar la firma.
+// ============================================================
+export { getClientBlock, setClientBlock } from "./chunkstore.js";
+export { hasTorchNear } from "./lightclient.js";
+export { geoPoolStats, updateLiquidAnimation } from "./meshbuild.js";

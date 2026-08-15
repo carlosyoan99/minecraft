@@ -112,13 +112,14 @@ function mkPlayer(over = {}) {
 	);
 }
 
-// 1c) El HUD pinta la barra de durabilidad (public/ui.js usa DURABILITY)
+// 1c) El HUD pinta la barra de durabilidad. Fase 18 (D-6): el HUD se movió de
+// ui.js a hud.js (ui.js es orquestador que re-exporta) — se audita hud.js.
 {
-	const src = fs.readFileSync(path.join(ROOT, "public/ui.js"), "utf8");
-	check("ui.js importa DURABILITY", /DURABILITY/.test(src));
-	check("ui.js pinta .durbar (barra de durabilidad)", /durbar/.test(src));
+	const src = fs.readFileSync(path.join(ROOT, "public/hud.js"), "utf8");
+	check("hud.js importa DURABILITY", /DURABILITY/.test(src));
+	check("hud.js pinta .durbar (barra de durabilidad)", /durbar/.test(src));
 	check(
-		"ui.js usa item.durability para el ancho",
+		"hud.js usa item.durability para el ancho",
 		/item\.durability/.test(src)
 	);
 	check(

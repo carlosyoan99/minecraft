@@ -1,0 +1,122 @@
+// ============================================================
+// CHUNKSTORE (Fase 18, D-7): almacén de datos de chunks del cliente.
+// Extraído de world.js: aquí vive el Mapa de chunkStore (Uint8Array por
+// chunk), el acceso por bloque (getClientBlock/setClientBlock), el swap de
+// datos en chunks_add/chunks_unload y el registro de antorchas (torchSet)
+// con su limpieza. world.js (ciclo de vida de mallas) importa de aquí.
+// ============================================================
+import {
+	CHUNK_SIZE,
+	TORCH,
+	WORLD_HEIGHT,
+	WORLD_MAX_Y,
+	WORLD_MIN_Y
+} from "./constants.js";
+
+const chunkStore = new Map(); // "cx,cz" -> Uint8Array
+
+// torchSet: posiciones de antorchas conocidas ("wx,wy,wz" -> [wx,wy,wz]).
+// Lo alimenta setClientBlock y el swap de chunks_add; lo consumen la luz
+// horneada (lightclient.js) y la limpieza de chunks_unload.
+const torchSet = new Map();
+
+export function cIdx(x, y, z) {
+	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
+}
+
+// ¿Hay datos para el chunk? (lo usan los rebuild de vecinos y el LOD).
+export function hasChunkData(key) {
+	return chunkStore.has(key);
+}
+
+// Claves de todos los chunks con datos (para descargas y recuentos).
+export function chunkKeys() {
+	return chunkStore.keys();
+}
+
+// Fase 15 (D5): el mundo va de WORLD_MIN_Y (−64) a WORLD_MAX_Y (+63).
+export function getClientBlock(wx, wy, wz) {
+	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return 0;
+	const cx = Math.floor(wx / CHUNK_SIZE),
+		cz = Math.floor(wz / CHUNK_SIZE);
+	const chunk = chunkStore.get(`${cx},${cz}`);
+	if (!chunk) return -1; // -1 = desconocido (chunk no cargado): no dibujar cara para evitar huecos falsos
+	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+	return chunk[cIdx(x, wy - WORLD_MIN_Y, z)]; // mundo → local
+}
+
+// Cambia un bloque del store cliente y mantiene el registro de antorchas
+// (lo usa la iluminación). Devuelve el bloque anterior para que la red decida
+// si reconstruir el vecindario.
+export function setClientBlock(wx, wy, wz, block) {
+	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return -1;
+	const cx = Math.floor(wx / CHUNK_SIZE),
+		cz = Math.floor(wz / CHUNK_SIZE);
+	const key = `${cx},${cz}`;
+	let chunk = chunkStore.get(key);
+	if (!chunk) {
+		chunk = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+		chunkStore.set(key, chunk);
+	}
+	const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+	const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+	const wyL = wy - WORLD_MIN_Y; // mundo → local
+	const prev = chunk[cIdx(x, wyL, z)];
+	chunk[cIdx(x, wyL, z)] = block;
+	const torchKey = `${wx},${wy},${wz}`;
+	if (prev === TORCH) torchSet.delete(torchKey);
+	if (block === TORCH) torchSet.set(torchKey, [wx, wy, wz]);
+	return prev;
+}
+
+// Guarda los datos de un chunk (chunks_add): copia el Uint8Array y registra
+// las antorchas que trae (puede venir con un mundo guardado). Devuelve el
+// array guardado (el mismo objeto del store).
+export function storeChunkData(key, arr) {
+	const data = Uint8Array.from(arr);
+	chunkStore.set(key, data);
+	const [cx, cz] = key.split(",").map(Number);
+	// Registrar las antorchas del chunk (puede venir con un mundo guardado).
+	for (let i = 0; i < data.length; i++) {
+		if (data[i] === TORCH) {
+			const lx = i % CHUNK_SIZE;
+			const lz = Math.floor(i / CHUNK_SIZE) % CHUNK_SIZE;
+			const ly = Math.floor(i / (CHUNK_SIZE * CHUNK_SIZE));
+			// Fase 15 (D5): el índice local es Y de mundo − WORLD_MIN_Y.
+			const wy = ly + WORLD_MIN_Y;
+			const wx = cx * CHUNK_SIZE + lx,
+				wz = cz * CHUNK_SIZE + lz;
+			torchSet.set(`${wx},${wy},${wz}`, [wx, wy, wz]);
+		}
+	}
+	return data;
+}
+
+// Datos crudos de un chunk (lo usa el build de geometría 3x3 y el LOD).
+export function getChunkData(key) {
+	return chunkStore.get(key);
+}
+
+// Borra los datos de un chunk (chunks_unload): quita sus antorchas y el
+// Uint8Array. La luz horneada (lightStore) y las mallas las limpia world.js.
+export function removeChunkData(key) {
+	const [cx, cz] = key.split(",").map(Number);
+	const x0 = cx * CHUNK_SIZE,
+		z0 = cz * CHUNK_SIZE;
+	for (const [tKey, t] of torchSet) {
+		if (
+			t[0] >= x0 &&
+			t[0] < x0 + CHUNK_SIZE &&
+			t[2] >= z0 &&
+			t[2] < z0 + CHUNK_SIZE
+		)
+			torchSet.delete(tKey);
+	}
+	chunkStore.delete(key);
+}
+
+// Todas las antorchas conocidas (lo recorre la luz horneada).
+export function getTorches() {
+	return torchSet;
+}
