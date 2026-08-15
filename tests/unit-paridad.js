@@ -67,8 +67,9 @@ check(
 check("espada de diamante: 7", SWORD_DAMAGE[I.DIAMOND_SWORD] === 7);
 check(
 	"daño a mano = 1 (TOOL_DAMAGE[tool] || SWORD_DAMAGE[tool] || 1)",
+	// Fase 18 (D-1): el handler attack_mob vive en server/actions.js.
 	/TOOL_DAMAGE\[tool\] \|\| SWORD_DAMAGE\[tool\] \|\| 1/.test(
-		require("fs").readFileSync("server/net.js", "utf8")
+		require("fs").readFileSync("server/actions.js", "utf8")
 	)
 );
 
@@ -282,7 +283,14 @@ check("xpToNext(31) = 121", xpToNext(31) === 121);
 	const constants = require("../server/constants.js");
 	const mkMob = (type) => new mobs.Mob(type, 0, 80, 0);
 	// Tipos normales: mobXp() delega en MOB_XP → paridad 1:1.
-	for (const type of ["zombie", "creeper", "skeleton", "spider", "cow", "pig"]) {
+	for (const type of [
+		"zombie",
+		"creeper",
+		"skeleton",
+		"spider",
+		"cow",
+		"pig"
+	]) {
 		check(
 			`C-5: mobXp(${type}) usa MOB_XP.${type} (${constants.MOB_XP[type]})`,
 			mobs.mobXp(mkMob(type)) === constants.MOB_XP[type]
@@ -291,9 +299,13 @@ check("xpToNext(31) = 121", xpToNext(31) === 121);
 	// Coherencia con MC: los hostiles dan 5 XP y los pasivos 1-3 (Java 1.9+).
 	check(
 		"C-5: hostiles (zombi/creeper/esqueleto/araña/ahogado) dan 5 XP",
-		[constants.MOB_XP.zombie, constants.MOB_XP.creeper, constants.MOB_XP.skeleton, constants.MOB_XP.spider, constants.MOB_XP.drowned].every(
-			(v) => v === 5
-		)
+		[
+			constants.MOB_XP.zombie,
+			constants.MOB_XP.creeper,
+			constants.MOB_XP.skeleton,
+			constants.MOB_XP.spider,
+			constants.MOB_XP.drowned
+		].every((v) => v === 5)
 	);
 	// wolf: el fallback debe ser la MEDIA de 1-3 (2) — si alguien lo cambia a
 	// 8 (valor histórico), el caso especial lo oculta hasta que se borre.

@@ -87,9 +87,15 @@ function clearColumn(px, pz) {
 		"utf8"
 	);
 	check("WS_MAX_PAYLOAD = 1 MiB", WS_MAX_PAYLOAD === 1 * 1024 * 1024);
+	// Fase 18 (D-1): el arranque (start con el WebSocket.Server) vive en
+	// server/timers.js; net.js solo re-exporta la fachada.
+	const timersSrc = fs.readFileSync(
+		path.join(__dirname, "..", "server", "timers.js"),
+		"utf8"
+	);
 	check(
-		"net.js pasa maxPayload al WebSocket.Server",
-		netSrc.includes("maxPayload: WS_MAX_PAYLOAD")
+		"timers.js pasa maxPayload al WebSocket.Server",
+		timersSrc.includes("maxPayload: WS_MAX_PAYLOAD")
 	);
 	// El umbral de vuelo debe separar un salto legítimo (vy≈6) de un vuelo
 	// (vy≈16): 1.5×JUMP_SPEED queda entre ambos.
