@@ -1,5 +1,7 @@
 # Fase 15 — Corrección de la auditoría, paridad restante y POO (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación creado a partir de la **auditoría general del
 > proyecto** (errores, mejoras y paridad pendiente contra Minecraft) y de la
 > petición del usuario de centrar la Fase 15 en **corrección de bugs +
@@ -54,8 +56,8 @@
   ejecutó: solo existe `class Mob` como refactor estructural, sin herencia por
   especie ni `Player`/`World`/`Chunk`/`ItemStack` como clases).
 - Fuentes: `docs/reporte-paridad.md` (bugs B1-B12, lagunas L1-L5 §6, diseño POO
-  §8), `docs/fase13-spec.md` (Bloque C completo sin ejecutar), `docs/Notas del
-  usuario.md` (bugs/mejoras del usuario), `docs/fase14-spec.md` (modelo de
+  §8), `docs/spec/fase13-spec.md` (Bloque C completo sin ejecutar), `docs/Notas del
+  usuario.md` (bugs/mejoras del usuario), `docs/spec/fase14-spec.md` (modelo de
   formato de este spec).
 
 ---
@@ -109,7 +111,7 @@ densidad total de árboles no baja perceptiblemente (métrica en el test).
 ## 3. Bloque B — Paridad con Minecraft (lagunas L1-L5)
 
 Orden y especificación tomados de `docs/reporte-paridad.md` §6 y
-`docs/fase13-spec.md` Bloque B.
+`docs/spec/fase13-spec.md` Bloque B.
 
 ### B1 — L1 Arco + flechas del jugador (continuar el WIP)
 
@@ -410,3 +412,28 @@ llamar a `columnFloorY` (~8 ruidos duplicados por columna). Resultado:
 **33.47 → 27.30 ms/chunk** (mejor de 3, −18%), sin cambiar un solo bloque
 del mundo (72/72 de audit-altura, costuras bit-idénticas, suite unitaria y
 E2E en verde).
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-11 (D5 recalibrado)
+- **Commits clave:**
+  - `57ed016` (2026-08-09) — Fase 15 (A2): copa completa de los árboles en bordes de chunk.
+  - `aa24c12` (2026-08-09) — Fase 15: spec prospectiva (A1 uuid, A2 árboles, Bloque D mejoras del usuario).
+  - `4ca3aff` (2026-08-09) — Fase 15 (D1/D3): nubes semitransparentes con variedad + tooltip del hotbar.
+  - `8bd08de` (2026-08-09) — Fase 15 (cierre): completada y auditada — docs al día.
+  - `a73e806` (2026-08-11) — Fase 15 (D5): mundo de 128 bloques (−64..+63, 16×128×16) + optimizaciones de generación.
+  - `e82a6a6` (2026-08-11) — Fase 15 (D5): recalibración de tests/auditorías al mundo de 128 bloques.
+- **Resultado de la auditoría:** copas de árboles completas en bordes de chunk (A2, `pendingLeaves` + test determinista en `unit-arboles`); nubes semitransparentes con variedad (D1); tooltip estilizado del hotbar (D3); y **D5: mundo de 128 bloques (Y ∈ −64..+63, `SCHEMA_VERSION` 6, migración v5→v6)** auditado por `tests/audit-altura.js` (72/72, costuras bit-idénticas). El resto del plan (A1 uuid, A3/A4 WIP, L1-L5 y POO) se cerró junto a la Fase 13. Suite de 50 unitarios en verde + registro de `unit-ao`/`unit-muerte`.
+- **Lagunas conocidas / decisiones diferidas:** el D5 queda sin commitear a cierre de esta fase → se cierra como **A1 de la Fase 16**.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-09: creación del spec (documento de planificación de la fase 15, a partir de la auditoría general y la petición del usuario).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

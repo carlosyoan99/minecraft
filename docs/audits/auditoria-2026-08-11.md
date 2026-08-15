@@ -1,7 +1,7 @@
 # Auditoría completa 2026-08-11 — Mi Minecraft
 
 > **Fecha:** 2026-08-11 · **Commit auditado:** `810e381` (HEAD en el momento de consolidar) — el árbol fue un **blanco móvil** durante toda la auditoría: la Fase 16 y la Fase 17 se implementaban y commiteaban en vivo (secuencia vista: `d8a8f8d` → `88a3d62` → `ed5ccb2` → `70008b6` → `7e95943` → `810e381`). Los informes de los subagentes reflejan versiones intermedias del working tree; donde se pudo, se re-verificó contra el HEAD. · **Alcance:** completo (línea base + cliente + servidor + seguridad + rendimiento + paridad), con foco en el estado de la **Fase 16** y errores introducidos.
-> **Método:** línea base (sintaxis, linter, unitarios, E2E, auditorías por fase, arranque) + cinco pases especializados en secuencia + un reintento enfocado de servidor (bloques B3/SV-2/unit-red). Los hallazgos previos de `docs/auditoria-2026-08-10.md` se etiquetan como persiste/corregido/parcial.
+> **Método:** línea base (sintaxis, linter, unitarios, E2E, auditorías por fase, arranque) + cinco pases especializados en secuencia + un reintento enfocado de servidor (bloques B3/SV-2/unit-red). Los hallazgos previos de `docs/audits/auditoria-2026-08-10.md` se etiquetan como persiste/corregido/parcial.
 
 ## Línea base
 
@@ -282,7 +282,7 @@ Los seis bloques de paridad D1-D6 de la Fase 16 están **implementados y correct
 | 2 | XP del slime en tabla `MOB_XP` + comentario | `slime: 1` y comentario "el grande 2, el pequeño 1" (la lógica da grande 4 / mediano 2 / pequeño 1) | grande 4, mediano 2, pequeño 1 | 🟡 | bug (comentario/tabla desactualizados) | `server/constants.js:914` vs `server/mobs.js:32-33` |
 | 3 | Horno: combustible pausado al agotarse el insumo | el combustible cargado NO se consume si `inputItem` se agota | el combustible sigue quemándose aunque el insumo se acabe (se desperdicia) | 🟡 | bug (sin documentar) | `server/crafting.js:205-208` |
 | 4 | Horno: `add_fuel` con combustible distinto | rechaza cargar otro combustible mientras hay uno cargado | los combustibles distintos se encolan y queman en orden | 🟡 | bug (simplificación sin documentar) | `server/net.js:1003-1004` |
-| 5 | Criterio spec D6 | los checks de XP slime/lobo viven en `unit-fase16.js`, NO se actualizó `unit-paridad.js` como pedía la spec | — | 🟡 | desviación del criterio de spec (no bug de juego) | `docs/fase16-spec.md:290` vs `tests/unit-fase16.js:260-267` |
+| 5 | Criterio spec D6 | los checks de XP slime/lobo viven en `unit-fase16.js`, NO se actualizó `unit-paridad.js` como pedía la spec | — | 🟡 | desviación del criterio de spec (no bug de juego) | `docs/spec/fase16-spec.md:290` vs `tests/unit-fase16.js:260-267` |
 | 6 | Ciclo día/noche | binario: `isNight = worldTime() > DAY_CYCLE_MS/2`; crepúsculo solo visual | día 10 / atardecer 1.5 / noche 7 / amanecer 1.5 | 🟡 | intencional (aproximación comentada) | `server/net.js:1920`; `server/constants.js:22` |
 | 7 | Profundidad de minerales | diamante y≤−20, hierro y≤−12 (mundo −64..+63) | diamante y<16, hierro y<64 (mundo 0..320) | 🟡 | intencional (aproximación) | `server/world.js:1033-1038` |
 | 8 | Zanahoria/patata como comida | no comestibles (solo cría/creativo) | zanahoria 3, patata 1, patata al horno 5 | 🟡 | intencional (agricultura solo trigo) | `server/constants.js:489-505` |

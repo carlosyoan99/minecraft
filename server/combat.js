@@ -37,7 +37,7 @@ const { sendInventory } = require("./inventory.js"); // Fase 18 (D-5)
 // ============================================================
 // TELEMETRÍA DE DAÑO (Fase 8, B2)
 // Registra cada daño aplicado por origen para diagnosticar la pérdida de
-// vida "sin causa" (plan completo en docs/fase8-spec.md §B2). Canales:
+// vida "sin causa" (plan completo en docs/spec/fase8-spec.md §B2). Canales:
 //  1. state.damageLog — anillo de las últimas ~50 entradas (tests headless).
 //  2. Evento WS `damage_debug` al jugador afectado → window.__mcLastDamage
 //     en el cliente (mostrado por el F3, activable con window.__mcDamageDebug).

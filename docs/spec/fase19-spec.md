@@ -1,8 +1,6 @@
 # Fase 19 — Texturas de ítems, interfaces y pulido visual (Spec)
 
-> **Estado:** `[EN CURSO]` — Fase 19 en desarrollo (drag & drop D1/D2 y
-> hot-reload E1 en WIP sin commitear); el resto de bloques A-C cerrados y
-> verificados con la suite en verde (57/57 unitarios).
+> **Estado:** `[COMPLETADA]` — cerrada y auditada 2026-08-15 (commit `acca3c9`).
 
 > Documento creado a partir de: `docs/Notas del usuario.md` (\"Próximas Fases\":
 > la 19 es \"Crear texturas faltantes para todos los items, mejorar cofres, mesa
@@ -324,7 +322,8 @@
 - 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, etiqueta de estado `[EN CURSO]` (WIP de drag & drop sin commitear), referencias de rutas actualizadas.
 
 **Cambios en esta spec (v3) — cierre:**
-- 2026-08-15: **fase cerrada**. Bloque A (cobertura por ID, 142/142 sin
+- 2026-08-15: **fase cerrada** (commit `acca3c9` **Fase 19: texturas de
+  ítems, interfaces MC y drag & drop**). Bloque A (cobertura por ID, 142/142 sin
   duplicados, 17 checks en `unit-itemicons.js`), B (fondos texturizados del
   atlas + bisel interior en `.panel`, aplicados desde `ui.js`), C (tooltip
   unificado con delay en `hud.js`/`panels.js`), D (drag & drop con

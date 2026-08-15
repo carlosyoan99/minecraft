@@ -1,5 +1,7 @@
 # Fase 8 — Caza de bugs y correcciones (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación creado a partir de la entrevista con el usuario
 > (3 rondas de preguntas) y el análisis del código. **No se ha modificado
 > código**: este spec guía la implementación de la Fase 8.
@@ -758,6 +760,9 @@ espada muere más rápido y se desgasta.
 | B9 | `public/mobs.js`, `public/mobtextures.js`, `public/player.js` (jugadores remotos) |
 | B10 | `public/input.js` (raycast), `server/net.js` (rango), `server/mobs.js` (knockback), `public/mobs.js` (feedback) |
 
+> **Tests que cubren esta fase:** `tests/unit-damage.js`, `tests/unit-mobray.js`,
+> `tests/unit-raycast.js`, `tests/unit-mobs-ia.js`
+
 ---
 
 ## 6. Riesgos y notas
@@ -877,5 +882,45 @@ espada muere más rápido y se desgasta.
       reales del protocolo son pequeños, así que 1 MiB impide que un
       cliente malicioso sature la memoria (ws cierra la conexión con
       1009). Verificado por `tests/unit-anticheat.js` (valor + cableado).
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-06 (implementación 2026-08-05..06)
+- **Commits clave:**
+  - `a5ae222` (2026-08-05) — combate funcional (B10)
+  - `5d647fa` (2026-08-05) — telemetría de daño (B2)
+  - `b9007df` (2026-08-05) — controles A/D (B1)
+  - `5ddcdc9` (2026-08-05) — minería a mano arreglada (B3, pool)
+  - `aea7e9b` (2026-08-05) — ciclo día/noche 20 min (B4)
+  - `d2b19b7` (2026-08-05) — tecla E no abre inventario (B5)
+  - `4bc5531` (2026-08-05) — diagnóstico de pérdida de vida (B2)
+  - `c72ef79` (2026-08-05) — zona segura de spawn (B2 fix)
+  - `17b83ea` (2026-08-05) — chunks LOD (B6)
+  - `37fc808` (2026-08-05) — estrellas/sol/luna (B7+B8)
+  - `a2f253e` (2026-08-05) — mobs multibloque (B9)
+  - `ec99a78` (2026-08-05) — cierre de la Fase 8 (verificación final)
+  - `60304ac` (2026-08-06) — maxPayload WS, anti-cheat de vuelo, tool_broke
+- **Resultado de la auditoría:** suite unitaria exit=0 (11 grupos), E2E
+  exit=0, auditorías de las fases 3-6 exit=0, `biome check` 0 errores; el
+  diagnóstico de B2 confirmó la causa real (hostiles cerca del spawn) y se
+  resolvió con la zona segura de spawn.
+- **Lagunas conocidas / decisiones diferidas:** la decisión de diseño de
+  B2 (zona segura de spawn vs periodo de gracia inicial) quedó cerrada con
+  la zona segura (`c72ef79`); los hostiles siguen sin spawn por nivel de
+  luz en cuevas (se aborda en fases posteriores).
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-05: creación del spec (documento retrospectivo de la fase 8).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas
+  actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con
+  commits.
 
 ---

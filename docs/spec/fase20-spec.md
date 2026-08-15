@@ -1,5 +1,7 @@
 # Fase 20 — Rolling release (ciclo de estabilización y paridad) (Spec)
 
+> **Estado:** `[PROSPECTIVA]`
+
 > Documento creado a partir de: `docs/Notas del usuario.md` (\"Próximas Fases\":
 > la 20 es el \"rolling release del proyecto, fase larga donde solo se
 > corregirán bugs, se mejorará la paridad en implementaciones documentadas
@@ -7,7 +9,7 @@
 > características reportadas como **Restricciones (Won't)**. Fase que logra
 > equilibrio entre rendimiento y paridad. No avanzar a una siguiente fase
 > hasta que todo lo actual esté 100% confirmado su funcionamiento y estable\"),
-> del borrador `docs/fase20-spec.md`, del estado real del proyecto y de la
+> del borrador `docs/spec/fase20-spec.md`, del estado real del proyecto y de la
 > entrevista con el usuario (2026-08-12).
 > Fecha: 2026-08-12 · Proyecto: clon de Minecraft.
 > Estado: **prospectiva (sin implementar)** — prerrequisito: **Fase 18 cerrada**
@@ -55,8 +57,8 @@
   - Criterios de cada iteración: suite + E2E + auditorías en verde, sin
     regresiones, verificación manual, release etiquetado `v20.x`,
     **auditoría por iteración obligatoria**.
-- Fuentes: `docs/Notas del usuario.md`, borrador `docs/fase20-spec.md`,
-  `docs/fase18-spec.md` (decisiones diferidas), `docs/auditoria-2026-08-11.md`,
+- Fuentes: `docs/Notas del usuario.md`, borrador `docs/spec/fase20-spec.md`,
+  `docs/spec/fase18-spec.md` (decisiones diferidas), `docs/audits/auditoria-2026-08-11.md`,
   `docs/reporte-paridad.md`, `CLAUDE.md`/`AGENTS.md`, `docs/README.md`,
   `TODO.md`.
 
@@ -132,19 +134,44 @@ Cada iteración (v20.x) sigue el flujo del borrador, ahora con reglas fijas:
   desperdicio/cola, recetas de mena muertas, orbes de XP, sonidos). Si alguno
   quedó pendiente, se completa aquí con su assert en `unit-paridad.js`/
   `unit-recetas.js` y su doc en `docs/server|public/mecanicas.md`.
-- **Ficheros:** los que indique la F18 (Bloque C).
+  **Backlog de paridad del borrador F20 (Descargas), integrado aquí:**
+  - **TNT**: falta el knockback (la explosión hoy solo daña — hallazgo F16
+    G2.6 documentado en `docs/tests.md`): añadir empuje a los jugadores/mobs
+    en `explode()` con su test.
+  - **Recetas de mena eliminadas del horno** (F18 C-7, opción a: `ORE_DROP`
+    da el lingote directo): evaluar si se repone el fundido explícito de mena
+    con su propia cadena de crafteo (decisión a documentar; la cadena actual
+    minar→lingote no cambia si se mantiene la simplificación).
+  - **CSP + SRI del CDN de Three.js** (SEC-4) o alternativa de servirlo
+    localmente (diferido en F18 §8): re-evaluar si el supuesto
+    localhost/LAN sin autenticación cambia.
+- **Ficheros:** los que indique la F18 (Bloque C) o el área del hallazgo
+  (`server/tnt.js`/`explode`, `recetas_horno.json`, `public/index.html`).
 - **Criterio:** `unit-paridad.js` y `unit-recetas.js` en verde con la paridad
-  completa; reporte de paridad actualizado.
+  completa; reporte de paridad actualizado; TNT con knockback testeado.
 
-### B4 — Rendimiento dentro de presupuesto (\"si el rendimiento lo permite\")
+### B4 — Rendimiento dentro de presupuesto ("si el rendimiento lo permite")
 
 - **Qué hacer:** medir con las métricas existentes (F3, `server_metrics`,
   `audit-fase3/4/6/7`, c8) y corregir **solo cuellos de botella reales**
   observados en el uso (p. ej. tick > presupuesto, memoria creciente,
-  `mcChunks` lentos). Candidatos documentados: **formato de guardado**
-  (análisis/rediseño diferido en la F18 §8, sin romper retrocompatibilidad)
-  y optimizaciones de generación/broadcast si las métricas las justifican.
-  Sin optimización prematura (regla del proyecto).
+  `mcChunks` lentos). Candidatos documentados (backlog del borrador F20,
+  integrado aquí; ver también `fase18-spec.md` §8):
+  - **Formato de guardado**: análisis/rediseño diferido en la F18 §8, sin
+    romper retrocompatibilidad (estudio de coste/beneficio: ¿vale la pena
+    rediseñarlo o el actual gzip por chunk es suficiente?).
+  - **`switchWorld`/`releaseWorld` asíncronos** (hoy hay guardado síncrono
+    residual al cambiar de mundo) y **gzip del guardado en un worker** fuera
+    del hilo principal (solo si la medición lo justifica).
+  - **`SAVE_BATCH_SIZE` ajustable y calibrado** (la cola de autosave de la
+    F16 C1) si la cola crece en sesiones largas.
+  - **Perfilado con c8 y umbrales formales** de cobertura/rendimiento en
+    `docs/tests.md` (los umbrales actuales se re-miden al cerrar F18/19.x).
+  - **Presupuestos de LOD** (histéresis actual F13/F14) y **luz de antorcha**
+    (`torchSet` O(n) en bake — REN-7) solo si el uso los señala.
+  - Optimizaciones de generación/broadcast si las métricas las justifican.
+  - **Sin optimización prematura** (regla del proyecto): cada ítem requiere
+    una métrica que lo respalde en la spec de la iteración.
 - **Ficheros:** según el cuello de botella; tests/auditorías recalibradas y
   documentadas si cambian presupuestos.
 - **Criterio:** métricas estables dentro de los presupuestos documentados
@@ -189,3 +216,12 @@ La F20 se considera cerrada cuando, en una auditoría de iteración:
 - Se decide transitar a la **Fase 21** (biomas/estructuras/mobs, prospectiva)
   o a una **versión 1.0** en modo mantenimiento a largo plazo.
 - La decisión se documenta en esta spec (estado final) y en `TODO.md`.
+
+> **Tests que cubren esta fase (previstos):** `tests/unit-fase20.js`, `tests/audit-fase20.js`.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-12: creación del spec (documento de planificación de la fase 20), incorporando el backlog del borrador `fase20-spec.md`.

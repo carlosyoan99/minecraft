@@ -6,6 +6,22 @@ Guía de los tests del proyecto (clon de Minecraft, servidor Node autoritativo
 módulo → test** y la guía de cobertura; complementa la sección *Tests* del
 [`README.md`](../README.md).
 
+## Vínculo bidireccional specs ↔ tests
+
+Cada **bloque** de una spec (p. ej. `Fase 13, Bloque B3`) se cierra con su
+test en verde, y el vínculo queda explícito en ambos sentidos:
+
+- **Spec → tests:** la sección *Tests que cubren esta fase* de cada
+  `docs/spec/faseN-spec.md` enlaza los archivos de `tests/` que verifican
+  la fase.
+- **Test → spec:** cada test de `tests/` lleva al inicio un comentario con
+  su fase y bloque (p. ej. `// Fase 16 (B2): cofre Shift`), y `tests/run.js`
+  mantiene esa etiqueta en la lista `UNIT`/`E2E`/`AUDIT`.
+
+`node scripts/check-specs.js` valida que los tests referenciados por las
+specs existan y que no queden rutas del antiguo layout (`docs/fase*.md`,
+`docs/auditoria-*.md`); devuelve 0 errores cuando todo está coherente.
+
 ## Cómo se ejecuta
 
 ```bash
@@ -72,7 +88,7 @@ Three/DOM para forzarlos.
 > reporte uniforme que parsea `run.js` (`N OK, M FAIL` + `# checks
 > fallidos`), `mkPlayer`, `withRandom` (LCG determinista) y `loaderESM`.
 
-## Suite unitaria (54 tests)
+## Suite unitaria (57 tests)
 
 > Orden de `UNIT` en `tests/run.js`. El `(*)` marca tests que importan código
 > del cliente (`public/`) como ESM.
@@ -134,6 +150,8 @@ Three/DOM para forzarlos.
 | `unit-fase17.js` | Fase 17: modo menú (A1), persistencia por nombre (B1), romper el bloque bajo una flor/hierba (B4), hostiles no agreden en creativo (B6), cuevas largas (B5), heartbeat (B2), minado continuo (B7), táctil (D1) |
 | `unit-skins.js` | Fase 17 (C3): skins de jugador — píxeles puros de los 9 skins (`public/skins.js`), sincronía `PLAYER_SKINS` ↔ `SKINS` y protocolo `set_skin`/`player_skin` (17 checks) |
 | `unit-fase18.js` | Fase 18 (C-8): orbes de XP — suelte en survival, recogida al pisar (radio 2), creative conserva, no se persisten, expiran (5 min) |
+| `unit-minerales.js` | Fase 18 (C-2): bandas de profundidad de las menas por percentil MC |
+| `unit-fase19.js` | Fase 19 (D): drag & drop — lógica pura de transporte (`public/draglogic.js`) + hot-reload de iconos |
 
 ## Auditorías standalone
 

@@ -1,5 +1,7 @@
 # Fase 10 — Notas del usuario, correcciones pendientes y paridad avanzada (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación de la Fase 10, elaborado a partir del `TODO.md`
 > (sección Fase 10), de `Notas del usuario.md` (auditoría manual del usuario)
 > y del estado del código. En el mismo formato que `fase8-spec.md` /
@@ -245,6 +247,9 @@ Todos en `snake_case` (convención); se confirmarán al implementar cada bloque.
 | `tests/run.js`, `tests/unit-*.js` | C, todos | `test.log` y tests por bloque |
 | `TODO.md`, `README.md` | G | documentación final |
 
+> **Tests que cubren esta fase:** `tests/unit-muerte.js`, `tests/unit-ao.js`,
+> `tests/unit-fase11.js`, `tests/unit-mobs-ia.js`
+
 ---
 
 ## 7. Decisiones del usuario (registro de la entrevista/notas)
@@ -406,3 +411,35 @@ Fuentes del alcance: las filas 1-11 proceden de `Notas del usuario.md` (auditor�
       mundo). Cubierto por `tests/unit-mundo.js` (bocas presentes y
       escasas, < 10% de columnas con hueco) y `tests/unit-biomas.js`
       (altura continua entre columnas adyacentes: salto máx ≤ 4)
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-07
+- **Commits clave:**
+  - `bf26054` (2026-08-07) — bugs de Notas del usuario, paridad avanzada,
+    mundo, jugabilidad y visuales (bloques A-G)
+- **Resultado de la auditoría:** suite unitaria en verde (incluidos los
+  tests de las mecánicas nuevas), E2E contra servidor vivo, auditorías de
+  fases anteriores sin regresiones, `biome check` 0 errores y `node --check`
+  limpio; la Fase 11 cerró los tests que este spec había previsto para sus
+  mecánicas (gravedad, TNT, `/kill`, pantalla de muerte — `tests/unit-fase11.js`
+  y `tests/unit-muerte.js`).
+- **Lagunas conocidas / decisiones diferidas:** el mundo `infinito` (8192²)
+  quedó solo como opción interna hasta testear rendimiento con varios
+  jugadores; las mecánicas de cámara/clic pendientes (bloques D/E) se
+  abordaron en la Fase 11. La mayoría de los tests previstos en este spec
+  se materializaron en la Fase 11 (ver la línea "Tests que cubren").
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la fase 10).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas
+  actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con
+  commits.

@@ -1,6 +1,8 @@
 # Fase 16 — Corrección de la auditoría 2026-08-10, bugs del usuario y paridad restante (Spec)
 
-> Documento creado a partir de: `docs/Notas del usuario.md`, `docs/auditoria-2026-08-10.md`
+> **Estado:** `[COMPLETADA]`
+
+> Documento creado a partir de: `docs/Notas del usuario.md`, `docs/audits/auditoria-2026-08-10.md`
 > (la más reciente), `docs/reporte-paridad.md`, `TODO.md` y la entrevista con el usuario.
 > Fecha: 2026-08-11 · Proyecto: clon de Minecraft.
 > Estado: **cerrada y auditada** (2026-08-12) — suite unit 54/54, E2E 7/7
@@ -45,7 +47,7 @@
   recalibradas) que **NO están en HEAD** (`da0b4c0`). **Prerrequisito
   obligatorio (A1):** commitear ese WIP por preocupación y dejar la suite en
   verde antes de tocar nada de la Fase 16.
-- **Auditoría vigente:** `docs/auditoria-2026-08-10.md` (commit `da0b4c0`).
+- **Auditoría vigente:** `docs/audits/auditoria-2026-08-10.md` (commit `da0b4c0`).
   Línea base: sintaxis 110/110, unit 50/50, **E2E rojos** (`e2e-mascotas` 0/19,
   `e2e-durabilidad` TIMEOUT 180 s, `e2e-templo` 0/6+30 s), `audit-fase4/6/7`
   rojas (fase4/6 por presupuestos descalibrados por el mundo de 128 bloques —
@@ -59,8 +61,8 @@
   (bugs del usuario primero); **E2E en verde** como criterio; **test de
   regresión por bug**; **verificación manual en navegador**; **auditoría
   final obligatoria**; **SCHEMA_VERSION solo si hace falta** (mínimo toque).
-- Fuentes: `docs/Notas del usuario.md`, `docs/auditoria-2026-08-10.md`,
-  `docs/reporte-paridad.md`, `docs/fase15-spec.md` (plantilla y cierre del
+- Fuentes: `docs/Notas del usuario.md`, `docs/audits/auditoria-2026-08-10.md`,
+  `docs/reporte-paridad.md`, `docs/spec/fase15-spec.md` (plantilla y cierre del
   D5), `CLAUDE.md`/`AGENTS.md` (convenciones).
 
 ---
@@ -437,3 +439,46 @@
 | G5.5 | `docs/server/README.md` (persistencia asíncrona) + `docs/public/README.md` (mapa: `waterfog.js`, `chunkWorker.js`) | docs de arquitectura al día |
 | G5.6 | `AGENTS.md`/`CLAUDE.md` (suite 51+, comando coverage, convención matriz) + `docs/README.md` + `TODO.md` | docs transversales al día |
 | G6 | Cierre: unit verde, E2E 6/6, c8 con umbrales en módulos críticos, `biome` 0, `node --check`, auditorías sin regresión | **Hecho** — unit 54/54; E2E 7/7 en solitario; c8 `--check-coverage` (server 90%, public 15%, global 50) en `npm run test:coverage`; `biome check .` 0 errores; `node --check` en todos los tocados; auditorías 6/6 sin regresión |
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-12
+- **Commits clave:**
+  - `88a3d62` (2026-08-11) — WIP corrección de auditoría, bugs y paridad
+  - `70008b6` (2026-08-11) — helpers de tests G1.3, daymath + unit-dia G3
+  - `810e381` (2026-08-11) — test determinista de TNT G2.6
+  - `7b45375` (2026-08-11) — docs bloque G G5.6/G6
+  - `a1cc484` (2026-08-11) — unit-commands sin flakiness G6
+  - `ed5ccb2` (2026-08-11) — docs/tests.md G5.1
+  - `0a1b4ed` (2026-08-12) — TODO al día
+  - `3dc581e` (2026-08-12) — auditoría 2026-08-11 B3/D6
+  - `db1c366` (2026-08-12) — auditoría cliente CL-3/H1
+  - `17deb8c` (2026-08-12) — C5 hornos + P9 cooldowns
+  - `479c730` (2026-08-12) — nosniff SEC-4
+  - `c50bb93` (2026-08-12) — cierre auditoría G3.7 CDP + G4 e2e + c8 G6
+  - `db51670` (2026-08-12) — cierre de las Fases 16 y 17 (54 unit + 7 E2E)
+- **Resultado de la auditoría:** suite unit **54/54**, E2E **7/7 en solitario**
+  (6 clásicos con SEED + menú), auditorías **6/6**, c8 con umbrales
+  (`npm run test:coverage`: server 90 %, public 15 %, global 50), `biome` 0
+  errores y verificación en navegador.
+- **Lagunas conocidas / decisiones diferidas:** G2.6 — el **knockback del TNT
+  no está implementado** (solo daño al jugador), documentado como gap en
+  `docs/tests.md` (§9.1 / plan G).
+
+> **Tests que cubren esta fase:** `tests/unit-fase16.js`, `tests/unit-red.js`,
+> `tests/unit-commands.js`, `tests/unit-dia.js`, `tests/audit-fase7.js`,
+> `tests/e2e-cofre.js`, `tests/e2e-durabilidad.js`, `tests/e2e-menu.js`
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-11: creación del spec (documento retrospectivo de la fase 16).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas
+  actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con
+  commits.

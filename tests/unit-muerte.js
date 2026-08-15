@@ -1,7 +1,7 @@
 "use strict";
 // ============================================================
 // TESTS DE LA PANTALLA DE MUERTE CON CAUSA (Fase 10, B2)
-// Pendientes que cita docs/fase11-spec.md §12.1 y que nunca se
+// Pendientes que cita docs/spec/fase11-spec.md §12.1 y que nunca se
 // consolidaron en un test propio. Verifica que `player_die`
 // viaja con la `cause` correcta (fall/lava/starve/void/kill/
 // mob/damage) según la fuente real de cada muerte, y que NO se

@@ -1,5 +1,7 @@
 # Fase 6 — Mundo jugable y pulido (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación de la Fase 6, **reconstruido a posteriori**: la
 > fase está COMPLETADA y auditada. Se elabora a partir del `TODO.md` (sección
 > Fase 6 con su auditoría) y del historial de git, en el mismo formato que
@@ -225,6 +227,8 @@ Todos en `snake_case` (convención del proyecto).
 | `public/constants.js` | paridad de bloques/constantes |
 | `tests/unit-mineria.js`, `unit-recetas.js`, `unit-mobs-ia.js`, `unit-persistencia.js`, `unit-cofre.js`, `unit-antorchas.js`, `unit-commands.js`, `unit-reload.js`, `unit-lod.js`, `unit-geopool.js`, `unit-cama.js`, `unit-armadura.js`, `unit-terreno.js`, `audit-fase6.js` | cobertura y auditoría |
 
+> **Tests que cubren esta fase:** `tests/unit-mineria.js`, `tests/unit-recetas.js`, `tests/unit-mobs-ia.js`, `tests/unit-persistencia.js`, `tests/unit-cofre.js`, `tests/unit-antorchas.js`, `tests/unit-commands.js`, `tests/unit-reload.js`, `tests/unit-lod.js`, `tests/unit-geopool.js`, `tests/unit-cama.js`, `tests/unit-armadura.js`, `tests/unit-terreno.js`, `tests/audit-fase6.js`.
+
 ---
 
 ## 7. Decisiones del proyecto
@@ -286,3 +290,28 @@ triángulos 234K CON LOD vs 560K sin (reducción del 58%); memoria de geometría
 min 52), ~94K triángulos, heap 48 MB; SIN LOD → media 24.3 (estable 30, min
 16), ~209K triángulos, heap 85 MB. Pool: reutilizó 91 de 174 geometrías
 (55%) en sesión real. Determinismo LOD bit-idéntico entre regeneraciones.
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-04
+- **Commits clave:**
+  - `4b5dc69` (2026-08-02) — consola de comandos y frustum culling.
+  - `fcc82c0` (2026-08-02) — mundo jugable y pulido: carga, semilla, F3 y terreno.
+  - `aad6e18` (2026-08-02) — cierre: hot-reload, minería fina, LOD, pool y auditoría.
+  - `fb9c12b` (2026-08-03) — cofre y antorchas con iluminación dinámica + servidor en `server/`.
+  - `07423c0` (2026-08-04) — cama y armadura.
+  - `35a4c8a` (2026-08-04) — minas abandonadas, pozos de agua/lava y guardado gzip.
+- **Resultado de la auditoría:** `tests/audit-fase6.js` 11/11 + medición real en Chrome headless: LOD reduce la geometría un 58% (234K vs 560K triángulos) y la memoria un 55% (22.8 vs 51.2 MB); FPS de mediana 100.5 con LOD vs 24.3 sin LOD (~4.5×); pool reutilizó 91 de 174 geometrías (55%) en sesión real; determinismo LOD bit-idéntico entre regeneraciones.
+- **Lagunas conocidas / decisiones diferidas:** al romper un cofre se pierde el contenido (simplificación documentada); comandos con acceso abierto a todos — el gate de operador llega en la Fase 8; bounds cacheados en el pool (dependencia oculta LOD/pool, corregido en la Fase 8 B6).
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la Fase 6).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, referencias de rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

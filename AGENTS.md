@@ -1,10 +1,15 @@
 # AGENTS.md — Guía rápida para agentes de IA
 
 Guía compacta de arranque. La guía canónica de convenciones es
-[`CLAUDE.md`](CLAUDE.md). El **tracker de tareas por fase** (solo
-estados `[ ]`/`[x]`) está en [`TODO.md`](TODO.md); la **verdad de qué se
-hizo y cómo** vive en las especificaciones de [`docs/`](docs/README.md)
-(`docs/faseN-spec.md`). Léelos.
+[`CLAUDE.md`](CLAUDE.md). El **estado vivo** del proyecto (fase activa,
+implementado/en revisión/bloqueantes) está en [`STATUS.md`](STATUS.md); el
+**grafo de prerrequisitos** entre fases en [`DEPENDENCIAS.md`](DEPENDENCIAS.md);
+el **tracker de tareas por fase** (solo estados `[ ]`/`[x]`) en
+[`TODO.md`](TODO.md); y la **verdad de qué se hizo y cómo** vive en las
+especificaciones de [`docs/spec/`](docs/spec/README.md)
+(`docs/spec/faseN-spec.md`, cada una con su etiqueta de estado
+`[COMPLETADA]`/`[EN CURSO]`/`[PROSPECTIVA]`/`[ARCHIVADA]`). Las auditorías
+técnicas están en [`docs/audits/`](docs/audits/README.md). Léelos.
 
 ## Qué es
 
@@ -17,7 +22,7 @@ build step desde `public/`. Todo el código, docs y commits en español.
 ```bash
 npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
-node tests/run.js               # 54 unitarios + 7 E2E si hay servidor vivo
+node tests/run.js               # 58 unitarios + 7 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
 node tests/run.js --unit --filter <regex>   # solo los que casan (con tiempo por test)
 node tests/run.js --audit       # solo auditorías por fase standalone (3-6 + altura)
@@ -134,7 +139,7 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   de cobertura: unit 53/53, E2E 7/7 en solitario, auditorías 6/6, c8 con
   umbrales). La **Fase 17** está **cerrada y auditada** (modo menú A1,
   gestión de mundos A3, persistencia B1, bugs B1-B7, pausa y skins C3,
-  táctil D1; verificación en navegador del Bloque E completa). La **Fase 18 está cerrada y auditada** (spec `docs/fase18-spec.md`):
+  táctil D1; verificación en navegador del Bloque E completa). La **Fase 18 está cerrada y auditada** (spec `docs/spec/fase18-spec.md`):
   **paridad completa
   C-1..C-9** (franjas día/noche MC, minerales v6, zanahoria/patata,
   carbón vegetal 257, `MOB_XP`, horno desperdicio/cola, recetas de mena
@@ -148,20 +153,43 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   lightclient/meshbuild/lodmesh, `input.js`→game-input/raycast/menu-input/
   touch; `SCHEMA_VERSION` 6, protocolo WS e IDs B/I intactos). Auditorías
   recalibradas (E-1, `--audit` 6/6) y biome 0 errores (E-2); docs al día
-  (F); cierre: suite **56 unitarios** en verde + E2E + auditorías. Las
-  **Fases 19 (texturas/UI visual + drag & drop), 19.5 (skills del proyecto:
-  audio por bioma + accesibilidad + refinamientos), 19.6 (motor 3D de riesgo
-  técnico), 20 (rolling release), 21 (biomas/estructuras/mobs) y 22
-  (profundidad, minerales y fauna 1.17–1.21) son
-  prospectivas** (`docs/fase19-spec.md`, `fase19.5-spec.md`,
+  (F); cierre: suite **56 unitarios** en verde + E2E + auditorías. La
+  **Fase 19 está cerrada y auditada** (spec `docs/spec/fase19-spec.md`):
+  cobertura total de iconos por ID (A, 142/142 + 17 checks), rediseño MC
+  de los paneles con fondos del atlas y biseles (B), tooltip unificado con
+  delay (C), drag & drop con `dragdrop.js` + lógica pura `draglogic.js` y
+  eventos `inventory_swap`/`grid_return`/`chestSlot` retrocompatibles (D),
+  hot-reload del atlas de iconos (E), táctil/responsivo (F); cierre (G):
+  suite **57 unitarios** + auditorías 6/6 + E2E 7/7 + biome 0 errores;
+  fix de regresión `dawnOffsetMs` (D-4) y `e2e-cofre` recalibrado a v6.
+  Las
+  **Fases 19.5 (skills del proyecto:
+  audio por bioma + accesibilidad + refinamientos — **en curso**), 19.6
+  (motor 3D de riesgo técnico), 20 (rolling release), 21
+  (biomas/estructuras/mobs), 22
+  (profundidad, minerales y fauna 1.17–1.21), 23 (diferidos de la 22:
+  Lush Caves/Breeze/trims/Tuff-Caliza), 24 (Nether Update) y 25 (End
+  Update, sin dragón) y **21.5 (contenido y paridad ampliados: pesca,
+  bloques 1.8-1.15, combate y Trial Chambers, insertada entre 21 y 22) son
+  prospectivas** (`docs/spec/fase19.5-spec.md` — en curso,
   `fase19.6-spec.md`, `fase20-spec.md`, `fase21-spec.md`,
-  `fase22-spec.md`): la 19 exige la **Fase 18 cerrada**; la 19.5 exige 18 y
-  19; la 19.6 exige la 19.5; la 20 exige la 18; la 21 exige la 20; la 22
-  exige la 21. La 19.5 adelanta a la 19.6 el motor 3D y a la F21 el audio por
-  bioma; la F22 aporta los bloques de amatista que la geoda de la F21 reusa y
-  confirma Won't propios (oxidación del cobre, renacuajos, Warden,
-  redstone/Crafter). No adelantar trabajo más allá de lo que `TODO.md`
-  marque.
+  `fase21.5-spec.md`, `fase22-spec.md`, `fase23-spec.md`, `fase24-spec.md`,
+  `fase25-spec.md`): la 19.5 exige 18 y
+  19; la 19.6 exige la 19.5; la 20 exige la 18; la 21 exige la 20; la 21.5
+  exige la 21; la 22 exige la 21.5; la 23 exige la 22; la 24 exige la 23;
+  la 25 exige la 24. La
+  19.5 adelanta a la 19.6 el motor 3D y a la F21 el audio por bioma; la F22
+  aporta los bloques de amatista que la geoda de la F21 reusa y confirma
+  Won't propios (oxidación del cobre, renacuajos, Warden, redstone/Crafter);
+  la **F21.5** absorbe la lista de mejoras del usuario (pesca, bloques
+  1.8-1.15, combate/Trial Chambers, 1.21.5, Pale Garden 1.22, comandos)
+  reusando F21-23 y lo ya hecho (zanahoria/patata F18, miel F9) — no
+  planificar duplicados;
+  las **F24/F25 desbloquean el Won't "dimensiones" (Nether/End)** al
+  abrirse (Nether: opción B de guardado, portal 4×5 que se activa al
+  completarse, 128 bloques, 2 biomas, 4 mobs + fortaleza; End: sin dragón —
+  descartado temporalmente — islas flotantes, endermite, portal de
+  regreso). No adelantar trabajo más allá de lo que `TODO.md` marque.
 
 ## Documentación
 

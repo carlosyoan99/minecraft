@@ -1,5 +1,7 @@
 # Fase 1 — Cimientos técnicos (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación de la Fase 1, **reconstruido a posteriori**: la
 > fase está COMPLETADA y auditada. Se elabora a partir del `TODO.md` (sección
 > Fase 1 con su auditoría) y del historial de git, en el mismo formato que
@@ -162,6 +164,8 @@ no hay imports rotos ni código muerto tras la modularización.
 | `tests/unit-persistencia.js`, `tests/unit-red.js` | persistencia + handlers WS con `ws` fake |
 | `public/index.html` | favicon añadido de paso |
 
+> **Tests que cubren esta fase:** `tests/unit-persistencia.js`, `tests/unit-red.js`.
+
 ---
 
 ## 7. Decisiones del proyecto
@@ -215,3 +219,23 @@ acotada (439 → 65 chunks en memoria tras descarga, 524 en disco sin pérdida);
 test funcional WS 9/9 (todos los handlers); revisión de código aprobada. De
 paso: limpieza de código muerto en `net.js` y key malformado en
 `furnace_action`, y favicon en `index.html`.
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-01
+- **Commits clave:**
+  - `06658b9` (2026-08-01) — cimientos técnicos: persistencia por chunk, versionado, descarga y modularización.
+- **Resultado de la auditoría:** 3 ciclos guardar/cargar sin corrupción (169 chunks válidos, `schemaVersion` 2); memoria del servidor acotada (439 → 65 chunks en memoria tras la descarga, 524 en disco sin pérdida); test funcional WS 9/9 (todos los handlers); revisión de código aprobada.
+- **Lagunas conocidas / decisiones diferidas:** ninguna documentada.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la Fase 1).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, referencias de rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

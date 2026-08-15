@@ -260,10 +260,10 @@ El servidor tiene dos puntos críticos reales: un **guardado 100 % síncrono cad
 
 ### [REN-7] Cliente: `bakeChunkLight`/`hasTorchNear` recorren todo `torchSet` por chunk horneado (IMPORTANCIA: 🟠 media)
 
-- **Ubicación:** `public/world.js:871-903` (`bakeChunkLight`, citado en `docs/auditoria-2026-08-09.md` §4.7) y `~:955` (`hasTorchNear`); luz por celda en `public/lighting.js:124-157` (`computeChunkLight`, que ya reutiliza un scratch de módulo para no alocar por antorcha).
+- **Ubicación:** `public/world.js:871-903` (`bakeChunkLight`, citado en `docs/audits/auditoria-2026-08-09.md` §4.7) y `~:955` (`hasTorchNear`); luz por celda en `public/lighting.js:124-157` (`computeChunkLight`, que ya reutiliza un scratch de módulo para no alocar por antorcha).
 - **Descripción:** al hornear un chunk se recorre `torchSet` completo para filtrar antorchas en la caja de radio (O(antorchas totales) por bake), y `hasTorchNear` hace lo mismo por consulta. El coste no es por frame (solo al hornear/rebuild/LOD), pero `torchSet` crece con cada antorcha colocada en el mundo y su limpieza no está garantizada al descargar chunks (a diferencia de `cracks`, corregido en la auditoría §3.6).
 - **Impacto medible estimado:** con miles de antorchas (sesiones largas con bases iluminadas), cada bake de chunk al explorar/LOD cuesta O(torchSet) → ralentización visible del relleno de radio en zonas con mucha luz artificial. Ya está documentado como pendiente a conciencia («índice espacial de `torchSet`») en la auditoría §4.7.
-- **Evidencia citada:** `docs/auditoria-2026-08-09.md` §4.7 (`public/world.js:871-903`), `public/lighting.js:124-157`.
+- **Evidencia citada:** `docs/audits/auditoria-2026-08-09.md` §4.7 (`public/world.js:871-903`), `public/lighting.js:124-157`.
 - **Fase/bloque de TODO.md:** Fase 6 (antorchas/luz) / Fase 14 (M4 `hasTorchNear`) — pendiente conocido, sin bloque asignado.
 
 ## Puntos fuertes / patrones ya optimizados
@@ -300,7 +300,7 @@ El servidor tiene dos puntos críticos reales: un **guardado 100 % síncrono cad
 # 5. Paridad con Minecraft
 
 ## Resumen
-Auditoría de solo lectura (commit `da0b4c0`) comparando `server/constants.js`, `public/constants.js`, `server/mobs.js`, `server/crafting.js`, `recetas.json`, `recetas_horno.json` y los tests de paridad (`unit-paridad.js`, `unit-lagunas.js`) contra la tabla de referencia de Minecraft Java. La mayoría de los **valores numéricos** (durabilidad, daño de espada, armadura, dureza, XP, comida, salud de mobs) coinciden exactamente y están fijados por tests. Los desvíos relevantes son **mecánicas faltantes o filtradas**: combustible del horno indiferenciado y barato, ausencia de drops de zombi/creeper, y varios detalles menores (puertas ×1 en vez de ×3, tiempo de fundido del vidrio, carbón vegetal, XP del slime mediano/lobo). Los desvíos de diseño (salto 1.36, hacha=espada, explosiones, mundo de −64..+63) están documentados como intencionales en `docs/auditoria-2026-08-09.md` y `docs/reporte-paridad.md`.
+Auditoría de solo lectura (commit `da0b4c0`) comparando `server/constants.js`, `public/constants.js`, `server/mobs.js`, `server/crafting.js`, `recetas.json`, `recetas_horno.json` y los tests de paridad (`unit-paridad.js`, `unit-lagunas.js`) contra la tabla de referencia de Minecraft Java. La mayoría de los **valores numéricos** (durabilidad, daño de espada, armadura, dureza, XP, comida, salud de mobs) coinciden exactamente y están fijados por tests. Los desvíos relevantes son **mecánicas faltantes o filtradas**: combustible del horno indiferenciado y barato, ausencia de drops de zombi/creeper, y varios detalles menores (puertas ×1 en vez de ×3, tiempo de fundido del vidrio, carbón vegetal, XP del slime mediano/lobo). Los desvíos de diseño (salto 1.36, hacha=espada, explosiones, mundo de −64..+63) están documentados como intencionales en `docs/audits/auditoria-2026-08-09.md` y `docs/reporte-paridad.md`.
 
 ## Tabla de discrepancias priorizada
 
@@ -355,7 +355,7 @@ Verificado contra las tablas `unit-paridad.js` y los valores leídos en el repo;
 
 ## Áreas no comparables (divergencia deliberada documentada)
 
-Estas diferencias están declaradas como intencionales en `docs/auditoria-2026-08-09.md` §5 y `docs/reporte-paridad.md`, y en muchos casos fijadas por tests (no son bugs de paridad):
+Estas diferencias están declaradas como intencionales en `docs/audits/auditoria-2026-08-09.md` §5 y `docs/reporte-paridad.md`, y en muchos casos fijadas por tests (no son bugs de paridad):
 
 - **Salto 1.36 bloques vs 1.25 y altura de ojo 1.6 vs 1.62**: "test-fijados e intencionales (necesarios para el anti-cheat)" — `auditoria-2026-08-09.md:247`; `server/constants.js:80-81`.
 - **Hacha con daño igual a la espada del material (4/5/6/7) vs MC 7/9/9/9-10**: el cliente no simula el attack speed del hacha, así que se iguala para no romper la progresión — `server/constants.js:805-812`, `auditoria:170-181`.

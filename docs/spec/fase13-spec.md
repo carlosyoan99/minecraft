@@ -1,5 +1,7 @@
 # Fase 13 — Paridad 1.0, rendimiento, POO y tests de paridad (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación creado a partir del **reporte de paridad 1:1**
 > contra Minecraft (`docs/reporte-paridad.md`) y de la entrevista con el
 > usuario (alcance, prioridades y orden de bloques). **No se ha modificado
@@ -20,7 +22,7 @@
 > de MC fijada en un test) + cierre de la fase.
 >
 > La **Fase 12** (mobs por bioma, estructuras, persistencia de mascotas) se
-> ejecuta ANTES, con su spec propio (`docs/fase12-spec.md`).
+> ejecuta ANTES, con su spec propio (`docs/spec/fase12-spec.md`).
 
 ---
 
@@ -472,3 +474,32 @@ suite. El cliente real no se vio afectado (ya usaba el protocolo nuevo).
 - Suite E2E contra servidor real (mundo fresco) → **6/6 en 148s**:
   mascotas 19/19, durabilidad, comer, reload, cofre y templo 6/6, todos
   sin FAIL
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-09
+- **Commits clave:**
+  - `2ab7bfb` (2026-08-08) — Fase 13 (B1-B6): paridad de valores con Minecraft (vida 20, curva XP oficial, espadas, armadura, durezas, durabilidades).
+  - `7c9f07c` (2026-08-08) — Fase 13 (A1/A2): greedy meshing + worker de chunks.
+  - `a1ebffa` (2026-08-09) — Fase 13 (C2): POO de mobs — subclases por especie, `createMob`.
+  - `9312ed1` (2026-08-09) — Fase 13 (B): lagunas L1-L5 (arco, puertas, escaleras/losas/vallas, cubo, recetas).
+  - `a90a2db` (2026-08-09) — Fase 13 (C3): POO de entidades — `ItemStack`, `World`/`Chunk`, `Player`.
+  - `3eac7b3` (2026-08-09) — Fase 13 (A4): perfilado servidor.
+  - `a4d2fb2` (2026-08-09) — Fase 13 (C4): métricas de la POO documentadas en la spec.
+  - `92352ef` (2026-08-09) — Fase 13 (D2): tests de las lagunas — `unit-lagunas`.
+  - `c208271` (2026-08-09) — Fase 13 (cierre): TODO.md y docs al día + E2E deterministas.
+  - `91a957c` (2026-08-09) — docs: sección 9 (auditoría transversal) en la spec.
+- **Resultado de la auditoría:** suite unitaria completa en verde (incluye `unit-paridad`, `unit-sync`, `unit-greedy`, `unit-workers`, `unit-lagunas`, `unit-mobs-poo`, `unit-poo-entities`); E2E contra servidor real (mundo fresco) **6/6 en 148s**; auditorías 3-6 y `audit-fase7` (CDP) sin regresión; `biome` 0 errores. Métricas de la POO documentadas (sin branching muerto).
+- **Lagunas conocidas / decisiones diferidas:** ver §Estado final de la spec y las decisiones de la entrevista (POO con fachadas intactas).
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-07: creación del spec (documento de planificación de la fase 13, a partir del reporte de paridad 1:1 y la entrevista con el usuario).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

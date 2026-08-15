@@ -3,7 +3,7 @@
 > **Rol de este documento:** solo el **estado de las tareas** de cada fase
 > (hechas `[x]` / pendientes `[ ]`). La **verdad de qué se hizo y cómo**
 > (decisiones, mecánicas, auditorías, bugs con causa raíz) vive en las
-> **especificaciones** `docs/faseN-spec.md` — este tracker NO crece con
+> **especificaciones** `docs/spec/faseN-spec.md` — este tracker NO crece con
 > detalle, solo con tareas nuevas.
 >
 > Para entender una fase: abre su spec. Para saber qué falta: mira aquí.
@@ -29,7 +29,7 @@
 
 ## Fase 1 — Cimientos técnicos
 
-> Especificación (la verdad de la fase): [`docs/fase1-spec.md`](docs/fase1-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase1-spec.md`](docs/spec/fase1-spec.md)
 
 - [x] Guardado incremental por chunk: reemplazar el `world.dat` único por
       `world/<semilla>/chunks/` (clave `cx,cz` consistente entre `world.js` y
@@ -50,7 +50,7 @@
 
 ## Fase 2 — Identidad sensorial
 
-> Especificación (la verdad de la fase): [`docs/fase2-spec.md`](docs/fase2-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase2-spec.md`](docs/spec/fase2-spec.md)
 
 - [x] Atlas de texturas procedural: teselas 16×16 px por cara generadas en un
       canvas (`public/textures.js`), sin assets ni build step, con
@@ -68,7 +68,7 @@
 
 ## Fase 3 — Bucle de supervivencia
 
-> Especificación (la verdad de la fase): [`docs/fase3-spec.md`](docs/fase3-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase3-spec.md`](docs/spec/fase3-spec.md)
 
 - [x] Barra de hambre: `food` 0-20 con decaimiento por tiempo/movimiento,
       regeneración con `food >= 18`, inanición con `food == 0` y HUD con barra
@@ -87,7 +87,7 @@
 
 ## Fase 4 — Profundidad de terreno
 
-> Especificación (la verdad de la fase): [`docs/fase4-spec.md`](docs/fase4-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase4-spec.md`](docs/spec/fase4-spec.md)
 
 - [x] Cuevas 3D: ruido "ridged" (1−|n|) con `CAVE_THRESHOLD`, dos octavas
       deterministas y continuas entre chunks, excavando solo piedra y
@@ -103,7 +103,7 @@
 
 ## Fase 5 — Progresión y combate
 
-> Especificación (la verdad de la fase): [`docs/fase5-spec.md`](docs/fase5-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase5-spec.md`](docs/spec/fase5-spec.md)
 
 - [x] Durabilidad real de herramientas: `TOOL_DURABILITY` estilo MC para las
       20 herramientas (200-219) con `applyToolWear()` (−1 por uso)
@@ -123,7 +123,7 @@
 
 ## Fase 6 — Mundo jugable y pulido
 
-> Especificación (la verdad de la fase): [`docs/fase6-spec.md`](docs/fase6-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase6-spec.md`](docs/spec/fase6-spec.md)
 
 - [x] Afinar la minería: durezas (`BLOCK_HARDNESS`), velocidad por
       herramienta (`TOOL_TIER_SPEED`), sesión por ticks con grietas y
@@ -167,7 +167,7 @@
 
 ## Fase 7 — Pulido, UX y estética
 
-> Especificación (la verdad de la fase): [`docs/fase7-spec.md`](docs/fase7-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase7-spec.md`](docs/spec/fase7-spec.md)
 
 - [x] Nombre de jugador: campo persistido en `localStorage`, saneado y
       propagado con `player_join`/`player_rename`
@@ -202,7 +202,7 @@
 
 ## Fase 8 — Caza de bugs (corrección de errores)
 
-> Especificación (la verdad de la fase): [`docs/fase8-spec.md`](docs/fase8-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase8-spec.md`](docs/spec/fase8-spec.md)
 
 - [x] B1: controles izquierda/derecha invertidos → fix + opción "Controles
       invertidos" (`invertControls`)
@@ -229,7 +229,7 @@
 
 ## Fase 9 — Mejoras de paridad, IA, mundo y menú
 
-> Especificación (la verdad de la fase): [`docs/fase9-spec.md`](docs/fase9-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase9-spec.md`](docs/spec/fase9-spec.md)
 
 - [x] Telemetría de minería en el cliente (`window.__mcMiningTrace`,
       `__mcRaycastStats`, `__mcDebugMining()`) con test de regresión de three
@@ -271,7 +271,7 @@
 
 ## Fase 9.5 — Mejoras de skills, documentación técnica y .gitignore
 
-> Especificación (la verdad de la fase): [`docs/fase9.5-spec.md`](docs/fase9.5-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase9.5-spec.md`](docs/spec/fase9.5-spec.md)
 
 - [x] Colisión de flechas con bloques (anti-tunneling por segmento del tick)
 - [x] Clamp de pitch de cámara a ±~84° (evento `change` de PLC)
@@ -288,7 +288,7 @@
 
 ## Fase 10 — Notas del usuario, correcciones pendientes y paridad avanzada
 
-> Especificación (la verdad de la fase): [`docs/fase10-spec.md`](docs/fase10-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase10-spec.md`](docs/spec/fase10-spec.md)
 
 - [x] Salir del agua (flotación y salto desde el agua)
 - [x] Lava: daño por quemadura con estado `burning` que se extingue
@@ -324,7 +324,7 @@
 
 ## Fase 11 — Bugs de input y cámara, biomas, paridad y cierre de tests
 
-> Especificación (la verdad de la fase): [`docs/fase11-spec.md`](docs/fase11-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase11-spec.md`](docs/spec/fase11-spec.md)
 
 - [x] Telemetría ampliada de minería con contexto del fallo y diagnóstico
       híbrido (CDP + manual) → causa raíz H1 confirmada (rayo sin cruzar
@@ -355,7 +355,7 @@
 
 ## Fase 12 — Mobs por bioma, estructuras, spawn por bioma y persistencia
 
-> Especificación (la verdad de la fase): [`docs/fase12-spec.md`](docs/fase12-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase12-spec.md`](docs/spec/fase12-spec.md)
 
 - [x] Lobo de taiga: domesticación con `BONE`, aliado que sigue, ataca el
       objetivo del dueño y se sienta/levanta
@@ -387,7 +387,7 @@
 
 ## Fase 13 — Paridad 1.0, rendimiento, POO y tests de paridad
 
-> Especificación (la verdad de la fase): [`docs/fase13-spec.md`](docs/fase13-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase13-spec.md`](docs/spec/fase13-spec.md)
 
 - [x] Greedy meshing: fusión de caras coplanares (3-5× menos geometría) sin
       romper culling/AO/crack (`unit-greedy.js` + CDP)
@@ -427,7 +427,7 @@
 
 ## Fase 14 — Auditoría y cierre de Fases 12-13
 
-> Especificación (la verdad de la fase): [`docs/fase14-spec.md`](docs/fase14-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase14-spec.md`](docs/spec/fase14-spec.md)
 
 - [x] A1 Spawn por bioma (`BIOME_SPAWN`/`SPAWN_TYPES` prefiltran el tipo antes
       del intento, con `unit-fase12` ampliado)
@@ -458,7 +458,7 @@
 
 ## Fase 15 — Corrección de auditoría, paridad restante y POO
 
-> Especificación (la verdad de la fase): [`docs/fase15-spec.md`](docs/fase15-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase15-spec.md`](docs/spec/fase15-spec.md)
 
 - [x] A1 Reparar la regresión `uuid` (línea propia fuera del comentario en
       `server/mobs.js`)
@@ -493,7 +493,7 @@
 ## Auditoría transversal (2026-08-09): auditorías 3/4/6 y E2E en verde
 
 > Detalle completo (bisect de atribución, fixes `e23e810`/`404b81f` y
-> validación) en [`docs/fase13-spec.md`](docs/fase13-spec.md) §9.
+> validación) en [`docs/spec/fase13-spec.md`](docs/spec/fase13-spec.md) §9.
 
 - [x] `audit-fase3`, `audit-fase4`, `audit-fase6` → exit=0
 - [x] `audit-fase5` y `audit-fase7` (CDP Chrome headless) sin regresión → exit=0
@@ -506,7 +506,7 @@
 ## Auditoría integral de seguridad/rendimiento/paridad (2026-08-09)
 
 > Informe completo con ubicaciones y estado de corrección por hallazgo:
-> [`docs/auditoria-2026-08-09.md`](docs/auditoria-2026-08-09.md).
+> [`docs/audits/auditoria-2026-08-09.md`](docs/audits/auditoria-2026-08-09.md).
 
 - [x] CRÍTICO 1.1 — guard de forma del mensaje WS + try/catch (`net.js`)
 - [x] CRÍTICO 1.2 — crafteo solo con la grid server-side (`grid_set`)
@@ -517,7 +517,7 @@
 
 ## Fase 16 — Corrección de la auditoría 2026-08-10, bugs del usuario y paridad restante
 
-> Especificación (la verdad de la fase): [`docs/fase16-spec.md`](docs/fase16-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase16-spec.md`](docs/spec/fase16-spec.md)
 > **Cerrada y auditada (2026-08-12)** — unit 54/54, E2E 7/7 en solitario
 > (6 clásicos con SEED + menú), auditorías 6/6, c8 con umbrales, `biome` 0
 > y verificación en navegador. Ver Bloque G en la spec.
@@ -595,7 +595,7 @@
 
 ## Fase 17 — Menú inicial tipo Minecraft, UI/UX y móvil
 
-> Especificación (la verdad de la fase): [`docs/fase17-spec.md`](docs/fase17-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase17-spec.md`](docs/spec/fase17-spec.md)
 > **Cerrada y auditada (2026-08-12)** — suite unit 54/54, E2E de menú 7/7,
 > E2E clásicos 6/6 en solitario, auditorías 6/6 y verificación en navegador
 > del flujo completo (menú → mundo → pausa → volver al menú).
@@ -646,7 +646,7 @@
 
 ## Fase 18 — Refactor a convenciones, cierre de fases y pulido
 
-> Especificación (la verdad de la fase): [`docs/fase18-spec.md`](docs/fase18-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase18-spec.md`](docs/spec/fase18-spec.md)
 > **✅ CERRADA Y AUDITADA (2026-08-15)** — paridad C-1..C-9 completa,
 > refactor D-1..D-8 (servidor + cliente) con fachadas intactas, E-1/E-2
 > cerrados, docs F al día y cierre G: suite **56/56 unitarios**, E2E
@@ -700,50 +700,50 @@
 
 ## Fase 19 — Texturas de ítems, interfaces y pulido visual
 
-> Especificación (la verdad de la fase): [`docs/fase19-spec.md`](docs/fase19-spec.md)
-> **Prospectiva (sin implementar)** — prerrequisito: Fase 18 cerrada.
-> Alcance (entrevista 2026-08-12): visual + arrastrar y soltar; skins fuera
-> (ya en F17 C3); sin ítems nuevos.
+> Especificación (la verdad de la fase): [`docs/spec/fase19-spec.md`](docs/spec/fase19-spec.md)
+> **Cerrada** — verificada 2026-08-15: suite 57/57, auditorías 6/6, E2E 7/7,
+> biome 0 errores. Alcance (entrevista 2026-08-12): visual + arrastrar y
+> soltar; skins fuera (ya en F17 C3); sin ítems nuevos.
 
-- [ ] A1 Cobertura total de iconos: lista canónica de IDs (constantes AMBOS
+- [x] A1 Cobertura total de iconos: lista canónica de IDs (constantes AMBOS
       lados + `itemIconIds`) vs `switch` de `itemicons.js`; dibujar los que
       falten al estilo 16×16 (sin inventar ítems); el fallback de texto de
       `itemVisual` deja de ser alcanzable
-- [ ] A2 Test de cobertura por ID en `unit-itemicons.js`: todo ID con tesela
+- [x] A2 Test de cobertura por ID en `unit-itemicons.js`: todo ID con tesela
       válida, distinta y determinista; falla si se añade un ítem sin icono
-- [ ] B1 Rediseño MC del inventario/crafteo (`#crafting-ui`): fondo
+- [x] B1 Rediseño MC del inventario/crafteo (`#crafting-ui`): fondo
       texturizado (tesela del atlas), biseles 3D, slots biselados, sin
       cambiar eventos
-- [ ] B2 Rediseño MC del horno (`#furnace-ui`): fondo de piedra, slots y
+- [x] B2 Rediseño MC del horno (`#furnace-ui`): fondo de piedra, slots y
       barra de progreso al estilo nuevo
-- [ ] B3 Rediseño MC del cofre (`#chest-ui`): fondo de madera, 27 slots +
+- [x] B3 Rediseño MC del cofre (`#chest-ui`): fondo de madera, 27 slots +
       inventario, sonidos intactos
-- [ ] B4 Rediseño MC del libro de recetas (`#recipe-book`): fondo/bisel,
+- [x] B4 Rediseño MC del libro de recetas (`#recipe-book`): fondo/bisel,
       pestañas, cierre con B/Esc intacto
-- [ ] C1 Hotbar/tooltip unificados con el estilo nuevo (bisel + delay ~200ms)
+- [x] C1 Hotbar/tooltip unificados con el estilo nuevo (bisel + delay ~200ms)
       y verificado en los 5 contextos (hotbar, inventario, cofre, horno,
       libro, grid)
-- [ ] D1 Arrastrar y soltar dentro del inventario y al grid de crafteo
-      (fantasma bajo el cursor; evento nuevo `inventory_swap` si hace falta,
-      retrocompatible + test en `unit-red.js`; el click simple no regresa)
-- [ ] D2 Arrastrar y soltar inventario↔cofre y inventario↔horno (destino
-      explícito en `chest_action`/`furnace_action` o ampliación
-      retrocompatible; validación F16 C2)
-- [ ] E1 Hot-reload del atlas de iconos (patrón `hotReloadTextures`) y
+- [x] D1 Arrastrar y soltar dentro del inventario y al grid de crafteo
+      (fantasma bajo el cursor; evento nuevo `inventory_swap`, retrocompatible
+      + test en `unit-red.js`; el click simple no regresa)
+- [x] D2 Arrastrar y soltar inventario↔cofre y inventario↔horno (destino
+      explícito `chestSlot` en `chest_action`, ampliación retrocompatible;
+      validación F16 C2; `grid_return` para devolver al grid)
+- [x] E1 Hot-reload del atlas de iconos (patrón `hotReloadTextures`) y
       repintado de slots visibles sin reiniciar
-- [ ] F1 Paneles táctiles/responsivos: slots ≥~44px, paneles que caben en el
+- [x] F1 Paneles táctiles/responsivos: slots ≥~44px, paneles que caben en el
       viewport, drag&drop sin romper el scroll táctil; escritorio intacto
-- [ ] G1 Cierre y auditoría de Fase 19: suite + E2E 6/6 + menú 7/7, `biome` 0,
-      **auditoría visual CDP** (0 `.item-txt` fallback, 0 excepciones al
-      abrir los 4 paneles), verificación manual escritorio/móvil, docs y
-      tracker al día; `SCHEMA_VERSION` intacto
+- [x] G1 Cierre y auditoría de Fase 19: suite + E2E 6/6 + menú 7/7, `biome` 0,
+      verificación final con fixes (reloj `dawnOffsetMs` recolocado,
+      `e2e-cofre` recalibrado a v6), docs y tracker al día; `SCHEMA_VERSION`
+      intacto
 
 ---
 
 ## Fase 19.5 — Skills del proyecto: audio ambiental por bioma, accesibilidad y refinamientos
 
-> Especificación (la verdad de la fase): [`docs/fase19.5-spec.md`](docs/fase19.5-spec.md)
-> **Prospectiva (sin implementar)** — prerrequisito: F18 y F19 cerradas.
+> Especificación (la verdad de la fase): [`docs/spec/fase19.5-spec.md`](docs/spec/fase19.5-spec.md)
+> **En curso** — iniciada tras el cierre de la Fase 19 (2026-08-15, `acca3c9`).
 > Creada desde el borrador `fase19.5-spec.md` (Descargas) + entrevista
 > 2026-08-15: skills no-motor + **audio por bioma adelantado de la F21** +
 > accesibilidad (menor prioridad); el **motor 3D sale a la F19.6**.
@@ -782,7 +782,7 @@
 
 ## Fase 19.6 — Motor 3D: iluminación, materiales, shaders, instancing, texturas y animación
 
-> Especificación (la verdad de la fase): [`docs/fase19.6-spec.md`](docs/fase19.6-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase19.6-spec.md`](docs/spec/fase19.6-spec.md)
 > **Prospectiva (sin implementar)** — prerrequisito: F19.5 cerrada.
 > Fase independiente de **riesgo técnico** decidida en la entrevista
 > 2026-08-15 (el motor 3D afecta al juego; va después de las skills
@@ -819,7 +819,7 @@
 
 ## Fase 20 — Rolling release (ciclo de estabilización y paridad)
 
-> Especificación (la verdad de la fase): [`docs/fase20-spec.md`](docs/fase20-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase20-spec.md`](docs/spec/fase20-spec.md)
 > **Prospectiva (sin implementar)** — prerrequisito: Fase 18 cerrada
 > (y con ella F16/F17). Ciclo largo con iteraciones v20.x; cada iteración
 > con auditoría obligatoria; no se avanza hasta que todo esté en verde.
@@ -852,7 +852,7 @@
 
 ## Fase 21 — Biomas ampliados, estructuras y más mobs (prospectiva)
 
-> Especificación (la verdad de la fase): [`docs/fase21-spec.md`](docs/fase21-spec.md)
+> Especificación (la verdad de la fase): [`docs/spec/fase21-spec.md`](docs/spec/fase21-spec.md)
 > **Prospectiva (sin implementar)** — prerrequisito: Fase 20 cerrada.
 > Mejoras grandes de `Notas del usuario.md` (entrevistas 2026-08-12 y
 > 2026-08-15): biomas/estructuras/mobs no entran en 19/19.5/19.6/20; se
@@ -889,10 +889,93 @@
 
 ---
 
+## Fase 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers
+
+> Especificación (la verdad de la fase): [`docs/spec/fase21.5-spec.md`](docs/spec/fase21.5-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 21 cerrada.
+> NUEVA desde la lista de mejoras del usuario (2026-08-15): alta/media
+> prioridad + 1.21 Tricky Trials + 1.21.5 Spring to Life + 1.22/26.1 +
+> comandos. Se inserta **entre F21 y F22** (no renumerar F21-25). No
+> planificar lo ya hecho (zanahoria/patata F18 C-3, miel F9) ni lo ya
+> planificado (abeja F21 C2, amatista F22 B1, Breeze F23 A2, Tuff F23 A4).
+
+- [ ] A1 Pesca (1.7/1.13): ítem `FISHING_ROD` (durabilidad 64) + entidad
+      línea = proyectil con bobber (punto 3D); al impactar en agua pica
+      tras tiempo aleatorio y entrega ítem de la tabla de loot (pescado/
+      tesoro/basura); fuera del agua no pica; durabilidad solo al recoger;
+      receta (3 palos + 2 hilo)
+- [ ] A8 Pesca en cofres: cañas rotas (durabilidad 1-20) en las tablas de
+      loot de cofres (`server/chests.js`)
+- [ ] B1 Piedra pulida (1.8): `GRANITE`/`DIORITE`/`ANDESITE` + pulidas en
+      vetas subterráneas (hash 2D) — B/I + tesela + receta + icono
+- [ ] B2 Linternas (1.14): `LANTERN` en suelo/techo, emisor de luz (pipe de
+      la antorcha); receta (4 lingotes + antorcha)
+- [ ] B3 Bambú y andamios (1.14): `BAMBOO` (planta alta estática, hasta 12
+      bloques), `BAMBOO_PLANKS`, `SCAFFOLDING` (no sólido, escalable hacia
+      arriba; sin crecimiento ni colapso)
+- [ ] B4 Colmenas y miel (1.15): `BEE_NEST` (árboles) + `BEE_HIVE`
+      (crafteado); botella de vidrio + clic derecho → `HONEY_BOTTLE`
+      (comida 6/1.2); `HONEY_BLOCK` (reduce caída); abejas del F21 C2
+      vuelan alrededor; sin polinización de cultivos
+- [ ] B5 Coral y algas (1.13): `CORAL_BLOCK`/`CORAL_FAN`/`KELP`/`SEAGRASS`
+      en arrecifes de océano cálido (estático, sin decoloración)
+- [ ] C1 Horno de fundición (1.14): `BLAST_FURNACE` funde minerales ×2, UI
+      propia, crafteo (5 lingotes + horno)
+- [ ] C2 Escudo (1.9): `SHIELD` — clic derecho bloquea y reduce el daño
+      (sin off-hand completo), durabilidad, animación en cliente
+- [ ] C3 Tótem de inmortalidad (1.11): evita la muerte, cura + absorción, se
+      consume; loot de mansión (F21) y Trial Chambers (D1)
+- [ ] C4 Camas de colores (1.12): 16 camas con los 16 tintes (dormir/respawn
+      igual que la roja), crafteo cama + tinte
+- [ ] C5 Concreto (1.12): 16 `CONCRETE` + 16 `CONCRETE_POWDER`; el polvo cae
+      con gravedad (física arena/grava) y al tocar agua se convierte en
+      concreto sólido (o simplificado sin conversión si es costoso)
+- [ ] D1 Trial Chambers (estructura, 1.21): subterránea en deepslate,
+      pasillos/salas con cofres de botín + `VAULT` decorativo (sin
+      llave/una-vez); determinista por hash 2D; sin Trial Spawner/ominous
+- [ ] D2 Bogged (esqueleto de pantano, 1.21): dispara flecha con veneno,
+      spawn en pantano; Breeze ya en F23 A2 (coordinación: no duplicar)
+- [ ] D3 Maza (1.21): `MACE` + `HEAVY_CORE` (de Trial Chambers); daño
+      escala con altura de caída en `attack_mob`; receta maza = core + rod
+- [ ] D4 Familia de cobre y tuff (1.21): variantes de cobre (escaleras/
+      losas/puertas, sin oxidación) + familia de tuff (pulido/ladrillo)
+      sobre el bloque de F22 A5 / Tuff de F23 A4 — sin duplicar IDs
+- [ ] D5 Ítems de Trial/Breeze: `WIND_CHARGE` (proyectil que empuja),
+      `BREEZE_ROD` (drop), `TRIAL_EXPLORER_MAP` (mapa/brújula hacia la
+      estructra); B/I + receta + icono
+- [ ] D6 Discos de música, pinturas y partituras (visual/audio, tras F19.5)
+- [ ] E1 Variantes de animales por bioma (1.21.5): cerdos/vacas/gallinas con
+      `variant` frío/cálido según bioma de spawn, textura distinta
+- [ ] E2 Color de lana de oveja según bioma (1.21.5): paleta por bioma,
+      esquileo suelta esa lana
+- [ ] E3 Bloques decorativos 1.21.5: `FIREFLY_BUSH`, `LEAF_LITTER`,
+      `WILDFLOWERS`, `BUSH`, hierba seca corta/alta, `CACTUS_FLOWER`
+- [ ] E4 Partículas de hojas cayendo (cliente; "reducir movimiento" las
+      atenúa)
+- [ ] E5 Sonidos ambientales de desierto/badlands (con el audio por bioma
+      de F19.5 A1)
+- [ ] F1 Pale Garden (1.22/26.1): bioma con roble pálido y musgo claro
+- [ ] F2 Creaking (1.22): mob que solo se mueve cuando el jugador no lo mira
+      (detección de visión en servidor), de noche en Pale Garden
+- [ ] F3 Creaking Heart (1.22): bloque vinculado al mob — destruirlo lo
+      mata; lógica de vínculo mob↔bloque
+- [ ] F4 Mochila/Bundle (1.22): ítem que abre un segundo inventario (cofre
+      portátil), persistido con el jugador (retrocompatible si es viable)
+- [ ] G1 Comandos nuevos + selectores: `/weather`, `/kill` (general),
+      `/locate`, `/effect`, `/summon`, `/ban`, `/op`, `/list` y selectores
+      `@p @a @e @s @r` (resolución en el handler); `unit-commands.js` al día
+- [ ] Z1 Cierre y auditoría de Fase 21.5: suite + E2E + `--audit` +
+      `unit-fase21.5.js` en verde + manual (pesca, linterna, andamio, miel,
+      arrecife, escudo/maza/tótem, Trial, variantes, Pale Garden, mochila,
+      comandos); `SCHEMA_VERSION` 6 intacto salvo mochila/concreto (7 +
+      migración + test si sube); docs y tracker al día; Won't documentado
+
+---
+
 ## Fase 22 — Profundidad, minerales y fauna 1.17–1.21 (Spec)
 
-> Especificación (la verdad de la fase): [`docs/fase22-spec.md`](docs/fase22-spec.md)
-> **Prospectiva (sin implementar)** — prerrequisito: Fase 21 cerrada.
+> Especificación (la verdad de la fase): [`docs/spec/fase22-spec.md`](docs/spec/fase22-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 21.5 cerrada.
 > Creada desde el plan del usuario "Actualizaciones Minecraft 1.17 → 1.21"
 > (2026-08-15, nueva sección en `Notas del usuario.md`): **minerales en
 > bruto (se funden todos), deepslate bajo Y=0, cobre (solo el bloque),
@@ -948,6 +1031,103 @@
       manual (minar deepslate, fundir raw, catalejo zoom, sculk, rana);
       `SCHEMA_VERSION` 6 o 7 según veredicto A1; docs y tracker al día;
       Won't de la fase documentado en la spec
+
+---
+
+## Fase 23 — Diferidos de la F22: Lush Caves, Breeze, trims, Tuff/Caliza (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase23-spec.md`](docs/spec/fase23-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 22 cerrada.
+> Creada desde el plan 1.17→1.21 (diferidos) + entrevista 2026-08-15
+> (numeración: **F23 = diferidos de la F22**; F24 = Nether; F25 = End).
+
+- [ ] A1 Cuevas frondosas (Lush Caves): `MOSS_BLOCK`, `GLOW_BERRIES`
+      (luz), azaleas — variante de cueva profunda por hash 2D
+- [ ] A2 Breeze 1.21 simplificado: proyectil de viento que empuja
+      (knockback) usando `server/projectiles.js`; sin Trial Chambers
+- [ ] A3 Armor Trims: ~10 tintes por crafteo armadura+tinte; sin NBT
+      (campo `trim` retrocompatible del `ItemStack` o ítems por color;
+      decisión documentada; `unit-persistencia` en verde)
+- [ ] A4 Tuff y Caliza: bloques decorativos subterráneos (B/I + tesela)
+- [ ] A5 Ajolote (acuático) y cabra (embiste): mobs pasivos con patrón
+      F12/21, spawn por bioma
+- [ ] B1 Altura 256 (Y −64..191) SOLO si la F22 no subió y los tests lo
+      confirman; si sube: `SCHEMA_VERSION` 7 + migración + recalibración;
+      si no: veredicto documentado
+- [ ] C1 Cierre y auditoría de Fase 23: suite + E2E + `--audit` +
+      `unit-fase23` en verde + manual (lush cave, breeze, trim, tuff/caliza,
+      ajolote/cabra); `SCHEMA_VERSION` 6 o 7 según B1; docs y tracker al día
+
+---
+
+## Fase 24 — Nether Update (primera dimensión) (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase24-spec.md`](docs/spec/fase24-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 23 cerrada.
+> **Desbloquea el Won't "dimensiones"** (se mantiene intacto en TODO/AGENTS
+> hasta abrir esta fase). Decisiones 2026-08-15: guardado **opción B**
+> (`world/<semilla>/nether/` sin migrar la raíz), **marco de portal que se
+> activa al completarse** (sin mechero), Nether de **128 bloques** (reusa
+> el formato v6), posición por dimensión **sin subir `SCHEMA_VERSION`**,
+> dragón del End **no** (va a F25, descartado).
+
+- [ ] A1 Persistencia por dimensión (opción B): `worldPaths` con
+      dimensión, `world/<semilla>/nether/` (`chunks/` + `world.json`
+      propios); raíz actual queda como overworld (sin migración)
+- [ ] A2 Posición del jugador por dimensión: `dimension` +
+      `positions: {overworld, nether}` retrocompatibles en `players/` —
+      inventario/salud/XP compartidos; `SCHEMA_VERSION` 6 intacto
+- [ ] A3 Protocolo WS: `enter_dimension` (C→S) + `dimension_change`
+      (S→C) reusando el `init` existente
+- [ ] B1 Generación del Nether (128 bloques, offset re-anclado Y 0..127):
+      piso/techo bedrock, netherrack, cuevas masivas, lagos de lava
+- [ ] B2 Biomas (2): Nether Wastes y Soul Sand Valley (paleta propia,
+      determinista)
+- [ ] C1 Bloques (~15): netherrack, soul sand/soil, glowstone (luz),
+      nether bricks, magma block (daña), basalto, blackstone, nylium
+      (crimson/warped), hongos/raíces, shroomlight (luz) — estáticos;
+      B/I + tesela + receta/icono
+- [ ] D1 Mobs (4): zombified piglin (neutral/dominó), ghast (bolas de
+      fuego), blaze (ráfagas), magma cube (división) — IA por especie;
+      spawn por bioma del nether
+- [ ] D2 Fortaleza del Nether: pasillos de nether bricks, 1-2 spawners de
+      blaze, cofres de loot; sin trampas de redstone
+- [ ] E1 Portal: `OBSIDIAN` (pico de diamante) + marco 4×5 que se activa
+      al completarse → interior `PORTAL` no sólido; romper marco lo apaga
+- [ ] E2 Teletransporte 8:1 (X/Z) con spawn en tierra firme (sin caer en
+      lava); volver restaura la posición original (A2)
+- [ ] F1 Tests específicos: `unit-fase24.js` (generación, biomas,
+      bloques, mobs, fortaleza, portal/marco, 8:1 + spawn seguro) + E2E
+      de dimensiones con servidor propio
+- [ ] G1 Cierre y auditoría de Fase 24: suite + E2E + `--audit` +
+      `unit-fase24` en verde + manual (marco→nether→volver); `SCHEMA_VERSION`
+      6 intacto; docs y tracker al día; Won't de la fase documentado
+
+---
+
+## Fase 25 — End Update (segunda dimensión, sin dragón) (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase25-spec.md`](docs/spec/fase25-spec.md)
+> **Prospectiva (sin implementar)** — prerrequisito: Fase 24 cerrada
+> (reusa la infraestructura de dimensiones). **El dragón del End queda
+> descartado temporalmente** (cristales/ciudad/élitro/levitación →
+> inspiración Futuro, documentado).
+
+- [ ] A1 Generación del End: islas flotantes de end stone sobre vacío
+      (ruido 2D) + isla principal con pilares de obsidiana decorativos
+      (sin dragón ni cristales); determinista
+- [ ] A2 Bloques (~6): end stone, end stone bricks, purpur (bloque/pilar),
+      end rod (luz), chorus plant/flower **estáticos** (sin crecimiento);
+      B/I + tesela + receta/icono
+- [ ] A3 Mobs: enderman (ya existe, spawn en End) + endermite (hostil
+      pequeño, spawn por ender pearl o natural, desaparece tras 2 min)
+- [ ] A4 Portal de regreso al overworld (posición restaurada en
+      `positions.overworld`) + persistencia `world/<semilla>/end/` +
+      `positions.end`; `SCHEMA_VERSION` 6 intacto
+- [ ] B1 Cierre y auditoría de Fase 25: suite + E2E + `--audit` +
+      `unit-fase25` en verde + manual (explorar end, end stone/chorus,
+      endermite, volver por el portal); `SCHEMA_VERSION` 6 intacto; docs
+      y tracker al día; Won't (dragón descartado) documentado
 
 ---
 

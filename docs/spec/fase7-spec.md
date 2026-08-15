@@ -1,5 +1,7 @@
 # Fase 7 — Pulido, UX y estética (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación de la Fase 7, **reconstruido a posteriori**: la
 > fase está COMPLETADA y auditada. Se elabora a partir del `TODO.md` (sección
 > Fase 7 con su auditoría y playtest) y del historial de git, en el mismo
@@ -178,6 +180,8 @@ progresión, mundo jugable):
 | `server/constants.js`, `public/constants.js` | `EYE_HEIGHT`, `VOID_Y` (paridad en `unit-sync`) |
 | `tests/unit-ajustes.js`, `unit-itemicons.js`, `unit-sky.js`, `unit-caida.js`, `unit-respawn.js`, `unit-metricas.js`, `unit-crack.js`, `audit-fase7.js` | cobertura y auditoría |
 
+> **Tests que cubren esta fase:** `tests/unit-ajustes.js`, `tests/unit-itemicons.js`, `tests/unit-sky.js`, `tests/unit-caida.js`, `tests/unit-respawn.js`, `tests/unit-metricas.js`, `tests/unit-crack.js`, `tests/audit-fase7.js`.
+
 ---
 
 ## 7. Decisiones del proyecto
@@ -240,3 +244,34 @@ LOD, estrellas, sol/luna y mobs); la auditoría (`audit-fase7.js`) verificó
 tick de servidor, FPS en Chrome headless e integridad del guardado tras
 reinicios, y la pasada de limpieza dejó biome a 0 errores. Los bugs quedaron
 pendientes de corregir en la Fase 8 (ver `fase8-spec.md`).
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-05
+- **Commits clave:**
+  - `ad5dab1` (2026-08-05) — respawn por gamemode, daño por caída/void y texturas procedurales de mobs.
+  - `26c025b` (2026-08-05) — mundo con semilla aleatoria y nombre.
+  - `002ce14` (2026-08-05) — iconos procedurales de ítems.
+  - `5c69bd6` (2026-08-05) — ajustes completos (FOV, sensibilidad, volumen, calidad).
+  - `e5cc662` (2026-08-05) — métrica de tiempo por tick.
+  - `b7c0d64` (2026-08-05) — estética Minecraft (cielo, niebla, partículas, HUD).
+  - `de2f45d` (2026-08-05) — animación de rotura sincronizada.
+  - `ac15997` (2026-08-05) — auditoría (`audit-fase7.js` vía CDP).
+  - `e1c687b` (2026-08-05) — gate de operador + validación.
+  - `0284da7` (2026-08-05) — el creeper ya no destruye bedrock/agua/lava.
+  - `cd6923f` (2026-08-05) — limpieza de código muerto + biome a 0 errores.
+  - `b312014` (2026-08-05) — cierre oficial (README, protocolo WS, playtest).
+- **Resultado de la auditoría:** `audit-fase7.js` vía CDP en Chrome headless (métricas de tick y chunkGen, FPS) + integridad del guardado tras reinicios; pasada de limpieza con biome a 0 errores; playtest documentado con los 10 bugs priorizados.
+- **Lagunas conocidas / decisiones diferidas:** los 10 bugs del playtest pasan priorizados a la Fase 8 (B1-B10); limitaciones documentadas de anti-cheat de vuelo y maxPayload del WS sin fijar, resueltas en el cierre de la Fase 8.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la Fase 7).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, referencias de rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

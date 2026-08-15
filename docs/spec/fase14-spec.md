@@ -1,5 +1,7 @@
 # Fase 14 — Corrección de la auditoría (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación creado a partir de la **auditoría integral del
 > 2026-08-08** (errores, rendimiento y paridad con Minecraft). Esa auditoría
 > revisó el estado completo del repositorio (HEAD `2ab7bfb` «Fase 13 B1-B6» +
@@ -76,7 +78,7 @@ incluye a `slime`, `ocelot` ni `drowned`. Además, `isLake` se rechaza en el
 bucle (mobs.js:1056) pero **no se factoriza el bioma**; el Witch océano no
 puede albergar un drowned.
 
-**Implementación (modelado sobre `docs/fase12-spec.md` §C):**
+**Implementación (modelado sobre `docs/spec/fase12-spec.md` §C):**
 
 1. Nueva tabla `BIOME_SPAWN` en `server/mobs.js` que asocia tipos a sus
    condicion bidings de bioma:
@@ -270,3 +272,30 @@ Opcional, roadmap → implementado: diferir la generación de los chunks del
   fila) y `docs/server/mecanicas.md` si `spawnMobs`/dropos cambian de
   comportamiento documentado.
 - Reflejar en `TODO.md` la Fase 12 como cerrada al terminar el Bloque A.
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-08
+- **Commits clave:**
+  - `2c0aa65` (2026-08-08) — Fase 14 (WIP guardada aparte): paridad de valores — drops directos de minerales (`ORE_DROP`), tiers de pico, carbón combustible, HP de mobs MC, creeper con daño de TNT, conejo asado, XP de mobs.
+  - `fec5809` (2026-08-08) — Fase 14 (M1-M3): optimizaciones de rendimiento — un solo raycast por `pointermove`, broadcast de `mobs_update` solo si cambia, rebuild de vecinos.
+  - `3c169d7` (2026-08-08) — Fase 14 (M4): luz de antorcha stale al cambiar bloques sólidos.
+  - `6526fe1`/`fe16663` (2026-08-08) — Fase 14 (M4): formato biome en `public/network.js` y `public/world.js`.
+  - `48dc162` (2026-08-08) — Fase 14 integrada: TODO refleja el merge.
+  - `b48110c` (2026-08-08) — Fase 14 (M2, fix de revisión): snapshot de mobs reenviado al entrar un jugador nuevo.
+  - `6571334` (2026-08-08) — Fase 14: formato biome en `server/net.js` (fix M2).
+  - `cf2a9f4` (2026-08-08) — Fase 14: auditoría de cierre y documentación oficial.
+  - `97b526e` (2026-08-08) — Fase 14: documentación de la fase en TODO.
+- **Resultado de la auditoría:** los tres bloques implementados y en verde: A) bugs de la Fase 12 (spawn por bioma, persistencia `SCHEMA_VERSION` 5, tridente contra mobs, hop determinista del slime); B) paridad real (drop de menas, tier de pico, comida/combustible, salud/XP de mobs, boom del creeper = `TNT_DAMAGE`); C) rendimiento (un rayo por `pointermove`, broadcast solo si cambia, rebuild de vecinos, luz de antorcha stale, `sendInit` liviano con relleno progresivo). Auditoría de cierre: suite unitaria **3666 OK**, E2E **4/4**, `audit-fase7` CDP OK, `biome` 0 errores.
+- **Lagunas conocidas / decisiones diferidas:** ver la spec (bloques A-C).
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-08: creación del spec (documento de planificación de la fase 14, a partir de la auditoría integral del 2026-08-08).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

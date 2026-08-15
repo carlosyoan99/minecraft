@@ -142,10 +142,12 @@ propio servidor sin `SEED`).
 
 ## Estado actual
 
-### ✅ Implementado (Fases 0 a 15 completadas)
+> **Estado vivo** (fase activa, implementado frente a prospectiva y
+> bloqueantes): [`STATUS.md`](STATUS.md). Grafo de prerrequisitos entre
+> fases: [`DEPENDENCIAS.md`](DEPENDENCIAS.md). Especificaciones por fase
+> (diseño, decisiones y estado): [`docs/README.md`](docs/README.md).
 
-> Especificaciones por fase (diseño, decisiones y estado):
-> [`docs/README.md`](docs/README.md).
+### ✅ Implementado (Fases 0 a 18 completadas)
 
 - **Fase 0 — Base:** servidor autoritativo con validación de
   movimiento/acciones, generación por biomas (llanura, bosque,
@@ -226,7 +228,7 @@ propio servidor sin `SEED`).
   documentación técnica en `docs/server/` y `docs/public/`, y
   `.gitignore` completo.
 - **Fase 10 — Notas del usuario y paridad avanzada** (ver
-  `docs/fase10-spec.md`): bugs de las notas resueltos (salir del agua,
+  `docs/spec/fase10-spec.md`): bugs de las notas resueltos (salir del agua,
   quemadura de lava, `/tp` lejano, biomas de hielo sin lava, lagos
   profundos/ríos/cuevas acuáticas, hostiles en cuevas de día, amanecer
   persistente, mobs con patas animadas), tamaño de mundo por semilla
@@ -237,7 +239,7 @@ propio servidor sin `SEED`).
   desplazan, música generativa por bioma/cueva y más sonidos (TNT,
   cofres, vidrio).
 - **Fase 11 — Bugs de input y cámara, biomas, paridad y tests** (ver
-  `docs/fase11-spec.md`): **causa raíz del clic roto**
+  `docs/spec/fase11-spec.md`): **causa raíz del clic roto**
   (pointer lock sobre `document.body` en vez del canvas — los eventos
   de ratón nunca llegaban a `input.js`; auditado con CDP 6/6), cámara
   sin vueltas (clamp `PITCH_LIMIT` redundante eliminado + test de
@@ -249,7 +251,7 @@ propio servidor sin `SEED`).
   oveja, y cierre de tests (`unit-fase11.js` cubre gravedad, TNT,
   mundo-size y `/kill` de Fase 10 + las mecánicas nuevas).
 - **Fase 12 — Mobs por bioma, estructuras, spawn por bioma y
-  persistencia de mascotas** (ver `docs/fase12-spec.md`): lobo de taiga
+  persistencia de mascotas** (ver `docs/spec/fase12-spec.md`): lobo de taiga
   domesticable (hueso, sigue/sienta, collar rojo) y slime con división
   (16→2×4→2×1 HP, hop determinista por-mob), ocelote→gato que espanta
   creepers, ahogado con tridente (lanza tridentes y el jugador puede
@@ -260,7 +262,7 @@ propio servidor sin `SEED`).
   mascotas y `slimeSize` en `world.json` (`SCHEMA_VERSION` 5 con
   migración retrocompatible).
 - **Fase 13 — Paridad 1.0, rendimiento, POO y tests de paridad** (ver
-  `docs/fase13-spec.md`): paridad de valores fijada por
+  `docs/spec/fase13-spec.md`): paridad de valores fijada por
   `tests/unit-paridad.js` (vida 20, curva XP oficial, espadas 4/5/6/7,
   armadura por puntos, durezas/durabilidades exactas), lagunas L1-L5
   (arco, puertas, escaleras/losas/vallas, cubo, recetas —
@@ -269,13 +271,13 @@ propio servidor sin `SEED`).
   `createMob` — `unit-mobs-poo.js`, `unit-poo-entities.js`) y greedy
   meshing + worker de chunks (`unit-greedy`, `unit-workers`).
 - **Fase 14 — Auditoría y cierre de las fases 12-13** (ver
-  `docs/fase14-spec.md`): bloques A (spawn por bioma, persistencia
+  `docs/spec/fase14-spec.md`): bloques A (spawn por bioma, persistencia
   `SCHEMA_VERSION` 5, tridente, slime determinista), B (drop de menas con
   `ORE_DROP`, tier de pico, comida/combustible, salud/XP de mobs) y C
   (raycast único, `mobs_update` condicional, rebuild de vecinos, luz de
   antorcha stale, `sendInit` liviano) en verde.
 - **Fase 15 — Corrección de auditoría y mejoras del usuario** (ver
-  `docs/fase15-spec.md`): copas de árboles completas en bordes de chunk
+  `docs/spec/fase15-spec.md`): copas de árboles completas en bordes de chunk
   (`pendingLeaves` + test determinista), nubes semitransparentes con
   variedad, tooltip estilizado del hotbar y **D5: mundo de 128 bloques
   (Y ∈ −64..+63, `SCHEMA_VERSION` 6 con migración retrocompatible v5→v6)**
@@ -284,13 +286,13 @@ propio servidor sin `SEED`).
 ### 🏁 Roadmap completado (fases 0-17)
 
 *(Todas las fases del roadmap están completadas y auditadas. El detalle
-de cada una vive en su spec `docs/faseN-spec.md`; el estado de cada
+de cada una vive en su spec `docs/spec/faseN-spec.md`; el estado de cada
 tarea, en `TODO.md`.)*
 
 ### ✅ Fase 16 — cerrada y auditada
 
-La **Fase 16** (`docs/fase16-spec.md`) corrigió la auditoría 2026-08-10
-(`docs/auditoria-2026-08-10.md`), los bugs de `docs/Notas del usuario.md`
+La **Fase 16** (`docs/spec/fase16-spec.md`) corrigió la auditoría 2026-08-10
+(`docs/audits/auditoria-2026-08-10.md`), los bugs de `docs/Notas del usuario.md`
 y la paridad restante: niebla submarina ≥2 bloques, cofres eliminables
 con Shift, IA de mobs con aggro, inventario con texturas/tooltip, libro
 de recetas corregido, calidad con `renderScale`, guardado asíncrono,
@@ -302,7 +304,7 @@ slime/lobo, pantalla completa y el bloque G de cobertura de tests y docs
 
 ### ✅ Fase 17 — cerrada y auditada
 
-La **Fase 17** (`docs/fase17-spec.md`) trajo el menú inicial tipo
+La **Fase 17** (`docs/spec/fase17-spec.md`) trajo el menú inicial tipo
 Minecraft: servidor en modo menú sin cargar mundo (A1), pantalla
 principal, gestión completa de mundos (reproducir/clonar/renombrar/
 cambiar modo/eliminar), ajustes en pestañas, flujo `join_world`, 7 bugs
@@ -312,6 +314,27 @@ continuo), pausa estilo Minecraft, **skins de jugador** (9 oficiales con
 selector y vista previa 3D) y controles táctiles. Auditoría final
 completa: 54/54 unitarios, E2E 7/7 en solitario y verificación en
 navegador del flujo completo.
+
+### ✅ Fase 18 — cerrada y auditada
+
+La **Fase 18** (`docs/spec/fase18-spec.md`) completó la paridad con MC
+(franjas día/noche, minerales v6, zanahoria/patata, carbón vegetal,
+`MOB_XP`, horno, recetas de mena fuera, orbes de XP, sonidos) y refactorizó
+los módulos grandes a convenciones por responsabilidad (`net.js`→
+actions/timers, `mobs.js`→mob-species/spawn/projectiles, `world.js`→
+noise/biomes/generation/structures, `save.js`, `players.js`, cliente, ...)
+sin tocar el wire ni `SCHEMA_VERSION`. Cierre: 57 unitarios en verde, E2E,
+auditorías recalibradas y biome 0 errores.
+
+### ✅ Fase 19 — cerrada
+
+La **Fase 19** (`docs/spec/fase19-spec.md`) añadió UI visual (texturas)
+y drag & drop del inventario/hotbar: cobertura total de iconos por ID
+(142/142), rediseño MC de los paneles (fondos del atlas + biseles),
+tooltip unificado con delay, drag & drop (`dragdrop.js` + lógica pura
+`draglogic.js`, eventos `inventory_swap`/`grid_return`/`chestSlot`),
+hot-reload del atlas de iconos y táctil/responsivo. Cierre: 57 unitarios,
+auditorías 6/6, E2E 7/7 y biome 0 errores. Estado vivo en `STATUS.md`.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -544,7 +567,7 @@ en el servidor y `public/network.js` en el cliente).
 
 ### Resultados (agosto 2026)
 
-Suite completa: **54 tests unitarios + 7 E2E** (si hay servidor; el E2E
+Suite completa: **57 tests unitarios + 7 E2E** (si hay servidor; el E2E
 del menú levanta el suyo) — ver la matriz en
 [`docs/tests.md`](docs/tests.md). La suite cubre persistencia, IA de
 mobs, handlers de red, integridad de recetas, sincronización
@@ -594,7 +617,7 @@ preocupación por commit, y los commits son en español.
   además se construye con **greedy meshing** (fusiona caras coplanares
   del mismo bloque por capa) en un **Web Worker** (`public/chunkWorker.js`
   → `chunkGeometry.js`), fuera del hilo principal, con luz de antorcha y
-  AO horneados en la clave de fusión (ver `docs/fase13-spec.md`).
+  AO horneados en la clave de fusión (ver `docs/spec/fase13-spec.md`).
 - Frustum culling por chunk (Fase 6): cada chunk tiene una esfera
   envolvente calculada de su geometría real y el cliente marca
   `visible=false` los que quedan fuera del campo de visión antes

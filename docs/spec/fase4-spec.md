@@ -1,5 +1,7 @@
 # Fase 4 — Profundidad de terreno (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación de la Fase 4, **reconstruido a posteriori**: la
 > fase está COMPLETADA y auditada. Se elabora a partir del `TODO.md` (sección
 > Fase 4 con su auditoría) y del historial de git, en el mismo formato que
@@ -129,6 +131,8 @@ que la generación en tiempo real no degrada el FPS.
 | `public/textures.js` | tesela de nieve |
 | `tests/unit-mundo.js`, `tests/unit-biomas.js`, `tests/unit-spawn.js`, `tests/unit-mobs-agua.js`, `tests/audit-fase4.js` | cobertura y auditoría |
 
+> **Tests que cubren esta fase:** `tests/unit-mundo.js`, `tests/unit-biomas.js`, `tests/unit-spawn.js`, `tests/unit-mobs-agua.js`, `tests/audit-fase4.js`.
+
 ---
 
 ## 7. Decisiones del proyecto
@@ -188,3 +192,23 @@ superficie). Generación en tiempo real: 25 chunks frescos en 47.9 ms →
 para radio 4). FPS en Chrome headless: 223 chunks / 216,800 triángulos →
 mediana 125 FPS, sin errores de consola. Bug crítico `pushFace` corregido
 (ver §9) y notas del revisor del agua resueltas.
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-02
+- **Commits clave:**
+  - `81cd600` (2026-08-02) — mundo más profundo: cuevas 3D, agua con flotación, biomas nieve/montaña (y fixes de render/mobs/spawn).
+- **Resultado de la auditoría:** culling 4/4 checks replicando la regla exacta del cliente; generación 1.91 ms/chunk (25 chunks frescos en 47.9 ms); FPS en Chrome headless con mediana 125 FPS (223 chunks, ~234K triángulos, radio 4) y sin errores de consola; bug crítico `pushFace` corregido y notas del revisor del agua resueltas.
+- **Lagunas conocidas / decisiones diferidas:** ninguna documentada.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la Fase 4).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, referencias de rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

@@ -1,5 +1,7 @@
 # Fase 2 — Identidad sensorial (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación de la Fase 2, **reconstruido a posteriori**: la
 > fase está COMPLETADA y auditada. Se elabora a partir del `TODO.md` (sección
 > Fase 2 con su auditoría) y del historial de git, en el mismo formato que
@@ -126,6 +128,8 @@ caras.
 | `public/index.html` | carga de los nuevos módulos (importmap) |
 | `public/debug.js` | contador de FPS persistente en el HUD (`#fps`, métricas `window.__mc*`) — añadido de paso, útil para auditorías futuras |
 
+> **Tests que cubren esta fase:** `tests/unit-sync.js` (paridad del ciclo día/noche).
+
 ---
 
 ## 7. Decisiones del proyecto
@@ -179,3 +183,23 @@ Chrome headless vía CDP (SwiftShader): escena reducida de 25 chunks →
 medición); escena completa de 439 chunks (310K triángulos) estable. 0
 teselas/UVs inválidas (19 bloques × 6 caras) y 0 errores de consola. De paso
 se añadió el contador de FPS persistente al HUD.
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-01
+- **Commits clave:**
+  - `9b0a74f` (2026-08-01) — identidad sensorial: atlas de texturas, ciclo día/noche y sonidos procedurales.
+- **Resultado de la auditoría:** benchmark de generación del servidor 2.36 ms/chunk (169 chunks, radio 6) y 0.52 ms en cache; FPS en Chrome headless vía CDP (SwiftShader): escena reducida de 25 chunks → 148-176 FPS con y sin audio (degradación del sonido ≈2.8%, ruido de medición) y escena completa de 439 chunks (310K triángulos) estable; 0 teselas/UVs inválidas (19 bloques × 6 caras) y 0 errores de consola.
+- **Lagunas conocidas / decisiones diferidas:** ninguna documentada.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la Fase 2).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, referencias de rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

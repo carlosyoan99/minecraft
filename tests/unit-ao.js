@@ -1,7 +1,7 @@
 "use strict";
 // ============================================================
 // TESTS DEL AO POR VÉRTICE (Fase 10, E1)
-// Pendiente que cita docs/fase11-spec.md §12.1 y que nunca se
+// Pendiente que cita docs/spec/fase11-spec.md §12.1 y que nunca se
 // consolidó en un test propio. Verifica la curva de sombreado de
 // `vertexAO` (public/chunkGeometry.js) end-to-end: montando
 // configuraciones concretas de bloques vecinos sobre la cara

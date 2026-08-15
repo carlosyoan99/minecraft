@@ -1,5 +1,7 @@
 # Fase 5 — Progresión y combate (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación de la Fase 5, **reconstruido a posteriori**: la
 > fase está COMPLETADA y auditada. Se elabora a partir del `TODO.md` (sección
 > Fase 5 con su auditoría) y del historial de git, en el mismo formato que
@@ -126,6 +128,8 @@ una herramienta a mitad de una acción.
 | `public/ui.js` | barra de durabilidad en hotbar, barra de XP + nivel |
 | `tests/unit-durabilidad.js`, `tests/unit-recetas.js`, `tests/audit-fase5.js` | cobertura y auditoría |
 
+> **Tests que cubren esta fase:** `tests/unit-durabilidad.js`, `tests/unit-recetas.js`, `tests/audit-fase5.js`.
+
 ---
 
 ## 7. Decisiones del proyecto
@@ -182,3 +186,23 @@ desaparece; 6 roturas con durabilidad 5 → 6 drops exactos. XP/niveles:
 maxHealth y conserva nivel/XP. `applyToolWear` rinde 10k usos en ~5 ms.
 Regresión Fase 3/4 intacta. **Bug real corregido por los tests:** receta
 `hilo_a_lana` apuntaba al 118 (conejo crudo) en vez del 120 (hilo).
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-02
+- **Commits clave:**
+  - `634a55a` (2026-08-02) — progresión y combate: durabilidad de herramientas, mobs nuevos y XP/niveles.
+- **Resultado de la auditoría:** `TOOL_DURABILITY` == `DURABILITY` (20 herramientas) y `XP_PER_LEVEL` idénticos; sin duplicación de ítems al romperse una herramienta (durabilidad 1 → 1 drop, 0 herramientas; 6 roturas con durabilidad 5 → 6 drops exactos); XP/niveles: 340 XP → nivel 3 y maxHealth 23 (tope +10 en nivel 15); `applyToolWear` rinde 10k usos en ~5 ms; regresión Fases 3/4 intacta; bug real corregido por los tests (receta `hilo_a_lana` apuntaba al 118 en vez del 120).
+- **Lagunas conocidas / decisiones diferidas:** curva de XP lineal (`level = floor(xp / 100)`); la curva no lineal queda para la Fase 9.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la Fase 5).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, referencias de rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

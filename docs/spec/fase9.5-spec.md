@@ -1,5 +1,7 @@
 # Fase 9.5 — Mejoras de skills, documentación técnica y `.gitignore`
 
+> **Estado:** `[COMPLETADA]`
+
 **Tipo:** Retrospectiva · **Estado:** ✅ Completada (cerrada en un commit)
 
 > Fase pequeña de cierre entre la 9 y la 10. **Objetivo:** aplicar una
@@ -73,3 +75,35 @@
 - Revisión del code-reviewer aplicada (fix de `let meta;` fusionada en un
   comentario por el formatter de biome — mismo patrón que el bug de
   `food` de la Fase 9).
+
+> **Tests que cubren esta fase:** `tests/unit-mobs-ia.js`, `tests/unit-persistencia.js`,
+> `tests/unit-camara.js`
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-07
+- **Commits clave:**
+  - `69cf0ce` (2026-08-07) — mejoras de skills (flechas, cámara, backup,
+    audio) + documentación técnica + `.gitignore`
+- **Resultado de la auditoría:** suite unitaria EXIT=0 (con los 2 tests de
+  regresión nuevos — flechas y backup), E2E EXIT=0, auditoría CDP de Fase 7
+  OK (169 chunks, 0 excepciones), `biome check` 0 errores en lo tocado y
+  `node --check` en todo.
+- **Lagunas conocidas / decisiones diferidas:** la mejora de cámara (clamp
+  de pitch de la skill camera-systems) resultó redundante y dañina con
+  PointerLockControls de three r160 — se eliminó en la Fase 11 (A2) con su
+  test de regresión (`tests/unit-camara.js`).
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-07: creación del spec (documento retrospectivo de la fase 9.5).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas
+  actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con
+  commits.

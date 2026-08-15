@@ -1,10 +1,12 @@
 # Fase 18 — Refactor a convenciones, cierre de fases y pulido (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento creado a partir de: `docs/Notas del usuario.md` ("Próximas Fases":
 > la 18 es "Bugs, paridad y rendimiento, nada de nuevas características, solo
 > pulir las que ya tenemos. Refactorizado de los módulos a las convenciones ya
 > establecidas en CLAUDE.md y mejorar la documentación en general"),
-> `docs/auditoria-2026-08-11.md` (la más reciente), `docs/reporte-paridad.md`,
+> `docs/audits/auditoria-2026-08-11.md` (la más reciente), `docs/reporte-paridad.md`,
 > `TODO.md` y la entrevista con el usuario (2026-08-12, Tandas 1-3).
 > Fecha: 2026-08-12 (última actualización 2026-08-15) · Proyecto: clon de
 > Minecraft.
@@ -82,8 +84,8 @@
   la **Fase 19 no se adelanta** (no rediseñar cofres/mesa de crafteo/horno,
   no crear texturas de ítems — salvo el caso explícito C-9 del carbón
   vegetal, que es paridad y añade un ítem sincronizado).
-- Fuentes: `docs/Notas del usuario.md`, `docs/auditoria-2026-08-11.md`,
-  `docs/reporte-paridad.md`, `docs/fase17-spec.md` (plantilla y estado),
+- Fuentes: `docs/Notas del usuario.md`, `docs/audits/auditoria-2026-08-11.md`,
+  `docs/reporte-paridad.md`, `docs/spec/fase17-spec.md` (plantilla y estado),
   `CLAUDE.md`/`AGENTS.md` (convenciones), `docs/README.md`, `TODO.md`.
 
 ---
@@ -117,7 +119,7 @@
 
 ## 3. Bloque C — Paridad completa con Minecraft (punto principal de la fase)
 
-> Cada tarea cierra una discrepancia documentada de `docs/auditoria-2026-08-11.md`
+> Cada tarea cierra una discrepancia documentada de `docs/audits/auditoria-2026-08-11.md`
 > §5 o de `docs/reporte-paridad.md`. Regla: **sin características nuevas**,
 > solo acercar el comportamiento/valores a MC de lo ya implementado; cada
 > cambio lleva su assert en `unit-paridad.js` o en el unit que corresponda;
@@ -705,3 +707,61 @@
 5. **Cierre** (G): suite unitaria verde, E2E 6/6 + menú 7/7, auditorías 6/6,
    biome 0, `node --check`, verificación manual y **auditoría final de fase
    obligatoria** — F16/F17 cerradas antes del inicio.
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-15
+- **Commits clave:**
+  - `bd49412` (2026-08-12) — biome 0 errores (E-2)
+  - `709be6a` (2026-08-12) — spec al día A1/E-2
+  - `6fa7851` (2026-08-12) — auditorías recalibradas al mundo v6 (E-1)
+  - `c76ebca` (2026-08-12) — docs E-1
+  - `2726033` (2026-08-12) — día/noche por franjas MC (C-1)
+  - `a9d3295` (2026-08-12) — minerales al mundo v6 por percentil MC (C-2)
+  - `1c5ea78` (2026-08-12) — zanahoria/patata comestibles (C-3)
+  - `6049a77` (2026-08-12) — carbón vegetal ítem 257 (C-4)
+  - `4cf8456` (2026-08-12) — MOB_XP coherente (C-5)
+  - `7c6771b` (2026-08-13) — horno con desperdicio y encolado FIFO (C-6)
+  - `dda8814` (2026-08-13) — recetas de mena muertas eliminadas (C-7)
+  - `0655aca` (2026-08-13) — orbes de XP al morir (C-8)
+  - `0e05809` (2026-08-13) — 4 sonidos de paridad (C-9)
+  - `0d13980` (2026-08-13) — net.js dividido (D-1)
+  - `4c374df` (2026-08-13) — mobs.js dividido (D-2)
+  - `d0b8db3` (2026-08-13) — world.js dividido (D-3)
+  - `78c76f9` (2026-08-13) — save.js dividido (D-4)
+  - `204b7b7` (2026-08-13) — players.js dividido (D-5)
+  - `353240b` (2026-08-15) — net.js 1999→1088 (D-1)
+  - `b39bec7` (2026-08-15) — mobs.js 1326→795 (D-2)
+  - `adec727` (2026-08-15) — refactor cliente D-6..D-8
+  - `7543b47` (2026-08-15) — biome 0 errores (E-2)
+  - `effdb19` (2026-08-15) — cierre E2E (G)
+  - `83eb8c5` (2026-08-15) — documentación F
+- **Resultado de la auditoría:** suite unit **56/56 en verde**, E2E clásicos
+  **6/6** + menú **7/7** en solitario, auditorías **6/6** (fase3/4/5/6/7 +
+  `audit-altura` 72/72), **biome 0 errores**, `node --check` limpio,
+  verificación manual en navegador; `SCHEMA_VERSION` 6, protocolo WS e IDs
+  B/I intactos.
+- **Lagunas conocidas / decisiones diferidas:** ver §8 — rediseño/rendimiento
+  del formato de guardado (fase de rendimiento futura), libro de recetas con
+  desbloqueo por material (decisión F9), `public/itemicons.js` no dividido,
+  CSP/SRI del CDN de Three.js (SEC-4) y las recetas de mena eliminadas (C-7).
+
+> **Tests que cubren esta fase:** `tests/unit-fase18.js`, `tests/unit-minerales.js`,
+> `tests/unit-dia.js`, `tests/unit-red.js`, `tests/unit-commands.js`,
+> `tests/audit-fase7.js`, `tests/e2e-menu.js`, `tests/e2e-cofre.js`,
+> `tests/e2e-durabilidad.js`
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-12: creación del spec (documento retrospectivo de la fase 18;
+  última actualización 2026-08-15).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas
+  actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con
+  commits.

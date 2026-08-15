@@ -1,5 +1,7 @@
 # Fase 3 — Bucle de supervivencia (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación de la Fase 3, **reconstruido a posteriori**: la
 > fase está COMPLETADA y auditada. Se elabora a partir del `TODO.md` (sección
 > Fase 3 con su auditoría) y del historial de git, en el mismo formato que
@@ -133,6 +135,8 @@ spawn/reproducción de animales no degrada el rendimiento del tick de mobs.
 | `public/ui.js` | barra de hambre 🍗 |
 | `tests/unit-crafting.js`, `tests/unit-sync.js`, `tests/audit-fase3.js` | cobertura |
 
+> **Tests que cubren esta fase:** `tests/unit-crafting.js`, `tests/unit-sync.js`, `tests/audit-fase3.js`.
+
 ---
 
 ## 7. Decisiones del proyecto
@@ -189,3 +193,24 @@ e incentiva el horno frente a la cruda (+3 / +1.8). Tick de mobs con cría:
 lineal, muy por debajo del presupuesto de 50 ms; el broadcast `mobs_update`
 pesa 5-51 KB y se serializa en <3 ms. Persistencia de `isBaby`/`age`:
 round-trip OK y retrocompatible con guardados viejos.
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-01
+- **Commits clave:**
+  - `538a5f0` (2026-08-01) — bucle de supervivencia: hambre, comida, cocina, comer y cría.
+  - `ee07bd8` (2026-08-01) — cierre de auditoría: balance de hambre validado, rendimiento del tick de mobs medido y limpieza de código muerto.
+- **Resultado de la auditoría:** balance de hambre (presión suave: parado ~10 min antes de bajar, inanición a los ~21 min; moviéndose ~5 / ~11 min); regeneración agota ~3 HP de reserva; comer cocinada cubre ~40% de la barra; tick de mobs lineal (30 → 0.043, 100 → 0.135, 300 → 0.319 ms/tick); persistencia de `isBaby`/`age` retrocompatible.
+- **Lagunas conocidas / decisiones diferidas:** ninguna documentada.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la Fase 3).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, referencias de rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

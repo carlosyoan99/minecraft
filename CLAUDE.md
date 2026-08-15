@@ -36,12 +36,11 @@ tocar código.
 1. **Antes de escribir código**, ubica la fase actual en
    `TODO.md` (tracker de tareas) y confirma qué tarea se está atacando;
    el detalle de esa fase (decisiones, mecánicas, auditorías) vive en su
-   spec `docs/faseN-spec.md`. No adelantes trabajo de fases futuras sin
-   que se pida explícitamente. La fase **actual y prospectiva** es la
-   **Fase 16** (`docs/fase16-spec.md`): su prerrequisito A1 (commitear el
-   WIP del D5, mundo de 128 bloques, `SCHEMA_VERSION` 6) está cerrado y la
-   suite unitaria está en verde (52 unitarios). La **Fase 17** (modo menú,
-   `SEED=null`) está en curso y puede dejar tests en rojo mientras recalibra.
+   spec `docs/spec/faseN-spec.md`. No adelantes trabajo de fases futuras sin
+   que se pida explícitamente. La fase **actual** es la que marca
+   [`STATUS.md`](STATUS.md) (estado vivo) y su detalle está en
+   `docs/spec/faseN-spec.md` con etiqueta `[EN CURSO]`; el grafo de
+   prerrequisitos entre fases vive en [`DEPENDENCIAS.md`](DEPENDENCIAS.md).
 2. **Cambios pequeños y verificables.** Preferir PRs/commits que
    toquen una sola preocupación (ej. "guardado incremental por
    chunk") sobre cambios masivos que mezclen varias fases.
@@ -113,7 +112,7 @@ node tests/audit-fase7.js
   cerrar una pestaña → el servidor sigue corriendo.
 - **Render/FPS:** los tests de servidor no ejercitan el render. La
   medición se hace en Chrome headless vía CDP (ver nota de la
-  auditoría de Fase 4 en `docs/fase4-spec.md`; Three.js debe servirse
+  auditoría de Fase 4 en `docs/spec/fase4-spec.md`; Three.js debe servirse
   local si el CDN es inalcanzable).
 
 ## IDs de bloque e ítem
@@ -174,7 +173,7 @@ lados y añade la receta si aplica; el CI de tests lo audita.
 ## Checklist al abrir una nueva fase en TODO.md
 
 > `TODO.md` solo lleva el estado de las tareas (`[ ]`/`[x]`); el
-> detalle de cada fase (cómo y por qué) va a su spec `docs/faseN-spec.md`.
+> detalle de cada fase (cómo y por qué) va a su spec `docs/spec/faseN-spec.md`.
 
 - [ ] ¿Cada tarea tiene criterio de éxito claro y granularidad de
       ~1-2 días de trabajo?
@@ -187,7 +186,7 @@ lados y añade la receta si aplica; el CI de tests lo audita.
       migración retrocompatible + test de migración.
 - [ ] ¿Esto rompe algo de fases anteriores? → si sí, incluir una
       tarea de regresión explícita.
-- [ ] ¿Se creó/actualizó la spec de la fase en `docs/faseN-spec.md`
+- [ ] ¿Se creó/actualizó la spec de la fase en `docs/spec/faseN-spec.md`
       (fuente de verdad del qué/cómo)? `TODO.md` solo lleva el estado.
 - [ ] ¿Se actualizaron `README.md` (estado/protocolo) y este
       `CLAUDE.md` si cambian las convenciones?
@@ -258,6 +257,6 @@ lados y añade la receta si aplica; el CI de tests lo audita.
   `TODO.md`).
 - No optimizar prematuramente por tu cuenta: el rendimiento ya está
   resuelto y documentado en las specs (greedy meshing + Web Workers de
-  chunks en `docs/fase13-spec.md`, optimizaciones M1-M4 en
-  `docs/fase14-spec.md`). Cualquier optimización nueva que no venga del
+  chunks en `docs/spec/fase13-spec.md`, optimizaciones M1-M4 en
+  `docs/spec/fase14-spec.md`). Cualquier optimización nueva que no venga del
   roadmap se pregunta antes.

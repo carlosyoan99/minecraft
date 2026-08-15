@@ -1,5 +1,7 @@
 # Fase 12 — Mobs por bioma, estructuras, spawn por bioma y persistencia (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación creado a partir de la entrevista con el usuario
 > (4 rondas de preguntas sobre alcance) y el análisis del código. **No se ha
 > modificado código**: este spec guía la implementación de la Fase 12.
@@ -212,3 +214,25 @@
 - **Tridente recogible**: los drops de mobs ya son recogibles al caminar; reusar ese sistema para el tridente lanzado (un `drop` temporal en el punto de impacto).
 - **ownerId vs ownerName**: los `player.id` son por sesión; persistir `ownerName` para reconectar (D1).
 - **Trampa del templo**: el disparo se arma al entrar en el pasillo (detección por posición del jugador dentro del área del templo, con cooldown); no requiere redstone (fuera de alcance).
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-08
+- **Commits clave:**
+  - `40d5a30` (2026-08-08) — Fase 12 (A+B): mobs por bioma, mascotas, tridente, templo y naufragio.
+  - `d2941dd` (2026-08-08) — Fase 12 (C+D): spawn por bioma (`BIOME_SPAWN`/`WATER_SPAWN`) y persistencia de mascotas (`SCHEMA_VERSION` 5).
+  - `44f2e94` (2026-08-08) — Documentación: specs de Fases 12-14 y reporte de paridad, guías y TODO al día.
+- **Resultado de la auditoría:** los 4 mobs (lobo taiga, slime, ocelote→gato, ahogado) SOLO en su bioma; comportamientos verificados (doma, división del slime con hop determinista, espanto de creepers, tridente); templo de jungla y naufragio deterministas; mascotas persistentes (`SCHEMA_VERSION` 5, migración v4→v5); suite unitaria + E2E (`e2e-mascotas`, `e2e-templo`) + auditorías 3-11 sin regresiones.
+- **Lagunas conocidas / decisiones diferidas:** persistir `ownerName` en vez de `ownerId` para reconectar (se resuelve en la Fase 17 con la persistencia de jugadores por nombre).
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-07: creación del spec (documento de planificación de la fase 12, a partir de la entrevista con el usuario y el análisis del código).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con commits.

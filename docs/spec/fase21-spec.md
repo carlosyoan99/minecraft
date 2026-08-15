@@ -1,15 +1,20 @@
 # Fase 21 — Biomas ampliados, estructuras y más mobs (Spec prospectiva)
 
-> Documento creado a partir de: `docs/Notas del usuario.md` (\"Mejoras\":
-> \"Biomas más grandes en extensión y nuevos biomas\", \"Estructuras estáticas
-> (no dinámicas)\" y \"Más mobs y mejora de su IA\") y de la entrevista con el
-> usuario (2026-08-12): estas mejoras grandes **no entran en las fases 19 y
-> 20**; se planifican aquí, como fase futura.
-> Fecha: 2026-08-12 · Proyecto: clon de Minecraft.
+> **Estado:** `[PROSPECTIVA]`
+
+> Documento creado a partir de: `docs/Notas del usuario.md` ("Mejoras":
+> "Biomas más grandes en extensión y nuevos biomas", "Estructuras estáticas
+> (no dinámicas)" y "Más mobs y mejora de su IA"), del borrador del usuario
+> `fase21-spec.md` (Descargas) y de la entrevista con el usuario (2026-08-12
+> y 2026-08-15): estas mejoras grandes **no entran en las fases 19/19.5/19.6
+> y 20**; se planifican aquí, como fase futura.
+> Fecha: 2026-08-15 (actualizada) · Proyecto: clon de Minecraft.
 > Estado: **prospectiva (sin implementar)** — prerrequisito: **Fase 20
 > cerrada** (rolling release estable). Esta spec recoge el **alcance** de las
-> notas; la planificación detallada (qué entra, prioridades, entrevista)
-> se hará con el proceso habitual del planificador cuando se llegue a ella.
+> notas y del borrador, con las exclusiones decididas en la entrevista de
+> 2026-08-15; la planificación detallada (qué entra en la primera tanda,
+> prioridades, entrevista) se hará con el proceso habitual del planificador
+> cuando se llegue a ella.
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -17,14 +22,19 @@
 |---|--------|-------------------|----------------|----------|
 | A1-A5 | `Notas del usuario.md` Mejoras: \"Biomas más grandes en extensión y nuevos biomas\" | 20 biomas descritos (llanura, desierto, bosque, taiga, tundra nevada, montañas, pantano, jungla, sabana, badlands, océano, isla de champiñones, bosque oscuro, bosque de abedules, taiga de árboles gigantes, picos nevados, cuevas de lush, cuevas de dripstone, Nether Wastes, El End) — **solo los de la superficie/Overworld son viables sin dimensiones** (Nether/End son Won't, se documentan como inspiración) | Sin asignar | 🟠 |
 | B1-B4 | `Notas del usuario.md` Mejoras: \"Estructuras estáticas (no dinámicas)\" | Estructuras pasivas (pozo del desierto, iglú, geoda de amatista) y activas (puesto de saqueadores, pirámide del desierto, templo de la jungla ya existe, cabaña del pantano, monumento oceánico, mansión del bosque, minas ya existen, fortaleza, naufragio ya existe, ruinas oceánicas) — **excluidas las villas** (Won't) | Sin asignar | 🟠 |
-| C1-C5 | `Notas del usuario.md` Mejoras: \"Más mobs y mejora de su IA\" | Pasivos (vaca, oveja, gallina, pulpo), neutrales (lobo ya existe, enderman, zombified piglin, araña ya existe, abeja, gólem de hierro — **Won't**), hostiles (creeper/zombie/esqueleto ya existen, blaze/ghast **Won't**), jefes (dragón/wither **Won't**), sociales (aldeano **Won't**) — los viables sin desbloquear Won't: **vaca, gallina, pulpo, enderman, zombified piglin, abeja** | Sin asignar | 🟠 |
+| C1-C5 | `Notas del usuario.md` Mejoras: "Más mobs y mejora de su IA" | Pasivos (vaca, oveja, gallina, pulpo), neutrales (lobo ya existe, enderman, zombified piglin, araña ya existe, abeja, gólem de hierro — **Won't**), hostiles (creeper/zombie/esqueleto ya existen, blaze/ghast **Won't**), jefes (dragón/wither **Won't**), sociales (aldeano **Won't**) — los viables sin desbloquear Won't: **vaca, gallina, pulpo, enderman, zombified piglin, abeja** | Sin asignar | 🟠 |
+| D1 | Borrador F21 (Descargas) §4 (eliminado) | Selector de skins — **ya implementado en F17 C3** (9 skins procedurales + selector + `set_skin`); el borrador lo repetía → se elimina de esta fase | F17 C3 `[x]` | — |
+| E1 | Borrador F21 (Descargas) §5 (adelantado) | Audio ambiental por bioma — **adelantado a la Fase 19.5** (decisión 2026-08-15, "gran mejora al proyecto"): la música generativa ya pasa a distinguir por bioma ahí; aquí no se duplica | F19.5 A1 | — |
 
-**Won't respetado (de `Notas del usuario.md` \"Futuro\" y `TODO.md`):** no
+**Won't respetado (de `Notas del usuario.md` "Futuro" y `TODO.md`):** no
 entran en esta fase sin desbloqueo explícito del usuario: aldeanos y villas,
 Wither, Dragón del End, Blaze, Ghast, Gólem de hierro, Ciudad Antigua, y las
-dimensiones Nether/End (los biomas \"Nether Wastes\" y \"El End\" de las notas
+dimensiones Nether/End (los biomas "Nether Wastes" y "El End" de las notas
 se documentan como inspiración futura, no se implementan). Tampoco redstone,
-clima, encantamientos/pociones, autenticación/BD externa.
+clima, encantamientos/pociones, autenticación/BD externa. **Añadido en la
+entrevista de 2026-08-15: Editor de skins → Won't** (el selector de skins
+predefinidas ya existe desde F17 C3; un editor de skins personalizado queda
+fuera de alcance por ahora).
 
 ---
 
@@ -100,10 +110,15 @@ clima, encantamientos/pociones, autenticación/BD externa.
   como opcional), **geoda de amatista** (subterránea, decorativa) — todas
   deterministas por hash 2D (patrón F12: `temploTrapCooldowns`,
   `hash` de estructura), con `STRUCTURES`/generación en `server/world.js`.
+  **Nota (2026-08-15):** los bloques/ítems de amatista (`AMETHYST_BLOCK`,
+  `AMETHYST_CLUSTER`, `AMETHYST_SHARD`) **los aporta la Fase 22 (B1)**;
+  esta geoda los **reusa** y suelta shards desde los clusters (para el
+  catalejo de la F22 B2). No añadir IDs de amatista duplicados aquí.
 - **Ficheros:** `server/world.js`, `server/chests.js` (loot si aplica),
   `tests/unit-fase21.js` (determinismo), `docs/server/mecanicas.md`.
 - **Criterio:** cada estructura aparece solo en su bioma y es determinista
-  (misma semilla = misma posición); sin bloques nuevos si no hace falta.
+  (misma semilla = misma posición); sin bloques nuevos si no hace falta
+  (los de amatista vienen de la F22).
 
 ### B2 — Estructuras activas (peligrosas, con botín)
 
@@ -199,3 +214,15 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
    gólem, Nether/End, clima, redstone, encantamientos).
 6. Cierre con suite/E2E/auditorías en verde, docs al día y auditoría final
    de la fase.
+
+> **Tests que cubren esta fase (previstos):** `tests/unit-fase21.js`, `tests/audit-fase21.js`.
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-12: creación del spec (documento de planificación de la fase 21).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: actualización de la entrevista (exclusiones y alcance definitivo de biomas/estructuras/mobs).

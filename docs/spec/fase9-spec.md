@@ -1,5 +1,7 @@
 # Fase 9 — Mejoras de paridad, IA, mundo y menú (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 Especificación de la Fase 9, elaborada a partir de la entrevista con el
 usuario (5 rondas de preguntas). No es un plan de ejecución definitivo: es
 la fuente de verdad de DECISIONES de diseño y alcance. Los bloques se
@@ -496,6 +498,9 @@ Todos los eventos en `snake_case` (convención).
 | `tests/unit-*.js` | todos | tests por bloque + `unit-sync` + `audit-fase5` actualizados |
 | `TODO.md` | G | plan y documentación final |
 
+> **Tests que cubren esta fase:** `tests/unit-fase9.js`, `tests/unit-mobs-ia.js`,
+> `tests/unit-raycast.js`, `tests/unit-recipecats.js`
+
 ---
 
 ## 7. Decisiones del usuario (registro de la entrevista)
@@ -761,3 +766,33 @@ Todos los eventos en `snake_case` (convención).
       conservan su mundo). Regresión cubierta por
       `tests/unit-arboles.js` (invariante: base de tronco nunca
       sobre aire/agua)
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-07
+- **Commits clave:**
+  - `fca4906` (2026-08-07) — mejoras de paridad, IA, mundo y menú (bloques
+    A-G) + revisión final
+- **Resultado de la auditoría:** suite unitaria verdecilla (`node tests/run.js
+  --unit` exit=0, incluido el nuevo `tests/unit-fase9.js` y la regresión de
+  three real `unit-raycast.js`), E2E contra servidor vivo exit=0, auditoría
+  CDP de Fase 7 en verde (169 chunks, 0 excepciones — verificó también el fix
+  de minería), `biome check` 0 errores y `node --check` limpio en todo lo
+  tocado.
+- **Lagunas conocidas / decisiones diferidas:** el alcance completo era
+  grande (A→G); si un sub-bloque de mundo/generación (F) quedó sin ejecutar,
+  se retomó en la Fase 10 (que reusa las notas del usuario).
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-06: creación del spec (documento retrospectivo de la fase 9).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas
+  actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con
+  commits.

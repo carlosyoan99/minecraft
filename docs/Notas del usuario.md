@@ -136,6 +136,121 @@ TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterato
 - **Fase 20**: Rolling release del proyecto, fase larga donde solo se corregiran bugs, se mejorará la paridad en implementaciones que estan documentadas como limitadas, si el rendimiento lo permite, no se incluiran las características reportadas como **Restricciones (Won't)**. Fase que logra equilibrio entre rendimiento y paridad. No avanzar a una siguiente fase hasta que todo lo actual este 100% confirmado su funcionamiento y estable.
 - Cada fase solo se da por concluida una vez que esta pasa todos los test y una auditoría para esa fase en específico.
 
+## Actualizaciones Minecraft 1.17 → 1.21 (plan del usuario, 2026-08-15)
+
+Plan para incorporar actualizaciones de Minecraft 1.17 a 1.21 **después de la
+Fase 21**, priorizando valor jugable sin romper arquitectura ni
+restricciones. Filosofía: **paridad + restricciones** — se mantienen las
+restricciones duras (sin Redstone, autenticación, BD externa, dimensiones,
+clima) y se **flexibilizan** altura del mundo (solo si los tests la
+confirman), mobs pasivos/neutrales simples y mecánicas sencillas.
+
+**Fase 22 — Actualizaciones priorizadas (alto impacto / bajo esfuerzo)**:
+
+1. **Terreno estilo 1.18** (montañas y valles) — ajustar ruido/cuevas;
+   **subir la altura a 256 (−64..191) SOLO si los tests confirman que es
+   factible**; si no, mantener la altura actual (v6, −64..+63).
+2. **Pizarra profunda (Deepslate) y minerales en bruto**: `DEEPSLATE`
+   sustituyendo la piedra por debajo de Y=0; `RAW_IRON`, `RAW_GOLD`,
+   `RAW_COPPER` — **minar menas suelta el "en bruto" (todos los minerales)**
+   y el lingote se obtiene fundiéndolo en el horno.
+3. **Cobre (1.17)**: nuevo mineral + `COPPER_BLOCK`. **Solo el bloque por
+   ahora** (sin oxidación, sin cut/escaleras/losas) — se ampliará si es
+   factible; decisión documentada.
+4. **Geodas de Amatista + Catalejo (1.17)**: el catalejo (`SPYGLASS`) con su
+   **funcionamiento real (zoom)**; la **estructura geoda se mantiene en la
+   Fase 21** (no se duplica aquí); la F22 aporta los bloques/ítems de
+   amatista que la F21 usará.
+5. **Biomas**: manglar, cerezo y bambú **se mantienen como candidatos de la
+   Fase 21** (fase de biomas); la F22 lleva la **rana** (aparece en pantanos
+   y, cuando exista, en el manglar).
+6. **Sculk simplificado (1.19)**: bioma/capa **Deep Dark en Y < −40** con
+   `SCULK`/`SCULK_VEIN` y **propagación básica** (al morir un mob sobre
+   sculk, convierte bloques circundantes en radio 2). Sin Warden, sin
+   shriekers, sin ciudad antigua, sin crecimiento propio; limitaciones
+   documentadas.
+7. **Mobs pasivos fáciles**: rana (salta, come slimes pequeños, se cría con
+   `SLIME_BALL`), sin renacuajos por ahora. (Ajolote y cabra se valoran
+   después, como la F23.)
+
+**Diferido (Fase 23, no en la 22)**: profundidad 256 si no entra en la 22,
+cuevas frondosas (Lush Caves), Breeze 1.21 simplificado, Armor Trims,
+bloques de Tuff/Caliza, ajolote y cabra.
+
+**Restricciones confirmadas (Won't de la F22)**: Redstone y todo lo que
+dependa de ella (Crafter, comparadores), Trial Chambers y spawners de
+prueba, Arqueología (cepillo/barro sospechoso), Aldeanos/Comercio/Aldeas,
+Warden (solo se implementa el bloque Sculk), encantamientos/pociones, clima
+complejo (lluvia/nieve), oxidación del cobre, brotes de amatista que crecen,
+acuíferos (lagos subterráneos interconectados), Sniffer/Camello (montura),
+mobs del Nether (Hoglin/Piglin) — no hay Nether.
+
+## Dimensiones: Nether y End (actualización 1.16, 2026-08-15)
+
+Plan para añadir **dimensiones** al proyecto. Las dimensiones siguen como
+**restricción (Won't) en TODO/AGENTS HASTA que se abran sus fases** (F24
+Nether, F25 End) — no se implementa nada de esto antes. Filosofía:
+dimensiones = mundo independiente por semilla (generación, chunks, mobs y
+persistencia propios), inventario/salud/XP **compartidos** entre
+dimensiones, posición por dimensión guardada por separado.
+
+**Numeración acordada (2026-08-15)**:
+- **Fase 23** = diferidos de la F22 (Lush Caves, Breeze, trims, Tuff/Caliza,
+  ajolote/cabra, altar 256 si no entró en la 22).
+- **Fase 24** = **Nether Update** (primera dimensión).
+- **Fase 25** = **End Update** (segunda dimensión). **El dragón del End
+  queda descartado temporalmente** (documentado: se puede retomar en una
+  fase posterior si se pide).
+
+**Nether (F24) — qué incluir**:
+- **Bloques** (~15): netherrack, soul sand, soul soil, glowstone, nether
+  bricks, magma block, basalto, blackstone, nylium (crimson/warped), hongos
+  y raíces, shroomlight. Estáticos (sin crecimiento).
+- **Mobs (4)**: zombified piglin (neutral), ghast (hostil, dispara bolas de
+  fuego), blaze (hostil, dispara), magma cube (hostil, se divide). Usan la
+  IA por especies existente (`tickSpecies`/`MOB_CLASSES`).
+- **Estructuras**: fortaleza del Nether (pasillos de ladrillos, 1-2 spawners
+  de blaze, cofres — sin trampas de redstone).
+- **Generación**: Nether de **128 bloques de altura** (reusando el formato
+  v6, techo y piso de bedrock, offset re-anclado); cuevas masivas con lagos
+  de lava; **2 biomas**: Nether Wastes y Soul Sand Valley (simplificados).
+- **Portal**: **solo el marco de portal** (4×5 de obsidiana) que **se activa
+  al completarse** (sin mechero ni gesto "usar"): al entrar teletransporta
+  al Nether con conversión 8:1 (X/Z) y spawn en tierra firme (sin caer en
+  lava). Al volver, 8:1 inverso. Bloque `PORTAL` nuevo no sólido.
+- **Persistencia**: `world/<semilla>/nether/` (carpeta nueva; el overworld
+  actual sigue en la raíz — **opción B elegida, sin migración de la raíz**);
+  posición del jugador por dimensión (`positions: {overworld, nether}`),
+  **sin subir `SCHEMA_VERSION`** (campo retrocompatible en el archivo del
+  jugador; el formato de chunks/metadatos no cambia).
+- **Protocolo WS**: reusar el `init` existente tras confirmar el cambio de
+  dimensión (evento ligero `dimension_change` S→C + el `init` de la nueva
+  dimensión; `enter_dimension` C→S al entrar en el portal).
+
+**Nether — qué NO incluir (F24)**: trueque de piglins (sin comercio; los
+piglins neutros solo si llevas oro y no atacan, sin UI), piglins armados,
+hoglin/zoglin, techo del Nether accesible (bedrock sólido), biomas crimson/
+warped/deltas completos (se documentan para una ampliación posterior, F24.5
+o F26), cama que explota en el Nether (dormir se rechaza como en el
+overworld), mechero (flint & steel).
+
+**End (F25) — qué incluir (sin dragón)**: islas flotantes de end stone
+(ruido 2D), end stone bricks, chorus plant/flower estáticos (sin
+crecimiento), endermite (hostil pequeño, al lanzar ender pearl o spawn
+natural), enderman (ya existe, puede spawnear), portal de regreso al
+overworld (bloque/estructura especial que te devuelve; sin cristales ni
+portal de salida del dragón). **El dragón del End se descarta temporalmente**
+(y con él: cristales, ciudad del End, élitro, shulker con levitación —
+documentados como inspiración Futuro). El jugador aparece en la isla
+principal con pilares de obsidiana decorativos (sin dragón) y puede
+recolectar end stone y chorus fruit.
+
+**Restricciones que se mantienen para las dimensiones** (no negociable):
+sin redstone (tampoco en fortalezas), sin comercio complejo (trueque), sin
+NBT, sin encantamientos/pociones, sin clima, sin autenticación/BD externa.
+El Nether es estático por naturaleza (sin oxidación ni crecimiento) — ayuda
+a la paridad.
+
 ## Importante
 Migrar el código a **programación orientada a objetos**, valorar que su rentablilidad, si optimiza el rendimiento y ws más fácil la lectura del código y la implementación de nuevas características.
 Usar skills siempre que sea útil para el proyecto.

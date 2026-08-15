@@ -1,5 +1,7 @@
 # Fase 11 — Bugs de input y cámara, biomas, paridad y cierre de tests (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento de especificación creado a partir de la entrevista con el usuario
 > (rondas de preguntas sobre alcance) y el análisis del código. Este spec guió
 > la implementación de la Fase 11; ver `TODO.md` para el estado final de cada
@@ -216,7 +218,7 @@ pasar por el flujo normal y el `lock` posterior no restablece la bandera.
 
 | # | Decisión | Valor |
 |---|----------|-------|
-| D1 | **Estructura del trabajo** | Fase 11 formal: spec en `docs/fase11-spec.md` + sección en `TODO.md`. |
+| D1 | **Estructura del trabajo** | Fase 11 formal: spec en `docs/spec/fase11-spec.md` + sección en `TODO.md`. |
 | D2 | **Estrategia de diagnóstico** | Híbrida: primero automatizado (CDP ampliado); si no da señal clara, pasos manuales con la consola F12 que ejecuta el usuario y nos pasa la salida. |
 | D3 | **Feedback visual** | Añadir **resaltado del bloque apuntado con contorno negro tipo Minecraft** (debe seguirse aunque el raycast falle, para que el usuario vea a qué apunta). |
 | D4 | **Test de regresión** | **Auditoría CDP de clic real** que verifica las **4 acciones**: minar, colocar, atacar y abrir cofre. |
@@ -348,7 +350,10 @@ Registrar la auditoría en `tests/run.js` (como `audit-fase11`) y en el
 | `tests/audit-fase11.js` | Auditoría CDP de las 4 acciones (Bloque E, nuevo) |
 | `tests/run.js` | Registrar la nueva auditoría |
 | `TODO.md` | Sección Fase 11 (nueva) |
-| `docs/fase11-spec.md` | Este spec |
+| `docs/spec/fase11-spec.md` | Este spec |
+
+> **Tests que cubren esta fase:** `tests/unit-fase11.js`, `tests/unit-camara.js`,
+> `tests/unit-mobs-ia.js`
 
 ---
 
@@ -648,3 +653,34 @@ cámara.
       los charcos de pantano. **Corregido**: helper `isSwampPoolAt` en
       `server/world.js` comprobado en las tres copas de árboles (mismo
       patrón que Fase 9); 6/6 ejecuciones estables.
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-07
+- **Commits clave:**
+  - `fa8a5a9` (2026-08-07) — bugs de input y cámara, biomas, paridad y
+    cierre de tests (bloques A-D)
+- **Resultado de la auditoría:** causa raíz del clic confirmada (H1 +
+  entrega de eventos: el pointer lock estaba sobre `document.body` y
+  `input.js` escucha en el canvas) con fix en `public/scene.js`; 4 biomas
+  nuevos (taiga, pantano, jungla, océano); auditoría CDP del clic 6/6
+  (mina, coloca, ataca, abre cofre — 0 excepciones); suite unitaria exit=0,
+  E2E exit=0, auditorías de fases anteriores en verde y `biome check` 0
+  errores.
+- **Lagunas conocidas / decisiones diferidas:** los mobs y estructuras de
+  los biomas nuevos (lobo, slime, ocelote, ahogado, templo de jungla,
+  naufragio) quedan para una fase futura (decisión E5).
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-07: creación del spec (documento retrospectivo de la fase 11).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas
+  actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con
+  commits.

@@ -1,7 +1,9 @@
 # Fase 17 — Menú inicial tipo Minecraft, UI/UX y móvil (Spec)
 
+> **Estado:** `[COMPLETADA]`
+
 > Documento creado a partir de: `docs/Notas del usuario.md` (con sus
-> modificaciones recientes), `docs/fase16-spec.md`, `docs/auditoria-2026-08-10.md`
+> modificaciones recientes), `docs/spec/fase16-spec.md`, `docs/audits/auditoria-2026-08-10.md`
 > y la entrevista con el usuario (2026-08-11, Tandas 1-3).
 > Fecha: 2026-08-11 · Proyecto: clon de Minecraft.
 > Estado: **cerrada y auditada** (2026-08-12) — commit `a2d0437` + mejoras
@@ -65,7 +67,7 @@
     aldeas generadas. La **Fase 19 no se adelanta**: NO rediseñar las
     interfaces de cofre/mesa de crafteo/horno ni crear texturas faltantes de
     ítems — eso es alcance de la 19.
-- Fuentes: `docs/Notas del usuario.md`, `docs/fase16-spec.md` (plantilla y
+- Fuentes: `docs/Notas del usuario.md`, `docs/spec/fase16-spec.md` (plantilla y
   cierre), `CLAUDE.md`/`AGENTS.md` (convenciones), `docs/README.md`.
 
 ---
@@ -380,3 +382,47 @@
 5. **Bloque E:** suite completa verde (unit + E2E 6/6 + menú), audits sin
    regresiones, `SCHEMA_VERSION` intacto, documentación actualizada y
    auditoría final documentada en esta spec.
+
+---
+
+## Cierre de la fase
+
+- **Fecha de cierre:** 2026-08-12
+- **Commits clave:**
+  - `7e95943` (2026-08-11) — WIP modo menú A1, gestión de mundos A3,
+    persistencia B1, bugs B4/B6
+  - `a2d0437` (2026-08-12) — menú sin SEED con pausa/quit, clonado, heartbeat,
+    cuota join_world
+  - `5303e73` (2026-08-12) — cierre auditoría 2026-08-11 en net.js
+  - `8b548c8` (2026-08-12) — TODO F17 implementada (Bloque E pendiente)
+  - `e9fece2` (2026-08-12) — skins de jugador C3 (selector + protocolo
+    set_skin/player_skin)
+  - `edaf278` (2026-08-12) — vista previa 3D del personaje C3
+  - `c50bb93` (2026-08-12) — cierre (G3.7/G4/c8)
+  - `db51670` (2026-08-12) — cierre de las Fases 16 y 17 + verificación en
+    navegador (Bloque E)
+- **Resultado de la auditoría:** suite unit **54/54** (`unit-fase17` y
+  `unit-skins` incluidos), E2E de menú **7/7**, E2E clásicos **6/6 en
+  solitario** (`e2e-durabilidad` recalibrado al mundo v6), auditorías **6/6**
+  (incl. `audit-altura` 72/72), c8 con umbrales, `node --check`/`biome` 0 y
+  **verificación en navegador completa** (flujo menú → mundo → pausa → volver
+  al menú).
+- **Lagunas conocidas / decisiones diferidas:** ninguna pendiente — el único
+  pendiente del cierre (commit final + tracker de `TODO.md`) se cerró con
+  `db51670`/`8b548c8`.
+
+> **Tests que cubren esta fase:** `tests/unit-fase17.js`, `tests/unit-red.js`,
+> `tests/unit-commands.js`, `tests/audit-fase7.js`, `tests/e2e-menu.js`,
+> `tests/e2e-cofre.js`, `tests/e2e-durabilidad.js`
+
+---
+
+## Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-11: creación del spec (documento retrospectivo de la fase 17).
+
+**Cambios en esta spec (v2):**
+- 2026-08-15: reorganización de docs — spec movida a `docs/spec/`, rutas
+  actualizadas, etiqueta de estado `[COMPLETADA]` y bloque de cierre con
+  commits.

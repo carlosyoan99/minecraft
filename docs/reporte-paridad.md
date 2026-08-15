@@ -5,14 +5,14 @@
 > Fase 13 (paridad, POO y rendimiento) y fuente de verdad de las correcciones
 > propuestas. Fecha: 2026-08-07 · Todo el código, docs y commits en español.
 >
-> Metodología: (1) lectura de las especificaciones por fase (`docs/faseN-spec.md`)
+> Metodología: (1) lectura de las especificaciones por fase (`docs/spec/faseN-spec.md`)
 > y del estado real del código (16.000 líneas JS, 53 tests); (2) verificación
 > de valores oficiales de Minecraft con investigación web (wiki de MC Java);
 > (3) entrevista al usuario para acotar alcance y prioridades.
 >
 > **Decisiones de la entrevista:** la Fase 12 se mantiene como estaba acordada
 > (4 mobs por bioma + templo + naufragio + persistencia de mascotas, ver
-> `docs/fase12-spec.md`); este reporte define la **Fase 13** con el orden
+> `docs/spec/fase12-spec.md`); este reporte define la **Fase 13** con el orden
 > A rendimiento → B paridad → C POO → D tests, e incluye la migración a POO
 > completa del servidor (decisión del usuario) y las optimizaciones de
 > rendimiento (greedy meshing, workers, pool/culling/LOD, perfilado servidor).
