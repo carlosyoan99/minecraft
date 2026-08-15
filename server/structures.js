@@ -51,7 +51,8 @@ const MS_BELOW_MIN = 3;
 const MS_BELOW_RANGE = 6;
 
 function mineshaftAt(wx, wz) {
-	if (noise.noise2D_ms_region(wx * 0.005, wz * 0.005) < MS_REGION_GATE) return false;
+	if (noise.noise2D_ms_region(wx * 0.005, wz * 0.005) < MS_REGION_GATE)
+		return false;
 	const a = noise.noise2D_ms_a(wx * 0.035, wz * 0.035);
 	const b = noise.noise2D_ms_b(wz * 0.035, -wx * 0.035);
 	return Math.abs(a) < MS_BAND || Math.abs(b) < MS_BAND;
@@ -123,7 +124,10 @@ function structCenterAt(cellX, cellZ) {
 		const cz = cellZ * STRUCT_CELL + STRUCT_CENTER_MIN + jz;
 		if (type === "temple") {
 			// Templo: solo en jungla y nunca sobre agua (lago/río/océano).
-			if (biomes.getBiome(cx, cz) === "jungle" && biomes.columnFloorY(cx, cz) === null)
+			if (
+				biomes.getBiome(cx, cz) === "jungle" &&
+				biomes.columnFloorY(cx, cz) === null
+			)
 				result = { type, cx, cz };
 		} else if (biomes.isOcean(cx, cz)) {
 			// Naufragio: solo en el fondo del océano.
@@ -248,7 +252,8 @@ function placeShipwreckColumn(data, x, z, wx, wz, struct) {
 	if (Math.abs(dx) > SHIPWRECK_W || Math.abs(dz) > SHIPWRECK_L) return;
 	// Piso del casco: madera de abeto; la fila central es la viga de jungla.
 	if (baseY >= WORLD_MIN_Y && baseY <= WORLD_MAX_Y) {
-		data[core.idx(x, core.toLocal(baseY), z)] = dz === 0 ? B.JUNGLE_LOG : B.SPRUCE_LOG;
+		data[core.idx(x, core.toLocal(baseY), z)] =
+			dz === 0 ? B.JUNGLE_LOG : B.SPRUCE_LOG;
 	}
 	// Costados (1 y 2 sobre el piso): perímetro de madera.
 	for (const dy of [1, 2]) {
@@ -284,7 +289,6 @@ function templeTrapAt(wx, wz) {
 	const dz = wz - Math.floor(s.cz);
 	return dx === 0 && dz <= -1 && dz >= -4;
 }
-
 
 module.exports = {
 	mineshaftAt,

@@ -35,7 +35,8 @@ function cooldownRejected(p, ws) {
 // aún están en el menú; los que conectan después de que el mundo esté
 // activo reciben el init directo.
 function handleJoinWorld(ctx, p, ws, data, playerId) {
-	const { state, save, world, constants, enterWorld, sendInit, broadcast } = ctx;
+	const { state, save, world, constants, enterWorld, sendInit, broadcast } =
+		ctx;
 	if (!p.inMenu) return;
 	if (typeof data.seed !== "string" || !data.seed.trim()) return;
 	if (cooldownRejected(p, ws)) return;
@@ -78,9 +79,7 @@ function handleJoinWorld(ctx, p, ws, data, playerId) {
 		r = true;
 	}
 	if (r === "rechazo" || r === "error") {
-		ws.send(
-			JSON.stringify({ event: "seed_rejected", data: { reason: r } })
-		);
+		ws.send(JSON.stringify({ event: "seed_rejected", data: { reason: r } }));
 		return;
 	}
 	p.inMenu = false;
@@ -133,9 +132,7 @@ function handleSetSeed(ctx, p, ws, data) {
 	const size = constants.sanitizeWorldSize(data.size);
 	const r = save.switchWorld(seed, data.name, mode, size);
 	if (r === "rechazo" || r === "error") {
-		ws.send(
-			JSON.stringify({ event: "seed_rejected", data: { reason: r } })
-		);
+		ws.send(JSON.stringify({ event: "seed_rejected", data: { reason: r } }));
 		return;
 	}
 	if (r === true) enterWorld(p); // mundo nuevo: entrar de cero

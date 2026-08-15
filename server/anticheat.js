@@ -136,11 +136,9 @@ function handleMove(p, ws, data, ctx) {
 		// salto). Margen 1.5× por latencia/jitter; además ningún salto legítimo
 		// sube más de ~0.4 s seguido (tras >1 s en el aire, subir o flotar es
 		// volar).
-		const spike =
-			dy > 0 && (vyObs > JUMP_SPEED * 1.5 || p.airTimeMs > 1000);
+		const spike = dy > 0 && (vyObs > JUMP_SPEED * 1.5 || p.airTimeMs > 1000);
 		const flotando =
-			(hovering || (dy < 0 && (p.hoverSink || 0) < 2)) &&
-			p.airTimeMs > 1000;
+			(hovering || (dy < 0 && (p.hoverSink || 0) < 2)) && p.airTimeMs > 1000;
 		if (spike || flotando) {
 			rejectMove(ws, p);
 			return null;
@@ -164,7 +162,11 @@ function handleMove(p, ws, data, ctx) {
 			if (s.t > last) last = s.t;
 		}
 		const realElapsed = (last - first) / 1000;
-		if (n >= 2 && realElapsed >= 0.05 && sumDist / Math.max(0.1, realElapsed) > MAX_H_SPEED) {
+		if (
+			n >= 2 &&
+			realElapsed >= 0.05 &&
+			sumDist / Math.max(0.1, realElapsed) > MAX_H_SPEED
+		) {
 			rejectMove(ws, p);
 			return null;
 		}

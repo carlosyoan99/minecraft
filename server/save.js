@@ -14,11 +14,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const constants = require("./constants.js");
-const {
-	SCHEMA_VERSION,
-	UNLOAD_DISTANCE_CHUNKS,
-	CHUNK_SIZE
-} = constants;
+const { SCHEMA_VERSION, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE } = constants;
 const state = require("./state.js");
 const world = require("./world.js");
 const { restoreMobs } = require("./mobs.js");
@@ -37,7 +33,11 @@ const {
 	setWorldMode
 } = require("./save-meta.js");
 const { saveWorldAsync } = require("./save-chunks.js");
-const { playerSnapshot, savePlayer, restorePlayer } = require("./save-players.js");
+const {
+	playerSnapshot,
+	savePlayer,
+	restorePlayer
+} = require("./save-players.js");
 
 const { chunks, players, furnaces, chests, dirtyChunks } = state;
 // Atajos a las rutas del mundo ACTIVO (holder mutable de constants.js: la

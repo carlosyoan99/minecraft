@@ -59,7 +59,8 @@ function isLake(wx, wz) {
 		const key = `${cx},${cz}`;
 		const cached = lakeCache.get(key);
 		if (cached !== undefined) return cached;
-		const v = noise.noise2D_lake(wx * LAKE_FREQ, wz * LAKE_FREQ) > LAKE_THRESHOLD;
+		const v =
+			noise.noise2D_lake(wx * LAKE_FREQ, wz * LAKE_FREQ) > LAKE_THRESHOLD;
 		if (lakeCache.size >= MAX_LAKE_CACHE) lakeCache.clear();
 		lakeCache.set(key, v);
 		return v;
@@ -82,7 +83,8 @@ const RIVER_FREQ = 0.008; // frecuencia baja → meandros amplios
 const RIVER_WIDTH = 0.14; // banda del ruido que es río (≈5% de columnas)
 function isRiver(wx, wz) {
 	return (
-		Math.abs(noise.noise2D_river(wx * RIVER_FREQ, wz * RIVER_FREQ)) < RIVER_WIDTH
+		Math.abs(noise.noise2D_river(wx * RIVER_FREQ, wz * RIVER_FREQ)) <
+		RIVER_WIDTH
 	);
 }
 // Profundidad del canal (1-4 bloques bajo el terreno, según la fuerza del

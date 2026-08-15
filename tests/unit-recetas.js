@@ -470,7 +470,14 @@ check(
 	// C-7: no hay recetas de mena en el horno — ORE_DROP da el drop directo al
 	// minar (mena→gema es un dato muerto preexistente, eliminado). COAL (101) se
 	// obtiene minando mena de carbón o de los troncos como carbón vegetal (257).
-	const menasHorno = [B.COAL_ORE, B.IRON_ORE, B.GOLD_ORE, B.DIAMOND_ORE, B.REDSTONE_ORE, B.EMERALD_ORE];
+	const menasHorno = [
+		B.COAL_ORE,
+		B.IRON_ORE,
+		B.GOLD_ORE,
+		B.DIAMOND_ORE,
+		B.REDSTONE_ORE,
+		B.EMERALD_ORE
+	];
 	check(
 		"ninguna receta de horno usa menas (ORE_DROP da el drop directo) — C-7",
 		menasHorno.every((m) => !horno[String(m)])

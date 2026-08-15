@@ -47,7 +47,9 @@ export function dayFactor(phase) {
 	if (phase < DAY_PHASES.dawnEnd) return phase / DAY_PHASES.dawnEnd;
 	if (phase < DAY_PHASES.dayEnd) return 1;
 	if (phase < DAY_PHASES.duskEnd)
-		return 1 - (phase - DAY_PHASES.dayEnd) / (DAY_PHASES.duskEnd - DAY_PHASES.dayEnd);
+		return (
+			1 - (phase - DAY_PHASES.dayEnd) / (DAY_PHASES.duskEnd - DAY_PHASES.dayEnd)
+		);
 	return 0;
 }
 

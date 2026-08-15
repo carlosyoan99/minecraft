@@ -140,7 +140,10 @@ function reset() {
 	// El orbe queda en el punto de muerte; otro jugador (o el mismo tras
 	// reaparecer) lo recoge al acercarse a radio 2 (horizontal).
 	const orb = mobs.spawnXpOrb(10, 5, 10, 25);
-	check("spawnXpOrb crea el orbe", orb && orb.type === "xp_orb" && orb.xp === 25);
+	check(
+		"spawnXpOrb crea el orbe",
+		orb && orb.type === "xp_orb" && orb.xp === 25
+	);
 
 	// Lejos (> radio): no se recoge.
 	const lejos = mkPlayer({ id: "p-lejos", x: 10 + XP_ORB_RADIUS + 3, z: 10 });

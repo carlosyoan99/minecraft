@@ -5,8 +5,9 @@
 // de texturas. El contexto se crea (o reanuda) en el primer gesto
 // del usuario, como exigen los navegadores para permitir audio.
 // ============================================================
-import { currentPhase } from "./daynight.js";
+
 import { dayFactor as dayFactorOf } from "./daymath.js"; // Fase 18 (C-1)
+import { currentPhase } from "./daynight.js";
 
 const MASTER_VOLUME = 0.8; // volumen general por defecto (el silencio lo pone a 0)
 // Volumen por categoría (Fase 7): master (todo), effects (bloques, pasos,
@@ -259,9 +260,19 @@ export function playMobDeath(type) {
 	const t = ctx.currentTime + 0.001;
 	// Fallback genérico: 180 → 60 Hz (golpe grave que se apaga).
 	let f0 = 180;
-	const hostile = ["zombie", "creeper", "skeleton", "spider", "enderman", "drowned", "wolf"].includes(type);
-	if (hostile) f0 = 150; // hostil: grave
-	else if (type === "bee") f0 = 600; // abeja: agudo
+	const hostile = [
+		"zombie",
+		"creeper",
+		"skeleton",
+		"spider",
+		"enderman",
+		"drowned",
+		"wolf"
+	].includes(type);
+	if (hostile)
+		f0 = 150; // hostil: grave
+	else if (type === "bee")
+		f0 = 600; // abeja: agudo
 	else if (type === "sheep") f0 = 340; // oveja: su balido se corta
 	const f1 = f0 * 0.35; // desciende a un tercio
 	const osc = ctx.createOscillator();
@@ -277,7 +288,13 @@ export function playMobDeath(type) {
 	osc.start(t);
 	osc.stop(t + 0.25);
 	// Cola de ruido (impacto del cuerpo al caer).
-	noiseBurst({ t: t + 0.01, freq: 500 * pitchVar(), q: 1.5, vol: 0.15, dur: 0.1 });
+	noiseBurst({
+		t: t + 0.01,
+		freq: 500 * pitchVar(),
+		q: 1.5,
+		vol: 0.15,
+		dur: 0.1
+	});
 }
 
 // ============================================================
@@ -317,7 +334,14 @@ export function playDrink() {
 		osc.start(t + dt);
 		osc.stop(t + dt + 0.12);
 	}
-	noiseBurst({ t: t + 0.02, freq: 900, q: 3, vol: 0.06, dur: 0.06, type: "bandpass" });
+	noiseBurst({
+		t: t + 0.02,
+		freq: 900,
+		q: 3,
+		vol: 0.06,
+		dur: 0.06,
+		type: "bandpass"
+	});
 }
 
 // ============================================================

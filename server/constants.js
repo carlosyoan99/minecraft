@@ -35,7 +35,8 @@ const DAY_PHASES = {
 // ¿Es noche ESTRICTA en el instante t (ms dentro del ciclo)? Antes el umbral
 // era DAY_CYCLE_MS/2 (binario 10/10); con las franjas MC la noche son 7 min
 // (fase ≥ duskEnd). Lo usan spawnMobs (hostiles), dormir y el mainLoop.
-const isNightTime = (t) => (t % DAY_CYCLE_MS) / DAY_CYCLE_MS >= DAY_PHASES.duskEnd;
+const isNightTime = (t) =>
+	(t % DAY_CYCLE_MS) / DAY_CYCLE_MS >= DAY_PHASES.duskEnd;
 // ¿Es día ESTRICTO? (sin amanecer ni atardecer): quema solar y pasivos.
 const isDayTime = (t) => {
 	const f = (t % DAY_CYCLE_MS) / DAY_CYCLE_MS;
