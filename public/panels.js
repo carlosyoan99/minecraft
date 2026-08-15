@@ -6,7 +6,13 @@
 import { playChestClose, playChestOpen } from "./audio.js"; // Fase 10 (F2): cofres
 import { send } from "./connection.js";
 import { ARMOR_DURABILITY, itemLabel } from "./constants.js";
-import { inventory, itemVisual, slotTooltipHtml, tooltipEl } from "./hud.js"; // Fase 18 (D-6): helpers del HUD
+import {
+	hideTooltip,
+	inventory,
+	itemVisual,
+	showTooltip,
+	slotTooltipHtml
+} from "./hud.js"; // Fase 18 (D-6): helpers del HUD
 import { isRecipeBookOpen, toggleRecipeBook } from "./recipebook.js"; // Fase 18 (D-6): libro de recetas
 import { controls, showBlocker } from "./scene.js";
 
@@ -88,15 +94,13 @@ function updateCraftGridUI(success) {
 	craftResultEl.style.borderColor = success ? "#8f8" : "#555";
 }
 
-// Fase 16 (B4): tooltip estilizado (patrón del hotbar) para los slots del
-// inventario en paneles — nombre + durabilidad al hover.
+// Fase 16 (B4) + Fase 19 (C): tooltip estilizado (patrón del hotbar) para
+// los slots del inventario en paneles — nombre + durabilidad al hover, con el
+// delay uniforme (~200 ms) y el estilo unificado del hotbar (hud.js).
 function attachSlotTooltip(el, item) {
 	if (!item) return;
-	el.addEventListener("mouseenter", () => {
-		tooltipEl.innerHTML = slotTooltipHtml(item);
-		tooltipEl.classList.remove("hidden");
-	});
-	el.addEventListener("mouseleave", () => tooltipEl.classList.add("hidden"));
+	el.addEventListener("mouseenter", () => showTooltip(slotTooltipHtml(item)));
+	el.addEventListener("mouseleave", () => hideTooltip());
 }
 
 export function updateCraftInventoryUI() {

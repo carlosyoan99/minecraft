@@ -123,6 +123,39 @@ function handleGridClear(p, ws) {
 	);
 }
 
+// Fase 19 (D1): devolver UNA celda del grid de crafteo al inventario (clic o
+// drag & drop de la celda hacia el inventario). Complementa grid_clear (todas).
+// Validación: índice entero 0-8; la celda vacía se ignora (idempotente).
+function handleGridReturn(p, ws, data) {
+	const { toGridSlot } = data;
+	if (!Number.isInteger(toGridSlot) || toGridSlot < 0 || toGridSlot > 8) return;
+	const cell = p.craftingGrid[toGridSlot];
+	if (!cell) return;
+	p.craftingGrid[toGridSlot] = null;
+	playerHelpers.addToInventory(p, cell.id, cell.count, cell.durability);
+	playerHelpers.sendInventory(p);
+	ws.send(
+		JSON.stringify({
+			event: "crafting_grid_update",
+			data: { grid: p.craftingGrid, success: false }
+		})
+	);
+}
+
+// Fase 19 (D1): intercambiar dos slots del inventario (drag & drop
+// inventario→inventario). Validación de índices enteros 0-35 y from !== to
+// (patrón F16 C2); sin validación extra: el servidor es la fuente de verdad
+// y el swap no crea ni destruye ítems.
+function handleInventorySwap(p, ws, data) {
+	const { from, to } = data;
+	if (!Number.isInteger(from) || !Number.isInteger(to)) return;
+	if (from < 0 || from > 35 || to < 0 || to > 35 || from === to) return;
+	const tmp = p.inventory[from];
+	p.inventory[from] = p.inventory[to];
+	p.inventory[to] = tmp;
+	playerHelpers.sendInventory(p);
+}
+
 // Libro de recetas: TODAS las recetas (crafteo + horno), sin desbloqueo
 // progresivo (decisión F9). Se responde al MISMO socket (info de UI).
 function handleRecipeBook(ws) {
@@ -283,23 +316,56 @@ function handleChestAction(p, ws, data) {
 		// Herramientas NUNCA se apilan (cada una con su durabilidad propia):
 		// apilarlas por id fusionaría dos picos con durabilidades distintas en
 		// un slot y el take (addToInventory fuerza count 1) perdería uno.
-		let target = isTool(item.id)
-			? -1
-			: c.findIndex((s) => s && s.id === item.id);
-		if (target === -1) target = c.findIndex((s) => !s);
-		if (target === -1) return; // cofre lleno
-		if (c[target]) c[target].count += item.count;
-		else c[target] = new ItemStack(item.id, item.count, item.durability);
-		p.inventory[invSlot] = null;
-		playerHelpers.sendInventory(p);
+		// Fase 19 (D2): destino EXPLÍCITO (drag & drop) — chestSlot opcional
+		// (0-26); sin él se conserva el comportamiento de apilar/1er hueco.
+		const chestSlot = Number.isInteger(data.chestSlot) ? data.chestSlot : null;
+		if (chestSlot !== null) {
+			if (chestSlot < 0 || chestSlot > 26) return;
+			const dest = c[chestSlot];
+			if (dest && (dest.id !== item.id || isTool(item.id))) return; // ocupado con otro ítem (o herramienta)
+			if (dest) dest.count += item.count;
+			else c[chestSlot] = new ItemStack(item.id, item.count, item.durability);
+			p.inventory[invSlot] = null;
+			playerHelpers.sendInventory(p);
+		} else {
+			let target = isTool(item.id)
+				? -1
+				: c.findIndex((s) => s && s.id === item.id);
+			if (target === -1) target = c.findIndex((s) => !s);
+			if (target === -1) return; // cofre lleno
+			if (c[target]) c[target].count += item.count;
+			else c[target] = new ItemStack(item.id, item.count, item.durability);
+			p.inventory[invSlot] = null;
+			playerHelpers.sendInventory(p);
+		}
 	} else if (data.action === "take") {
 		const chestSlot = data.chestSlot;
 		const item = c[chestSlot];
 		if (!item) return;
-		if (!playerHelpers.addToInventory(p, item.id, item.count, item.durability))
-			return; // inventario lleno
-		c[chestSlot] = null;
-		playerHelpers.sendInventory(p);
+		// Fase 19 (D2): destino EXPLÍCITO del inventario (drag & drop) —
+		// invSlot opcional (0-35); sin él, addToInventory (apila/1er hueco).
+		const invSlot = Number.isInteger(data.invSlot) ? data.invSlot : null;
+		if (invSlot !== null) {
+			if (invSlot < 0 || invSlot > 35) return;
+			const dest = p.inventory[invSlot];
+			if (dest && (dest.id !== item.id || isTool(item.id))) return;
+			if (dest) dest.count += item.count;
+			else
+				p.inventory[invSlot] = new ItemStack(
+					item.id,
+					item.count,
+					item.durability
+				);
+			c[chestSlot] = null;
+			playerHelpers.sendInventory(p);
+		} else {
+			if (
+				!playerHelpers.addToInventory(p, item.id, item.count, item.durability)
+			)
+				return; // inventario lleno
+			c[chestSlot] = null;
+			playerHelpers.sendInventory(p);
+		}
 	} else if (data.action === "close") {
 		p.openChest = null;
 	}
@@ -775,6 +841,8 @@ module.exports = {
 	handleCraft,
 	handleGridSet,
 	handleGridClear,
+	handleGridReturn, // Fase 19 (D1): devolver una celda del grid
+	handleInventorySwap, // Fase 19 (D1): swap de slots del inventario
 	handleRecipeBook,
 	handleFurnaceOpen,
 	handleFurnaceAction,

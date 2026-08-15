@@ -27,6 +27,15 @@ const { chunks, furnaces, chests } = state;
 // I/O a un directorio temporal mutando constants.worldPaths).
 const P = constants.worldPaths;
 
+// Offset de reloj para que el mundo arranque al amanecer (fase 0): el mismo
+// cálculo que /time set day y dormir en la cama. Así un mundo nuevo nunca
+// empieza a una hora arbitraria del día (bug reportado por el usuario).
+// Fase 18 (D-4): vivía en save.js y se perdió en el refactor; se recoloca
+// aquí junto a DAY_CYCLE_MS (el import ya existía para esto).
+function dawnOffsetMs() {
+	return (0 - (Date.now() % DAY_CYCLE_MS) + DAY_CYCLE_MS) % DAY_CYCLE_MS;
+}
+
 // Nombre mostrado de un mundo (Fase 7, campo `name` del menú): se sanea como
 // el nombre del jugador pero con más margen (40 caracteres). Un mundo sin
 // nombre usa su semilla como nombre (buildMeta/listWorlds ya lo asumen).
@@ -394,6 +403,7 @@ function listWorlds() {
 module.exports = {
 	sanitizeWorldName,
 	buildMeta,
+	dawnOffsetMs,
 	cloneWorld,
 	renameWorld,
 	setWorldMode,

@@ -261,6 +261,67 @@ const { ws, player: p } = connect();
 	);
 	check("take vacía el slot del cofre", c[0] === null);
 
+	// --- Fase 19 (D2): put/take con destino EXPLÍCITO (drag & drop) ---
+	c.fill(null);
+	p.inventory = new Array(36).fill(null);
+	ws.sent.length = 0;
+	p.inventory[4] = { id: B.COBBLESTONE, count: 2 };
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "chest_action",
+			data: { action: "put", invSlot: 4, chestSlot: 10 }
+		})
+	);
+	check(
+		"put con chestSlot explícito coloca en ESE slot",
+		c[10] && c[10].id === B.COBBLESTONE && c[10].count === 2,
+		JSON.stringify(c[10])
+	);
+	check("put con chestSlot explícito no toca el primer hueco", c[0] === null);
+	check(
+		"put con chestSlot explícito vacía el inventario",
+		p.inventory[4] === null
+	);
+	// put a un slot ocupado con OTRO ítem → rechazado (no lo pisa)
+	p.inventory[4] = { id: B.DIRT, count: 1 };
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "chest_action",
+			data: { action: "put", invSlot: 4, chestSlot: 10 }
+		})
+	);
+	check(
+		"put a slot ocupado con otro ítem → no lo pisa ni consume",
+		c[10].id === B.COBBLESTONE && p.inventory[4] !== null
+	);
+	// put con chestSlot fuera de rango → ignorado
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "chest_action",
+			data: { action: "put", invSlot: 4, chestSlot: 99 }
+		})
+	);
+	check("put con chestSlot fuera de rango se ignora", p.inventory[4] !== null);
+	// take con invSlot explícito → cae en ESE slot del inventario
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "chest_action",
+			data: { action: "take", chestSlot: 10, invSlot: 7 }
+		})
+	);
+	check(
+		"take con invSlot explícito coloca en ESE slot",
+		p.inventory[7] &&
+			p.inventory[7].id === B.COBBLESTONE &&
+			p.inventory[7].count === 2,
+		JSON.stringify(p.inventory[7])
+	);
+	check("take con invSlot explícito vacía el cofre", c[10] === null);
+
 	// --- close ---
 	ws.emit(
 		"message",

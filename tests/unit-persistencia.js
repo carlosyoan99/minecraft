@@ -31,7 +31,8 @@ const world = require("../server/world.js");
 const save = require("../server/save.js");
 const state = require("../server/state.js");
 const playerHelpers = require("../server/players.js"); // C5: finishMining
-const { SCHEMA_VERSION, CHUNK_SIZE, WORLD_HEIGHT, B, SEED } = constants;
+const { SCHEMA_VERSION, CHUNK_SIZE, WORLD_HEIGHT, B, SEED, DAY_CYCLE_MS } =
+	constants;
 
 let fails = 0;
 const failedChecks = [];
@@ -426,6 +427,29 @@ function resetWorld() {
 		"sin mundo guardado → false (se generará uno nuevo)",
 		save.loadWorld() === false
 	);
+	// Fase 19 (fix D-4): dawnOffsetMs se perdió en el refactor de save.js y
+	// loadWorld lanzaba al crear un mundo nuevo (el catch lo tragaba y
+	// devolvía false, así que ni los E2E de mundo limpio lo notaban hasta
+	// que un test miró el reloj). El offset se fija en el arranque.
+	{
+		const meta = require("../server/save-meta.js");
+		check(
+			"F19: dawnOffsetMs está exportada por save-meta.js (no se perdió en D-4)",
+			typeof meta.dawnOffsetMs === "function"
+		);
+		const off = state.timeOffset;
+		check(
+			"F19: mundo nuevo fija timeOffset al amanecer",
+			typeof off === "number" && Number.isFinite(off) && off > 0,
+			`off=${off}`
+		);
+		check(
+			"F19: dawnOffsetMs devuelve un offset válido (< DAY_CYCLE_MS)",
+			typeof meta.dawnOffsetMs() === "number" &&
+				meta.dawnOffsetMs() >= 0 &&
+				meta.dawnOffsetMs() < DAY_CYCLE_MS
+		);
+	}
 }
 
 // --- 7) migrateLegacyWorld: world.dat v1 → archivos por chunk ---

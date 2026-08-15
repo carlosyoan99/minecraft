@@ -11,6 +11,7 @@ import "./world.js";
 import "./mobs.js";
 import "./settings.js";
 import "./ui.js";
+import "./dragdrop.js"; // Fase 19 (D1/D2): arrastrar y soltar entre slots
 import "./player.js";
 import "./input.js";
 import "./network.js";

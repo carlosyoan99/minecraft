@@ -99,6 +99,8 @@ carga.
 | `menus.js` | Pantallas principal/mundos/crear/ajustes/pausa y selector de skins (Fase 18 D-6) | DOM |
 | `panels.js` | Inventario/crafteo, armadura, horno, cofre y picker creativo (Fase 18 D-6) | DOM |
 | `recipebook.js` | Libro de recetas por categorías (Fase 18 D-6) | DOM |
+| `dragdrop.js` | Arrastrar y soltar en paneles: pointer events, fantasma bajo el cursor (Fase 19 D) | DOM |
+| `draglogic.js` | Decisión de transporte de ítems (qué evento enviar o `null`) — **puro** (Fase 19 D) | **puro** |
 | `recipeCategories.js` | Categorías del libro de recetas | **puro** |
 | `quality.js` | Perfiles de calidad y clamps de ajustes | **puro** |
 | `settings.js` | Ajustes persistidos en `localStorage` (mc_settings) | DOM |

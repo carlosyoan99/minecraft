@@ -394,6 +394,25 @@ mobs visibles en escena).
 - **Paneles** (`panels.js`): crafteo 3×3 + armadura equipada, horno,
   cofre — todos con el servidor como fuente de verdad
   (`crafting_grid_update`, `furnace_state`, `chest_state`).
+- **Estilo MC (Fase 19, B):** los paneles usan fondo texturizado del atlas
+  (tablas de roble para inventario/cofre, piedra para el horno) aplicado
+  desde `ui.js` (`applyPanelBackdrop`) con bisel interior 3D en `.panel`
+  y slots biselados; el tooltip comparte el estilo de madera. Sin cambios
+  en eventos ni protocolo.
+- **Drag & drop (Fase 19, D):** `dragdrop.js` maneja el arrastre con
+  pointer events (fantasma bajo el cursor, `touch-action: none` en slots
+  para no romper el scroll táctil); la **lógica de transporte** es pura y
+  testeable (`draglogic.js`): decide el evento (`inventory_swap`,
+  `grid_set`/`grid_return`, `chest_action` con `chestSlot` explícito,
+  `furnace_action` con destino) o `null` si el movimiento no procede. El
+  click simple no regresa (arrastre con umbral).
+- **Tooltip con delay (Fase 19, C):** `hud.js` centraliza el tooltip
+  (`attachSlotTooltip`) con ~200 ms de delay y lo usa hotbar y paneles
+  por igual; durabilidad incluida.
+- **Hot-reload del atlas (Fase 19, E):** `itemicons.js` expone
+  `itemIconCss(id)` y el repintado `repaintItemIcons()`; `network.js` lo
+  dispara al recargar el atlas sin reiniciar el cliente (mismo patrón que
+  `hotReloadTextures` del terreno).
 - **Libro de recetas** (`recipebook.js`, B): todas las recetas por
   categorías (bloques/herramientas/armadura/comida/materiales +
   fundición) sin desbloqueo; `recipeCategories.js` decide la pestaña

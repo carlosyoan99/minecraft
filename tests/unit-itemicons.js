@@ -67,6 +67,44 @@ const check = (_name, okVal, _extra = "") => {
 		missingInAtlas.join(",")
 	);
 
+	// Fase 19 (A2, dirección inversa): ningún id del atlas fuera de las
+	// constantes — si mañana se añade un icono huérfano (o se elimina un ítem
+	// sin quitar su icono), el test lo caza como regresión automática.
+	const knownSet = new Set(knownIds);
+	const strayAtlasIds = itemicons
+		.itemIconIds()
+		.filter((id) => !knownSet.has(id));
+	check(
+		"ningún id del atlas fuera de las constantes (sin iconos huérfanos)",
+		strayAtlasIds.length === 0,
+		strayAtlasIds.join(",")
+	);
+
+	// Fase 19 (A2): TODOS los iconos se distinguen entre sí (no solo los
+	// pares de muestra) — colisión visual = dos ids con la misma tesela.
+	const seen = new Map();
+	const dups = [];
+	for (const id of itemicons.itemIconIds()) {
+		const key = JSON.stringify(itemicons.itemIconGrid(id));
+		if (seen.has(key)) dups.push([seen.get(key), id]);
+		else seen.set(key, id);
+	}
+	check(
+		"cada id dibuja una tesela distinta (sin colisiones visuales)",
+		dups.length === 0,
+		JSON.stringify(dups.slice(0, 5))
+	);
+
+	// Fase 19 (A2): la columna CSS de cada tesela queda DENTRO del atlas
+	// (recorte nunca fuera de rango). El atlas tiene una fila con tantas
+	// teselas como ids; el recorte usa col = posición del id en itemIconIds().
+	const ids = itemicons.itemIconIds();
+	const outOfRange = ids.filter((id, i) => i >= ids.length);
+	check(
+		"toda tesela del atlas tiene columna en rango (recorte CSS válido)",
+		outOfRange.length === 0 && ids.length > 0
+	);
+
 	// Id desconocido → null (la UI cae al swatch/texto)
 	check("id desconocido → null", itemicons.itemIconGrid(999999) === null);
 	check("id no entero → null", itemicons.itemIconGrid(undefined) === null);

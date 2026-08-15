@@ -580,6 +580,92 @@ function connect() {
 }
 
 // ============================================================
+// FASE 19 (D1): GRID_RETURN (devolver UNA celda) e INVENTORY_SWAP
+// (drag & drop inventario→inventario)
+// ============================================================
+{
+	const p = global.__PLAYER;
+	const ws = global.__WS;
+	p.inventory = new Array(36).fill(null);
+	p.craftingGrid.fill(null);
+	ws.sent.length = 0;
+	// grid_return: una celda vuelve al inventario (no todas como grid_clear)
+	p.inventory[2] = { id: I.STONE_PICKAXE, count: 1, durability: 55 };
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "grid_set",
+			data: { fromInventorySlot: 2, toGridSlot: 3 }
+		})
+	);
+	check("grid_set previo deja la celda 3 ocupada", !!p.craftingGrid[3]);
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "grid_return", data: { toGridSlot: 3 } })
+	);
+	check(
+		"grid_return devuelve la celda al inventario con su durabilidad",
+		p.craftingGrid[3] === null &&
+			p.inventory.some(
+				(s) => s && s.id === I.STONE_PICKAXE && s.durability === 55
+			),
+		JSON.stringify(p.inventory.filter(Boolean).map((s) => [s.id, s.durability]))
+	);
+	check(
+		"grid_return envía crafting_grid_update con la celda vacía",
+		ws.events("crafting_grid_update").at(-1).data.grid[3] === null
+	);
+	// grid_return con índice inválido (fuera de rango) → ignorado
+	p.craftingGrid[0] = { id: B.OAK_LOG, count: 1 };
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "grid_return", data: { toGridSlot: 9 } })
+	);
+	check(
+		"grid_return con índice fuera de rango se ignora",
+		p.craftingGrid[0] !== null && ws.events("inventory_update").length === 0
+	);
+	p.craftingGrid.fill(null);
+
+	// inventory_swap: intercambia dos slots del inventario
+	p.inventory[0] = { id: B.PLANKS, count: 3 };
+	p.inventory[5] = { id: I.DIAMOND, count: 1 };
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "inventory_swap", data: { from: 0, to: 5 } })
+	);
+	check(
+		"inventory_swap intercambia los dos slots",
+		p.inventory[0]?.id === I.DIAMOND && p.inventory[5]?.id === B.PLANKS,
+		JSON.stringify(p.inventory.filter(Boolean).map((s) => [s.id, s.count]))
+	);
+	check(
+		"inventory_swap envía inventory_update",
+		ws.events("inventory_update").length >= 1
+	);
+	// swap con índices inválidos → ignorado (no corrompe el inventario)
+	const before = JSON.stringify(p.inventory);
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "inventory_swap", data: { from: 0, to: 99 } })
+	);
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "inventory_swap", data: { from: 0, to: 5.5 } })
+	);
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "inventory_swap", data: { from: 3, to: 3 } })
+	);
+	check(
+		"inventory_swap con índices inválidos se ignora",
+		JSON.stringify(p.inventory) === before
+	);
+}
+
+// ============================================================
 // FURNACE_OPEN / FURNACE_ACTION (ciclo completo)
 // ============================================================
 {

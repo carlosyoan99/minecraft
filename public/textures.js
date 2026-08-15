@@ -743,6 +743,20 @@ export function buildWaterTexture() {
 	return texture;
 }
 
+// Fase 19 (B): fondo texturizado de los paneles — tesela del atlas (madera
+// de roble o piedra) repetida como data URL CSS. Sin assets: dibuja la misma
+// función de tesela sobre su propio canvas y devuelve el `background` CSS
+// listo para usar (el CSS lo repite con background-repeat: repeat).
+export function panelTileCss(kind) {
+	const draw = kind === "stone" ? drawStone : drawPlanks;
+	const canvas = document.createElement("canvas");
+	canvas.width = TILE;
+	canvas.height = TILE;
+	const ctx = canvas.getContext("2d");
+	draw(ctx, mulberry32(1337 + (kind === "stone" ? 3 : 7) * 7919));
+	return `url("${canvas.toDataURL()}")`;
+}
+
 // Construye el atlas (una sola vez) y devuelve la CanvasTexture lista para usar.
 export function buildTerrainAtlas() {
 	const rows = Math.ceil(TILES.length / COLS);

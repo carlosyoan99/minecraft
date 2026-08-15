@@ -149,22 +149,37 @@ export const slotTooltipHtml = (item) => {
 	}
 	return html;
 };
+
+// Fase 19 (C): aparición del tooltip con delay (~200 ms al hover, como
+// Minecraft) y ocultación inmediata al salir. Centraliza el timer para que
+// hotbar y paneles usen el mismo comportamiento (y el mismo estilo).
+let tooltipTimer = null;
+export function showTooltip(html, delay = 200) {
+	clearTimeout(tooltipTimer);
+	tooltipTimer = setTimeout(() => {
+		tooltipEl.innerHTML = html;
+		tooltipEl.classList.remove("hidden");
+	}, delay);
+}
+export function hideTooltip() {
+	clearTimeout(tooltipTimer);
+	tooltipEl.classList.add("hidden");
+}
+
 hotbarEl.addEventListener("mouseover", (ev) => {
 	const slot = ev.target.closest(".hotbar-slot");
 	const i = slot ? Number(slot.dataset.i) : -1;
 	if (i < 0) return;
-	if (i === hoveredSlot && !tooltipEl.classList.contains("hidden")) return;
 	const item = inventory[i];
 	if (!item) return;
 	hoveredSlot = i;
-	tooltipEl.innerHTML = slotTooltipHtml(item);
-	tooltipEl.classList.remove("hidden");
+	showTooltip(slotTooltipHtml(item));
 });
 hotbarEl.addEventListener("mouseout", (ev) => {
 	const slot = ev.target.closest(".hotbar-slot");
 	if (!slot || slot.contains(ev.relatedTarget)) return;
 	hoveredSlot = -1;
-	tooltipEl.classList.add("hidden");
+	hideTooltip();
 });
 function updateHealthUI() {
 	document.getElementById("hp").textContent = health;

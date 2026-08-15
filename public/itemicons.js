@@ -1462,6 +1462,15 @@ export function itemIconCss(id, scale = 1) {
 	const s = TILE * scale;
 	return `url("${url}") -${col * s}px 0 / ${w}px ${s}px no-repeat`;
 }
+// Fase 19 (E): hot-reload del atlas de iconos — descarta el atlas cacheado y
+// el índice de teselas; la siguiente itemIconCss() lo reconstruye con el
+// código actual (mismo patrón que hotReloadTextures del atlas de terreno).
+// El repintado de los slots visibles lo hace ui.js (repaintIcons).
+export function reloadItemIcons() {
+	atlasUrl = null;
+	tileIndex.clear();
+}
+
 function getAtlasUrl() {
 	if (atlasUrl) return atlasUrl;
 	const ids = itemIconIds();

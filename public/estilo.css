@@ -965,6 +965,36 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	padding: 0 2px;
 	overflow: hidden;
 }
+/* Fase 19 (D): fantasma del ítem arrastrado — sigue al cursor sin bloquear
+   el puntero (elementFromPoint del destino debe ver el slot, no al fantasma). */
+.drag-ghost {
+	position: fixed;
+	z-index: 400;
+	width: 24px;
+	height: 24px;
+	pointer-events: none;
+	opacity: 0.85;
+	filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+}
+/* Fase 19 (F): los slots de los paneles no inician scroll táctil — el dedo
+   puede arrastrar ítems (el tap sigue siendo el movimiento por click). */
+.panel .slot {
+	touch-action: none;
+}
+/* Fase 19 (F): los paneles caben en viewports pequeños (móvil) escalando el
+   conjunto — los slots se mantienen tocables (~34px efectivos a 0.8) y no
+   hay elementos fuera de pantalla. El libro de recetas ya tenía max-width. */
+@media (max-width: 520px) {
+	.panel {
+		width: auto;
+		max-width: 96vw;
+		padding: 14px 12px;
+		transform: translate(-50%, -50%) scale(var(--panel-scale, 0.82));
+	}
+	#recipe-book {
+		max-width: 96vw;
+	}
+}
 .hotbar-slot .swatch {
 	width: 24px;
 	height: 24px;
@@ -988,24 +1018,32 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	transition: width 0.15s;
 }
 
-/* Tooltip estilizado del hotbar (Fase 15, D3): nombre y durabilidad del ítem
-   al pasar el puntero por encima de un slot. Reemplaza al tooltip nativo del
-   navegador (que tardaba en aparecer y no podía estilizar). */
+/* Tooltip estilizado (Fase 15, D3 + Fase 19, C): nombre y durabilidad del
+   ítem al pasar el puntero por un slot. Fase 19: mismo fondo de madera y
+   bisel que los paneles (var(--panel-bg), fijada en ui.js) — se unifica el
+   estilo con el hotbar, inventario, cofre, horno y libro. */
 #tooltip {
 	position: fixed;
 	left: 50%;
 	top: 8px;
 	transform: translateX(-50%);
-	background: #1a1a1a;
-	color: #fff;
-	padding: 4px 10px;
-	border: 2px solid;
-	border-color: #c6c6c6 #4b4b4b #4b4b4b #c6c6c6;
+	background: var(--panel-bg, #1a1a1a);
+	background-repeat: repeat;
+	background-size: 16px 16px;
+	image-rendering: pixelated;
+	color: #2b2b2b;
+	padding: 5px 11px;
+	border: 3px solid;
+	border-color: #fff #4a4a4a #4a4a4a #fff;
+	box-shadow:
+		inset 0 0 0 2px rgba(0, 0, 0, 0.22),
+		0 0 0 2px #1a1a1f,
+		0 6px 18px rgba(0, 0, 0, 0.5);
 	font-size: 13px;
 	pointer-events: none;
 	z-index: 50;
 	white-space: nowrap;
-	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8);
+	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.35);
 }
 #tooltip.hidden {
 	display: none;
@@ -1016,7 +1054,7 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 #tooltip .tt-dur {
 	margin-left: 8px;
 	font-size: 11px;
-	color: #9f9f9f;
+	color: #5a4a2a;
 }
 
 .panel {
@@ -1024,11 +1062,12 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	background: #c6c6c6;
-	background-image: linear-gradient(
-		rgba(255, 255, 255, 0.22),
-		rgba(0, 0, 0, 0.08)
-	);
+	/* Fase 19 (B): fondo texturizado (tesela del atlas repetida, fijada por
+	   JS vía --panel-bg en ui.js) con bisel interior estilo Minecraft. */
+	background: var(--panel-bg, #c6c6c6);
+	background-repeat: repeat;
+	background-size: 16px 16px;
+	image-rendering: pixelated;
 	color: #2b2b2b;
 	padding: 18px 22px;
 	z-index: 200;
@@ -1036,6 +1075,8 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	border: 3px solid;
 	border-color: #fff #4a4a4a #4a4a4a #fff;
 	box-shadow:
+		inset 0 0 0 3px rgba(0, 0, 0, 0.22),
+		inset 0 0 24px rgba(0, 0, 0, 0.18),
 		0 0 0 3px #1a1a1f,
 		0 12px 38px rgba(0, 0, 0, 0.55);
 }

@@ -277,7 +277,7 @@ const app = express();
 // estático — `X-Content-Type-Options: nosniff` evita que el navegador
 // interprete un `.js`/`.css` servido con el tipo equivocado. El CSP y el SRI
 // del CDN de Three.js quedan DIFERIDOS (decisión documentada en
-// docs/fase18-spec.md §8): el importmap de index.html es un script inline que
+// docs/spec/fase18-spec.md §8): el importmap de index.html es un script inline que
 // exige `script-src 'unsafe-inline'` al cargarse desde el CDN, lo que deja
 // casi sin valor el resto de la política; el juego es localhost/LAN sin
 // autenticación.
@@ -805,6 +805,18 @@ function handleConnection(ws, req) {
 
 				case "grid_clear": {
 					actions.handleGridClear(p, ws);
+					break;
+				}
+
+				case "grid_return": {
+					// Fase 19 (D1): devolver una celda del grid al inventario
+					actions.handleGridReturn(p, ws, data);
+					break;
+				}
+
+				case "inventory_swap": {
+					// Fase 19 (D1): intercambiar dos slots del inventario (drag)
+					actions.handleInventorySwap(p, ws, data);
 					break;
 				}
 

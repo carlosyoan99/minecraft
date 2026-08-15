@@ -15,6 +15,7 @@ import { initDayNight } from "./daynight.js";
 // Fase 17 (B7): minar con el clic presionado — al romperse el bloque en
 // mina, input.js reinicia la mina sobre el siguiente bloque apuntado.
 import { onBlockMined } from "./input.js";
+import { reloadItemIcons } from "./itemicons.js"; // Fase 19 (E): hot-reload del atlas de iconos
 import {
 	flashMob,
 	mobMeshes,
@@ -49,6 +50,7 @@ import {
 	onWorldLoaded,
 	renderRecipeBook,
 	renderWorldsList,
+	repaintIcons, // Fase 19 (E): repintado tras recargar el atlas de iconos
 	setCreativeCatalog, // Fase 10 (D4): catálogo del picker creativo
 	showDeathScreen, // Fase 10 (B2): pantalla de muerte con causa
 	showMenu // Fase 17 (A5): modo menú (sin mundo activo)
@@ -375,8 +377,12 @@ socket.addEventListener("message", (e) => {
 				onSeedRejected(data.reason);
 				break; // Fase 6: el servidor no pudo cambiar de semilla
 			case "textures_reload": {
-				// Fase 6: hot-reload del atlas (sin recargar la página)
+				// Fase 6: hot-reload del atlas (sin recargar la página); Fase 19
+				// (E): el atlas de ICONOS también se recarga en caliente y se
+				// repintan los slots visibles (hotbar + paneles abiertos).
 				hotReloadTextures();
+				reloadItemIcons();
+				repaintIcons();
 				flashMessage("🔄 Atlas de texturas recargado");
 				break;
 			}
