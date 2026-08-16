@@ -1426,6 +1426,16 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 .settings-pane {
 	min-width: 300px;
 }
+.help-pane {
+	min-width: 300px;
+	text-align: left;
+	padding: 4px 2px;
+	border: 2px solid;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
+	background: rgba(0, 0, 0, 0.12);
+	margin: 0 0 8px;
+}
 /* Botones grandes de pausa (Fase 17, C1) — mismo aspecto que Jugar */
 #pause-resume-btn,
 #new-world-btn {
@@ -1684,7 +1694,8 @@ FASE 17 (D1): RESPONSIVE — menú compacto en pantallas pequeñas.
 	.logo-big {
 		font-size: 30px;
 	}
-	.settings-pane {
+	.settings-pane,
+	.help-pane {
 		min-width: 0;
 		width: 74vw;
 	}

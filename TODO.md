@@ -814,6 +814,46 @@
 
 ---
 
+## Auditoría 2026-08-15 — correcciones programadas
+
+> Informe completo con ubicaciones y estado por hallazgo:
+> [`docs/audits/auditoria-2026-08-15.md`](docs/audits/auditoria-2026-08-15.md).
+> Prioridad según la §5 de la auditoría. **H1/B1 son la acción inmediata**
+> (explotable por un cliente sin modificar); el resto se planifica en la
+> fase que la auditoría indique (seguridad/resiliencia → ventana actual
+> 19.6/20; rendimiento → Fase 20; cliente → mejora continua).
+
+- [ ] **H1** `chest_action take`/`put` y `grid_set` (`server/actions.js:342,359,366,313-314,91-92`): validar `Number.isInteger` + rango en `chestSlot`/`invSlot`/`fromInventorySlot` y añadir un test con claves no enteras (truncan arrays y se persisten vacíos)
+- [ ] **B1** `grid_set` (`server/actions.js:91-93`): `Number.isInteger` + rango en `fromInventorySlot` (inyecta slot basura; con su test)
+- [ ] **Sec** M1 verificar Origin en WS (`verifyClient`, allowlist localhost/LAN) — `server/timers.js:340`
+- [ ] **Sec** M2 tope de cría de animales a la cuota global en `applyFeed` — `server/mob-species.js:553`
+- [ ] **Sec** M3 rechazar nombre duplicado en línea (suplantación de inventario) — `server/net.js:385`
+- [ ] **Sec** M4 operador por `OPS`/token explícito, no "primer conectado" — `server/net.js:398-399`
+- [ ] **Sec** M5 documentar TLS en despliegues no-locales (LAN/Localhost OK)
+- [ ] **Sec** B2 rate-limit por acción (la cuota global 30 msg/s no aísla anti-spam)
+- [ ] **Sec** B3 log de comandos OP (`/give`, `/tp`, ...) en `executeCommand` — `server/commands.js`
+- [ ] **Res** F1 reducir `SAVE_INTERVAL_MS` a 10-15 s y/o `savePlayer` en eventos de inventario — `server.js:113-116`
+- [ ] **Res** F2 reintento (2) en la escritura de la cola async — `server/save-chunks.js:51-54`
+- [ ] **Res** F3 checksum/validación de chunk en `readChunkFile` — `server/world.js:129-182`
+- [ ] **Res** F4 rotar `.bak` por jugador — `server/save-players.js:59-72`
+- [ ] **Res** F5 comprobar el retorno de `saveWorld()` en SIGINT/SIGTERM — `server.js:118-130`
+- [ ] **Res** F7 `log.warn` del error del socket — `server/net.js:1068`
+- [ ] **Res** F8 env vars `SAVE_INTERVAL_MS`/`LOG_LEVEL` (+ hook de fallo para tests) + F6 logs con nivel/timestamp
+- [ ] **Res** REN-2 poda de hornos huérfanos (ver F1+`world.json`)
+- [ ] **Perf** P1 lotear la generación del `settings` r=10 (441 síncronos) y `move` — `server/generation.js`, `server/net.js:686`
+- [ ] **Perf** P2 gzip en worker si el perfilado lo pide — `server/save-chunks.js`
+- [ ] **Perf** P3 reenviar solo la corona nueva de chunks al ampliar radio — `server/net.js:84-100`
+- [ ] **Perf** P4 no marcar dirty los chunks generados sin cambios — `server/generation.js:606`
+- [ ] **Perf** P7 evaluar `bakeChunkLight`/`hasTorchNear` O(`torchSet`) con profiler — `public/lighting.js`, `public/chunkstore.js:103-115`
+- [ ] **Cli** CL-1 reconexión con backoff + reinit (reset local) — `public/connection.js`
+- [ ] **Cli** CL-2 pausa de render/audio en background (blur/oculta) — `player.js`, `audio.js`
+- [ ] **Cli** CL-4 `Number.isFinite` en `setClientBlock` — `public/chunkstore.js:52-71`
+- [ ] **Cli** CL-5 validar longitud 16384 en `storeChunkData` — `public/chunkstore.js:76-94`
+- [ ] **Cli** CL-8 pool + tope duro de partículas — `public/particles.js:66`
+- [ ] **Monitorización**: logs JSON + `LOG_LEVEL` (F6) y telemetría cliente `__mcClientErrors` (CL-6)
+
+---
+
 ## Fase 20 — Rolling release (ciclo de estabilización y paridad)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase20-spec.md`](docs/spec/fase20-spec.md)

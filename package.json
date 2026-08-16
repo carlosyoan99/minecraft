@@ -2,6 +2,24 @@
 	"name": "mi-minecraft",
 	"version": "1.0.0",
 	"description": "Clon de Minecraft con servidor Node.js autoritativo (chunks, biomas, IA de mobs, crafteo, horno, persistencia)",
+	"keywords": [
+		"minecraft",
+		"clon",
+		"voxel",
+		"three.js",
+		"websocket",
+		"nodejs",
+		"juego"
+	],
+	"license": "MIT",
+	"author": "Carlos Yoan",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/carlosyoan99/minecraft"
+	},
+	"engines": {
+		"node": ">=18"
+	},
 	"main": "server/server.js",
 	"type": "commonjs",
 	"scripts": {

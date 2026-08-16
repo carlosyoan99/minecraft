@@ -62,8 +62,12 @@ arrancar el servidor y confirmar que sirve `/`.
   Las clases NO cambian el wire ni el guardado: el JSON de una instancia es
   igual al de los literales anteriores.
 - **Cliente sin build step**: `public/index.html` usa importmap con
-  Three.js 0.160 desde unpkg. Si el CDN es inalcanzable, servir
-  `three.module.js` local y mapearlo en el importmap.
+  Three.js 0.160 servido **local** en `public/vendor/` (`three.module.js`
+  + `addons/`), copia de `node_modules/three` (misma versión que
+  `package.json`). Sin CDN externos: el juego funciona 100 % offline en
+  LAN. Si se sube la versión de three, copiar los archivos nuevos a
+  `public/vendor/` y mantener el importmap. Opcionalmente un service
+  worker (`public/sw.js`, PWA) cachea los estáticos en localhost/HTTPS.
 - **Recetas**: `recetas.json` (crafteo 3x3) y `recetas_horno.json`
   (fundición). Hot-reload con swap atómico: editarlas recarga el
   servidor automáticamente (JSON inválido conserva las anteriores).

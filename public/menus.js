@@ -34,14 +34,20 @@ const menuMain = document.getElementById("menu-main");
 const menuWorlds = document.getElementById("menu-worlds");
 const menuCreate = document.getElementById("menu-create");
 const menuSettings = document.getElementById("menu-settings");
+const menuHelp = document.getElementById("menu-help");
+const menuAbout = document.getElementById("menu-about");
 const menuPause = document.getElementById("menu-pause");
 const startBtn = document.getElementById("start-btn");
 const settingsBtn = document.getElementById("settings-btn");
+const helpBtn = document.getElementById("help-btn");
+const aboutBtn = document.getElementById("about-btn");
 const quitBtn = document.getElementById("quit-btn");
 const worldsBackBtn = document.getElementById("worlds-back-btn");
 const createBackBtn = document.getElementById("create-back-btn");
 const newWorldBtn = document.getElementById("new-world-btn");
 const settingsBackBtn = document.getElementById("settings-back-btn");
+const helpBackBtn = document.getElementById("help-back-btn");
+const aboutBackBtn = document.getElementById("about-back-btn");
 const worldsListEl = document.getElementById("worlds-list");
 const worldNameInput = document.getElementById("world-name-input");
 const seedInput = document.getElementById("seed-input");
@@ -50,6 +56,7 @@ const randomSeedBtn = document.getElementById("random-seed-btn");
 // Fase 17 (C1): pantalla de pausa (Esc dentro del juego).
 const pauseResumeBtn = document.getElementById("pause-resume-btn");
 const pauseSettingsBtn = document.getElementById("pause-settings-btn");
+const pauseHelpBtn = document.getElementById("pause-help-btn");
 const pauseQuitBtn = document.getElementById("pause-quit-btn");
 // Fase 9 (Bloque B): selector de modo al crear un mundo NUEVO.
 const gamemodeSelect = document.getElementById("gamemode-select");
@@ -78,6 +85,9 @@ const qualitySelect = document.getElementById("quality-select");
 const fullscreenToggle = document.getElementById("fullscreen-toggle");
 // Fase 19.5 (B4): accesibilidad — reducir movimiento (atenúa FOV del sprint)
 const reduceMotionToggle = document.getElementById("reduce-motion-toggle");
+const toonToggle = document.getElementById("toon-toggle");
+const torchLightToggle = document.getElementById("torch-light-toggle");
+const mipmapsToggle = document.getElementById("mipmaps-toggle");
 let currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 // Fase 17 (A5): el cliente empieza EN EL MENÚ hasta recibir el init de un
@@ -86,7 +96,15 @@ let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 let inMenu = true;
 
 function showMenuScreen(which) {
-	for (const el of [menuMain, menuWorlds, menuCreate, menuSettings, menuPause])
+	for (const el of [
+		menuMain,
+		menuWorlds,
+		menuCreate,
+		menuSettings,
+		menuHelp,
+		menuAbout,
+		menuPause
+	])
 		el.classList.toggle("hidden", el !== which);
 }
 
@@ -220,6 +238,9 @@ function refreshSettingsUI() {
 	coordsToggle.checked = s.showCoords;
 	invertToggle.checked = s.invertControls;
 	reduceMotionToggle.checked = !!s.reduceMotion; // F19.5 (B4)
+	toonToggle.checked = !!s.toon; // F19.6 (B)
+	torchLightToggle.checked = !!s.torchLight; // F19.6 (A2)
+	mipmapsToggle.checked = !!s.mipmaps; // F19.6 (E)
 	// Fase 7: rellenar los nuevos controles con los valores guardados
 	fovSlider.value = s.fov;
 	fovValue.textContent = `${s.fov}°`;
@@ -253,12 +274,26 @@ settingsBackBtn.addEventListener("click", () =>
 
 // Fase 17 (A4): pestañas de ajustes (Video / Audio / Controles) — solo
 // alternan paneles; la lógica de cada ajuste sigue intacta en settings.js.
-for (const tab of document.querySelectorAll(".st-tab")) {
+// Scope `#menu-settings` para no chocar con las pestañas de Ayuda (que
+// comparten la clase .st-tab pero alternan .help-pane).
+for (const tab of document.querySelectorAll("#menu-settings .st-tab")) {
 	tab.addEventListener("click", () => {
-		for (const t of document.querySelectorAll(".st-tab"))
+		for (const t of document.querySelectorAll("#menu-settings .st-tab"))
 			t.classList.toggle("active", t === tab);
 		const pane = document.getElementById(`pane-${tab.dataset.tab}`);
-		for (const p of document.querySelectorAll(".settings-pane"))
+		for (const p of document.querySelectorAll("#menu-settings .settings-pane"))
+			p.classList.toggle("hidden", p !== pane);
+	});
+}
+
+// Sección Ayuda: pestañas Controles / Mecánicas / Comandos / Problemas sobre
+// .help-pane (mismo patrón que ajustes, contenido estático).
+for (const tab of document.querySelectorAll("#menu-help .st-tab")) {
+	tab.addEventListener("click", () => {
+		for (const t of document.querySelectorAll("#menu-help .st-tab"))
+			t.classList.toggle("active", t === tab);
+		const pane = document.getElementById(`pane-${tab.dataset.tab}`);
+		for (const p of document.querySelectorAll("#menu-help .help-pane"))
 			p.classList.toggle("hidden", p !== pane);
 	});
 }
@@ -271,6 +306,20 @@ pauseQuitBtn.addEventListener("click", () => {
 	showLoading("Volviendo al menú...");
 	send("leave_world");
 });
+
+// Sección Ayuda/Acerca de: pantallas del menú principal (y Ayuda en pausa).
+// El botón Volver regresa a la pantalla de origen (patrón de ajustes).
+let helpReturnTo = menuMain; // pantalla a la que vuelve «← Volver» de Ayuda
+const aboutReturnTo = menuMain;
+function openHelp(from) {
+	helpReturnTo = from;
+	showMenuScreen(menuHelp);
+}
+helpBtn.addEventListener("click", () => openHelp(menuMain));
+pauseHelpBtn.addEventListener("click", () => openHelp(menuPause));
+aboutBtn.addEventListener("click", () => showMenuScreen(menuAbout));
+helpBackBtn.addEventListener("click", () => showMenuScreen(helpReturnTo));
+aboutBackBtn.addEventListener("click", () => showMenuScreen(aboutReturnTo));
 
 rdSlider.addEventListener("input", () => {
 	rdValue.textContent = rdSlider.value;
@@ -313,6 +362,18 @@ fullscreenToggle.addEventListener("change", () => toggleFullscreen());
 // el bucle de animación (FOV del sprint a 0).
 reduceMotionToggle.addEventListener("change", () =>
 	setSetting("reduceMotion", reduceMotionToggle.checked)
+);
+// F19.6 (B): material toon — swap en caliente sobre todas las mallas vivas.
+toonToggle.addEventListener("change", () =>
+	setSetting("toon", toonToggle.checked)
+);
+// F19.6 (A2): luz puntual real de antorchas (presupuestada).
+torchLightToggle.addEventListener("change", () =>
+	setSetting("torchLight", torchLightToggle.checked)
+);
+// F19.6 (E): mipmaps/anisotropía del atlas.
+mipmapsToggle.addEventListener("change", () =>
+	setSetting("mipmaps", mipmapsToggle.checked)
 );
 
 // Fase 17 (A5): entrar a un mundo (existente o nuevo) desde el menú — envía

@@ -5,7 +5,8 @@
 > especificaciones por fase (`../fase*-spec.md`). Aquí se explica **cómo
 > funciona** cada pieza y **por qué** está hecha así; el protocolo de red
 > se resume en la sección homónima y las mecánicas de juego están en
-> [`mecanicas.md`](./mecanicas.md).
+> [`mecanicas.md`](./mecanicas.md). Guía práctica de uso y
+> administración: [`help.md`](./help.md).
 
 ## Principio rector: el servidor es la única fuente de verdad
 

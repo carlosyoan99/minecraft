@@ -75,8 +75,10 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
 | --- | --- |
 | [`server/README.md`](server/README.md) | Arquitectura del servidor: principio de autoridad, módulos, bucle 20 Hz, persistencia, mundos por semilla, protocolo WS, verificación |
 | [`server/mecanicas.md`](server/mecanicas.md) | Mecánicas del servidor: generación determinista, física/anti-cheat, minería, combate/XP, IA por especie, crafteo/hornos, cofres/loot, comandos/reloj, seguridad |
+| [`server/help.md`](server/help.md) | Guía de administración del servidor: requisitos, arranque, env vars (`SEED`, `PORT`, `OPS`...), comandos en el chat, recetas hot-reload, persistencia/backups y solución de problemas |
 | [`public/README.md`](public/README.md) | Arquitectura del cliente: sin build step, módulos puros vs impuros, bucle de render, persistencia local, verificación (CDP) |
 | [`public/mecanicas.md`](public/mecanicas.md) | Mecánicas del cliente: chunks/culling, pool de geometrías, LOD, luz de antorcha, atlas procedurales, mobs multibloque, predicción, cielo, input, audio, UI, rendimiento |
+| [`public/help.md`](public/help.md) | Guía del jugador: requisitos del navegador, pantalla inicial, controles, cómo jugar, solución de problemas y consejos |
 
 ## Otros documentos
 

@@ -1,7 +1,7 @@
 # Mi Minecraft — Clon Node.js + Three.js
 
 ![Estado de desarrollo](https://img.shields.io/badge/estado-en%20desarrollo-yellow)
-![Fases completadas](https://img.shields.io/badge/fases-0-17%20completadas-blue)
+![Fases completadas](https://img.shields.io/badge/fases-0-19.5%20completadas-blue)
 
 Copia jugable de Minecraft, no idéntica pero fiel a sus mecánicas
 distintivas: mundo por chunks, biomas, cuevas, día/noche, mobs con IA,
@@ -14,7 +14,8 @@ mundo, el cliente solo dibuja y envía inputs.
 - **Servidor:** Node.js, Express (estáticos), `ws` (WebSocket),
   `simplex-noise` (generación de terreno), `uuid`. Sin base de
   datos: el mundo se persiste en JSON en `world/`.
-- **Cliente:** JavaScript vanilla + Three.js 0.160 (vía CDN/importmap).
+- **Cliente:** JavaScript vanilla + Three.js 0.160 (servido local en
+  `public/vendor/`, sin CDN — juego 100 % offline en LAN).
   Sin build step, sin framework. `public/index.html` carga
   `client.js` como módulo ES6; el resto son módulos por
   responsabilidad (ver estructura).
@@ -59,7 +60,8 @@ mi-minecraft/
 ├── recetas_horno.json     Recetas de fundición
 ├── tests/                 Unitarios + E2E + auditorías (npm test, ver Tests)
 ├── public/                Cliente vanilla + Three.js (módulos ES6, sin build step)
-│   ├── index.html         Entrada: importmap (Three.js CDN), botón Jugar y pantalla de carga
+│   ├── index.html         Entrada: importmap (Three.js local en vendor/), botón Jugar y pantalla de carga
+│   ├── vendor/            Three.js 0.160 local (three.module.js + addons) — juego 100 % offline sin CDN
 │   ├── client.js          Bootstrap que cablea los módulos (16 líneas)
 │   ├── constants.js       Constantes del cliente (IDs, colores, texturas, durabilidad)
 │   ├── loading.js         Pantalla de carga estilo Minecraft (progreso + consejos)
@@ -140,6 +142,34 @@ propio servidor sin `SEED`).
 - `F3`: visualizador de chunks (bordes + métricas de render, para
   depurar el culling)
 
+## Requisitos del sistema
+
+### Cliente (navegador)
+
+| Necesario | mínimo | recomendado |
+|---|---|---|
+| Navegador | Chromium/Firefox/Safari recientes con WebGL2 + soporte de `importmap` | Chrome/Edge o Firefox actualizado |
+| JavaScript ES modules | habilitado (defecto en todos) | — |
+| Red al servidor | puerto `3000` (o `PORT`) http + `ws://` | misma LAN o servidor dedicado |
+| GPU | WebGL2 sin aceleración (software) | gráfica discreta o integrada reciente |
+| Hardware | CPU/media a secas, ~2 GB de RAM | 4 GB+ para mundo Medio/Grande (512/1024) y calidad alta |
+
+Three.js 0.160 se sirve **local** (`public/vendor/three.module.js` + addons,
+mapeado en el importmap): el juego no depende de CDN externos y funciona
+100 % offline en LAN. En `localhost`/HTTPS un **service worker**
+(`public/sw.js`) cachea los estáticos (en `http://IP` LAN el navegador no lo
+registra por política). Ver [`docs/public/help.md`](docs/public/help.md).
+
+### Servidor (Node.js)
+
+| Necesario | requerido |
+|---|---|
+| Node.js | 18+ (CommonJS, sin transpilación) |
+| Dependencias | `express`, `ws`, `simplex-noise`, `uuid` (`npm install`) |
+| Disco | espacio para `world/<semilla>/` (chunks gzip por archivo + `world.json` + `.bak`); ~1-2 MB por área de radio 4 |
+| Puerto | `3000` por defecto; configurable con `PORT` |
+| Opcional | `OPS` (lista de operadores), `WS_URL`, `RECETAS_PATH`, `SEED` para arrancar modo directo |
+
 ## Estado actual
 
 > **Estado vivo** (fase activa, implementado frente a prospectiva y
@@ -147,7 +177,7 @@ propio servidor sin `SEED`).
 > fases: [`DEPENDENCIAS.md`](DEPENDENCIAS.md). Especificaciones por fase
 > (diseño, decisiones y estado): [`docs/README.md`](docs/README.md).
 
-### ✅ Implementado (Fases 0 a 18 completadas)
+### ✅ Implementado (Fases 0 a 19.5 completadas)
 
 - **Fase 0 — Base:** servidor autoritativo con validación de
   movimiento/acciones, generación por biomas (llanura, bosque,
@@ -283,7 +313,7 @@ propio servidor sin `SEED`).
   (Y ∈ −64..+63, `SCHEMA_VERSION` 6 con migración retrocompatible v5→v6)**
   auditado por `tests/audit-altura.js`.
 
-### 🏁 Roadmap completado (fases 0-17)
+### 🏁 Roadmap completado (fases 0-19.5)
 
 *(Todas las fases del roadmap están completadas y auditadas. El detalle
 de cada una vive en su spec `docs/spec/faseN-spec.md`; el estado de cada
@@ -335,6 +365,16 @@ tooltip unificado con delay, drag & drop (`dragdrop.js` + lógica pura
 `draglogic.js`, eventos `inventory_swap`/`grid_return`/`chestSlot`),
 hot-reload del atlas de iconos y táctil/responsivo. Cierre: 57 unitarios,
 auditorías 6/6, E2E 7/7 y biome 0 errores. Estado vivo en `STATUS.md`.
+
+### ✅ Fase 19.5 — cerrada y auditada
+
+La **Fase 19.5** (`docs/spec/fase19.5-spec.md`) trajo audio por bioma
+(evento `biome_update` del servidor + paleta pura `musicpalette.js`, con
+prioridad cueva > bioma > día/noche), accesibilidad (teclado en paneles
+`a11y-nav.js`, contraste del HUD, no-solo-color, toggle `reduceMotion`),
+auditoría del raycast y **tokens CSS en `:root`** + higiene del servidor
+(SIGTERM, `server/log.js` con niveles uniformes). Cierre: **58 unitarios**,
+auditorías 6/6, E2E 7/7 y biome 0 errores.
 
 ### ❌ Fuera de alcance (Won't)
 
@@ -567,7 +607,7 @@ en el servidor y `public/network.js` en el cliente).
 
 ### Resultados (agosto 2026)
 
-Suite completa: **57 tests unitarios + 7 E2E** (si hay servidor; el E2E
+Suite completa: **58 tests unitarios + 7 E2E** (si hay servidor; el E2E
 del menú levanta el suyo) — ver la matriz en
 [`docs/tests.md`](docs/tests.md). La suite cubre persistencia, IA de
 mobs, handlers de red, integridad de recetas, sincronización
@@ -680,3 +720,28 @@ preocupación por commit, y los commits son en español.
   espiral la columna firme más cercana si la pedida es un lago, para
   que el jugador nunca aparezca nadando (cubierto por
   `tests/unit-spawn.js`).
+
+## Acerca de
+
+**Proyecto:** Mi Minecraft — copia jugable del clon de Minecraft, fiel a
+sus mecánicas distintivas pero hecha desde cero como herramienta
+educativa de arquitectura cliente-servidor autoritativa (chunks, biomas,
+cuevas, día/noche, mobs con IA, crafteo por patrón y horno).
+
+**Estado actual:** fases 0-19.5 completadas y auditadas; Fase 19.6
+(prospectiva) y siguientes en la hoja de ruta. Ver [`STATUS.md`](STATUS.md)
+para el estado vivo.
+
+**Stack:** Node.js + Express + `ws` + `simplex-noise` en el servidor
+(CommonJS, sin base de datos — persistencia JSON en `world/`); JavaScript
+vanilla + Three.js 0.160 en el cliente (ES modules, sin build step, sin
+assets binarios: texturas, iconos, sonidos y cielo procedurales).
+
+**Guías de ayuda:** [`docs/server/help.md`](docs/server/help.md) (servidor
+y administración) y [`docs/public/help.md`](docs/public/help.md) (cliente
+y jugabilidad). En el juego, el menú principal tiene los botones **❓
+Ayuda** y **📖 Acerca de**; en el chat, `/help` lista los comandos.
+
+**Repositorio:** <https://github.com/carlosyoan99/minecraft>
+
+**Licencia:** MIT (© 2026 Carlos) — ver [`LICENSE`](LICENSE).

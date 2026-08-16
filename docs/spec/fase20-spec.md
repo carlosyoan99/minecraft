@@ -142,9 +142,10 @@ Cada iteración (v20.x) sigue el flujo del borrador, ahora con reglas fijas:
     da el lingote directo): evaluar si se repone el fundido explícito de mena
     con su propia cadena de crafteo (decisión a documentar; la cadena actual
     minar→lingote no cambia si se mantiene la simplificación).
-  - **CSP + SRI del CDN de Three.js** (SEC-4) o alternativa de servirlo
-    localmente (diferido en F18 §8): re-evaluar si el supuesto
-    localhost/LAN sin autenticación cambia.
+  - **CSP + SRI del CDN de Three.js** (SEC-4): **cerrado** — desde la Fase
+    19.6 Three.js se sirve **local** (`public/vendor/`); ya no hay CDN
+    externo que asegurar. Queda fuera de alcance el CSP estricto del
+    importmap inline (exige `script-src 'unsafe-inline'`).
 - **Ficheros:** los que indique la F18 (Bloque C) o el área del hallazgo
   (`server/tnt.js`/`explode`, `recetas_horno.json`, `public/index.html`).
 - **Criterio:** `unit-paridad.js` y `unit-recetas.js` en verde con la paridad

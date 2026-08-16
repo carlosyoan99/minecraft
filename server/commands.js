@@ -116,6 +116,13 @@ const HELP = [
 	"Los comandos con (solo operadores) los ejecuta el host (primer jugador) o la lista OPS (env var OPS)"
 ].join("\n");
 
+// Guía rápida para jugadores (se envía con /help en el chat, además de la
+// lista de comandos). Controles espejo de la pestaña Controles de Ajustes y
+// de la pantalla ❓ Ayuda del menú; la guía completa vive en
+// docs/public/help.md (jugador) y docs/server/help.md (administración).
+const CONTROLS_HELP =
+	"\nControles: WASD mover · Espacio saltar · Shift agacharse · Click izq romper · Click der colocar/usar · E inventario · B recetas · Enter chat · F3 depuración · F11 pantalla completa";
+
 // Comandos que mutan el mundo o al jugador: solo para OPERADORES (el primer
 // jugador conectado o la lista OPS, ver net.js). /help y el chat normal
 // siguen abiertos a todos. Fase 7 (auditoría): antes cualquier jugador podía
@@ -186,7 +193,7 @@ function executeCommand(player, raw, ctx) {
 
 	switch (cmd) {
 		case "help":
-			systemMessage(player, HELP);
+			systemMessage(player, HELP + CONTROLS_HELP);
 			break;
 
 		case "kill": {

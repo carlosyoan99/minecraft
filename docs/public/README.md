@@ -4,7 +4,8 @@
 > Minecraft. Complementa a [`../README.md`](../README.md) y a las
 > especificaciones por fase. Aquí se explica **cómo funciona** y **por qué**
 > está hecho así; las mecánicas de render/gameplay están en
-> [`mecanicas.md`](./mecanicas.md).
+> [`mecanicas.md`](./mecanicas.md). Guía práctica del jugador:
+> [`help.md`](./help.md).
 
 ## Qué es el cliente
 
@@ -23,8 +24,8 @@ autoritativo**: predice y dibuja; el servidor valida y decide (ver
   necesidad de una carpeta `assets/` que habría que mantener.
 
 El coste: no se puede usar npm en el cliente salvo vía importmap (three y
-sus addons desde CDN) y la lógica "pura" (testeable en Node) debe vivir en
-módulos sin DOM ni THREE.
+sus addons se sirven **local** desde `public/vendor/`) y la lógica "pura"
+(testeable en Node) debe vivir en módulos sin DOM ni THREE.
 
 ## Cómo arranca (public/client.js e index.html)
 
