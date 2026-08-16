@@ -1,0 +1,11 @@
+{
+	"name": "Mi Minecraft — Clon Node.js + Three.js",
+	"short_name": "Mi Minecraft",
+	"description": "Clon de Minecraft con servidor Node.js autoritativo y cliente Three.js sin build step. Juego 100 % offline en LAN: Three.js local y service worker.",
+	"start_url": "./",
+	"scope": "./",
+	"display": "fullscreen",
+	"background_color": "#1a1a12",
+	"theme_color": "#1a1a12",
+	"lang": "es"
+}

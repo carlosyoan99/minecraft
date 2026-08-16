@@ -6,11 +6,12 @@
 <title>Mi Minecraft — Node.js + Three.js</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛏️</text></svg>">
 <link rel="stylesheet" href="estilo.css">
+<link rel="manifest" href="manifest.webmanifest">
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three": "./vendor/three.module.js",
+    "three/addons/": "./vendor/addons/"
   }
 }
 </script>
@@ -56,6 +57,8 @@
         <button type="button" id="start-btn">▶ Un jugador</button>
         <div class="menu-actions">
           <button type="button" id="settings-btn" class="menu-secondary">⚙️ Ajustes</button>
+          <button type="button" id="help-btn" class="menu-secondary">❓ Ayuda</button>
+          <button type="button" id="about-btn" class="menu-secondary">📖 Acerca de</button>
           <button type="button" id="quit-btn" class="menu-secondary">🚪 Salir</button>
         </div>
         <p class="menu-credit">Proyecto clon de Minecraft · Node.js + Three.js</p>
@@ -147,6 +150,18 @@
           <label class="menu-field toggle">Reducir movimiento (accesibilidad)
             <input id="reduce-motion-toggle" type="checkbox">
           </label>
+          <!-- Fase 19.6 (B): material "toon" — MeshToonMaterial por bandas (swap en caliente, OFF por defecto). -->
+          <label class="menu-field toggle">Material toon (look por bandas)
+            <input id="toon-toggle" type="checkbox">
+          </label>
+          <!-- Fase 19.6 (A2): luz puntual real en antorchas cercanas (presupuestada, OFF por defecto). -->
+          <label class="menu-field toggle">Luz real de antorchas (calidad alta)
+            <input id="torch-light-toggle" type="checkbox">
+          </label>
+          <!-- Fase 19.6 (E): mipmaps/anisotropía del atlas (nitidez a distancia, off pixel-art). -->
+          <label class="menu-field toggle">Mipmaps en el atlas (nitidez lejana)
+            <input id="mipmaps-toggle" type="checkbox">
+          </label>
         </div>
         <div class="settings-pane hidden" id="pane-audio">
           <label class="menu-field">Volumen maestro
@@ -187,11 +202,70 @@
         </div>
       </div>
 
+      <!-- Ayuda del jugador (sección Ayuda): pestañas estilo Minecraft con
+           controles, mecánicas, comandos y solución de problemas -->
+      <div class="menu-screen hidden" id="menu-help">
+        <h2 class="mc-title">❓ Ayuda</h2>
+        <div class="settings-tabs">
+          <button type="button" class="st-tab active" data-tab="controls">🎮 Controles</button>
+          <button type="button" class="st-tab" data-tab="mecanicas">⛏️ Mecánicas</button>
+          <button type="button" class="st-tab" data-tab="comandos">💬 Comandos</button>
+          <button type="button" class="st-tab" data-tab="problemas">🛠️ Problemas</button>
+        </div>
+        <div class="help-pane" id="pane-controls">
+          <p class="menu-sub">WASD mover · Ratón mirar · Espacio saltar · Shift agacharse</p>
+          <p class="menu-sub">Click izq romper/atacar · Click der colocar/usar · Mantener izq: minar</p>
+          <p class="menu-sub">1-9 hotbar · E inventario/crafteo · B recetas · F11 pantalla completa</p>
+          <p class="menu-sub">Doble-tap W correr · Doble Espacio volar (creativo) · F3 depuración</p>
+          <p class="menu-sub">Enter chat · Esc pausa · En táctil: botones en pantalla</p>
+        </div>
+        <div class="help-pane hidden" id="pane-mecanicas">
+          <p class="menu-sub">1. Rompe troncos a mano → tablones + palos → pico de madera → piedra → horno</p>
+          <p class="menu-sub">2. Progresión: madera → piedra → hierro (funde la mena con carbón) → diamante</p>
+          <p class="menu-sub">3. Come con click der (la carne cruda se funde en el horno; el hambre decae)</p>
+          <p class="menu-sub">4. Mesa de crafteo (E) combina 3x3 por patrón; el horno procesa comida/menas</p>
+          <p class="menu-sub">5. Los minerales aparecen por altura; mina con el pico de nivel adecuado</p>
+          <p class="menu-sub">6. Duerme en una cama para saltar la noche; los mobs salen de noche y en cuevas</p>
+          <p class="menu-sub">7. Cría pasivos con su comida favorita (modo amor); gana XP de mobs y minería</p>
+        </div>
+        <div class="help-pane hidden" id="pane-comandos">
+          <p class="menu-sub">/help · /tp &lt;x&gt; &lt;y&gt; &lt;z&gt; · /time set &lt;day|noon|night|midnight|ms&gt;</p>
+          <p class="menu-sub">/gamemode &lt;creative|survival&gt; · /give &lt;item&gt; [cantidad] · /op &lt;nombre&gt;</p>
+          <p class="menu-sub">/kill [nombre|mobs] · /reload (recetas + atlas)</p>
+          <p class="menu-sub">Los marcados hacen el host (primer jugador) o la lista OPS del servidor.</p>
+        </div>
+        <div class="help-pane hidden" id="pane-problemas">
+          <p class="menu-sub">Sin render (mcChunks 0): pulsa F3, revisa window.__mc* y recarga con Ctrl+Shift+R</p>
+          <p class="menu-sub">Sin audio: comprueba el volumen por categoría y el autoplay del navegador</p>
+          <p class="menu-sub">Pocos FPS: baja la calidad gráfica o la distancia de render en Ajustes</p>
+          <p class="menu-sub">Tu mundo se guarda por semilla en el servidor; se recupera desde 🌍 Mundos</p>
+          <p class="menu-sub">Todo se sirve local (Three.js incluido): funciona sin internet en LAN</p>
+        </div>
+        <div class="menu-actions">
+          <button type="button" id="help-back-btn" class="menu-secondary">← Volver</button>
+        </div>
+      </div>
+
+      <!-- Acerca de (sección Acerca de): estado, stack, licencia y créditos -->
+      <div class="menu-screen hidden" id="menu-about">
+        <h2 class="mc-title">📖 Acerca de</h2>
+        <p class="menu-sub">Mi Minecraft — clon educativo de Minecraft.</p>
+        <p class="menu-sub">Servidor Node.js autoritativo + cliente Three.js sin build step.</p>
+        <p class="menu-sub">Fases 0-19.5 implementadas y auditadas; Fase 19.6 y siguientes en la hoja de ruta.</p>
+        <p class="menu-sub">Persistencia JSON por semilla · sin base de datos · protocolo WebSocket propio.</p>
+        <p class="menu-sub">Licencia MIT · © 2026 Carlos · Repositorio: github.com/carlosyoan99/minecraft</p>
+        <p class="menu-sub">Guía completa: docs/public/help.md (jugador) y docs/server/help.md (admin).</p>
+        <div class="menu-actions">
+          <button type="button" id="about-back-btn" class="menu-secondary">← Volver</button>
+        </div>
+      </div>
+
       <!-- Pantalla de pausa estilo Minecraft (Fase 17, C1): Esc dentro del juego -->
       <div class="menu-screen hidden" id="menu-pause">
         <h2 class="mc-title">⏸️ Pausa</h2>
         <button type="button" id="pause-resume-btn">▶ Continuar</button>
         <button type="button" id="pause-settings-btn" class="menu-secondary">⚙️ Ajustes</button>
+        <button type="button" id="pause-help-btn" class="menu-secondary">❓ Ayuda</button>
         <button type="button" id="pause-quit-btn" class="menu-secondary">🚪 Volver al menú principal</button>
         <p class="menu-sub">El mundo se guarda al salir.</p>
       </div>
@@ -286,5 +360,18 @@
   <input id="chat-input" type="text" placeholder="Pulsa Enter para chatear..." maxlength="200">
 
   <script src="client.js" type="module"></script>
+  <!-- Cliente offline (localhost/HTTPS): cachea los estáticos en SW para
+       cargar sin red y sin CDN externos. En http://IP LAN no se registra
+       por política del navegador; el juego funciona igual (todo es local). -->
+  <script>
+    if ("serviceWorker" in navigator && location.protocol !== "http:") {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    } else if ("serviceWorker" in navigator) {
+      // localhost se considera seguro; IP LAN (http://192.168.x.x) no puede.
+      if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      }
+    }
+  </script>
 </body>
 </html>
