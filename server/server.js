@@ -5,6 +5,7 @@
 // conecta los hooks de broadcast (evitan ciclos de require) y arranca.
 // ============================================================
 const fs = require("node:fs");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const {
 	SAVE_INTERVAL_MS,
@@ -47,8 +48,7 @@ crafting.watchRecipeFiles((r) => {
 	const msg = r.ok
 		? `♻️ Recetas recargadas (${r.crafting} crafteo, ${r.furnace} horno)`
 		: `⚠️ Recetas NO recargadas: ${r.error} (se mantienen las anteriores)`;
-	// biome-ignore lint/suspicious/noConsole: aviso de hot-reload (recetas)
-	console.log(msg);
+	log.info(msg);
 	net.broadcast("chat", { id: "Server", message: msg });
 	if (r.ok) net.broadcast("textures_reload", {});
 });
@@ -64,16 +64,14 @@ try {
 			// Si el archivo está a medio reemplazar (borrado temporal del editor),
 			// no avisar: los clientes importarían un módulo inexistente.
 			if (!fs.existsSync(texturesPath)) return;
-			// biome-ignore lint/suspicious/noConsole: aviso de hot-reload (atlas)
-			console.log(
+			log.info(
 				"🎨 Atlas de texturas cambiado: avisando a los clientes (textures_reload)"
 			);
 			net.broadcast("textures_reload", {});
 		}, 200);
 	});
 } catch (e) {
-	// biome-ignore lint/suspicious/noConsole: aviso de hot-reload desactivado
-	console.warn(
+	log.warn(
 		`⚠️  No se pudo vigilar el atlas (hot-reload desactivado): ${e.message}`
 	);
 }
@@ -89,8 +87,7 @@ save.migrateWorldLayout();
 if (!MENU_MODE) {
 	const loadResult = save.loadWorld();
 	if (loadResult === "rechazo") {
-		// biome-ignore lint/suspicious/noConsole: error fatal de arranque
-		console.error(
+		log.error(
 			"❌ Arranque abortado: no se pudo abrir el mundo guardado de forma segura (formato más nuevo o datos ilegibles)."
 		);
 		process.exit(1);
@@ -102,8 +99,7 @@ if (!MENU_MODE) {
 	}
 	if (state.mobs.length === 0) for (let i = 0; i < 4; i++) mobs.spawnMobs();
 } else {
-	// biome-ignore lint/suspicious/noConsole: log del modo menú (arranque)
-	console.log(
+	log.info(
 		"🗂️ Modo menú: sin SEED, no se carga ningún mundo (se elige/crea desde el cliente)."
 	);
 }
@@ -120,6 +116,14 @@ setInterval(() => {
 }, SAVE_INTERVAL_MS);
 setInterval(save.unloadFarChunks, UNLOAD_INTERVAL_MS);
 process.on("SIGINT", () => {
+	save.saveWorld();
+	for (const p of state.players.values()) save.savePlayer(p);
+	process.exit(0);
+});
+// Fase 19.5 (E1): SIGTERM (kill normal de systemd/Docker/CI) — el mismo
+// guardado limpio que SIGINT: el mundo queda íntegro, sin esperar al
+// autosave de 30 s. (El autosave periódico ya cubre el caso de un kill -9.)
+process.on("SIGTERM", () => {
 	save.saveWorld();
 	for (const p of state.players.values()) save.savePlayer(p);
 	process.exit(0);

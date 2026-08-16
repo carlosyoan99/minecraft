@@ -76,6 +76,8 @@ const volAmbientValue = document.getElementById("vol-ambient-value");
 const qualitySelect = document.getElementById("quality-select");
 // Fase 16 (E1): pantalla completa (F11 / checkbox de ajustes)
 const fullscreenToggle = document.getElementById("fullscreen-toggle");
+// Fase 19.5 (B4): accesibilidad — reducir movimiento (atenúa FOV del sprint)
+const reduceMotionToggle = document.getElementById("reduce-motion-toggle");
 let currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 // Fase 17 (A5): el cliente empieza EN EL MENÚ hasta recibir el init de un
@@ -217,6 +219,7 @@ function refreshSettingsUI() {
 	rdValue.textContent = s.renderDistance;
 	coordsToggle.checked = s.showCoords;
 	invertToggle.checked = s.invertControls;
+	reduceMotionToggle.checked = !!s.reduceMotion; // F19.5 (B4)
 	// Fase 7: rellenar los nuevos controles con los valores guardados
 	fovSlider.value = s.fov;
 	fovValue.textContent = `${s.fov}°`;
@@ -306,6 +309,11 @@ invertToggle.addEventListener("change", () =>
 // Fase 16 (E1): el cambio del checkbox es un gesto de usuario válido para el
 // Fullscreen API — toggleFullscreen() hace la petición real al navegador.
 fullscreenToggle.addEventListener("change", () => toggleFullscreen());
+// F19.5 (B4): reducir movimiento — se persiste y player.js lo consulta en
+// el bucle de animación (FOV del sprint a 0).
+reduceMotionToggle.addEventListener("change", () =>
+	setSetting("reduceMotion", reduceMotionToggle.checked)
+);
 
 // Fase 17 (A5): entrar a un mundo (existente o nuevo) desde el menú — envía
 // join_world { seed, name, gamemode, size }; el servidor carga/crea el mundo

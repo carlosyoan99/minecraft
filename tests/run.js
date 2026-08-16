@@ -70,7 +70,8 @@ const UNIT = [
 	"unit-fase17.js", // Fase 17: menú (A1), persistencia por nombre (B1), plantas (B4), creativo (B6), cuevas (B5)
 	"unit-skins.js", // Fase 17: skins de jugador — píxeles puros, sync cliente-servidor y protocolo set_skin/player_skin
 	"unit-fase18.js", // Fase 18 (C-8): orbes de XP al morir — suelte en survival, recogida, creative conserva y no se persisten
-	"unit-fase19.js" // Fase 19 (D): drag & drop — lógica pura de transporte (draglogic.js) + hot-reload de iconos
+	"unit-fase19.js", // Fase 19 (D): drag & drop — lógica pura de transporte (draglogic.js) + hot-reload de iconos
+	"unit-fase19.5.js" // Fase 19.5 (A1): paleta musical por bioma (musicpalette.js) — lógica pura
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de

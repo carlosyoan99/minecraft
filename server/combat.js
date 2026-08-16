@@ -9,6 +9,7 @@
 // net.js/commands.js/tnt.js/projectiles.js/mobs.js usan players.*).
 // ============================================================
 const WebSocket = require("ws");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const world = require("./world.js");
 const state = require("./state.js");
 const { findSpawn } = world;
@@ -64,8 +65,7 @@ function logDamage(player, source, amount, real, meta = {}) {
 		player.ws.send(JSON.stringify({ event: "damage_debug", data: entry }));
 	}
 	if (process.env.DAMAGE_DEBUG === "1") {
-		// biome-ignore lint/suspicious/noConsole: telemetría opt-in de diagnóstico
-		console.log(
+		log.info(
 			`[damage] ${source} ${amount}->${real} @ ${player.x.toFixed(1)},${player.y.toFixed(1)},${player.z.toFixed(1)}`,
 			meta
 		);

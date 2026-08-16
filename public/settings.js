@@ -37,7 +37,12 @@ const DEFAULTS = {
 	// Fase 16 (E1): preferencia de pantalla completa. Se aplica con gesto del
 	// usuario (checkbox de ajustes o tecla F11); en el arranque NO se fuerza
 	// (los navegadores bloquean requestFullscreen sin gesto).
-	fullscreen: false
+	fullscreen: false,
+	// Fase 19.5 (B4): "reducir movimiento" (accesibilidad) — atenúa los
+	// efectos de cámara que pueden provocar mareo: el FOV del sprint (F10 D3)
+	// se elimina y el vaivén de animación de mobs (F19.6 F) se reduce a la
+	// mitad. Persistido como el resto de ajustes.
+	reduceMotion: false
 };
 
 let settings = { ...DEFAULTS };

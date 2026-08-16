@@ -9,6 +9,7 @@
 // (orquestador); aquí vive el formato y las operaciones por semilla.
 // ============================================================
 const fs = require("node:fs");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const constants = require("./constants.js");
 const {
@@ -133,12 +134,10 @@ function cloneWorld(seed, newName) {
 			if (name) meta.name = name;
 			world.atomicWrite(metaFile, JSON.stringify(meta, null, 2));
 		}
-		// biome-ignore lint/suspicious/noConsole: log de clonado
-		console.log(`📋 Mundo clonado: ${seed} → ${newSeed}`);
+		log.info(`📋 Mundo clonado: ${seed} → ${newSeed}`);
 		return { ok: true, seed: newSeed };
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de clonado
-		console.error("⚠️  No se pudo clonar el mundo:", e.message);
+		log.error("⚠️  No se pudo clonar el mundo:", e.message);
 		return { ok: false, reason: "error" };
 	}
 }
@@ -157,8 +156,7 @@ function renameWorld(seed, newName) {
 		if (dirName === constants.seedDir(P.currentSeed)) P.worldName = name;
 		return { ok: true };
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de renombrado
-		console.error("⚠️  No se pudo renombrar el mundo:", e.message);
+		log.error("⚠️  No se pudo renombrar el mundo:", e.message);
 		return { ok: false, reason: "error" };
 	}
 }
@@ -177,8 +175,7 @@ function setWorldMode(seed, mode) {
 		if (dirName === constants.seedDir(P.currentSeed)) P.worldGamemode = m;
 		return { ok: true, gamemode: m };
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de cambio de modo
-		console.error("⚠️  No se pudo cambiar el modo del mundo:", e.message);
+		log.error("⚠️  No se pudo cambiar el modo del mundo:", e.message);
 		return { ok: false, reason: "error" };
 	}
 }
@@ -216,12 +213,10 @@ function deleteWorld(seed) {
 	if (!stat.isDirectory()) return { ok: false, reason: "invalid" };
 	try {
 		fs.rmSync(resolved, { recursive: true, force: true });
-		// biome-ignore lint/suspicious/noConsole: log de borrado de mundo
-		console.log(`🗑️ Mundo eliminado: ${dirName}`);
+		log.info(`🗑️ Mundo eliminado: ${dirName}`);
 		return { ok: true };
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de borrado
-		console.error("⚠️  No se pudo borrar el mundo:", e.message);
+		log.error("⚠️  No se pudo borrar el mundo:", e.message);
 		return { ok: false, reason: "error" };
 	}
 }
@@ -243,8 +238,7 @@ function migrateWorldLayout() {
 				fs.existsSync(path.join(P.worldRoot, n))
 			);
 			if (orphan.length > 0) {
-				// biome-ignore lint/suspicious/noConsole: aviso de layout antiguo huérfano
-				console.warn(
+				log.warn(
 					`⚠️  Layout antiguo huérfano en world/ (${orphan.join(", ")}): esta semilla ya tiene mundo, se ignoran esos archivos.`
 				);
 			}
@@ -258,14 +252,12 @@ function migrateWorldLayout() {
 		for (const n of existing) {
 			fs.renameSync(path.join(P.worldRoot, n), path.join(P.worldDir, n));
 		}
-		// biome-ignore lint/suspicious/noConsole: log de migración del layout
-		console.log(
+		log.info(
 			`🔁 Mundo movido al directorio de su semilla (${path.basename(P.worldDir)}): ${existing.join(", ")}`
 		);
 		return true;
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de migración
-		console.error("⚠️  No se pudo migrar el layout del mundo:", e.message);
+		log.error("⚠️  No se pudo migrar el layout del mundo:", e.message);
 		return false;
 	}
 }
@@ -279,8 +271,7 @@ function migrateLegacyWorld() {
 			return false;
 		const data = JSON.parse(fs.readFileSync(P.legacyFile, "utf8"));
 		if (data.seed && data.seed !== P.currentSeed) {
-			// biome-ignore lint/suspicious/noConsole: aviso de semilla discrepante
-			console.warn(
+			log.warn(
 				`⚠️  La semilla del world.dat (${data.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`
 			);
 		}
@@ -298,14 +289,12 @@ function migrateLegacyWorld() {
 		world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
 
 		fs.renameSync(P.legacyFile, `${P.legacyFile}.legacy`);
-		// biome-ignore lint/suspicious/noConsole: log de migración de world.dat
-		console.log(
+		log.info(
 			`🔁 Mundo migrado de world.dat → archivos por chunk (${chunks.size} chunks)`
 		);
 		return true;
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de migración
-		console.error("⚠️  No se pudo migrar world.dat:", e.message);
+		log.error("⚠️  No se pudo migrar world.dat:", e.message);
 		return false;
 	}
 }
@@ -377,8 +366,7 @@ function listWorlds() {
 				continue;
 			}
 		} catch (e) {
-			// biome-ignore lint/suspicious/noConsole: aviso de mundo ilegible en el menú
-			console.warn(`⚠️  Mundo ilegible en world/${dir}: ${e.message}`);
+			log.warn(`⚠️  Mundo ilegible en world/${dir}: ${e.message}`);
 		}
 		out.push({ seed, name, chunkCount, lastSaved, gamemode, worldSize });
 	}

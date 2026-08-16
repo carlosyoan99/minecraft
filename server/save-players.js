@@ -11,6 +11,7 @@
 // es la identidad persistida, los ids son de sesión).
 // ============================================================
 const fs = require("node:fs");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const constants = require("./constants.js");
 const world = require("./world.js"); // atomicWrite (swap atómico tmp+rename)
@@ -66,10 +67,7 @@ function savePlayer(player) {
 			JSON.stringify(data, null, 2)
 		);
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de persistencia (no silenciar)
-		console.warn(
-			`⚠️  No se pudo guardar el jugador ${player.name}: ${e.message}`
-		);
+		log.warn(`⚠️  No se pudo guardar el jugador ${player.name}: ${e.message}`);
 	}
 }
 
@@ -85,8 +83,7 @@ function restorePlayer(player) {
 		if (!fs.existsSync(f)) return false;
 		data = JSON.parse(fs.readFileSync(f, "utf8"));
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: aviso de jugador ilegible
-		console.warn(
+		log.warn(
 			`⚠️  Jugador guardado ilegible (${player.name}), se empieza de cero: ${e.message}`
 		);
 		return false;

@@ -15,6 +15,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const constants = require("./constants.js");
 const { SCHEMA_VERSION, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE } = constants;
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const state = require("./state.js");
 const world = require("./world.js");
 const { restoreMobs } = require("./mobs.js");
@@ -64,8 +65,7 @@ function releaseWorld() {
 	state.doors.clear();
 	constants.setWorldSeed(null, null);
 	world.reinitNoise("menu");
-	// biome-ignore lint/suspicious/noConsole: log del modo menú
-	console.log("🗂️ Modo menú: mundo liberado (sin jugadores).");
+	log.info("🗂️ Modo menú: mundo liberado (sin jugadores).");
 }
 
 // Devuelve true si la persistencia terminó correctamente; false si hubo un
@@ -101,21 +101,16 @@ function saveWorld() {
 			try {
 				fs.copyFileSync(P.metaFile, `${P.metaFile}.bak`);
 			} catch (e) {
-				// biome-ignore lint/suspicious/noConsole: error real de backup (no silenciar)
-				console.warn(
-					`⚠️  No se pudo crear el backup de world.json: ${e.message}`
-				);
+				log.warn(`⚠️  No se pudo crear el backup de world.json: ${e.message}`);
 			}
 		}
 		world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
-		// biome-ignore lint/suspicious/noConsole: log periódico del guardado automático
-		console.log(
+		log.info(
 			`💾 Mundo guardado (${written} chunks escritos, ${chunks.size} en memoria, ${state.mobs.length} mobs)`
 		);
 		return true;
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de persistencia (no silenciar, convención del proyecto)
-		console.error("Error guardando mundo:", e.message);
+		log.error("Error guardando mundo:", e.message);
 		return false;
 	}
 }
@@ -155,8 +150,7 @@ function loadWorld() {
 			} catch (e) {
 				const bak = `${P.metaFile}.bak`;
 				if (fs.existsSync(bak)) {
-					// biome-ignore lint/suspicious/noConsole: aviso de restauración
-					console.warn("⚠️  world.json ilegible; restaurando el backup (.bak)");
+					log.warn("⚠️  world.json ilegible; restaurando el backup (.bak)");
 					meta = JSON.parse(fs.readFileSync(bak, "utf8"));
 				} else {
 					throw e;
@@ -168,19 +162,16 @@ function loadWorld() {
 			) {
 				// Mundo más nuevo de lo que este servidor sabe leer: negarse a
 				// cargarlo evita que un guardado posterior lo corrompa.
-				// biome-ignore lint/suspicious/noConsole: error de formato del mundo (no silenciar)
-				console.error(
+				log.error(
 					`❌ El mundo guardado usa schemaVersion ${meta.schemaVersion}, pero este servidor soporta hasta v${SCHEMA_VERSION}.`
 				);
-				// biome-ignore lint/suspicious/noConsole: error de formato del mundo (no silenciar)
-				console.error(
+				log.error(
 					"   No se cargará. Actualiza el servidor o restaura un backup compatible."
 				);
 				return "rechazo";
 			}
 			if (meta.seed && meta.seed !== P.currentSeed) {
-				// biome-ignore lint/suspicious/noConsole: aviso de semilla discrepante
-				console.warn(
+				log.warn(
 					`⚠️  La semilla del mundo guardado (${meta.seed}) difiere de la configurada (${P.currentSeed}): los chunks nuevos no encajarán con los guardados.`
 				);
 			}
@@ -207,21 +198,18 @@ function loadWorld() {
 					? meta.timeOffset
 					: 0;
 		} else {
-			// biome-ignore lint/suspicious/noConsole: aviso de mundo sin metadatos
-			console.warn(
+			log.warn(
 				"⚠️  world.json no encontrado: mobs, hornos y cofres se reinician (chunks intactos)"
 			);
 			// Hora desconocida (sin metadatos): amanecer, como en un mundo nuevo.
 			state.timeOffset = dawnOffsetMs();
 		}
-		// biome-ignore lint/suspicious/noConsole: log de carga del servidor
-		console.log(
+		log.info(
 			`✅ Mundo cargado (${chunks.size} chunks, ${state.mobs.length} mobs)`
 		);
 		return true;
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: error real de carga (no silenciar, convención del proyecto)
-		console.error("Error cargando mundo:", e.message);
+		log.error("Error cargando mundo:", e.message);
 		// Si existe el directorio de chunks, hay un mundo real: negarse a
 		// regenerar encima en lugar de arriesgar pérdida de datos.
 		return fs.existsSync(P.chunksDir) ? "rechazo" : false;
@@ -265,8 +253,7 @@ function switchWorld(newSeed, newName, newGamemode, newSize) {
 	// abortar el cambio: limpiar el estado en memoria perdería el mundo (la
 	// integridad de datos está por encima de poder cambiar de semilla).
 	if (!saveWorld()) {
-		// biome-ignore lint/suspicious/noConsole: error real de cambio de semilla
-		console.error(
+		log.error(
 			"❌ No se pudo cambiar la semilla: falló el guardado del mundo actual."
 		);
 		return "error";
@@ -290,8 +277,7 @@ function switchWorld(newSeed, newName, newGamemode, newSize) {
 
 	const r = loadWorld();
 	if (r === "rechazo") {
-		// biome-ignore lint/suspicious/noConsole: error real de cambio de semilla
-		console.error(
+		log.error(
 			`❌ No se puede abrir el mundo de la semilla "${newSeed}" (formato más nuevo o ilegible); se mantiene la semilla actual.`
 		);
 		constants.setWorldSeed(prevSeed);
@@ -299,8 +285,7 @@ function switchWorld(newSeed, newName, newGamemode, newSize) {
 		loadWorld(); // restaura también el nombre del mundo anterior
 		return "rechazo";
 	}
-	// biome-ignore lint/suspicious/noConsole: log de cambio de semilla
-	console.log(
+	log.info(
 		`🌱 Semilla activa: ${prevSeed} → ${newSeed} (${state.chunks.size} chunks, ${state.mobs.length} mobs)`
 	);
 	return true;
@@ -348,8 +333,7 @@ function unloadFarChunks() {
 			}
 		} catch (e) {
 			// Integridad: si no se pudo persistir, no soltar el chunk de memoria
-			// biome-ignore lint/suspicious/noConsole: error real de persistencia (no silenciar)
-			console.error(
+			log.error(
 				`⚠️  No se pudo persistir ${key} al descargar; se mantiene en memoria:`,
 				e.message
 			);
@@ -359,8 +343,7 @@ function unloadFarChunks() {
 	}
 
 	if (unloadHandler) unloadHandler(toUnload);
-	// biome-ignore lint/suspicious/noConsole: log de descarga de chunks
-	console.log(
+	log.info(
 		`🗑️ Descargados ${toUnload.length} chunks lejanos (${chunks.size} en memoria)`
 	);
 }

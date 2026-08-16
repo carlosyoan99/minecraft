@@ -12,6 +12,7 @@
 // usa esta cola.
 // ============================================================
 const fs = require("node:fs");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const constants = require("./constants.js");
 const state = require("./state.js");
@@ -48,8 +49,7 @@ function saveWorldAsync() {
 				dirtyChunks.delete(key); // se borra AL escribir (no al final: un
 				written++; // chunk ensuciado durante el guardado no se pierde)
 			} catch (e) {
-				// biome-ignore lint/suspicious/noConsole: error real de persistencia
-				console.error(`Error escribiendo chunk ${key}:`, e.message);
+				log.error(`Error escribiendo chunk ${key}:`, e.message);
 				dirtyChunks.delete(key); // no reintentar en bucle infinito
 			}
 			if (++n >= SAVE_BATCH_SIZE) break;
@@ -64,20 +64,15 @@ function saveWorldAsync() {
 			try {
 				fs.copyFileSync(P.metaFile, `${P.metaFile}.bak`);
 			} catch (e) {
-				// biome-ignore lint/suspicious/noConsole: error real de backup (no silenciar)
-				console.warn(
-					`⚠️  No se pudo crear el backup de world.json: ${e.message}`
-				);
+				log.warn(`⚠️  No se pudo crear el backup de world.json: ${e.message}`);
 			}
 		}
 		try {
 			world.atomicWrite(P.metaFile, JSON.stringify(buildMeta(), null, 2));
 		} catch (e) {
-			// biome-ignore lint/suspicious/noConsole: error real de persistencia
-			console.error("Error escribiendo world.json:", e.message);
+			log.error("Error escribiendo world.json:", e.message);
 		}
-		// biome-ignore lint/suspicious/noConsole: log periódico del guardado automático
-		console.log(
+		log.info(
 			`💾 Mundo guardado (${written} chunks escritos, ${chunks.size} en memoria, ${state.mobs.length} mobs)`
 		);
 	};
@@ -89,8 +84,7 @@ function saveWorldAsync() {
 			fs.mkdirSync(P.chunksDir, { recursive: true });
 	} catch (e) {
 		asyncSaving = false;
-		// biome-ignore lint/suspicious/noConsole: error real de persistencia
-		console.error("Error creando directorios de guardado:", e.message);
+		log.error("Error creando directorios de guardado:", e.message);
 		return;
 	}
 	setImmediate(processBatch);

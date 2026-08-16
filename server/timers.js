@@ -19,6 +19,7 @@
 // estas fachadas sin cambios.
 // ============================================================
 const http = require("node:http");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const WebSocket = require("ws");
 const constants = require("./constants.js");
 const {
@@ -227,6 +228,15 @@ function mainLoop() {
 		if (p.gamemode !== "creative") playerHelpers.tickPlayer(p, TICK_MS);
 	}
 
+	// Fase 19.5 (A1): bioma del jugador → evento biome_update solo al CRUZAR
+	// de bioma (no cada tick). La música del cliente cambia con esto; es un
+	// evento nuevo retrocompatible (el cliente lo ignora si no lo conoce).
+	state.biomeAccum = (state.biomeAccum || 0) + TICK_MS;
+	if (state.biomeAccum >= 1000) {
+		state.biomeAccum = 0;
+		sendBiomeUpdates();
+	}
+
 	// Minería (Fase 6): avanza las sesiones de rotura (dureza/velocidad); al
 	// completarse se rompe el bloque (drop condicional, XP, desgaste). Las
 	// grietas (block_break_progress) se hacen broadcast a TODOS los que vean
@@ -356,17 +366,14 @@ function start(handleConnection, app) {
 		try {
 			mainLoop();
 		} catch (err) {
-			// biome-ignore lint/suspicious/noConsole: error real del tick (no silenciar)
-			console.error("mainLoop:", err);
+			log.error("mainLoop:", err);
 		}
 	}, TICK_MS);
 
 	server.listen(PORT, () => {
-		// biome-ignore lint/suspicious/noConsole: banner de arranque del servidor
-		console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
-		// biome-ignore lint/suspicious/noConsole: banner de arranque del servidor
+		log.info(`🚀 Servidor escuchando en http://localhost:${PORT}`);
 		// Fase 17 (A1): sin SEED el banner muestra el modo menú.
-		console.log(
+		log.info(
 			constants.MENU_MODE && !constants.worldPaths.currentSeed
 				? "🗂️ Modo menú: sin mundo activo (los jugadores eligen/crean mundo)."
 				: `🌍 Semilla: ${constants.worldPaths.currentSeed}  |  📦 Chunks: ${state.chunks.size}  |  🧟 Mobs: ${state.mobs.length}`
@@ -374,10 +381,32 @@ function start(handleConnection, app) {
 	});
 }
 
+// Envía biome_update a los jugadores que cruzaron de bioma (exportado para
+// el test; el mainLoop lo llama cada ~1s vía biomeAccum). Devuelve cuántos
+// eventos se enviaron.
+function sendBiomeUpdates() {
+	let n = 0;
+	for (const p of state.players.values()) {
+		if (p.inMenu) continue;
+		const b = world.getBiome(p.x, p.z);
+		if (b !== p.lastBiome) {
+			p.lastBiome = b;
+			if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+				p.ws.send(
+					JSON.stringify({ event: "biome_update", data: { biome: b } })
+				);
+				n++;
+			}
+		}
+	}
+	return n;
+}
+
 module.exports = {
 	mainLoop,
 	tickTempleTraps,
 	getServerMetrics,
+	sendBiomeUpdates,
 	resetMobsDirty,
 	start,
 	setWorldTimeFn,

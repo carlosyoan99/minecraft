@@ -4,6 +4,7 @@
 // CRAFTEO (recetas por patrón 3x3) Y HORNOS
 // ============================================================
 const fs = require("node:fs");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const constants = require("./constants.js");
 const { FUEL_TICKS } = constants;
@@ -79,13 +80,11 @@ function reloadRecipes() {
 function loadRecipes() {
 	const r = reloadRecipes();
 	if (r.ok) {
-		// biome-ignore lint/suspicious/noConsole: log de carga de recetas
-		console.log(
+		log.info(
 			`📜 ${r.crafting} recetas de crafteo, ${r.furnace} recetas de horno`
 		);
 	} else {
-		// biome-ignore lint/suspicious/noConsole: error real de carga de recetas (no silenciar)
-		console.error("⚠️  No se pudieron cargar las recetas:", r.error);
+		log.error("⚠️  No se pudieron cargar las recetas:", r.error);
 	}
 }
 
@@ -120,8 +119,7 @@ function watchRecipeFiles(onChange) {
 			});
 		}
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: aviso de hot-reload desactivado
-		console.warn(
+		log.warn(
 			`⚠️  No se pudo vigilar las recetas (hot-reload desactivado): ${e.message}`
 		);
 	}

@@ -78,7 +78,8 @@ independiente y testeable en Node (los tests requieren los módulos sin red).
 | `chunk-fill.js` | Relleno progresivo del radio de render (lote por tick y jugador, por anillos) | constants, world |
 | `world-session.js` | `set_seed`, `join_world`, `leave_world`, `world_*` (clonar/renombrar/modo/eliminar) y la cuota anti-spam (Fase 18 D-1) | constants, state, world, save |
 | `actions.js` | Handlers de juego del switch (crafteo, horno, cofre, armadura, cubo/puerta, cama/comida, mobs, agricultura, chat) con hooks de broadcast inyectados (Fase 18 D-1) | constants, state, world, players, crafting, chests, mobs, commands |
-| `timers.js` | Bucle principal (`mainLoop`, tick 20 Hz), trampa del templo, métricas y arranque HTTP/WS (`start`) con hooks de broadcast inyectados (Fase 18 D-1) | constants, state, world, players, mobs, crafting, mining, tnt, chunk-fill |
+| `timers.js` | Bucle principal (`mainLoop`, tick 20 Hz), trampa del templo, métricas, `biome_update` del jugador (F19.5 A1) y arranque HTTP/WS (`start`) con hooks de broadcast inyectados (Fase 18 D-1) | constants, state, world, players, mobs, crafting, mining, tnt, chunk-fill |
+| `log.js` | Niveles de log uniformes `info`/`warn`/`error` con prefijo `[info]`/`[warn]`/`[error]` (F19.5 E2) — wrapper de `console.*`, única excepción de `noConsole` | — |
 | `net.js` | HTTP + WebSocket, `sendInit`, switch de mensajes (despacha a `actions.js`), broadcast y fachada `start`/`mainLoop` (→ `timers.js`) | todos |
 
 ## El bucle principal (timers.js `mainLoop`)
@@ -174,7 +175,10 @@ lo permite.
   al escribirse (un chunk re-ensuciado durante el guardado no se pierde),
   los errores de escritura no reintentan en bucle y la llamada es
   idempotente. `saveWorld()` síncrono se conserva para los puntos que
-  necesitan el resultado inmediato (`switchWorld`, SIGINT).
+  necesitan el resultado inmediato (`switchWorld`, SIGINT). Las señales
+  **SIGINT y SIGTERM** (F19.5 E1) guardan el mundo y los jugadores y salen
+  limpio; los logs usan niveles uniformes vía `server/log.js` (`[info]`/
+  `[warn]`/`[error]`, sin dependencia de logging).
 - **Descarga de chunks lejanos** (>10 chunks del jugador, cada 10 s) para
   acotar la memoria del servidor.
 

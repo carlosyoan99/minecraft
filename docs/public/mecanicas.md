@@ -354,8 +354,16 @@ mobs visibles en escena).
   (`startMusic`/`padNote`) que varía con el día/noche y con el **contexto**
   (`setMusicContext`): cueva → notas graves y espaciadas, desierto →
   brillante, nieve → cristalina.
-- El contexto se detecta en `player.js` (techo encima → cueva; arena/nieve
-  bajo los pies → desierto/frío).
+- **Por bioma (Fase 19.5 A1):** el servidor envía el **bioma real** del
+  jugador al cruzar de bioma (`biome_update`, 1 check/s — evento nuevo
+  retrocompatible); `public/musicpalette.js` (lógica pura) define la
+  **paleta por bioma** (jungla exótica amplia, pantano grave, océano
+  ondulada, montaña vacía/espaciada, nieve/taiga cristalina, desierto
+  brillante, bosque/llanura base); `audio.js` aplica **cueva > bioma >
+  día/noche** (`setMusicBiome`). Sin bioma (servidor viejo) cae a la
+  heurística por bloque.
+- El contexto (techo encima → cueva; arena/nieve bajo los pies →
+  desierto/frío) se detecta en `player.js`; el bioma real llega por red.
 - El contexto se crea/reanuda en el **primer gesto del usuario**
   (requisito de los navegadores para permitir audio).
 - **Volúmenes por categoría** (master/effects/ambient) en serie hacia el
@@ -373,6 +381,24 @@ mobs visibles en escena).
   (política de navegadores).
 
 ---
+
+## 10.5 Accesibilidad (Fase 19.5 B)
+
+- **Navegación por teclado en paneles** (`a11y-nav.js`, B1): con un panel
+  abierto y el puntero liberado, **Tab/Shift+Tab** recorren los slots
+  visibles (foco dorado `.slot.a11y-focus`) y **Enter/Espacio** dispara el
+  click real del slot (grid_set/chest_action/etc.). No interfiere con el
+  juego (pointer lock) ni con inputs de texto.
+- **Contraste del HUD** (B2): `#info` (salud/comida/XP) tiene contorno
+  oscuro en las 4 direcciones — legible sobre nieve/desierto (claro) y
+  cueva/lava (oscuro).
+- **Indicadores no solo-color** (B3): salud/comida/XP muestran el valor
+  numérico además de la barra; la saturación dorada acompaña al color.
+- **"Reducir movimiento"** (B4): ajuste `reduceMotion` en Ajustes → Video
+  — elimina el FOV del sprint (y atenúa la animación de mobs de la F19.6).
+- **Tokens de diseño** (D): variables CSS en `:root` (`--mc-bg*`,
+  `--mc-border*`, `--mc-ink`, `--mc-focus`) — los paneles/slots usan los
+  tokens, no valores sueltos.
 
 ## 11. UI y HUD (public/ui.js → hud.js, menus.js, panels.js, recipebook.js)
 

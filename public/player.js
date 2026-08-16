@@ -300,7 +300,10 @@ function animate() {
 
 		// Fase 10 (D3): efecto de FOV al correr — se abre ~10° con transición
 		// suave (lerp por frame) y vuelve al valor del ajuste al dejar de correr.
-		const targetFov = getSetting("fov") + (sprinting ? SPRINT_FOV : 0);
+		// F19.5 (B4): con "reducir movimiento" el FOV del sprint desaparece
+		// (puede provocar mareo en personas sensibles al movimiento).
+		const motionFov = getSetting("reduceMotion") ? 0 : SPRINT_FOV;
+		const targetFov = getSetting("fov") + (sprinting ? motionFov : 0);
 		if (Math.abs(camera.fov - targetFov) > 0.05) {
 			camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 10);
 			camera.updateProjectionMatrix();

@@ -269,6 +269,13 @@ export function applyChestState(data) {
 }
 
 // ¿El cofre está abierto? (lo consulta el orquestador ui.js en applyInventory).
+// Fase 19.5 (B1): estado de los paneles para la navegación por teclado.
+export function isCraftingOpen() {
+	return !craftingUI.classList.contains("hidden");
+}
+export function isFurnaceOpen() {
+	return !furnaceUI.classList.contains("hidden");
+}
 export function isChestOpen() {
 	return !chestUI.classList.contains("hidden");
 }

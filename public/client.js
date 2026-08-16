@@ -12,6 +12,7 @@ import "./mobs.js";
 import "./settings.js";
 import "./ui.js";
 import "./dragdrop.js"; // Fase 19 (D1/D2): arrastrar y soltar entre slots
+import "./a11y-nav.js"; // F19.5 (B1): navegación por teclado en paneles (Tab/Enter)
 import "./player.js";
 import "./input.js";
 import "./network.js";

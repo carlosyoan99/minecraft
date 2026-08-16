@@ -4,6 +4,7 @@
 // MUNDO: GENERACIÓN, ACCESO A BLOQUES Y ARCHIVOS DE CHUNK
 // ============================================================
 const fs = require("node:fs");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const zlib = require("node:zlib"); // gzip del guardado por chunk (Fase 7)
 const constants = require("./constants.js");
@@ -136,8 +137,7 @@ function readChunkFile(file, origen) {
 				: buf.toString("utf8");
 		parsed = JSON.parse(text);
 	} catch (e) {
-		// biome-ignore lint/suspicious/noConsole: aviso de chunk ilegible (no silenciar)
-		console.warn(
+		log.warn(
 			`⚠️  Archivo de chunk ilegible, se ignora: ${origen}: ${e.message}`
 		);
 		return null;
@@ -148,16 +148,14 @@ function readChunkFile(file, origen) {
 		typeof parsed.cx !== "number" ||
 		typeof parsed.cz !== "number"
 	) {
-		// biome-ignore lint/suspicious/noConsole: aviso de chunk con formato inválido
-		console.warn(`⚠️  Archivo de chunk ignorado (formato inválido): ${origen}`);
+		log.warn(`⚠️  Archivo de chunk ignorado (formato inválido): ${origen}`);
 		return null;
 	}
 	if (
 		typeof parsed.schemaVersion === "number" &&
 		parsed.schemaVersion > SCHEMA_VERSION
 	) {
-		// biome-ignore lint/suspicious/noConsole: aviso de chunk de versión futura
-		console.warn(
+		log.warn(
 			`⚠️  Chunk (${parsed.cx},${parsed.cz}) es de una versión más nueva (v${parsed.schemaVersion}); se ignora (se regenerará y se sobrescribirá al guardar)`
 		);
 		return null;
@@ -177,10 +175,7 @@ function readChunkFile(file, origen) {
 		return parsed;
 	}
 	if (parsed.data.length !== CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE) {
-		// biome-ignore lint/suspicious/noConsole: aviso de chunk con longitud inesperada
-		console.warn(
-			`⚠️  Archivo de chunk ignorado (longitud inesperada): ${origen}`
-		);
+		log.warn(`⚠️  Archivo de chunk ignorado (longitud inesperada): ${origen}`);
 		return null;
 	}
 	return parsed;

@@ -1522,5 +1522,42 @@ function connect() {
 	state.players.clear();
 }
 
+// ============================================================
+// F19.5 (A1): biome_update — el mainLoop envía el bioma del jugador
+// solo al CRUZAR de bioma (evento nuevo retrocompatible para la música).
+// ============================================================
+{
+	const timers = require("../server/timers.js");
+	const { ws, player: p } = connect();
+	p.x = 0.5;
+	p.z = 0.5;
+	p.lastBiome = undefined;
+	const b0 = world.getBiome(0.5, 0.5);
+	const sent1 = timers.sendBiomeUpdates();
+	const updates = ws.events("biome_update");
+	check(
+		"F19.5: sendBiomeUpdates envía el bioma del jugador al conectar",
+		sent1 === 1 && updates.length === 1 && updates[0].data.biome === b0,
+		`sent=${sent1} biome=${updates[0]?.data?.biome}`
+	);
+	// Sin cruzar de bioma: no reenvía (el evento solo llega al cambiar).
+	const sent2 = timers.sendBiomeUpdates();
+	check(
+		"F19.5: biome_update no se reenvía sin cruzar de bioma",
+		sent2 === 0 && ws.events("biome_update").length === 1
+	);
+	// Cruzar de bioma → nuevo evento (bioma distinto a 100 bloques).
+	p.x = 100.5;
+	p.z = 100.5;
+	const b100 = world.getBiome(100.5, 100.5);
+	const sent3 = timers.sendBiomeUpdates();
+	check(
+		"F19.5: al cruzar de bioma se reenvía biome_update",
+		sent3 === 1 && b100 !== b0 && ws.events("biome_update").length === 2,
+		`sent=${sent3} b0=${b0} b100=${b100}`
+	);
+	state.players.clear();
+}
+
 world.setDiskLoader(null);
 process.exit(fails ? 1 : 0);

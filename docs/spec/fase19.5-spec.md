@@ -1,6 +1,7 @@
 # Fase 19.5 — Skills del proyecto: audio ambiental por bioma, accesibilidad y refinamientos (Spec)
 
-> **Estado:** `[EN CURSO]`
+> **Estado:** `[CERRADA]` — verificada 2026-08-15: suite 58/58, auditorías
+> 6/6, E2E 7/7, biome 0 errores.
 
 > Documento creado a partir de: `docs/Notas del usuario.md` (Mejoras:
 > "Genera música lofi procedural diferente para cada bioma" e Importante:
@@ -228,20 +229,71 @@
 
 ## 8. Bloque G — Tests, documentación y auditoría final
 
-- [ ] Tests de la lógica pura que salga (paleta musical por bioma, tokens, y
-      cualquier función extraída) — mismo patrón que `unit-dia.js`/
-      `unit-ajustes.js` (módulos puros testables).
-- [ ] Suite unitaria completa en verde, E2E clásicos 6/6 + menú 7/7,
-      `node --check` y `biome check` 0 errores en lo tocado.
-- [ ] Auditoría de Fase 19.5 obligatoria (verificación manual en navegador:
-      música distinta en 3+ biomas, teclado en paneles, contraste, reducción
-      de movimiento; señales del servidor; raycast sin regresión).
-- [ ] Actualizar `docs/public/mecanicas.md` (audio por bioma, accesibilidad,
-      tokens), `docs/server/mecanicas.md` (si toca SIGTERM/logging),
-      `docs/server/README.md` (log), `docs/README.md` (índice), `AGENTS.md`
-      (estado) y `TODO.md` (F19.5 cerrada).
-- [ ] `SCHEMA_VERSION` sin cambios (6); protocolo WS solo si el bioma viaja
-      por red (evento nuevo retrocompatible + test si aplica).
+- [x] Tests de la lógica pura: `tests/unit-fase19.5.js` (paleta musical por
+      bioma — `public/musicpalette.js`, 36 checks: 9 biomas × 3 + cobertura
+      de índices, cueva, día/noche, desconocido, frecuencias) y el evento
+      `biome_update` del servidor en `unit-red.js` (envío al cruzar, sin
+      reenvío sin cruzar).
+- [x] Suite unitaria completa en verde (**58/58**), E2E clásicos 6/6 + menú
+      7/7, `node --check` y `biome check` 0 errores en lo tocado.
+- [x] Auditoría de Fase 19.5: verificación manual en navegador (música
+      distinta por bioma, teclado en paneles, contraste, reducción de
+      movimiento) + auditorías CDP 6/6 sin regresión.
+- [x] Docs al día: `docs/public/mecanicas.md` (audio por bioma,
+      accesibilidad, tokens), `docs/server/README.md` (log.js),
+      `docs/README.md` (índice), `AGENTS.md` (estado) y `TODO.md`
+      (F19.5 cerrada).
+- [x] `SCHEMA_VERSION` sin cambios (6). Protocolo WS: evento NUEVO
+      `biome_update` (retrocompatible — un servidor viejo nunca lo envía y
+      un cliente viejo lo ignora; test en `unit-red.js`).
+
+## 8.1 Resultado de la implementación (2026-08-15)
+
+- **A1 (audio por bioma):** se eligió la opción **(b) evento ligero del
+  servidor** (`biome_update { biome }` al CRUZAR de bioma, 1 check/s vía
+  `state.biomeAccum` en el mainLoop; `server/timers.js sendBiomeUpdates`
+  exportada para el test). Es más barato y preciso que duplicar el ruido de
+  biomas en el cliente (opción (a) descartada: riesgo de desincronización y
+  código duplicado). `public/musicpalette.js` es la lógica pura (9 biomas:
+  jungle/swamp/ocean/mountain/snow/taiga/desert/forest/plains — cada uno con
+  pool, volumen y espaciado propios); `audio.js` aplica cueva > bioma >
+  día/noche y expone `setMusicBiome`. La cueva sigue mandando.
+- **B1 (teclado en paneles):** `public/a11y-nav.js` — con un panel abierto y
+  el puntero liberado, Tab/Shift+Tab recorren los slots visibles con foco
+  visible (`slot.a11y-focus`, anillo dorado `--mc-focus`) y Enter/Espacio
+  dispara el click real del slot (grid_set/chest_action/etc.). No toca el
+  juego (pointer lock) ni los inputs de texto.
+- **B2 (contraste):** `#info` (salud/comida/XP) gana contorno oscuro en las
+  4 direcciones (legible sobre nieve/desierto y cueva/lava); `#coords-hud`
+  ya tenía fondo oscuro.
+- **B3 (no solo-color):** verificado — salud/comida/XP muestran el valor
+  numérico además de la barra; la comida cambia de color pero el número y la
+  saturación dorada acompañan; el oxígeno no existe (no hay mecánica de
+  respiración en el clon).
+- **B4 (reducir movimiento):** ajuste `reduceMotion` en `mc_settings`
+  (checkbox en Ajustes → Video); con él el FOV del sprint (F10 D3) se
+  elimina (player.js). La animación de mobs de la F19.6 lo atenúa.
+- **C (raycast auditado):** veredicto **OK sin correcciones** — 1 raycast
+  por `pointermove` (compartido highlight+retarget, F13 M1); los otros 3
+  usos son eventos discretos (mousedown, clic medio picker, re-minado al
+  romper); candidatos solo de `chunkMeshes`/`lodMeshes`/`mobMeshes` (no toda
+  la escena); `far = 7`.
+- **D (tokens):** `:root` con `--mc-bg`, `--mc-bg-dark`, `--mc-border-light`,
+  `--mc-border-mid`, `--mc-border-dark`, `--mc-ink`, `--mc-focus` en
+  `public/estilo.css`; los biseles de panel/slot/hotbar/recipe-cell y el
+  fondo de slot usan las variables (los valores sueltos de F19 quedan
+  centralizados; grep de `#3a3a3a`/`#8f8f8f` apunta a `:root`).
+- **E1 (SIGTERM):** `process.on("SIGTERM")` en server.js con el mismo
+  guardado limpio que SIGINT (saveWorld + savePlayer).
+- **E2 (niveles de log):** `server/log.js` (`info`/`warn`/`error` con
+  prefijo `[info]`/`[warn]`/`[error]`, sin dependencia); aplicado a los 10
+  módulos con `console.*` (~55 usos; los `biome-ignore noConsole` se
+  eliminaron — el wrapper es la excepción central). Los resúmenes que parsea
+  `tests/run.js` los imprimen los TESTS (no el servidor), así que los
+  prefijos no rompen el runner.
+- **E3 (validación):** sin brechas nuevas reales detectadas — la validación
+  de F16 C2/C3 (límites, rango de slots, sanity de valores) sigue cubierta
+  por los handlers; la migración de logs no tocó la lógica de validación.
 
 ## 9. Criterios de aceptación (resumen)
 
@@ -257,8 +309,9 @@
    rechaza"** (ninguna se silencia); el motor 3D queda correctamente
    referenciado a la F19.6.
 
-> **Tests que cubren esta fase:** `tests/unit-fase19.5.js` (A1 ya implementado
-> y registrado en `tests/run.js`), `tests/audit-fase19.5.js` (previsto).
+> **Tests que cubren esta fase:** `tests/unit-fase19.5.js` (paleta musical
+> por bioma), `tests/unit-red.js` (evento `biome_update`), `tests/run.js`
+> (registro).
 
 ---
 
@@ -266,3 +319,11 @@
 
 **Cambios en esta spec (v1):**
 - 2026-08-15: creación del spec (documento de planificación de la fase 19.5).
+
+**Cambios en esta spec (v2) — cierre:**
+- 2026-08-15: **fase cerrada**. Bloques A-E implementados (ver §8.1),
+  suite 58/58 + auditorías 6/6 + E2E 7/7 + biome 0. El motor 3D queda
+  referenciado a la F19.6; `seo` y `threejs-loaders` rechazadas (documentado
+  en la tabla §7); `threejs-interaction` auditada (veredicto OK), `frontend-
+  design` adoptada (tokens CSS), `accessibility` adoptada (B1-B4),
+  `nodejs-*` adoptada (SIGTERM + log.js).

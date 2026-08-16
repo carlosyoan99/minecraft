@@ -161,24 +161,28 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   eventos `inventory_swap`/`grid_return`/`chestSlot` retrocompatibles (D),
   hot-reload del atlas de iconos (E), táctil/responsivo (F); cierre (G):
   suite **57 unitarios** + auditorías 6/6 + E2E 7/7 + biome 0 errores;
-  fix de regresión `dawnOffsetMs` (D-4) y `e2e-cofre` recalibrado a v6.
-  Las
-  **Fases 19.5 (skills del proyecto:
-  audio por bioma + accesibilidad + refinamientos — **en curso**), 19.6
-  (motor 3D de riesgo técnico), 20 (rolling release), 21
+  fix de regresión `dawnOffsetMs` (D-4) y `e2e-cofre` recalibrado a v6. La
+  **Fase 19.5 está cerrada y auditada** (spec `docs/spec/fase19.5-spec.md`):
+  audio por bioma (A1, evento `biome_update` del servidor + paleta pura
+  `musicpalette.js`, cueva > bioma > día/noche), accesibilidad (B1 teclado
+  en paneles `a11y-nav.js`, B2 contraste HUD, B3 no-solo-color, B4 toggle
+  `reduceMotion`), raycast auditado (C, veredicto OK), tokens CSS en `:root`
+  (D) e higiene servidor (E1 SIGTERM + E2 `server/log.js` niveles
+  uniformes); cierre: suite **58 unitarios** + auditorías 6/6 + E2E 7/7 +
+  biome 0 errores. Las
+  **Fases 19.6 (motor 3D de riesgo técnico), 20 (rolling release), 21
   (biomas/estructuras/mobs), 22
   (profundidad, minerales y fauna 1.17–1.21), 23 (diferidos de la 22:
   Lush Caves/Breeze/trims/Tuff-Caliza), 24 (Nether Update) y 25 (End
   Update, sin dragón) y **21.5 (contenido y paridad ampliados: pesca,
   bloques 1.8-1.15, combate y Trial Chambers, insertada entre 21 y 22) son
-  prospectivas** (`docs/spec/fase19.5-spec.md` — en curso,
-  `fase19.6-spec.md`, `fase20-spec.md`, `fase21-spec.md`,
+  prospectivas** (`fase19.6-spec.md`, `fase20-spec.md`, `fase21-spec.md`,
   `fase21.5-spec.md`, `fase22-spec.md`, `fase23-spec.md`, `fase24-spec.md`,
-  `fase25-spec.md`): la 19.5 exige 18 y
-  19; la 19.6 exige la 19.5; la 20 exige la 18; la 21 exige la 20; la 21.5
+  `fase25-spec.md`): la 19.6 exige la 19.5; la 20 exige la 18; la 21 exige
+  la 20; la 21.5
   exige la 21; la 22 exige la 21.5; la 23 exige la 22; la 24 exige la 23;
   la 25 exige la 24. La
-  19.5 adelanta a la 19.6 el motor 3D y a la F21 el audio por bioma; la F22
+  19.5 adelantó a la 19.6 el motor 3D y a la F21 el audio por bioma; la F22
   aporta los bloques de amatista que la geoda de la F21 reusa y confirma
   Won't propios (oxidación del cobre, renacuajos, Warden, redstone/Crafter);
   la **F21.5** absorbe la lista de mejoras del usuario (pesca, bloques

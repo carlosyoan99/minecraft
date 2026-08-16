@@ -8,6 +8,11 @@
 
 import { dayFactor as dayFactorOf } from "./daymath.js"; // Fase 18 (C-1)
 import { currentPhase } from "./daynight.js";
+import {
+	cavePalette,
+	defaultDayNightPool,
+	paletteForBiome
+} from "./musicpalette.js"; // Fase 19.5 (A1): paleta por bioma (lógica pura)
 
 const MASTER_VOLUME = 0.8; // volumen general por defecto (el silencio lo pone a 0)
 // Volumen por categoría (Fase 7): master (todo), effects (bloques, pasos,
@@ -571,10 +576,19 @@ const MUSIC_SCALE = [
 // updateMusic elige la paleta según este contexto en vez del día/noche.
 // ============================================================
 const musicCtx = { cave: false, warm: false, cold: false };
+// Fase 19.5 (A1): bioma REAL del jugador (evento biome_update del servidor).
+// null = sin dato (un servidor viejo no lo envía) → se cae a la heurística
+// por bloque de player.js (warm/cold) y al día/noche por defecto.
+let musicBiome = null;
 export function setMusicContext(ctx) {
 	musicCtx.cave = !!ctx?.cave;
 	musicCtx.warm = !!ctx?.warm;
 	musicCtx.cold = !!ctx?.cold;
+}
+// El servidor avisa al cruzar de bioma; el contexto de cueva de player.js
+// sigue mandando sobre esto (un techo es cueva aunque el bioma sea jungla).
+export function setMusicBiome(biome) {
+	musicBiome = typeof biome === "string" ? biome : null;
 }
 
 function startMusic() {
@@ -604,26 +618,33 @@ function updateMusic(dayFactor) {
 	if (!musicGain) return;
 	const now = performance.now();
 	if (now < nextMusicNoteAt) return;
-	// Paleta por contexto (Fase 10): cueva → grave/espaciado; desierto →
-	// brillante; nieve → agudo; por defecto el día/noche de siempre.
+	// Paleta por contexto (Fase 10) + bioma (Fase 19.5 A1): cueva siempre
+	// manda (techo → grave/espaciado); luego el bioma real del servidor; si
+	// no hay bioma, la heurística por bloque (warm/cold) y el día/noche.
 	let pool;
 	let vol = 0.05 + Math.random() * 0.03;
 	let gapMin = 3000;
 	if (musicCtx.cave) {
-		pool = MUSIC_SCALE.slice(0, 3); // A3..D4, graves
-		vol *= 0.7; // más tenue: el silencio también es cueva
-		gapMin = 5000; // notas espaciadas
-	} else if (musicCtx.warm) {
-		pool = MUSIC_SCALE.slice(4, 7); // G4..C5, brillante
-		vol *= 1.15;
-	} else if (musicCtx.cold) {
-		pool = [MUSIC_SCALE[3], MUSIC_SCALE[4], MUSIC_SCALE[6]]; // E4, G4, C5
-		vol *= 0.9;
-	} else {
-		// De día: escala aguda/brillante (índices 2..6); de noche: grave (0..4).
-		pool = dayFactor > 0.5 ? MUSIC_SCALE.slice(2, 7) : MUSIC_SCALE.slice(0, 5);
+		const p = cavePalette();
+		pool = p.pool;
+		vol *= p.vol;
+		gapMin = p.gapMin;
+	} else if (musicBiome) {
+		const p = paletteForBiome(musicBiome);
+		if (p) {
+			pool = p.pool;
+			vol *= p.vol;
+			gapMin = p.gapMin;
+		}
 	}
-	const freq = pool[Math.floor(Math.random() * pool.length)];
+	if (!pool) {
+		if (musicCtx.warm)
+			pool = [4, 5, 6]; // G4..C5, brillante (desierto)
+		else if (musicCtx.cold)
+			pool = [3, 4, 6]; // E4, G4, C5 (nieve)
+		else pool = defaultDayNightPool(dayFactor);
+	}
+	const freq = MUSIC_SCALE[pool[Math.floor(Math.random() * pool.length)]];
 	padNote(freq, ctx.currentTime + 0.2, vol);
 	// Intervalo aleatorio 3..7 s (cuevas: 5..9): impredecible pero constante.
 	nextMusicNoteAt = now + gapMin + Math.random() * 4000;

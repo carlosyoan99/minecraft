@@ -743,40 +743,37 @@
 ## Fase 19.5 — Skills del proyecto: audio ambiental por bioma, accesibilidad y refinamientos
 
 > Especificación (la verdad de la fase): [`docs/spec/fase19.5-spec.md`](docs/spec/fase19.5-spec.md)
-> **En curso** — iniciada tras el cierre de la Fase 19 (2026-08-15, `acca3c9`).
-> Creada desde el borrador `fase19.5-spec.md` (Descargas) + entrevista
-> 2026-08-15: skills no-motor + **audio por bioma adelantado de la F21** +
-> accesibilidad (menor prioridad); el **motor 3D sale a la F19.6**.
+> **Cerrada** — verificada 2026-08-15: suite 58/58, auditorías 6/6, E2E 7/7,
+> biome 0 errores. Skills no-motor + **audio por bioma adelantado de la F21**
+> + accesibilidad; el **motor 3D sale a la F19.6**.
 
-- [ ] A1 Audio ambiental por bioma: paleta musical distinta por bioma
-      (escala/registro) en `public/audio.js` + contexto por bioma real en
-      `public/player.js` (ruido compartido cliente o `biome_update` ligero;
-      elegir el más barato y documentarlo); cueva sigue mandando; volumen
-      colchón intacto
-- [ ] B1 Accesibilidad: navegación por teclado completa en menús/paneles
-      (auditar cuáles no la tienen; cofre/horno/ajustes/mundos/pausa)
-- [ ] B2 Accesibilidad: contraste del HUD sobre fondos claros (nieve,
-      desierto) y oscuros (cuevas, lava)
-- [ ] B3 Accesibilidad: indicadores de estado (salud/hambre/oxígeno) con
-      forma/ícono además de color
-- [ ] B4 Accesibilidad: opción "reducir movimiento" en ajustes (atenúa bob de
-      cámara y FOV del sprint; persiste en `mc_settings`)
-- [ ] C1 Auditoría del raycasting (sin rediseño): candidatos razonables, 1
-      raycast por `pointermove`, highlight/retarget compartidos; veredicto
-      documentado
-- [ ] D1 Tokens de diseño (espaciado/tipografía/paleta/biseles) extraídos de
-      lo que F19 unifique, centralizados y reutilizables
-- [ ] E1 Servidor: `SIGTERM` además de `SIGINT` con guardado limpio
-- [ ] E2 Servidor: convención de niveles de log (`info`/`warn`/`error`) sobre
-      `console.*` sin dependencia; `tests/run.js` sigue parseando resúmenes
-- [ ] E3 Servidor: repaso de validación/errores vs F16 C2/C3 y skills de Node;
-      brechas reales documentadas
-- [ ] F Matriz de skills con veredicto "se adopta / se evalúa y se rechaza"
-      (incluye `seo` y `threejs-loaders` rechazadas; motor 3D → F19.6)
-- [ ] G1 Cierre y auditoría de Fase 19.5: suite + E2E 6/6 + menú 7/7 +
-      `--audit` 6/6, `biome` 0, verificación manual (música en 3+ biomas,
-      teclado, contraste, reducción de movimiento, señales), `SCHEMA_VERSION`
-      6 intacto, docs y tracker al día
+- [x] A1 Audio ambiental por bioma: `biome_update` ligero del servidor al
+      cruzar (opción b, la más barata y precisa — el ruido de biomas no se
+      duplica en cliente) + `public/musicpalette.js` (paleta pura por bioma,
+      9 biomas); cueva > bioma > día/noche; volumen colchón intacto
+- [x] B1 Accesibilidad: navegación por teclado en paneles (`a11y-nav.js`,
+      Tab/Shift+Tab + Enter con foco visible en slots)
+- [x] B2 Accesibilidad: contraste del HUD — `#info` con contorno oscuro en
+      4 direcciones (nieve/desierto y cueva/lava)
+- [x] B3 Accesibilidad: indicadores con valor numérico además de la barra
+      (verificado: salud/comida/XP; oxígeno no existe en el clon)
+- [x] B4 Accesibilidad: opción "reducir movimiento" (`reduceMotion` en
+      ajustes → Video; elimina el FOV del sprint; persiste en `mc_settings`)
+- [x] C1 Auditoría del raycasting: veredicto **OK sin correcciones** (1
+      raycast por `pointermove`, candidatos limitados a meshes visibles)
+- [x] D1 Tokens de diseño en `:root` (CSS variables `--mc-*`): biseles,
+      fondos de slot, tinta y foco centralizados
+- [x] E1 Servidor: `SIGTERM` además de `SIGINT` con guardado limpio
+- [x] E2 Servidor: `server/log.js` — niveles `info`/`warn`/`error` con
+      prefijo uniforme, sin dependencia; runner intacto
+- [x] E3 Servidor: repaso de validación — sin brechas nuevas (F16 C2/C3
+      cubierto); documentado en la spec §8.1
+- [x] F Matriz de skills con veredicto: `accessibility`/`frontend-design`/
+      `nodejs-*` adoptadas, `threejs-interaction` auditada (OK), `seo` y
+      `threejs-loaders` rechazadas (documentado), motor 3D → F19.6
+- [x] G1 Cierre y auditoría de Fase 19.5: suite 58/58 + E2E 6/6 + menú 7/7 +
+      `--audit` 6/6, `biome` 0, `SCHEMA_VERSION` 6 intacto, docs y tracker
+      al día
 
 ---
 

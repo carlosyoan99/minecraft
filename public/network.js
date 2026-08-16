@@ -7,8 +7,9 @@ import {
 	playHit,
 	playMobDeath,
 	playTntExplode,
-	playTntFuse
-} from "./audio.js"; // Fase 10 (F2): sonidos de TNT
+	playTntFuse,
+	setMusicBiome
+} from "./audio.js"; // F10 (F1): música por contexto; F19.5 (A1): bioma real
 import { setStoredName, socket } from "./connection.js";
 import { TORCH } from "./constants.js";
 import { initDayNight } from "./daynight.js";
@@ -229,6 +230,13 @@ socket.addEventListener("message", (e) => {
 				// Fase 9 (Bloque D): flechas del esqueleto — el servidor hace broadcast
 				// de las flechas vivas; el cliente reemplaza las suyas por las nuevas.
 				updateArrows(data || []);
+				break;
+			case "biome_update":
+				// Fase 19.5 (A1): bioma real del jugador (el servidor lo calcula
+				// con getBiome y lo envía al cruzar de bioma) → la música cambia
+				// de paleta. El evento es nuevo y retrocompatible (un servidor
+				// viejo nunca lo envía; el cliente sin handler lo ignora).
+				setMusicBiome(data.biome);
 				break;
 			case "server_metrics":
 				// Fase 7: métricas del tick del servidor (media de 1s) para la

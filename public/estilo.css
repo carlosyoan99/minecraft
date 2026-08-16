@@ -410,7 +410,8 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 		rgba(0, 0, 0, 0.16)
 	);
 	border: 2px solid;
-	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
 	cursor: pointer;
 	color: #fff;
 	font-size: 13px;
@@ -525,7 +526,8 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 .world-delete {
 	background: rgba(0, 0, 0, 0.35);
 	border: 2px solid;
-	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
 	border-radius: 4px;
 	font-size: 14px;
 	line-height: 1;
@@ -637,9 +639,10 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	justify-content: center;
 	width: 40px;
 	height: 40px;
-	background: #8f8f8f;
+	background: var(--mc-bg-dark);
 	border: 2px solid;
-	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
 }
 .recipe-info {
 	display: flex;
@@ -661,9 +664,10 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 .recipe-cell {
 	width: 20px;
 	height: 20px;
-	background: #8f8f8f;
+	background: var(--mc-bg-dark);
 	border: 1px solid;
-	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -791,6 +795,13 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	left: 16px;
 	color: white;
 	background: rgba(0, 0, 0, 0.55);
+	/* F19.5 (B2): contorno oscuro en las 4 direcciones — legible sobre
+	   fondos claros (nieve/desierto) y oscuros (cueva/lava) por igual. */
+	text-shadow:
+		-1px 0 0 rgba(0, 0, 0, 0.9),
+		1px 0 0 rgba(0, 0, 0, 0.9),
+		0 -1px 0 rgba(0, 0, 0, 0.9),
+		0 1px 0 rgba(0, 0, 0, 0.9);
 	padding: 8px 14px;
 	z-index: 90;
 	font-size: 15px;
@@ -801,7 +812,6 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	min-width: 215px;
 	border: 2px solid;
 	border-color: #8d8d8d #2a2a2a #2a2a2a #8d8d8d;
-	text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
 }
 .stat {
 	display: flex;
@@ -965,6 +975,19 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	padding: 0 2px;
 	overflow: hidden;
 }
+/* Fase 19.5 (D): tokens de diseño — valores de UI centralizados (extraídos
+   de lo que F19 dejó en los paneles). Fuente única: el CSS de los paneles
+   usa estas variables; el código nuevo no repite valores sueltos. */
+:root {
+	--mc-bg: #c6c6c6; /* fondo base de paneles (lo sustituye la textura) */
+	--mc-bg-dark: #8f8f8f; /* fondo de slot */
+	--mc-border-light: #fff; /* bisel claro (luz desde arriba-izquierda) */
+	--mc-border-mid: #4a4a4a; /* bisel medio del panel */
+	--mc-border-dark: #3a3a3a; /* bisel oscuro del slot (sombra abajo-dcha) */
+	--mc-ink: #2b2b2b; /* texto sobre paneles */
+	--mc-focus: #ffd454; /* foco de navegación por teclado (F19.5 B1) */
+}
+
 /* Fase 19 (D): fantasma del ítem arrastrado — sigue al cursor sin bloquear
    el puntero (elementFromPoint del destino debe ver el slot, no al fantasma). */
 .drag-ghost {
@@ -1064,16 +1087,17 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	transform: translate(-50%, -50%);
 	/* Fase 19 (B): fondo texturizado (tesela del atlas repetida, fijada por
 	   JS vía --panel-bg en ui.js) con bisel interior estilo Minecraft. */
-	background: var(--panel-bg, #c6c6c6);
+	background: var(--panel-bg, var(--mc-bg));
 	background-repeat: repeat;
 	background-size: 16px 16px;
 	image-rendering: pixelated;
-	color: #2b2b2b;
+	color: var(--mc-ink);
 	padding: 18px 22px;
 	z-index: 200;
 	width: 420px;
 	border: 3px solid;
-	border-color: #fff #4a4a4a #4a4a4a #fff;
+	border-color: var(--mc-border-light) var(--mc-border-mid) var(--mc-border-mid)
+		var(--mc-border-light);
 	box-shadow:
 		inset 0 0 0 3px rgba(0, 0, 0, 0.22),
 		inset 0 0 24px rgba(0, 0, 0, 0.18),
@@ -1132,16 +1156,27 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	background: rgba(60, 45, 25, 0.35);
 	border-radius: 4px;
 }
+/* F19.5 (B1): foco visible de la navegación por teclado en paneles —
+   contorno dorado tipo Minecraft sobre el slot activo (no solo color: el
+   anillo es la señal, el color refuerza). */
+.slot.a11y-focus {
+	outline: 3px solid var(--mc-focus);
+	outline-offset: -3px;
+	box-shadow: 0 0 6px rgba(255, 212, 84, 0.8);
+	z-index: 2;
+}
+
 .slot {
 	width: 40px;
 	height: 40px;
-	background: #8f8f8f;
+	background: var(--mc-bg-dark);
 	background-image: linear-gradient(
 		rgba(255, 255, 255, 0.16),
 		rgba(0, 0, 0, 0.16)
 	);
 	border: 2px solid;
-	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1365,7 +1400,7 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 	font-weight: bold;
 	letter-spacing: 0.5px;
 	cursor: pointer;
-	background: #8f8f8f;
+	background: var(--mc-bg-dark);
 	background-image: linear-gradient(
 		rgba(255, 255, 255, 0.18),
 		rgba(0, 0, 0, 0.12)
@@ -1439,7 +1474,8 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 	cursor: pointer;
 	background: rgba(0, 0, 0, 0.3);
 	border: 2px solid;
-	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
 	border-radius: 4px;
 	transition:
 		background 0.12s,
@@ -1481,7 +1517,8 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 		rgba(0, 0, 0, 0.16)
 	);
 	border: 2px solid;
-	border-color: #fff #3a3a3a #3a3a3a #fff;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
 	color: #fff;
 	font-family: inherit;
 	font-size: 10px;

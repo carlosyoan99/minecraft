@@ -4,6 +4,7 @@
 // RED: HTTP + WebSocket, handler de conexión y bucle principal
 // ============================================================
 const express = require("express");
+const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const http = require("node:http");
 const WebSocket = require("ws");
 const path = require("node:path");
@@ -502,8 +503,7 @@ function handleConnection(ws, req) {
 		// por nombre — inventario, salud/comida, XP y posición.
 		if (player.gamemode !== "creative") save.restorePlayer(player);
 	}
-	// biome-ignore lint/suspicious/noConsole: log de conexión (operación normal del servidor)
-	console.log(
+	log.info(
 		`🟢 Jugador conectado: ${player.name} (${state.players.size} en línea)`
 	);
 
@@ -1028,7 +1028,7 @@ function handleConnection(ws, req) {
 			// Auditoría 2026-08-09 (§1.1): ningún error lógico interno de un
 			// mensaje puede derribar el proceso. Se registra y se ignora el
 			// mensaje; el siguiente reintenta normal.
-			console.error(`[net] error en handler de mensaje de ${playerId}:`, err);
+			log.error(`[net] error en handler de mensaje de ${playerId}:`, err);
 		}
 	});
 
@@ -1055,8 +1055,7 @@ function handleConnection(ws, req) {
 			}
 		}
 		state.players.delete(playerId);
-		// biome-ignore lint/suspicious/noConsole: log de desconexión (operación normal del servidor)
-		console.log(
+		log.info(
 			`🔴 Jugador desconectado: ${leaver ? leaver.name : playerId} (${state.players.size} en línea)`
 		);
 		broadcast("player_leave", { id: playerId });
