@@ -42,6 +42,20 @@ function unlock() {
 window.addEventListener("pointerdown", unlock, { once: true });
 window.addEventListener("keydown", unlock, { once: true });
 
+// Auditoría 2026-08-15 (CL-2): silenciar en background. Con la pestaña
+// oculta el navegador sigue programando osciladores/buffers (pad de música,
+// pasos, viento) sin que el jugador oiga nada → CPU/energía (y simplemente
+// ruido). Al ocultarse se SUSPENDE el contexto (el Web Audio deja de
+// consumir); al volver a estar visible se reanuda si el jugador no lo silenció.
+document.addEventListener("visibilitychange", async () => {
+	if (document.hidden) {
+		if (ctx && ctx.state === "running") await ctx.suspend().catch(() => {});
+		return;
+	}
+	if (ctx && ctx.state === "suspended" && !muted)
+		await ctx.resume().catch(() => {});
+});
+
 function ensureCtx() {
 	if (ctx) {
 		if (ctx.state === "suspended") ctx.resume().catch(() => {});

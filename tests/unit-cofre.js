@@ -418,6 +418,62 @@ const { ws, player: p } = connect();
 		c.fill(null);
 		p.inventory.fill(null);
 	}
+	p.openChest = key;
+	c.fill(null);
+	p.inventory.fill(null);
+	ws.sent.length = 0;
+	// put con invSlot "length": p.inventory["length"] === 36 (truthy) → el
+	// guard falso lo dejaba pasar y el `inventory[invSlot]=null` truncaba.
+	p.inventory[0] = { id: B.STONE, count: 2 };
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "chest_action",
+			data: { action: "put", invSlot: "length" }
+		})
+	);
+	check(
+		"H1 put con invSlot no entero → ignorado (inventario intacto, sin truncar)",
+		p.inventory.length === 36 &&
+			p.inventory[0].id === B.STONE &&
+			c.every((s) => s === null),
+		`inv.len=${p.inventory.length} c[0]=${JSON.stringify(c[0])}`
+	);
+	// take con chestSlot "length": c["length"] === 27 (truthy) → el guard
+	// falso lo dejaba llegar al `c[chestSlot]=null` que vaciaba el cofre.
+	c[5] = { id: I.DIAMOND, count: 1 };
+	p.inventory.fill(null);
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "chest_action",
+			data: { action: "take", chestSlot: "length" }
+		})
+	);
+	check(
+		"H1 take con chestSlot no entero → ignorado (cofre intacto, sin truncar)",
+		c.length === 27 && c[5] && c[5].id === I.DIAMOND,
+		`c.len=${c.length} c[5]=${JSON.stringify(c[5])}`
+	);
+	// put con invSlot fuera de rango (-1 / 36) → igualmente rechazado
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "chest_action",
+			data: { action: "put", invSlot: 36 }
+		})
+	);
+	check(
+		"H1 put con invSlot fuera de rango se ignora",
+		p.inventory[0] === null && c.every((s) => s === null || s.id === I.DIAMOND)
+	);
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "chest_action", data: { action: "close" } })
+	);
+	p.openChest = null;
+	c.fill(null);
+	p.inventory.fill(null);
 }
 
 // ============================================================

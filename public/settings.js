@@ -15,8 +15,14 @@ import {
 	QUALITY_DEFAULT,
 	QUALITY_PROFILES
 } from "./quality.js";
-import { applyQuality, controls, setFov } from "./scene.js";
-import { setRenderDistance } from "./world.js";
+import {
+	applyQuality,
+	controls,
+	setFov,
+	setToonStyle,
+	setTorchLight
+} from "./scene.js";
+import { setRenderDistance, setWorldMipmaps } from "./world.js";
 
 const STORAGE_KEY = "mc_settings";
 const DEFAULTS = {
@@ -42,7 +48,19 @@ const DEFAULTS = {
 	// efectos de cámara que pueden provocar mareo: el FOV del sprint (F10 D3)
 	// se elimina y el vaivén de animación de mobs (F19.6 F) se reduce a la
 	// mitad. Persistido como el resto de ajustes.
-	reduceMotion: false
+	reduceMotion: false,
+	// Fase 19.6 (B): material "toon" (MeshToonMaterial por bandas). NO es el
+	// perfil por defecto — se mantiene MeshLambertMaterial hasta que el
+	// usuario lo activa. Swap de material en caliente (materialstyle.js).
+	toon: false,
+	// Fase 19.6 (A2): luz puntual real en antorchas cercanas (PointLight con
+	// presupuesto). Opción de calidad alta: OFF por defecto (la luz horneada
+	// por celda del atlas sigue siendo la base).
+	torchLight: false,
+	// Fase 19.6 (E): mipmaps + filtrado lineal en el atlas de terreno.
+	// OFF por defecto: el look pixel-art crisp (NearestFilter) es la marca
+	// del proyecto; el toggle lo da a quien quiera nitidez a distancia.
+	mipmaps: false
 };
 
 let settings = { ...DEFAULTS };
@@ -117,6 +135,21 @@ export function setSetting(key, value) {
 		// Fase 16 (E1): solo se toca la preferencia; el cambio real de pantalla
 		// completa lo hace el gesto del usuario (F11/checkbox) vía toggleFullscreen.
 		settings.fullscreen = !!value;
+	} else if (key === "toon") {
+		// Fase 19.6 (B): swap de material en caliente (lambert ↔ toon) sobre
+		// todas las mallas vivas; las nuevas ya usan worldMaterial().
+		settings.toon = !!value;
+		setToonStyle(settings.toon);
+	} else if (key === "torchLight") {
+		// Fase 19.6 (A2): luz puntual de antorchas cercanas (presupuestada).
+		settings.torchLight = !!value;
+		setTorchLight(settings.torchLight);
+	} else if (key === "mipmaps") {
+		// Fase 19.6 (E): mipmaps/anisotropía del atlas. Implica reconstruir la
+		// textura compartida y repintar los chunks (cambio de filtros, no de
+		// geometría).
+		settings.mipmaps = !!value;
+		setWorldMipmaps(settings.mipmaps);
 	}
 	save();
 }
@@ -178,6 +211,12 @@ export function applyStoredSettings() {
 	setVolume("effects", settings.volumeEffects);
 	setVolume("ambient", settings.volumeAmbient);
 	applyQuality(settings.quality);
+	// Fase 19.6: aplicar los toggles persistidos al arrancar (toon, luz de
+	// antorcha y mipmaps son OFF por defecto; si el usuario los guardó
+	// activados, se restauran).
+	setToonStyle(settings.toon);
+	setTorchLight(settings.torchLight);
+	setWorldMipmaps(settings.mipmaps);
 	send("settings", { renderDistance: settings.renderDistance });
 }
 

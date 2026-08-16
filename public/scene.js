@@ -3,11 +3,27 @@
 // ============================================================
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+// Fase 19.6 (B): estilo de material global (lambert ↔ toon).
+import { applyMaterialStyle, setToon } from "./materialstyle.js";
 import {
 	QUALITY_DEFAULT,
 	qualityPixelRatio,
 	qualityProfile
 } from "./quality.js";
+// Fase 19.6 (A2): luz puntual de antorchas (presupuestada, OFF por defecto).
+import { setTorchLight as torchLightSwitch } from "./torchlights.js";
+
+// Re-export de los toggles de la F19.6 para settings.js (que importa de aquí
+// como del resto de ajustes de render): el swap de estilo toon y la luz de
+// antorcha se aplican sobre la ESCENA completa.
+export function setToonStyle(on) {
+	setToon(on);
+	applyMaterialStyle(scene);
+}
+export function setTorchLight(on) {
+	torchLightSwitch(on);
+}
+export { applyMaterialStyle };
 
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
@@ -48,6 +64,12 @@ export function setFov(fov) {
 
 // Luces exportadas: daynight.js las ajusta cada frame según la fase del ciclo.
 export const ambient = new THREE.AmbientLight(0x8899bb, 0.7);
+// Fase 19.6 (A1): HemisphereLight — gradiente cielo/suelo con costo casi
+// nulo. Las caras que miran arriba reciben más luz del color de cielo y las
+// que miran abajo más del suelo: da volumen al terreno al aire libre (el
+// AmbientLight plano aplaneaba el relieve). Intensidad conservadora; si en
+// la medición degradara >2%, se reduce (ver spec, Bloque A).
+export const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x8a7a5a, 0.4);
 export const sun = new THREE.DirectionalLight(0xfff2d0, 1.1);
 sun.position.set(60, 90, 40);
 sun.castShadow = true;
@@ -57,6 +79,7 @@ sun.shadow.camera.right = 60;
 sun.shadow.camera.top = 60;
 sun.shadow.camera.bottom = -60;
 scene.add(ambient);
+scene.add(hemi); // F19.6 (A1)
 scene.add(sun);
 // Auditoría 2026-08-09 (§3.4): las sombras siguen al jugador. El target del
 // sol estaba en el origen y el frustum del shadow map fijo en ±60: al

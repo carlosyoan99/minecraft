@@ -36,10 +36,26 @@
   estilo Minecraft (5 niveles de sombra según los vecinos sólidos en las
   esquinas) en el color por vértice del terreno opaco — barato, sin
   shaders.
-- **Agua mejorada (Fase 10):** la cara superior del agua baja a 0.875
-  (14/16, como MC, sin z-fighting), textura de agua dedicada desplazable
-  (`updateLiquidAnimation` mueve el `offset` para la corriente) y pulso de
-  opacidad.
+- **Agua mejorada (Fase 10 + F19.6 C1):** la cara superior del agua baja a
+  0.875 (14/16, como MC, sin z-fighting). Desde F19.6 el agua/lava son un
+  `ShaderMaterial` dedicado: la corriente se anima con `uTime` en el
+  fragment shader (ya no se mueve el `offset` de la textura) y el paso
+  día/noche entra por `uDay`, todo a 60 FPS sin rewinds. Pulso de opacidad
+  conservado.
+- **Plantas con viento (F19.6 C2):** hierba/flores/trigo (`public/meshbuild.js`),
+  un único buffer `plant` por chunk, mecen sus vértices en un vertex shader
+  que usa el atributo `wind` (fase de celda + altura 0..1) más `uTime`. No
+  migra a `InstancedMesh`: ya son 1 mesh + 1 draw call por chunk (ver
+  decisión D del spec F19.6 — evaluado y rechazado).
+- **Materiales del mundo (F19.6 B):** todos los meshes del terreno/agua/
+  plantas pasan por `worldMaterial` (`public/materialstyle.js`). El
+  material por defecto sigue siendo `MeshLambertMaterial`; el toggle de
+  ajustes `toon` (persistido en `mc_settings`) los intercambia por
+  `MeshToonMaterial` en caliente sin tocar la geometría del geopool.
+- **Mipmaps del atlas (F19.6 E):** toggle `mipmaps` (OFF por defecto, para
+  mantener el look 16×16 crisp): `setWorldMipmaps` reconfigura
+  minFilter/generateMipmaps del atlas de terreno y `dispose()` sigue
+  liberando al descargar chunks.
 
 ### Por qué así
 
@@ -130,6 +146,11 @@ skill `performance-optimization`: **no allocar en bucles calientes**.
 - `public/world.js` **hornea** esa luz en colores por vértice de la
   geometría (la luz de bloque importa cuando la luz de cielo es baja, de
   noche).
+- **Luz puntual de antorchas (F19.6 A2):** extra de render opcional
+  (`torchlights.js` + lógica pura `torchlogic.js`): `PointLight` real solo
+  en las antorchas dentro de `TORCH_LIGHT_BUDGET` (4) y radio 14 del
+  jugador. Toggle de calidad `torchLight`, **OFF por defecto** — la luz
+  horneada sigue siendo la base; es un extra de volumen, no un reemplazo.
 
 ### Por qué así
 
@@ -181,9 +202,13 @@ skill `performance-optimization`: **no allocar en bucles calientes**.
   alto, conejo con orejas, pollo...
 - **Un solo material por mob** (el atlas completo, base 0xffffff): la
   quema solar y el flash de daño (`flashMob`) tiñen el grupo entero.
-- **Patas animadas** (Fase 10): cada extremidad lleva `userData.limbIndex`
-  y `setMobWalk` las oscila con una fase según la distancia recorrida (y
-  `resetMobWalk` al parar) — los mobs y los jugadores remotos "caminan".
+- **Patas animadas** (Fase 10 + F19.6 F1): cada extremidad lleva
+  `userData.limbIndex` y `setMobWalk` las oscila con una fase según la
+  distancia recorrida (y `resetMobWalk` al parar) — los mobs y los
+  jugadores remotos "caminan". Desde F19.6 la caminata es balanceo por
+  trigonometría (senos con fase por mob) y los hostiles adelantan el
+  brazo/garra al atacar (`triggerMobAttack`); el toggle de accesibilidad
+  "reducir movimiento" (F19.5 B4) atenúa el balanceo a escala 0.4.
 - El grupo raíz conserva `userData.mobId/mobType` para el raycast de
   combate: `input.js` intersecta los **hijos** y sube al raíz.
 - `updateMobs` sincroniza posiciones/interpolaciones desde `mobs_update`;
@@ -257,6 +282,10 @@ mobs visibles en escena).
   fija).
 - `updateDayNight` interpola colores de cielo (cenit/horizonte),
   luz ambiental, luz del sol y niebla por la fase (día/noche/atardecer).
+- **Volumen al aire libre (F19.6 A1):** además del `AmbientLight` plano,
+  `scene.js` añade un `HemisphereLight` (cielo arriba / suelo abajo) de
+  intensidad conservadora, cuyo color sigue la fase vía `uDay` — da
+  volumen al terreno con costo casi nulo.
 - **Niebla submarina (Fase 10, refinada en Fase 16/B1):**
   `setUnderwater` (lo detecta `player.js` con la cámara sumergida)
   sobreescribe la niebla con azul denso y muy cercano mientras se nada.

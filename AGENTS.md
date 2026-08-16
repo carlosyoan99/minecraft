@@ -173,14 +173,29 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   `reduceMotion`), raycast auditado (C, veredicto OK), tokens CSS en `:root`
   (D) e higiene servidor (E1 SIGTERM + E2 `server/log.js` niveles
   uniformes); cierre: suite **58 unitarios** + auditorías 6/6 + E2E 7/7 +
-  biome 0 errores. Las
-  **Fases 19.6 (motor 3D de riesgo técnico), 20 (rolling release), 21
+  biome 0 errores. La **Fase 19.6 está cerrada** (spec
+  `docs/spec/fase19.6-spec.md`, 2026-08-16): motor 3D — iluminación A1
+  (`HemisphereLight` + `uDay`) y A2 (luz puntual de antorchas con
+  `TORCH_LIGHT_BUDGET` 4 y toggle `torchLight`, OFF por defecto;
+  `torchlights.js`/`torchlogic.js`), materiales B (los shaders del mundo van
+  por `worldMaterial` de `materialstyle.js`; `MeshToonMaterial` como toggle
+  `toon` en ajustes, `MeshLambertMaterial` sigue por defecto), shaders C1/C2
+  (agua/lava `ShaderMaterial` con `uTime`/`uDay`; plantas con attribute
+  `wind` y categoría `plant` del geopool), instancing **D evaluado y
+  rechazado** (la vegetación ya se fusiona por chunk — decisión documentada
+  en la spec §5), mipmaps E toggle `mipmaps` (`setWorldMipmaps`, OFF por
+  defecto) y animación de mobs F (caminar/atacar procedural,
+  `triggerMobAttack`, "reducir movimiento" lo atenúa). Cierre:
+  `tests/unit-fase19.6.js` (21 checks) + suite **59 unitarios** + E2E 7/7 +
+  auditorías 6/6 + biome 0 errores; sin cambios de red, guardado (`v6`) ni
+  IDs B/I. Las
+  **Fases 20 (rolling release), 21
   (biomas/estructuras/mobs), 22
   (profundidad, minerales y fauna 1.17–1.21), 23 (diferidos de la 22:
   Lush Caves/Breeze/trims/Tuff-Caliza), 24 (Nether Update) y 25 (End
   Update, sin dragón) y **21.5 (contenido y paridad ampliados: pesca,
   bloques 1.8-1.15, combate y Trial Chambers, insertada entre 21 y 22) son
-  prospectivas** (`fase19.6-spec.md`, `fase20-spec.md`, `fase21-spec.md`,
+  prospectivas** (`fase20-spec.md`, `fase21-spec.md`,
   `fase21.5-spec.md`, `fase22-spec.md`, `fase23-spec.md`, `fase24-spec.md`,
   `fase25-spec.md`): la 19.6 exige la 19.5; la 20 exige la 18; la 21 exige
   la 20; la 21.5

@@ -15,7 +15,12 @@ const WORLD_HEIGHT = 128;
 const WORLD_MIN_Y = -64; // fondo del mundo (capa de bedrock)
 const WORLD_MAX_Y = WORLD_MIN_Y + WORLD_HEIGHT - 1; // 63
 const TICK_MS = 50; // 20 ticks por segundo
-const SAVE_INTERVAL_MS = 30000; // Guardar cada 30s
+// Auditoría 2026-08-15 (F1): intervalo de autosave configurable con la env
+// SAVE_INTERVAL_MS (ms) y bajado de 30 s a 15 s por defecto — los E2E y la
+// resiliencia ante crashes/cortes de luz sufren menos pérdida de
+// inventario/construcciones (la cola async hace el coste de escritura
+// despreciable: lotes con setImmediate).
+const SAVE_INTERVAL_MS = Number(process.env.SAVE_INTERVAL_MS) || 15000;
 const VIEW_DISTANCE_CHUNKS = 6; // Chunks generados alrededor de cada jugador al conectar
 const UNLOAD_DISTANCE_CHUNKS = 10; // Chunks sin jugadores a menos de esta distancia (en chunks) se descargan
 const UNLOAD_INTERVAL_MS = 10000; // Cada 10s se buscan chunks lejanos que descargar
@@ -75,6 +80,14 @@ const MAX_CONNECTIONS = 10;
 // deja margen a bloqueos del cliente (jitter/tabloss) sin permitir flood.
 // superarlo corta la conexión (el cliente la reintenta).
 const MAX_MSG_RATE = 30;
+// Auditoría 2026-08-15 (B2): rate-limit POR ACCIÓN. La cuota global
+// MAX_MSG_RATE la agotan normalmente los ~20 moves/s del juego, así que un
+// cliente hostil podía colar hasta 30 block_action/chest_action/interact/chat
+// por segundo sin tocar el límite (spam de interacciones "legítimas"). Este
+// tope SEPARADO cuenta solo los eventos de mutación/no-move y, al ser MÁS
+// BAJO que el global (20/s), sí les pone un techo real: minar ~4/s + colocar
+// ~4/s + ráfagas de chest/inventario caben holgados; más es flood.
+const MAX_ACTION_RATE = 20;
 // Fase 17 (A1): la semilla se configura con la env var SEED. Sin SEED el
 // servidor arranca en MODO MENÚ: no carga ningún mundo hasta que el primer
 // jugador elige/crea uno (join_world). Con SEED (p. ej. los E2E) arranca
@@ -1171,9 +1184,11 @@ const BURNS_IN_SUN = new Set(["zombie"]);
 // Operadores (Fase 7, auditoría): nombres con permiso para los comandos que
 // mutan el mundo o al jugador (/tp, /give, /time, /gamemode, /reload, /op).
 // Se configuran con la env var OPS (nombres separados por comas, sin
-// distinción de mayúsculas); además, el PRIMER jugador conectado (el host)
-// es operador automáticamente (ver net.js). Fuera de alcance: autenticación
-// real — esto es un control básico para servidores pequeños.
+// distinción de mayúsculas). Auditoría 2026-08-15 (M4): el "primer jugador
+// conectado es OP" (host) SOLO aplica cuando OPS está vacía (LAN/menú/E2E
+// sin lista); con OPS definida la lista manda y no hay host automático (se
+// elimina la carrera de privilegios tras un reinicio). Fuera de alcance:
+// autenticación real — esto es un control básico para servidores pequeños.
 const OPS = new Set(
 	(process.env.OPS || "")
 		.split(",")
@@ -1213,6 +1228,7 @@ module.exports = {
 	WS_MAX_PAYLOAD,
 	MAX_CONNECTIONS,
 	MAX_MSG_RATE,
+	MAX_ACTION_RATE,
 	WORLD_ROOT,
 	seedDir,
 	setWorldSeed,

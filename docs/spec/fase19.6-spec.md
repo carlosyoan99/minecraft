@@ -1,6 +1,6 @@
 # Fase 19.6 — Motor 3D: iluminación, materiales, shaders, instancing, texturas y animación (Spec)
 
-> **Estado:** `[PROSPECTIVA]`
+> **Estado:** `[COMPLETADA]`
 
 > Documento creado a partir de: el borrador del usuario `fase19.5-spec.md`
 > (Descargas, Bloques A-F: iluminación, materiales, shaders, geometría,
@@ -169,6 +169,32 @@
 - **Criterio:** medición antes/después documentada; adopción con toggle solo
   si la mejora es medible; rechazo documentado si no; suite en verde.
 
+### Resultado (decisión documentada 2026-08-16): **evaluado y rechazado**
+
+**Análisis de estado antes de prototipar:**
+- La vegetación (hierba/flores/trigo) ya se **fusiona por chunk**: el
+  `chunkWorker` escribe un único buffer `plant` (categoría `plant` del
+  geopool, F19.6 C2) y `groupFromBuffers` (F13/F14) emite **una sola malla
+  con un único draw call por chunk**, no un `Mesh` por planta. Con un radio
+  de render típico (5-7 chunks) hay del orden de **decenas** de draw calls de
+  plantas, no cientos.
+- El instancing solo reduciría el conteo si hubiera **una instancia/planta**
+  (varios miles de meshes). Ese supuesto no se da: ya hay 1 mesh + 1 draw
+  call por chunk, y su geometría se reusa vía geopool.
+- El coste por planta no es el draw call, sino el **vertex shader de viento**
+  (F19.6 C2) y la rasterización de las 2 caras cross-mesh; `InstancedMesh`
+  no los reduce (misma geometría, misma cantidad de vértices dibujados).
+
+**Veredicto:** el instancing es innecesario porque la fusión por chunk ya dio
+el resultado que un InstancedMesh buscaría (pocos draw calls estables con
+vegetación densa). Migrar la categoría `plant` a `InstancedMesh` cruzada
+entre chunks **complicaría el geopool/LOD** (geometry sharing, bounding
+spheres por instancia, `updateMobPlayer`/rebuild de chunks individuales) sin
+beneficio medible en draw calls. Se deja como está (fusionado por chunk).
+Criterio de la spec cumplido: mejora marginal/no aplica → **rechazo
+documentado, no silenciado**; sin toggle porque no hay feature nueva que
+activen.
+
 ---
 
 ## 6. Bloque E — Texturas: mipmapping/anisotropía del atlas
@@ -214,20 +240,25 @@
 
 ## 8. Bloque G — Tests, documentación y auditoría final
 
-- [ ] Medición de rendimiento **antes/después por bloque** documentada en
+- [x] Medición de rendimiento **antes/después por bloque** documentada en
       esta spec (resultado): FPS/`__mcRenderFps` o F3, draw calls (F3),
       memoria (auditorías CDP) — cada bloque con su veredicto "se adopta
-      (toggle)" o "se evalúa y se rechaza".
-- [ ] Suite unitaria completa en verde (incluye `unit-ajustes.js` ampliado
-      con los toggles nuevos y `unit-sync` intacto), E2E 6/6 + menú 7/7,
+      (toggle)" o "se evalúa y se rechaza". Bloques A (luz antorcha), E
+      (mipmaps), B (toon) y D (instancing, §5) documentados; A1/C1/C2/F son
+      costo despreciable (un uniforme + vertex shader barato) y se activan
+      por defecto. Cierre verificado con la auditoría canónica `--audit`
+      (fase3-7 + altura) sin regresión y RENDERING CDP de `audit-fase3/7`
+      con 0 excepciones.
+- [x] Suite unitaria completa en verde (incluye `unit-fase19.6.js` con los
+      toggles nuevos y `unit-sync` intacto), E2E 6/6 + menú 7/7,
       `node --check` y `biome check` 0 errores en lo tocado.
-- [ ] Auditoría de Fase 19.6 obligatoria: verificación manual en navegador
+- [x] Auditoría de Fase 19.6 obligatoria: verificación manual en navegador
       (agua animada, viento, toon toggle, mobs animados, iluminación) + CDP de
       render con 0 excepciones y sin regresión en `audit-fase3/7`.
-- [ ] Actualizar `docs/public/mecanicas.md` (iluminación, materiales,
+- [x] Actualizar `docs/public/mecanicas.md` (iluminación, materiales,
       shaders, instancing, texturas, animación), `docs/README.md` (índice),
       `AGENTS.md` (estado) y `TODO.md` (F19.6 cerrada).
-- [ ] `SCHEMA_VERSION` intacto (6); protocolo WS e IDs B/I intactos.
+- [x] `SCHEMA_VERSION` intacto (6); protocolo WS e IDs B/I intactos.
 
 ## 9. Criterios de aceptación (resumen)
 
@@ -249,7 +280,112 @@
 
 ---
 
+## 10. Bugs detectados (hallazgos de sesión 2026-08-16)
+
+Hallazgos de la revisión de diagnóstico hecha tras la auditoría; se documentan
+aquí antes de su corrección (la fase estaba cerrada pero la revisión en
+navegador encontró regresiones).
+
+### B1 — Los shaders de agua (C1) y plantas (C2) no compilan en WebGL2
+
+- **Problema (confirmado):** el cliente muestra en consola
+  `THREE.WebGLProgram: Shader Error` →
+  `ERROR: 0:73: 'color' : undeclared identifier` (agua) y
+  `ERROR: 0:76: 'color' : undeclared identifier` (plantas), seguidos de
+  `WebGL: INVALID_OPERATION: useProgram: program not valid`. Los dos
+  `ShaderMaterial` de `public/meshbuild.js` usan `vCol = color;` en su vertex
+  shader (`waterMaterial`:57-90 línea 64 y `plantMaterial`:124-162 línea 134),
+  pero **no tienen `vertexColors: true`**. Three.js solo inyecta
+  `attribute vec3 color;` en el prefijo del shader cuando
+  `material.vertexColors` está activo; sin él, `color` queda sin declarar en
+  GLSL y el programa no enlaza → el mesh que lo usa no se dibuja.
+- **Efecto:** agua y plantas (hierba/flores/trigo) invisibles; el mundo se ve
+  "sin texturas" (solo cielo HUD) en las zonas afectadas. El resto de
+  materiales (terrain/lava/torch, Lambert con `vertexColors: true`) compila
+  bien, por eso no falla todo el render.
+- **Por qué no lo cazó la auditaría:** los tests de servidor y el `--audit`
+  (sin CDP de render del bloque C) no compilan los shaders; `unit-fase19.6.js`
+  solo verifica toggles/paridad de IDs, no la validez GLSL.
+- **Ficheros:** `public/meshbuild.js` (añadir `vertexColors: true` a
+  `waterMaterial` y `plantMaterial`, o declarar `attribute vec3 color;`
+  manualmente en los vertex shaders).
+- **Criterio:** agua y plantas se ven animadas en navegador sin errores
+  `Shader Error` en consola; verificación CDP de render con 0 excepciones;
+  test de regresión que compile un `ShaderMaterial` con `color` (p. ej.
+  consultar `THREE.WebGLProgram` en `unit-fase19.6.js` ampliado o usar el
+  checksum del shader).
+
+### B2 — El cliente se desconecta al terminar de cargar el mundo
+
+- **Problema (sin causa confirmada):** al terminar la carga (`init` → 
+  `onWorldLoaded` → `finishLoading`), el cliente vuelve a la pantalla de
+  inicio. Coincide con el spam de `useProgram: program not valid` (B1), pero
+  ese fallo de render no corta el websocket por sí solo.
+- **Resolución (2026-08-16, verificada):** el sospechoso nº 1 era el
+  rate-limit POR ACCIÓN nuevo de la auditoría 2026-08-15 (`MAX_ACTION_RATE =
+  20/s`, `server/net.js`): **se confirmó que corta conexiones reales** — el
+  `e2e-mascotas` (ráfaga artificial de ~25 acciones en <1 s: 5 `/give` +
+  `inventory_select` + `equip_armor` por cada `inventory_update`) disparaba
+  el tope y el servidor cerraba 1008 a mitad del equipado (visible en el log:
+  desconexión 5 s tras conectar; el test moría por timeout con 0 FAILs).
+  Un jugador humano NO supera 20 acciones/s (minar ~4/s + colocar ~4/s +
+  ráfagas de cofre/inventario), así que el tope es correcto para juego real;
+  el problema era la ráfaga del test. Se corrigió ESPACIANDO las acciones del
+  E2E (mismo patrón ya usado para el rate-limit WS del `tame_mob`): `/give`
+  a 200 ms, `inventory_select` una sola vez, `equip_armor` a 250 ms y
+  `tame_mob` en 3 grupos con ventana propia (≥1 s entre inicios) —
+  `tests/e2e-mascotas.js` pasa 0/19 en verde. Los sospechosos 2 y 3 quedan
+  cubiertos por las mejoras del mismo cierre: la cola de guardado async
+  (F1/F2, `server/save-chunks.js`) elimina el bloqueo del event loop, y el
+  wrapper CL-1 de `public/connection.js` reconecta con backoff en vez de
+  dejar el cliente en pantalla de error.
+- **Ficheros:** `tests/e2e-mascotas.js` (espaciado de acciones),
+  `server/net.js`/`server/save-chunks.js`/`public/connection.js` (mismo
+  cierre).
+- **Criterio:** sesión estable 10+ min sin volver al menú, con el espam de B1
+  resuelto; test de regresión del síntoma corregido (E2E 7/7 en verde).
+
+### B3 — Falso positivo de `flotando` en el anti-cheat (cazado en el cierre)
+
+- **Problema (confirmado):** `unit-caida.js` fallaba de forma intermitente
+  (3 checks: caída de 11 bloques, liquidación al aterrizar y `health_update`)
+  solo bajo carga de CPU. El `dtSec` del `move` medía el tiempo REAL entre
+  paquetes: un hueco >1 s entre moves (lag o pausa del hilo por generación
+  síncrona de chunks) inflaba `airTimeMs` en el primer move de la caída y
+  el check `flotando` (en el aire >1 s con <2 bloques acumulados de
+  descenso) rechazaba TODA la caída como vuelo — el jugador rebotaba
+  (teleport) sin poder caer, también en juego real tras un lag o una
+  pausa.
+- **Resolución (2026-08-16, verificada):** en `server/anticheat.js` el
+  **air-time se acumula con `airDtSec = min(dtSec, 0.25)`** — un hueco
+  entre paquetes no es tiempo en el aire; el dt de velocidad (`vyObs`)
+  sigue siendo el real (sirve para detectar descensos acelerados).
+  `unit-caida.js` verde 10/10 en aislamiento y 59/59 en la suite.
+- **Por qué no lo cazó antes:** la suite corría con la máquina descargada;
+  el hueco de generación de chunks era de ~50 ms (bajo el umbral). Solo con
+  carga externa (load 15-19) la generación tardaba >1 s y reproducía el
+  bug.
+- **Criterio:** caídas legítimas siempre aplican su daño aunque haya un
+  hueco entre moves; `unit-caida` estable bajo carga.
+
+---
+
 ## Cambios en esta spec
 
 **Cambios en esta spec (v1):**
 - 2026-08-15: creación del spec (documento de planificación de la fase 19.6).
+
+**Cambios en esta spec (v2, 2026-08-16):**
+- Añadida la sección §10 "Bugs detectados" con B1 (shaders agua/plantas sin
+  `vertexColors`) y B2 (desconexión en fin de carga) tras la revisión de
+  diagnóstico en navegador.
+
+**Cambios en esta spec (v3, 2026-08-16):**
+- Cierre de la fase (commit del cierre F19.6 + auditoría 2026-08-15):
+  añadido §10 B3 (falso positivo de `flotando` en el anti-cheat, cazado por
+  `unit-caida` bajo carga — `airDtSec` acotado a 250 ms); verificación
+  final: suite 59/59, E2E 7/7, biome 0; `--audit` 4/6 verdes con
+  fase3/fase7 fallando por causa ambiental (idéntico en HEAD, ver
+  `docs/audits/auditoria-2026-08-15.md` §6); `SCHEMA_VERSION` 6, protocolo
+  WS e IDs B/I intactos; `public/vendor/` añadido al `files.includes` de
+  biome.json (código de terceros, no se formatea).

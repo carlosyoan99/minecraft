@@ -379,4 +379,58 @@ function mkPlayer(name, overrides = {}) {
 	);
 }
 
+// ============================================================
+// Auditoría 2026-08-15 (M3/M4) — nombre duplicado y operador explícito
+// ============================================================
+{
+	constants.setWorldSeed("audit-m34", "M34", "survival");
+	state.players.clear();
+	// M3: dos sockets con el MISMO nombre → el segundo se rechaza (antes
+	// entrelazaba el mismo archivo de inventario: suplantación). El nombre
+	// llega por ?name= (vía req con url); se compara insensible a mayúsculas.
+	const wsA = new FakeWS();
+	net.handleConnection(wsA, { url: "/?name=Carlos" });
+	const playerA = [...state.players.values()][0];
+	r.check(
+		"M3: primer jugador con nombre en línea (isOp=host, sin OPS)",
+		!!playerA && playerA.name === "Carlos" && playerA.isOp === true,
+		JSON.stringify(playerA && { name: playerA.name, isOp: playerA.isOp })
+	);
+	const wsB = new FakeWS();
+	const before = state.players.size;
+	net.handleConnection(wsB, { url: "/?name=carlos" }); // mismo nombre (otra caja)
+	r.check(
+		"M3: segundo socket con el MISMO nombre se rechaza",
+		state.players.size === before,
+		`players=${before}→${state.players.size}`
+	);
+	// M3: set_name a un nombre en uso también se rechaza.
+	const wsC = new FakeWS();
+	net.handleConnection(wsC, { url: "/?name=Ana" });
+	const playerC = [...state.players.values()].find((q) => q.ws === wsC);
+	wsC.emit(
+		"message",
+		JSON.stringify({ event: "set_name", data: { name: "Carlos" } })
+	);
+	r.check(
+		"M3: set_name a un nombre en línea se rechaza (sigue Ana)",
+		playerC && playerC.name === "Ana",
+		playerC ? `name=${playerC.name}` : "sin jugador C"
+	);
+	// Renombrar a SÍ mismo es válido (ny otras mayúsculas no chocan).
+	wsC.emit(
+		"message",
+		JSON.stringify({ event: "set_name", data: { name: "ANA" } })
+	);
+	r.check(
+		"M3: set_name a sí mismo con distinto case se permite",
+		playerC && playerC.name === "ANA",
+		playerC ? `name=${playerC.name}` : "sin jugador C"
+	);
+	wsC.emit(
+		"message",
+		JSON.stringify({ event: "set_name", data: { name: "Ana" } })
+	);
+}
+
 r.done();

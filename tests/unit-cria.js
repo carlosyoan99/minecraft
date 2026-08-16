@@ -87,6 +87,30 @@ check(
 	state.mobs.includes(bebe2) && state.mobs.length === nAntes + 1
 );
 
+// Auditoría 2026-08-15 (M2): con la cuota GLOBAL llena (≥30 vivos), aplicar
+// comida no crea más bebés (antes solo el spawn natural la respetaba y la
+// cría multiplicaba los mobs sin tope).
+{
+	state.mobs.length = 30; // simular cuota llena
+	const c1 = new mobs.Mob("cow", 0, 10, 0);
+	const c2 = new mobs.Mob("cow", 4, 10, 0);
+	c2.loveUntil = Date.now() + 10000;
+	const ningunBebe = mobs.applyFeed(c1, [c1, c2]);
+	check(
+		"M2: cuota llena (30) → applyFeed no cría (null)",
+		ningunBebe === null && c1.loveUntil === 0
+	);
+	state.mobs.length = 29; // justo por debajo → sí puede criar
+	c1.loveUntil = Date.now() + 10000;
+	c2.loveUntil = Date.now() + 10000;
+	const bebeConHueco = mobs.applyFeed(c1, [c1, c2]);
+	check(
+		"M2: cuota con hueco (29) → applyFeed cría",
+		bebeConHueco !== null && bebeConHueco.isBaby === true
+	);
+	state.mobs.length = nAntes; // restaurar el contador del test
+}
+
 // --- mobDrops: los bebés no sueltan comida ---
 check("mobDrops bebé = null", mobs.mobDrops(bebe2) === null);
 const adulto = new mobs.Mob("cow", 0, 10, 0);

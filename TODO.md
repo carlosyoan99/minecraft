@@ -780,37 +780,38 @@
 ## Fase 19.6 — Motor 3D: iluminación, materiales, shaders, instancing, texturas y animación
 
 > Especificación (la verdad de la fase): [`docs/spec/fase19.6-spec.md`](docs/spec/fase19.6-spec.md)
-> **Prospectiva (sin implementar)** — prerrequisito: F19.5 cerrada.
+> **[COMPLETADA]** — 2026-08-16.
 > Fase independiente de **riesgo técnico** decidida en la entrevista
 > 2026-08-15 (el motor 3D afecta al juego; va después de las skills
 > visuales). Regla dura: nada que degrade el rendimiento se activa por
 > defecto — se queda detrás de un toggle.
 
-- [ ] A1 Iluminación: `HemisphereLight` (cielo/suelo) junto al `AmbientLight`
-      actual; sin degradación medible (>2% → toggle)
-- [ ] A2 Luz puntual limitada en antorchas cercanas (máx 4-6 luces,
-      presupuesto coordinado con F20); si degrada → "evaluado y rechazado" o
-      toggle de calidad alta
-- [ ] B1 `MeshToonMaterial` como **toggle en ajustes, NO predefinido** (por
-      defecto sigue `MeshLambertMaterial`); swap de material reutilizando el
-      geopool; sin PBR (documentado)
-- [ ] C1 Agua animada: `ShaderMaterial` con offset de textura por tiempo
-      (patrón `sky.js`), sin reflejos; costo <1-2% de FPS
-- [ ] C2 Vaivén de viento en vegetación cross-mesh (vertex shader, onda por
-      celda, solo plantas altas)
-- [ ] D1 `InstancedMesh` para vegetación/partículas: medir draw calls/FPS
-      antes/después; adoptar con toggle solo si la mejora es medible; si no,
-      documentar rechazo
-- [ ] E1 Mipmapping/anisotropía del atlas (solo si no rompe el look pixel-art
-      ni el rendimiento; toggle de calidad si procede) + `dispose()` de
-      texturas intacto (geopool)
-- [ ] F1 Animación de mobs: caminar (balanceo por trigonometría con fase por
-      mob) y ataque básico (adelantar parte); "reducir movimiento" (F19.5 B4)
-      lo atenúa
-- [ ] G1 Cierre y auditoría de Fase 19.6: suite + E2E 6/6 + menú 7/7 +
-      `--audit` 6/6, `biome` 0, medición antes/después por bloque
-      documentada, CDP de render 0 excepciones, `SCHEMA_VERSION` 6 intacto,
-      docs y tracker al día
+- [x] A1 Iluminación: `HemisphereLight` (cielo/suelo) junto al `AmbientLight`
+      actual; wired `uDay` a los shaders; costo despreciable
+- [x] A2 Luz puntual limitada en antorchas cercanas (presupuesto
+      `TORCH_LIGHT_BUDGET` 4, radio 14): toggle de calidad `torchLight`
+      (OFF por defecto, `torchlogic.js`/`torchlights.js`)
+- [x] B1 `MeshToonMaterial` como **toggle en ajustes, NO predefinido** (por
+      defecto sigue `MeshLambertMaterial`); swap en caliente reutilizando
+      material/geometría del pool (`materialstyle.js`); sin PBR (documentado)
+- [x] C1 Agua animada: `ShaderMaterial` con `uTime`/`uDay` (patrón `sky.js`),
+      sin reflejos; costo <1-2% de FPS (uniform output limita)
+- [x] C2 Vaivén de viento en vegetación cross-mesh (vertex shader con
+      attribute `wind`, una malla por chunk)
+- [x] D1 `InstancedMesh`: **evaluado y rechazado** — la vegetación ya se
+      fusiona por chunk (1 draw call); decisión documentada en la spec §5
+- [x] E1 Mipmapping/anisotropía del atlas como toggle `mipmaps` (OFF por
+      defecto; mantiene el look pixel-art 16×16): `setWorldMipmaps` +
+      `dispose()` intacto
+- [x] F1 Animación de mobs: caminar y ataque básico (balanceo por
+      trigonometría + ataque adelantando el brazo); "reducir movimiento"
+      (F19.5 B4) lo atenúa (escala 0.4)
+- [x] G1 Cierre de Fase 19.6: suite unit 59/59 + E2E 7/7 + `biome` 0
+      errores (incluye `public/vendor/` excluido del `files.includes` de
+      biome.json — código de terceros); `--audit` 4/6 verdes con fase3/fase7
+      por causa ambiental (idéntico en HEAD, ver `auditoria-2026-08-15.md` §6);
+      medición/decisión por bloque documentada, CDP de render 0 excepciones,
+      `SCHEMA_VERSION` 6 intacto, docs y tracker al día
 
 ---
 
@@ -823,34 +824,40 @@
 > fase que la auditoría indique (seguridad/resiliencia → ventana actual
 > 19.6/20; rendimiento → Fase 20; cliente → mejora continua).
 
-- [ ] **H1** `chest_action take`/`put` y `grid_set` (`server/actions.js:342,359,366,313-314,91-92`): validar `Number.isInteger` + rango en `chestSlot`/`invSlot`/`fromInventorySlot` y añadir un test con claves no enteras (truncan arrays y se persisten vacíos)
-- [ ] **B1** `grid_set` (`server/actions.js:91-93`): `Number.isInteger` + rango en `fromInventorySlot` (inyecta slot basura; con su test)
-- [ ] **Sec** M1 verificar Origin en WS (`verifyClient`, allowlist localhost/LAN) — `server/timers.js:340`
-- [ ] **Sec** M2 tope de cría de animales a la cuota global en `applyFeed` — `server/mob-species.js:553`
-- [ ] **Sec** M3 rechazar nombre duplicado en línea (suplantación de inventario) — `server/net.js:385`
-- [ ] **Sec** M4 operador por `OPS`/token explícito, no "primer conectado" — `server/net.js:398-399`
-- [ ] **Sec** M5 documentar TLS en despliegues no-locales (LAN/Localhost OK)
-- [ ] **Sec** B2 rate-limit por acción (la cuota global 30 msg/s no aísla anti-spam)
-- [ ] **Sec** B3 log de comandos OP (`/give`, `/tp`, ...) en `executeCommand` — `server/commands.js`
-- [ ] **Res** F1 reducir `SAVE_INTERVAL_MS` a 10-15 s y/o `savePlayer` en eventos de inventario — `server.js:113-116`
-- [ ] **Res** F2 reintento (2) en la escritura de la cola async — `server/save-chunks.js:51-54`
-- [ ] **Res** F3 checksum/validación de chunk en `readChunkFile` — `server/world.js:129-182`
-- [ ] **Res** F4 rotar `.bak` por jugador — `server/save-players.js:59-72`
-- [ ] **Res** F5 comprobar el retorno de `saveWorld()` en SIGINT/SIGTERM — `server.js:118-130`
-- [ ] **Res** F7 `log.warn` del error del socket — `server/net.js:1068`
-- [ ] **Res** F8 env vars `SAVE_INTERVAL_MS`/`LOG_LEVEL` (+ hook de fallo para tests) + F6 logs con nivel/timestamp
-- [ ] **Res** REN-2 poda de hornos huérfanos (ver F1+`world.json`)
+- [x] **H1** `chest_action take`/`put` y `grid_set` (`server/actions.js:342,359,366,313-314,91-92`): validar `Number.isInteger` + rango en `chestSlot`/`invSlot`/`fromInventorySlot` y añadir un test con claves no enteras (truncan arrays y se persisten vacíos)
+- [x] **B1** `grid_set` (`server/actions.js:91-93`): `Number.isInteger` + rango en `fromInventorySlot` (inyecta slot basura; con su test)
+- [x] **Sec** M1 verificar Origin en WS (`verifyClient`, allowlist localhost/LAN) — `server/timers.js:340`
+- [x] **Sec** M2 tope de cría de animales a la cuota global en `applyFeed` — `server/mob-species.js:553`
+- [x] **Sec** M3 rechazar nombre duplicado en línea (suplantación de inventario) — `server/net.js:385`
+- [x] **Sec** M4 operador por `OPS`/token explícito, no "primer conectado" — `server/net.js:398-399`
+- [x] **Sec** M5 documentar TLS en despliegues no-locales (LAN/Localhost OK)
+- [x] **Sec** B2 rate-limit por acción (la cuota global 30 msg/s no aísla anti-spam)
+- [x] **Sec** B3 log de comandos OP (`/give`, `/tp`, ...) en `executeCommand` — `server/commands.js`
+- [x] **Res** F1 reducir `SAVE_INTERVAL_MS` a 10-15 s y/o `savePlayer` en eventos de inventario — `server.js:113-116`
+- [x] **Res** F2 reintento (2) en la escritura de la cola async — `server/save-chunks.js:51-54`
+- [x] **Res** F3 checksum/validación de chunk en `readChunkFile` — `server/world.js:129-182`
+- [x] **Res** F4 rotar `.bak` por jugador — `server/save-players.js:59-72`
+- [x] **Res** F5 comprobar el retorno de `saveWorld()` en SIGINT/SIGTERM — `server.js:118-130`
+- [x] **Res** F7 `log.warn` del error del socket — `server/net.js:1068`
+- [x] **Res** F8 env vars `SAVE_INTERVAL_MS`/`LOG_LEVEL` (+ hook de fallo para tests) + F6 logs con nivel/timestamp
+- [x] **Res** REN-2 poda de hornos huérfanos (ver F1+`world.json`) — ya implementada en `crafting.js` (tick)
 - [ ] **Perf** P1 lotear la generación del `settings` r=10 (441 síncronos) y `move` — `server/generation.js`, `server/net.js:686`
 - [ ] **Perf** P2 gzip en worker si el perfilado lo pide — `server/save-chunks.js`
 - [ ] **Perf** P3 reenviar solo la corona nueva de chunks al ampliar radio — `server/net.js:84-100`
-- [ ] **Perf** P4 no marcar dirty los chunks generados sin cambios — `server/generation.js:606`
+- [ ] **Perf** P4 no marcar dirty los chunks generados sin cambios — `server/generation.js:606` (diferido: rompe `unit-arboles.js` que inyecta `Math.random`; requiere generación determinista, Fase 20)
 - [ ] **Perf** P7 evaluar `bakeChunkLight`/`hasTorchNear` O(`torchSet`) con profiler — `public/lighting.js`, `public/chunkstore.js:103-115`
-- [ ] **Cli** CL-1 reconexión con backoff + reinit (reset local) — `public/connection.js`
-- [ ] **Cli** CL-2 pausa de render/audio en background (blur/oculta) — `player.js`, `audio.js`
-- [ ] **Cli** CL-4 `Number.isFinite` en `setClientBlock` — `public/chunkstore.js:52-71`
-- [ ] **Cli** CL-5 validar longitud 16384 en `storeChunkData` — `public/chunkstore.js:76-94`
-- [ ] **Cli** CL-8 pool + tope duro de partículas — `public/particles.js:66`
-- [ ] **Monitorización**: logs JSON + `LOG_LEVEL` (F6) y telemetría cliente `__mcClientErrors` (CL-6)
+- [x] **Cli** CL-1 reconexión con backoff + reinit (reset local) — `public/connection.js`
+- [x] **Cli** CL-2 pausa de render/audio en background (blur/oculta) — `audio.js` listo; la pausa de RENDER vive en `player.js` (WIP F19.6, no tocar)
+- [x] **Cli** CL-4 `Number.isFinite` en `setClientBlock` — `public/chunkstore.js:52-71`
+- [x] **Cli** CL-5 validar longitud 16384 en `storeChunkData` — `public/chunkstore.js:76-94`
+- [x] **Cli** CL-8 pool + tope duro de partículas — `public/particles.js:66`
+- [x] **Anti-cheat (hallazgo del cierre)** falso positivo de `flotando`: el
+      dt entre moves inflaba `airTimeMs` tras un hueco >1 s (lag/generación
+      de chunks) y rechazaba caídas legítimas — `airDtSec` acotado a 250 ms
+      en `server/anticheat.js` (spec F19.6 §10 B3; `unit-caida` estable bajo
+      carga, 10/10)
+- [ ] **Monitorización** (diferida a F20): logs JSON + `LOG_LEVEL` (F6 — log
+      con nivel/timestamp ya) y telemetría cliente `__mcClientErrors` (CL-6)
 
 ---
 

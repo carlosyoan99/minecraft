@@ -326,6 +326,28 @@ function resetMobsDirty() {
 // ~1.5 s. Mismo valor que usaba net.js (CHUNK_FILL_PER_TICK).
 const CHUNK_FILL_PER_TICK = 6;
 
+// Auditoría 2026-08-15 (M1): CSWSH — un sitio ajeno en la misma LAN podía
+// abrir sockets contra el servidor. `verifyClient` valida el Origin/Referer
+// del handshake contra una allowlist: mismas IP (Host) o localhost. Se
+// permite sin Origin (clientes WS crudos de tests/lanchas) y hosts de
+// loopback; se rechaza un Host con puerto distinto al nuestro tras el proxy.
+function originAllowed(origin) {
+	if (!origin) return true; // WS sin navegador (tests/E2E): sin origen
+	const OUR_HOST = `localhost:${PORT}`;
+	const hostname = origin.replace(/^https?:\/\//i, "").split("/")[0];
+	if (!hostname || hostname.indexOf(":") === -1) return true; // origen relativo/raro
+	// Interfaces LAN (192.168/10./172.16-/172.31) cualquier puerto, y
+	// localhost/nuestro puerto exacto.
+	const hostOnly = hostname.split(":")[0];
+	if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(hostOnly)) return true;
+	if (
+		/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostOnly) ||
+		hostname === OUR_HOST
+	)
+		return true;
+	return false;
+}
+
 // Arranque del servidor HTTP + WebSocket. `handleConnection` y `app` se
 // pasan desde net.js (viven allí: conexión y estático); aquí solo se
 // registran el tick, el keepalive y el listen. net.js re-exporta start()
@@ -337,7 +359,14 @@ function start(handleConnection, app) {
 	// protocolo son pequeños (moves, chat ≤200 chars, block_action), así que
 	// 1 MiB basta para impedir que un cliente malicioso sature la memoria
 	// del servidor con payloads gigantes (ws cierra la conexión con 1009).
-	const wss = new WebSocket.Server({ server, maxPayload: WS_MAX_PAYLOAD });
+	const wss = new WebSocket.Server({
+		server,
+		maxPayload: WS_MAX_PAYLOAD,
+		// Auditoría 2026-08-15 (M1): allowlist de orígenes (CSWSH).
+		verifyClient(info) {
+			return originAllowed(info.origin);
+		}
+	});
 	wss.on("connection", handleConnection);
 	// Fase 17 (B2): keepalive — ping a todos los sockets cada 15s; el que no
 	// responde al pong en dos rondas se termina (detecta conexiones muertas y
@@ -408,6 +437,7 @@ module.exports = {
 	getServerMetrics,
 	sendBiomeUpdates,
 	resetMobsDirty,
+	originAllowed, // Auditoría 2026-08-15 (M1): allowlist de orígenes (test)
 	start,
 	setWorldTimeFn,
 	setBroadcastFn,

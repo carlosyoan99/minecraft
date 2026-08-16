@@ -116,17 +116,26 @@ setInterval(() => {
 }, SAVE_INTERVAL_MS);
 setInterval(save.unloadFarChunks, UNLOAD_INTERVAL_MS);
 process.on("SIGINT", () => {
-	save.saveWorld();
+	// Auditoría 2026-08-15 (F5): se comprueba el resultado del guardado —
+	// si saveWorld() falló (disco lleno/permisos) el error vuelve aquí y no
+	// se sale en silencio con el mundo sin persistir.
+	const ok = save.saveWorld();
 	for (const p of state.players.values()) save.savePlayer(p);
-	process.exit(0);
+	if (!ok)
+		log.error("SIGINT: el guardado final del mundo FALLÓ (pérdida de cambios)");
+	process.exit(ok ? 0 : 1);
 });
 // Fase 19.5 (E1): SIGTERM (kill normal de systemd/Docker/CI) — el mismo
 // guardado limpio que SIGINT: el mundo queda íntegro, sin esperar al
 // autosave de 30 s. (El autosave periódico ya cubre el caso de un kill -9.)
 process.on("SIGTERM", () => {
-	save.saveWorld();
+	const ok = save.saveWorld();
 	for (const p of state.players.values()) save.savePlayer(p);
-	process.exit(0);
+	if (!ok)
+		log.error(
+			"SIGTERM: el guardado final del mundo FALLÓ (pérdida de cambios)"
+		);
+	process.exit(ok ? 0 : 1);
 });
 
 net.start();

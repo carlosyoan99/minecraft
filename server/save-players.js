@@ -62,10 +62,21 @@ function savePlayer(player) {
 	try {
 		if (!fs.existsSync(playersDir()))
 			fs.mkdirSync(playersDir(), { recursive: true });
-		world.atomicWrite(
-			playerFilePath(player.name),
-			JSON.stringify(data, null, 2)
-		);
+		const f = playerFilePath(player.name);
+		// Auditoría 2026-08-15 (F4): rotación de copia — antes de sobrescribir
+		// se preserva el archivo anterior en <nombre>.json.bak (misma rotación
+		// que world.json). Si el guardado nuevo se corrompe a medias, el backup
+		// permite recuperar el inventario/posición previos a mano.
+		if (fs.existsSync(f)) {
+			try {
+				fs.copyFileSync(f, `${f}.bak`);
+			} catch (e) {
+				log.warn(
+					`⚠️  No se pudo crear el backup de ${player.name}: ${e.message}`
+				);
+			}
+		}
+		world.atomicWrite(f, JSON.stringify(data, null, 2));
 	} catch (e) {
 		log.warn(`⚠️  No se pudo guardar el jugador ${player.name}: ${e.message}`);
 	}

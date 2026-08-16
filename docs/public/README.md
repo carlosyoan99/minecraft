@@ -66,7 +66,10 @@ carga.
 
 | Módulo | Responsabilidad | Pureza* |
 |---|---|---|
-| `scene.js` | Escena, cámara, renderer, luces, `PointerLockControls`, calidad gráfica | DOM/THREE |
+| `scene.js` | Escena, cámara, renderer, luces (hemi F19.6 A1), `PointerLockControls`, calidad gráfica; re-exporta `setToonStyle`/`setTorchLight` (F19.6) | DOM/THREE |
+| `materialstyle.js` | Material compartido del mundo (`worldMaterial`) y toggle toon lambert↔`MeshToonMaterial` con swap en caliente (F19.6 B) | THREE |
+| `torchlogic.js` | Antorchas a encender por cercanía: `selectTorchLights` + `TORCH_LIGHT_BUDGET` | **puro** |
+| `torchlights.js` | Luz puntual real de antorchas cercanas (pool de `PointLight`) (F19.6 A2) | THREE |
 | `connection.js` | Socket WS, `send()`, nombre de jugador (localStorage) | DOM |
 | `world.js` | Ciclo de vida de mallas de chunks: mapas `chunkMeshes`/`lodMeshes`, tier LOD, frustum culling, carga/descarga, grietas y resaltado (Fase 18 D-7) | THREE |
 | `chunkstore.js` | Datos de chunks en cliente: `Uint8Array`→bloques, swap en `chunks_add`/`chunks_unload`, `torchSet` (Fase 18 D-7) | **puro** |
@@ -132,9 +135,11 @@ mocks.
    `move` al servidor.
 2. Extrapola el día/noche (`updateDayNight`) y actualiza cielo + luces.
 3. Actualiza LOD (cada 250 ms) y frustum culling de chunks.
-4. Aplica animación de agua/lava (`updateLiquidAnimation`) y nubes
-   (`updateClouds`).
-5. Renderiza.
+4. Aplica animación de agua/lava/plantas (`updateLiquidAnimation`,
+   ShaderMaterial con `uTime`/`uDay`, F19.6 C1/C2) y nubes (`updateClouds`).
+5. Actualiza la luz real de antorchas cercanas (`updateTorchLights`, F19.6 A2,
+   solo si el toggle `torchLight` está activo).
+6. Renderiza.
 
 **Por qué el cliente extrapola:** el servidor manda `dayTime` y la
 posición de los mobs a 20 Hz; el cliente interpola/extrappola entre

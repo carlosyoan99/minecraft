@@ -41,6 +41,15 @@ import { tileForFace, tileRect } from "./texturemap.js";
 
 const TORCH_LIGHT_GAIN = 1.4; // misma ganancia que world.js (luz de antorcha)
 
+// Fase 19.6 (C2): fase del vaivén de viento por celda — hash determinista
+// (misma celda → misma fase, así las plantas no bailan todas a la vez) y
+// estable entre builds de geometría. Exportado para los tests (unit-fase19.6)
+// y para el worker (chunkWorker.js importa este módulo puro).
+export function hashCell(wx, wz) {
+	const h = Math.sin(wx * 127.1 + wz * 311.7) * 43758.5453;
+	return h - Math.floor(h);
+}
+
 // Valores posibles del AO por vértice (misma curva que world.js).
 const AO_VALUES = [0.5, 0.55, 0.7, 0.85, 1.0];
 const AO_IDX = new Map(AO_VALUES.map((v, i) => [v, i]));
@@ -270,6 +279,14 @@ export function buildChunkGeometryData({
 	const water = { pos: [], norm: [], uv: [], col: [] };
 	const lava = { pos: [], norm: [], uv: [], col: [] };
 	const torch = { pos: [], norm: [], uv: [], col: [] };
+	// Fase 19.6 (C2): buffer DEDICADO de plantas — los cross-quads de hierba/
+	// flores/trigo se separan de las antorchas para poder aplicarles el vertex
+	// shader de viento (displacement sutil en x/z) sin que las antorchas (que
+	// comparten la categoría cross) se bamboleen. `wind` guarda por vértice un
+	// vec2: [fase (hash de la celda, para que no bailen todas a la vez),
+	// altura normalizada 0..1 (0 abajo, 1 arriba → el vaivén crece con la
+	// altura)]. Es un atributo SOLO de plantas: antorchas no lo llevan.
+	const plant = { pos: [], norm: [], uv: [], col: [], wind: [] };
 
 	// ----------------------------------------------------------
 	// CROSS-QUADS (antorcha Fase 6 / plantas Fase 9): dos planos cruzados
@@ -288,6 +305,9 @@ export function buildChunkGeometryData({
 		[1, 1],
 		[0, 1]
 	];
+	// Fase 19.6 (C2): `buf` es el array destino del quad (antorchas → torch;
+	// plantas → plant) y `wind` (opcional) el vec2 [fase, altura] por vértice
+	// que solo las plantas emiten (el shader de viento lo necesita).
 	const pushCrossQuad = (
 		ax,
 		ay,
@@ -304,7 +324,9 @@ export function buildChunkGeometryData({
 		nx,
 		ny,
 		nz,
-		uv
+		uv,
+		buf = torch,
+		wind = null
 	) => {
 		const verts = [
 			[ax, ay, az],
@@ -318,11 +340,12 @@ export function buildChunkGeometryData({
 			[0, 2, 3]
 		]) {
 			for (const idx of [i, j, k]) {
-				torch.pos.push(...verts[idx]);
-				torch.norm.push(nx, ny, nz);
+				buf.pos.push(...verts[idx]);
+				buf.norm.push(nx, ny, nz);
 				const [uu, vv] = QUAD_UVS[idx];
-				torch.uv.push(e0 + uu * (e1 - e0), f0 + vv * (f1 - f0));
-				torch.col.push(torchLight, torchLight, torchLight);
+				buf.uv.push(e0 + uu * (e1 - e0), f0 + vv * (f1 - f0));
+				buf.col.push(torchLight, torchLight, torchLight);
+				if (wind) buf.wind.push(wind[idx * 2], wind[idx * 2 + 1]);
 			}
 		}
 	};
@@ -365,9 +388,45 @@ export function buildChunkGeometryData({
 			uv
 		);
 	};
+	// Fase 19.6 (C2): hash determinista por celda para la fase del vaivén
+	// (definido a nivel de módulo — exportado — para compartirlo con el worker
+	// y los tests).
 	const pushPlant = (wx, wy, wz, block) => {
 		const uv = tileRectFn(tileForFaceFn(block, 0));
-		pushCrossQuad(
+		// La fase (hash de la celda) es la misma para los 4 vértices; solo
+		// cambia la altura 0 (base) / 1 (topo): en el quad cruzado los vértices
+		// 0 y 1 son la base (y = wy) y los 2 y 3 el topo (y = wy + PLANT_H).
+		const makeWind = (yx, yy, yc, yd) => {
+			const ys = [yx, yy, yc, yd];
+			const w = [];
+			for (const y of ys) {
+				w.push(hashCell(wx, wz), y > wy + 0.01 ? 1 : 0);
+			}
+			return w;
+		};
+		const push = (ax, ay, az, bx, by, bz, cx2, cy, cz2, dx, dy, dz, nx, nz) => {
+			pushCrossQuad(
+				ax,
+				ay,
+				az,
+				bx,
+				by,
+				bz,
+				cx2,
+				cy,
+				cz2,
+				dx,
+				dy,
+				dz,
+				nx,
+				0,
+				nz,
+				uv,
+				plant,
+				makeWind(ay, by, cy, dy)
+			);
+		};
+		push(
 			wx - PLANT_W,
 			wy,
 			wz - PLANT_W,
@@ -381,11 +440,9 @@ export function buildChunkGeometryData({
 			wy + PLANT_H,
 			wz - PLANT_W,
 			-Math.SQRT1_2,
-			0,
-			Math.SQRT1_2,
-			uv
+			Math.SQRT1_2
 		);
-		pushCrossQuad(
+		push(
 			wx + PLANT_W,
 			wy,
 			wz - PLANT_W,
@@ -399,9 +456,7 @@ export function buildChunkGeometryData({
 			wy + PLANT_H,
 			wz - PLANT_W,
 			-Math.SQRT1_2,
-			0,
-			-Math.SQRT1_2,
-			uv
+			-Math.SQRT1_2
 		);
 	};
 
@@ -608,10 +663,23 @@ export function buildChunkGeometryData({
 					col: Float32Array.from(b.col)
 				}
 			: null;
+	// Fase 19.6 (C2): las plantas llevan además el atributo `wind` (vec2:
+	// fase + altura normalizada) que el shader de viento consume.
+	const finalizePlant = (b) =>
+		b.pos.length
+			? {
+					pos: Float32Array.from(b.pos),
+					norm: Float32Array.from(b.norm),
+					uv: Float32Array.from(b.uv),
+					col: Float32Array.from(b.col),
+					wind: Float32Array.from(b.wind)
+				}
+			: null;
 	return {
 		terrain: finalize(terrain),
 		water: finalize(water),
 		lava: finalize(lava),
-		torch: finalize(torch)
+		torch: finalize(torch),
+		plant: finalizePlant(plant)
 	};
 }

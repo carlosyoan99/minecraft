@@ -12,7 +12,11 @@ import {
 	duskFactor,
 	fogDistances
 } from "./daymath.js"; // Fase 16 (G3): matemática pura del ciclo
-import { ambient, scene, sun } from "./scene.js";
+// Fase 19.6 (C1/C2): agua y plantas leen el mismo reloj de día para que sus
+// shaders no brillen de noche (uDay). Import ligero de meshbuild (solo
+// uniformes compartidos; no toca la geometría).
+import { plantMaterialUniforms, waterMaterialUniforms } from "./meshbuild.js";
+import { ambient, hemi, scene, sun } from "./scene.js";
 import { updateSky } from "./sky.js"; // Fase 7: dome procedural (degradado + sol/luna)
 
 // Colores clave del ciclo
@@ -69,6 +73,16 @@ export function updateDayNight() {
 	// Intensidad de luz: día brillante, noche tenue (la luna nunca apaga del todo)
 	sun.intensity = 0.08 + dayFactor * 1.05;
 	ambient.intensity = 0.25 + dayFactor * 0.5;
+	// F19.6 (A1): la luz hemisférica sigue el ciclo — bien arriba en el día,
+	// tenue de noche (consistente con el resto de la iluminación, no aporta
+	// luz donde no debería). El sky del hemisferio toma el tinte solar.
+	hemi.intensity = 0.15 + dayFactor * 0.35;
+	hemi.color.copy(DAY_SUN).lerp(NIGHT_SUN, 1 - dayFactor);
+
+	// F19.6 (C1/C2): los shaders de agua y plantas encienden su luz propia
+	// con el factor de día (0 de noche → 1 de día), igual que las luces.
+	waterMaterialUniforms.uDay.value = dayFactor;
+	plantMaterialUniforms.uDay.value = dayFactor;
 
 	// Tinte de la luz solar: cálido de día, azulado de noche
 	sun.color.copy(DAY_SUN).lerp(NIGHT_SUN, 1 - dayFactor);

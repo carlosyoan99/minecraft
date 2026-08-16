@@ -87,8 +87,18 @@ function handleCraft(p, ws, data) {
 }
 
 // El cliente pide mover un item del inventario a una celda de crafteo.
+// Auditoría 2026-08-15 (B1): `fromInventorySlot` se validaba con falsy (un
+// índice no entero — p. ej. `"length"` — pasaba el guard y resolvía a
+// `p.inventory["length"]` === 36, truthy → slot basura en la grid). Se exige
+// entero en rango 0-35.
 function handleGridSet(p, ws, data) {
 	const { fromInventorySlot, toGridSlot } = data;
+	if (
+		!Number.isInteger(fromInventorySlot) ||
+		fromInventorySlot < 0 ||
+		fromInventorySlot > 35
+	)
+		return;
 	const item = p.inventory[fromInventorySlot];
 	if (!item || toGridSlot < 0 || toGridSlot > 8) return;
 	if (p.craftingGrid[toGridSlot]) return; // celda ocupada
@@ -310,7 +320,12 @@ function handleChestAction(p, ws, data) {
 	if (Math.hypot(bx - p.x, by - p.y, bz - p.z) > 7) return;
 	const c = chests.getOrCreateChest(key);
 	if (data.action === "put") {
+		// Auditoría 2026-08-15 (H1): `invSlot`/`chestSlot` se validaban con
+		// falsy — `"length"` pasaba (`p.inventory["length"] === 36` es truthy)
+		// y el `p.inventory[invSlot] = null` posterior truncaba el array a 0
+		// (se persistía vacío). Exigir enteros en rango en AMBOS índices.
 		const invSlot = data.invSlot;
+		if (!Number.isInteger(invSlot) || invSlot < 0 || invSlot > 35) return;
 		const item = p.inventory[invSlot];
 		if (!item) return;
 		// Herramientas NUNCA se apilan (cada una con su durabilidad propia):
@@ -339,7 +354,11 @@ function handleChestAction(p, ws, data) {
 			playerHelpers.sendInventory(p);
 		}
 	} else if (data.action === "take") {
+		// Auditoría 2026-08-15 (H1): mismo bug que `put` — `chestSlot`
+		// "length" resolvía a `c.length` (27, truthy) y el `c[chestSlot] =
+		// null` posterior truncaba el cofre a 0. Entero en rango 0-26.
 		const chestSlot = data.chestSlot;
+		if (!Number.isInteger(chestSlot) || chestSlot < 0 || chestSlot > 26) return;
 		const item = c[chestSlot];
 		if (!item) return;
 		// Fase 19 (D2): destino EXPLÍCITO del inventario (drag & drop) —

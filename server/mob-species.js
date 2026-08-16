@@ -537,6 +537,15 @@ function applyFeed(mob, mobs) {
 			m.loveUntil > Date.now() &&
 			Math.hypot(m.x - mob.x, m.z - mob.z) < BREED_RANGE
 	);
+	// Auditoría 2026-08-15 (M2): la cría respeta la MISMA cuota global de
+	// mobs que el spawn natural (MOB_CAP = 30). Antes solo el spawn la
+	// consultaba: un jugador alimentando podía multiplicar los animales sin
+	// tope (memoria + persistencia del meta engordando). Si la cuota está
+	// llena, los padres entran en cooldown y no se crea el bebé.
+	if (state.mobs.length >= 30) {
+		mob.loveUntil = 0;
+		return null;
+	}
 	if (!partner) return null;
 	mob.loveUntil = 0;
 	partner.loveUntil = 0;

@@ -49,8 +49,18 @@ function saveWorldAsync() {
 				dirtyChunks.delete(key); // se borra AL escribir (no al final: un
 				written++; // chunk ensuciado durante el guardado no se pierde)
 			} catch (e) {
-				log.error(`Error escribiendo chunk ${key}:`, e.message);
-				dirtyChunks.delete(key); // no reintentar en bucle infinito
+				// Auditoría 2026-08-15 (F2): NO se borra de dirtyChunks: el
+				// fallo (disco lleno/permisos) se reintenta en el próximo
+				// autosave. Antes se borraba y el chunk se perdía en silencio
+				// (escritura fallida + dato marcado como guardado). Se corta la
+				// cola (asyncSaving=false) para no entrar en bucle infinito con
+				// el mismo chunk en esta misma pasada.
+				log.error(
+					`Error escribiendo chunk ${key} (se reintentará):`,
+					e.message
+				);
+				asyncSaving = false;
+				return;
 			}
 			if (++n >= SAVE_BATCH_SIZE) break;
 		}

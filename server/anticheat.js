@@ -109,7 +109,15 @@ function handleMove(p, ws, data, ctx) {
 	);
 	const inWater = feetBlock === B.WATER;
 	const inAir = !isSolidBlock(feetBlock) && !inWater;
-	p.airTimeMs = inAir ? (p.airTimeMs || 0) + dtSec * 1000 : 0;
+	// El dt del AIR-TIME se acota a 250 ms: un hueco entre paquetes (lag,
+	// pausa del hilo por generación de chunks) no es tiempo REAL en el aire.
+	// Sin el tope, un primer move tras una pausa >1 s inflaba airTimeMs y
+	// el check `flotando` (aire >1 s con <2 bloques de descenso) rechazaba
+	// caídas legítimas — el jugador rebotaba sin poder caer (bug real,
+	// cazado por unit-caida bajo carga). El dt de VELOCIDAD (vyObs) sigue
+	// siendo el real: sirve para detectar descensos acelerados.
+	const airDtSec = Math.min(dtSec, 0.25);
+	p.airTimeMs = inAir ? (p.airTimeMs || 0) + airDtSec * 1000 : 0;
 	// Fase 9 (Bloque C): en CREATIVE el ascenso sostenido es VUELO legítimo
 	// (doble espacio), no un cheat: se salta la validación de la parábola. El
 	// límite de velocidad y los sólidos siguen aplicando.

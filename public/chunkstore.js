@@ -50,6 +50,11 @@ export function getClientBlock(wx, wy, wz) {
 // (lo usa la iluminación). Devuelve el bloque anterior para que la red decida
 // si reconstruir el vecindario.
 export function setClientBlock(wx, wy, wz, block) {
+	// Auditoría 2026-08-15 (CL-4): las coordenadas vienen de la red. Un
+	// NaN/∞ corrompía el índice (Math.floor(NaN)=NaN) y aterraba basura en
+	// el chunk (o en otro, al desbordar) sin forma de detectarlo.
+	if (!Number.isFinite(wx) || !Number.isFinite(wy) || !Number.isFinite(wz))
+		return -1;
 	if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) return -1;
 	const cx = Math.floor(wx / CHUNK_SIZE),
 		cz = Math.floor(wz / CHUNK_SIZE);
@@ -74,6 +79,15 @@ export function setClientBlock(wx, wy, wz, block) {
 // las antorchas que trae (puede venir con un mundo guardado). Devuelve el
 // array guardado (el mismo objeto del store).
 export function storeChunkData(key, arr) {
+	// Auditoría 2026-08-15 (CL-5): un chunk_add malformado (longitud != 16384)
+	// corrompía el store y, al escanear antorchas, leía fuera del buffer
+	// (undefined). Se descarta y devuelve null; el llamador debe ignorarlo.
+	if (
+		!arr ||
+		typeof arr.length !== "number" ||
+		arr.length !== CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE
+	)
+		return null;
 	const data = Uint8Array.from(arr);
 	chunkStore.set(key, data);
 	const [cx, cz] = key.split(",").map(Number);

@@ -845,7 +845,9 @@ console.log("== 10. Geometría del cliente (índice local → Y de mundo) ==");
 	});
 	let minY = Infinity,
 		maxY = -Infinity;
-	for (const buf of [geo.terrain, geo.water, geo.lava, geo.torch]) {
+	// F19.6 (C2): la geometría de plantas lleva su propio buffer (con viento);
+	// se incluye en el rango de altura como el resto de categorías.
+	for (const buf of [geo.terrain, geo.water, geo.lava, geo.torch, geo.plant]) {
 		if (!buf) continue;
 		for (let i = 1; i < buf.pos.length; i += 3) {
 			minY = Math.min(minY, buf.pos[i]);

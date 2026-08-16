@@ -261,3 +261,67 @@ Correcto: malla en worker (`chunkWorker.js:36` → `buildChunkGeometryData` gree
 3. Cliente real: cronometrar parse+horneado del reenvío de radio fragmentado y el coste de `sendChunksFragmented`.
 4. Contar `dirtyChunks` tras una exploración pura para cuantificar P4.
 5. Profiler de navegador con 2000+ antorchas para confirmar la severidad de P7.
+
+---
+
+## 6. Cierre de la auditoría (2026-08-16)
+
+> Correcciones implementadas junto al cierre de la Fase 19.6 (mismo commit
+> que la spec `fase19.6-spec.md` §10). El tracker operativo con estado por
+> hallazgo vive en `TODO.md` § "Auditoría 2026-08-15 — correcciones
+> programadas".
+
+### Corregido y verificado en el cierre
+
+| ID | Corrección | Verificación |
+|---|---|---|
+| **H1** | `chest_action take/put` + `grid_set` con `Number.isInteger` + rango (`server/actions.js`) | `tests/unit-cofre.js` (claves no enteras) |
+| **B1** | `grid_set` con `Number.isInteger` + rango en `fromInventorySlot` | ídem (`unit-cofre.js`) |
+| **M1** | `verifyClient` con allowlist de orígenes en el `WebSocketServer` (`server/timers.js`) | lectura + arranque limpio |
+| **M2** | tope de cría a la cuota global en `applyFeed` (`server/mob-species.js`) | `tests/unit-cria.js` ampliado |
+| **M3** | rechazar nombre duplicado en línea (conexión y `set_name`) (`server/net.js`) | `tests/unit-red.js` ampliado |
+| **M4** | OP por `OPS` explícito; fallback "primero conectado" solo sin lista (`server/net.js`) | `unit-fase17.js` ampliado |
+| **B2** | rate-limit POR ACCIÓN `MAX_ACTION_RATE` (20/s) separado del global (`server/net.js`) | el E2E de mascotas se espació para respetarlo; sesión real no lo alcanza |
+| **B3** | log de comandos OP (`server/commands.js`) | lectura + logs `[info]` en arranque |
+| **F1** | `SAVE_INTERVAL_MS` 10-15 s por env + guardado en eventos (`server/server.js`) | lectura |
+| **F2** | reintento (2) en la cola async (`server/save-chunks.js`) | `tests/unit-persistencia.js` |
+| **F3** | checksum/validación de chunk en `readChunkFile` (`server/world.js`) | `unit-persistencia.js` ampliado |
+| **F4** | rotación `.bak` por jugador (`server/save-players.js`) | lectura |
+| **F5** | retorno de `saveWorld()` en SIGINT/SIGTERM (`server/server.js`) | SIGTERM añadido en F19.5 E1 |
+| **F7** | `log.warn` del error de socket (`server/net.js`) | logs uniformes (`server/log.js`) |
+| **F8** | env vars `SAVE_INTERVAL_MS`/`LOG_LEVEL` | `server/log.js` |
+| **CL-1** | reconexión con backoff + reinit (`public/connection.js`) | lectura + sesión estable en E2E |
+| **CL-2** | pausa de render/audio en background | `audio.js` (F19.5); render en `player.js` (cierre F19.6) |
+| **CL-4/CL-5** | `Number.isFinite` en `setClientBlock` + validación de longitud en `storeChunkData` (`public/chunkstore.js`) | `unit-fase19.6.js`/lectura |
+| **CL-8** | pool + tope duro `MAX_ALIVE` (200) de partículas (`public/particles.js`) | lectura + suite |
+
+### Diferido a la Fase 20 (backlog de rendimiento, sin tocar)
+
+- **P1** (lotear generación del `settings` r=10), **P2** (gzip en worker),
+  **P3** (reenviar solo la corona nueva), **P4** (no marcar dirty los
+  generados; depende de generación determinista), **P7** (perfilar
+  `bakeChunkLight` con 2000+ antorchas) y **Monitorización CL-6**
+  (telemetría cliente `__mcClientErrors`): priorizados en
+  `docs/spec/fase20-spec.md`, no implementados en este cierre.
+
+### Hallazgo nuevo del cierre (anticheat)
+
+- **Flotando falso positivo en el anti-cheat** (cazado por `unit-caida` bajo
+  carga): el dt entre `move` medía el tiempo real transcurrido, así que un
+  hueco >1 s entre paquetes (lag o pausa del hilo por generación de chunks)
+  inflaba `airTimeMs` y el check `flotando` (aire >1 s con <2 bloques de
+  descenso) rechazaba caídas legítimas — el jugador rebotaba sin poder
+  caer. Corregido en `server/anticheat.js`: el **air-time** se acota a
+  250 ms por paquete (`airDtSec`), el dt de velocidad sigue real. Ver spec
+  F19.6 §10 B3.
+
+### Estado de la verificación (2026-08-16)
+
+- Suite **59/59 unitarios**, **E2E 7/7** (mundo desechable limpio; `e2e-menu`
+  con su puerto 3997 libre), **biome 0 errores**, `node --check` limpio.
+- Auditorías `--audit`: **4/6 verdes** (fase4/5/6 + altura). **`audit-fase3`
+  y `audit-fase7` fallan por causa ambiental** (CPU a carga 15-19 externa +
+  render CDP en SwiftShader): fallan IDÉNTICAMENTE en `HEAD` sin los
+  cambios de la F19.6 (comparado con worktree, `f7d596d`), por lo que no
+  son regresión de este cierre; el `audit-fase7` ya estaba documentado
+  como ROJO ambiental en esta misma auditoría (§ Línea base).

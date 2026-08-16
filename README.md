@@ -77,8 +77,11 @@ mi-minecraft/
 │   ├── chunkWorker.js     Worker ESM: construye la geometría fuera del hilo principal (F13)
 │   ├── texturemap.js      Selección de tesela del atlas por bloque/cara y UVs (antes dentro de world.js)
 │   ├── player.js          Física del jugador (gravedad, salto, natación)
-│   ├── scene.js           Escena, cámara, renderer y luces
-│   ├── mobs.js            Render de mobs (texturas por cara + escala por tipo)
+│   ├── scene.js           Escena, cámara, renderer y luces (hemi F19.6 A1; re-exporta setToonStyle/setTorchLight)
+│   ├── materialstyle.js   Material del mundo (worldMaterial) y toggle toon lambert↔MeshToonMaterial (F19.6 B)
+│   ├── torchlogic.js      Lógica pura de antorchas a encender (TORCH_LIGHT_BUDGET, F19.6 A2)
+│   ├── torchlights.js     Luz puntual real de antorchas cercanas (pool PointLight, toggle, F19.6 A2)
+│   ├── mobs.js            Render de mobs (texturas por cara + escala por tipo + animación caminar/atacar F19.6 F)
 │   ├── input.js           Despachador de input; juego en game-input.js, rayo en raycast.js, menú en menu-input.js, táctil en touch.js (F18 D-8)
 │   ├── ui.js              Orquestador del HUD; HUD en hud.js, menús en menus.js, paneles en panels.js, libro en recipebook.js (F18 D-6)
 │   ├── audio.js           Sonidos procedurales (Web Audio, sin assets)
@@ -169,6 +172,17 @@ registra por política). Ver [`docs/public/help.md`](docs/public/help.md).
 | Disco | espacio para `world/<semilla>/` (chunks gzip por archivo + `world.json` + `.bak`); ~1-2 MB por área de radio 4 |
 | Puerto | `3000` por defecto; configurable con `PORT` |
 | Opcional | `OPS` (lista de operadores), `WS_URL`, `RECETAS_PATH`, `SEED` para arrancar modo directo |
+
+> **Despliegue no-local (auditoría 2026-08-15, M5):** el servidor sirve
+> HTTP + `ws://` (sin TLS) por diseño — el alcance del proyecto es
+> `localhost` y/o la LAN local. Para exposición **fuera** de la LAN
+> (una VPS, un túnel, acceso desde Internet) NO se debe abrir el puerto
+> 3000 crudo: texto y claves viajarían sin cifrar y el WebSocket quedaría
+> accesible a cualquiera. Se recomienda un proxy TLS (Caddy/Nginx) que
+> entregue HTTPS/WSS al cliente y reenvíe al puerto local, y fijar `OPS`
+> en servidores compartidos (el "primer jugador conectado" solo es
+> operador cuando `OPS` está vacía). En la LAN/localhost el protocolo
+> estándar `ws://` es correcto.
 
 ## Estado actual
 

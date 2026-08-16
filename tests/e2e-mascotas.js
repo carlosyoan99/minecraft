@@ -20,6 +20,7 @@ const BONE = 136; // constants.I.BONE
 // taiga con hostiles sueltos; con la armadura completa el daño se reduce al
 // 20% (tope 80% de ARMOR_POINTS) y sobrevive a la doma con comodidad.
 const DIAMOND_ARMOR = [228, 229, 230, 231]; // casco, pechera, pantalones, botas
+const seenEquip = new Set(); // piezas de armadura para las que ya se mandó equip_armor (B2)
 const results = [];
 let finished = false;
 const t0 = Date.now();
@@ -37,6 +38,14 @@ let tamedTick = 0;
 let sitOk = false;
 const seenTameMobs = new Set(); // ids de tame_mob ya enviados
 let tameAttempts = 0;
+// Auditoría 2026-08-15 (B2): el rate-limit POR ACCIÓN (MAX_ACTION_RATE =
+// 20/s) cortaba la conexión durante el equipado: cada equip_armor dispara
+// un inventory_update y el test respondía con inventory_select + equip_armor
+// en el mismo tick — la cadena síncrona sumaba ~25 acciones en el primer
+// segundo. `boneSelected` envía el inventory_select UNA vez y `armorSent`
+// espacia los equip_armor (250 ms) como ya hacía la ráfaga del tame_mob.
+let boneSelected = false;
+let armorSent = 0;
 // Liberador del tope de spawn (Fase 13, cierre): el mundo llena su tope de
 // 30 mobs en ~15s (sin despawn) y spawnMobs deja de crear → el lobo nunca
 // aparecería. Mientras se espera al lobo, /kill mobs (comando dev nuevo)
@@ -166,9 +175,21 @@ ws.on("message", (d) => {
 			true,
 			`(${taigaSpot.x.toFixed(0)}, ${taigaSpot.z.toFixed(0)})`
 		);
+		// Auditoría 2026-08-15 (B2): rate-limit POR ACCIÓN (MAX_ACTION_RATE
+		// = 20/s). Los 5 /give en ráfaga + los inventory_select/equip_armor
+		// que dispara cada inventory_update sumaban ~25 acciones en el primer
+		// segundo y el servidor cortaba 1008 a mitad del equipado (como el
+		// patrón ya conocido del rate-limit WS del tame_mob, abajo). Se
+		// espacian los /give 200 ms: las updates llegan escalonadas y el flujo
+		// da/equipa baja a ~4 acciones/s, dentro de la cuota.
 		send("chat", { message: "/give 136 30" }); // 30 huesos (33% por intento)
 		// Armadura de diamante completa para aguantar los hostiles de la noche.
-		for (const id of DIAMOND_ARMOR) send("chat", { message: `/give ${id} 1` });
+		DIAMOND_ARMOR.forEach((id, i) => {
+			setTimeout(
+				() => send("chat", { message: `/give ${id} 1` }),
+				200 * (i + 1)
+			);
+		});
 		phase = "give-huesos";
 		return;
 	}
@@ -187,20 +208,28 @@ ws.on("message", (d) => {
 			bones >= 30,
 			`huesos=${bones}`
 		);
-		boneSlot = m.data.inventory.findIndex((s) => s && s.id === BONE);
-		send("inventory_select", { slot: boneSlot });
+		if (!boneSelected) {
+			boneSlot = m.data.inventory.findIndex((s) => s && s.id === BONE);
+			send("inventory_select", { slot: boneSlot });
+			boneSelected = true;
+		}
 		// Equipar la armadura de diamante (una pieza por update; el servidor
 		// responde otro inventory_update tras cada equip_armor). Las piezas ya
-		// equipadas están en m.data.armor (no en el inventario).
+		// equipadas están en m.data.armor (no en el inventario). Los equip se
+		// ESPACIAN 250 ms (B2): la cadena síncrona equip→update→equip superaba
+		// MAX_ACTION_RATE y el servidor cortaba 1008 a mitad del equipado.
 		const equipped = Object.values(m.data.armor || {}).filter(Boolean);
 		const toEquip = DIAMOND_ARMOR.find(
 			(id) =>
 				m.data.inventory.some((s) => s && s.id === id) &&
-				!equipped.some((a) => a.id === id)
+				!equipped.some((a) => a.id === id) &&
+				!seenEquip.has(id)
 		);
 		if (toEquip !== undefined) {
 			const slot = m.data.inventory.findIndex((s) => s && s.id === toEquip);
-			send("equip_armor", { inventorySlot: slot });
+			seenEquip.add(toEquip);
+			const n = ++armorSent;
+			setTimeout(() => send("equip_armor", { inventorySlot: slot }), 250 * n);
 			return; // esperar el inventory_update con la pieza equipada
 		}
 		// Si aún hay piezas sin equipar ni en el inventario, es que el /give
@@ -268,22 +297,21 @@ ws.on("message", (d) => {
 	// ============ TP JUNTO AL LOBO → tirar tame_mob ============
 	if (phase === "tp-lobo" && m.event === "teleport") {
 		// Ráfaga de intentos: ~33% por hueso, 30 huesos → éxito casi seguro.
-		// Rate-limit WS (0bc40e8): 30 msgs/s por conexión con ventana deslizante
-		// de 1s — mandar los 30 de golpe (+ el /tp previo en la misma ventana)
-		// supera el límite y el servidor corta la conexión (1008) justo después
-		// de la doma, con lo que el test deja de recibir mobs_update y muere
-		// por timeout. Se espacia en 3 grupos de 10 (t=0, 500ms, 1100ms): el
-		// grupo 3 cae SIEMPRE >=1s tras el primer mensaje de la ventana (aun
-		// con RTT ~0), lo que fuerza el reset del contador y deja cada grupo en
-		// <=11 mensajes por ventana; el éxito de la doma sigue siendo casi
-		// seguro (33% por hueso × 30).
+		// Rate-limit WS (0bc40e8 + auditoría 2026-08-15 B2): DOS topes con
+		// ventana deslizante de 1s — MAX_MSG_RATE=30 (mensajes totales) y
+		// MAX_ACTION_RATE=20 (solo acciones: chat/tame_mob/inventario...).
+		// Mandar los 30 de golpe supera ambos y el servidor corta 1008 justo
+		// después de la doma (el test deja de recibir mobs_update y muere por
+		// timeout). Cada grupo de 10 queda en SU PROPIA ventana (>=1s entre
+		// inicios, aun con RTT ~0): 1 /tp previo + 10 = 11 acciones por
+		// ventana, bajo el tope de 20. Éxito casi seguro (33% × 30).
 		for (let i = 0; i < 30; i++) {
 			setTimeout(
 				() => {
 					send("tame_mob", { mobId: wolfId });
 					tameAttempts++;
 				},
-				i < 10 ? 0 : i < 20 ? 500 : 1100
+				i < 10 ? 0 : i < 20 ? 1100 : 2200
 			);
 		}
 		phase = "domar";

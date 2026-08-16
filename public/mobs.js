@@ -10,8 +10,10 @@
 // ============================================================
 import * as THREE from "three";
 import { playArrowHit, playCreeperHiss, playSheepBaa } from "./audio.js";
+import { worldMaterial } from "./materialstyle.js"; // Fase 19.6 (B): estilo global
 import { getMobAtlas, MOB_PARTS, mobPartRects } from "./mobtextures.js";
 import { scene } from "./scene.js";
+import { getSetting } from "./settings.js"; // F19.6 (F): atenúa el ataque con reduceMotion
 import { isValidSkin } from "./skins.js";
 import { getSkinAtlas } from "./skintextures.js"; // skins de jugador
 
@@ -104,6 +106,9 @@ function buildPartGroup(parts, material, rects = null) {
 		// setMobWalk). El índice sirve para alternar izquierda/derecha.
 		if (part.name === "leg" || part.name === "arm") {
 			mesh.userData.limbIndex = limbs.length;
+			// F19.6 (F): distinguir brazos de patas: los brazos adelantan en el
+			// ATAQUE (los dos a la vez, gesto de golpe), las patas solo caminan.
+			mesh.userData.isArm = part.name === "arm";
 			// Rotación base de la parte (p. ej. patas de la araña con ángulo en
 			// X): el balanceo SUMA a esa pose, nunca la pisa (bug de Fase 10
 			// detectado en revisión — al pararse la araña "enderezaba" las patas).
@@ -184,8 +189,11 @@ function makeMobMesh(type, fallbackColor = 0x999999) {
 	// usan MOB_PARTS ni atlas de mobs).
 	if (type === "xp_orb") return makeXpOrbMesh();
 	const atlas = getMobAtlas(type);
+	// Fase 19.6 (B): el material del mob se crea con worldMaterial para
+	// que las CRÍAS posteriores al toggle toon también salgan en toon
+	// (el swap de las ya vivas lo hace applyMaterialStyle(scene)).
 	const material = atlas
-		? new THREE.MeshLambertMaterial({ map: atlas, color: 0xffffff })
+		? worldMaterial({ map: atlas, color: 0xffffff })
 		: new THREE.MeshLambertMaterial({ color: fallbackColor }); // tipo sin textura
 	const parts = MOB_PARTS[type]?.parts || [
 		{ name: "body", size: [0.6, 1.8, 0.6], pos: [0, 0.9, 0] } // fallback: box único
@@ -333,6 +341,52 @@ function slimeScale(size) {
 // updateMobs y updateRemotePlayer.
 const WALK_STRIDE = 2.2; // distancia (bloques) por ciclo completo de paso
 const WALK_SWING = 0.5; // amplitud del balanceo en radianes
+// Fase 19.6 (F): ATAQUE procedural — adelanto de los brazos/garra al golpear.
+// Sin skeletal: el brazo rota en X hacia delante con una curva seno de ~0.5s
+// (adelante → reposo), como el balanceo de caminar pero con gesto propio.
+// Lo dispara network.js al recibir damage_debug de un mob contra el jugador.
+const ATTACK_DURATION = 0.5; // segundos del gesto completo
+const ATTACK_SWING = 1.1; // radianes de adelanto del brazo (gesto marcado)
+function isArm(part) {
+	return !!part?.userData?.isArm;
+}
+// Identifica las partes-animables con su rol: arm (adelanta al atacar) y leg
+// (solo caminan). Se usa en el build de partes (buildPartGroup) y en el
+// ataque; los brazos son solo los "arm" de MOB_PARTS (los troncos/colas no).
+export function triggerMobAttack(mobId) {
+	const mesh = mobMeshes.get(mobId);
+	if (!mesh) return;
+	// Reinicia el gesto si ya estaba atacando: siempre la curva completa.
+	mesh.userData.attackProgress = Math.min(
+		mesh.userData.attackProgress || 0,
+		ATTACK_DURATION * 0.4
+	);
+	mesh.userData.attacking = true;
+}
+
+// Avanza la animación de ataque del mob (cada updateMobs; ~0.5s de gesto).
+function updateAttackAnimation(mesh) {
+	if (!mesh.userData.attacking) return;
+	const reduce = getSetting("reduceMotion") ? 0.4 : 1; // F19.5 (B4): se atenúa
+	mesh.userData.attackProgress += 0.016 * reduce;
+	if (mesh.userData.attackProgress >= ATTACK_DURATION) {
+		mesh.userData.attacking = false;
+		mesh.userData.attackProgress = 0;
+		return;
+	}
+	const limbs = mesh.userData?.limbs;
+	if (!limbs) return;
+	const t = mesh.userData.attackProgress / ATTACK_DURATION; // 0..1
+	// Gesto: seno que adelanta el brazo hasta la mitad del gesto y lo tensa
+	// antes de volver — golpe seco, no un vaivén continuo.
+	const a = Math.sin(t * Math.PI) * ATTACK_SWING * reduce;
+	for (const limb of limbs) {
+		if (!isArm(limb)) continue;
+		limb.rotation.x = (limb.userData.baseRotX || 0) + a;
+	}
+}
+
+// Fase 10 (nota "mobs en caja"): balanceo de extremidades al caminar.
 function setMobWalk(mesh, dx, dz) {
 	const limbs = mesh.userData?.limbs;
 	if (!limbs || limbs.length === 0) return;
@@ -393,6 +447,9 @@ export function updateMobs(list) {
 		} else {
 			mesh.userData.walkPhase = 0;
 		}
+		// Fase 19.6 (F): el gesto de ataque se aplica AL FINAL (después del
+		// balanceo) para pisar la rotación de los brazos mientras dura.
+		updateAttackAnimation(mesh);
 		mesh.userData.lastPos = { x: m.x, y: m.y, z: m.z };
 		mesh.position.set(m.x, m.y, m.z);
 		// Fase 12 (A): el slime escala por tamaño y el lobo domado lleva el

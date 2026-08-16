@@ -9,6 +9,7 @@
 // al emisor; el chat normal (sin /) sigue igual.
 // ============================================================
 const WebSocket = require("ws");
+const log = require("./log.js");
 const constants = require("./constants.js");
 const {
 	B,
@@ -189,6 +190,14 @@ function executeCommand(player, raw, ctx) {
 			"Ese comando es solo para operadores (el host o la lista OPS)"
 		);
 		return true;
+	}
+	// Auditoría 2026-08-15 (B3): cada comando de operador ejecutado se deja
+	// en el log del servidor (quién hizo qué y con qué argumentos). Antes la
+	// consola no registraba ninguna acción administrativa: sin rastro
+	// auditable de /give, /tp, /op, etc. Los comandos rechazados NO se
+	// registran (se atajan en el guard anterior).
+	if (OP_ONLY.has(cmd)) {
+		log.info(`${player.name} ejecutó /${cmd} ${args.join(" ")} (es operador)`);
 	}
 
 	switch (cmd) {

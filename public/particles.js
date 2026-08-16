@@ -14,6 +14,13 @@ import { scene } from "./scene.js";
 const cubeGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
 const materials = new Map(); // colorHex -> material compartido
 const alive = []; // { mesh, vx, vy, vz, life, ttl }
+// Auditoría 2026-08-15 (CL-8): pool de meshes MUERTOS reutilizables (P6 en
+// la auditoría: spawnCube creaba un Mesh nuevo por partícula). Al morir, la
+// instancia no se descarta: se recicla reasignando material y posición. Tope
+// duro MAX_ALIVE: si la ráfaga satura (roturas/colocaciones sostenidas), las
+// nuevas se descartan antes de reservar — el límite de VRAM queda acotado ya.
+const freeMeshes = [];
+const MAX_ALIVE = 200;
 let loopActive = false;
 
 function materialFor(colorHex) {
@@ -44,7 +51,9 @@ function tickParticles() {
 		const k = 1 - p.life / p.ttl;
 		p.mesh.material.opacity = Math.max(0, Math.min(1, k));
 		if (p.life >= p.ttl) {
+			// Reciclar la malla en vez de destruirla (CL-8/P6).
 			scene.remove(p.mesh);
+			freeMeshes.push(p.mesh);
 			alive.splice(i, 1); // barato: las ráfagas son cortas
 		}
 	}
@@ -61,11 +70,15 @@ function ensureLoop() {
 	requestAnimationFrame(tickParticles);
 }
 
-// Cubito nuevo (reutiliza material; la geometría es compartida).
+// Cubito nuevo: reutiliza una malla del pool si la hay (reciclar el objeto
+// evita allocs y GC por ráfaga); el material se reasigna por color.
 function spawnCube(x, y, z, colorHex) {
-	const mesh = new THREE.Mesh(cubeGeo, materialFor(colorHex));
+	const mesh =
+		freeMeshes.pop() || new THREE.Mesh(cubeGeo, materialFor(colorHex));
+	mesh.material = materialFor(colorHex);
 	mesh.material.transparent = true;
 	mesh.position.set(x, y, z);
+	mesh.rotation.set(0, 0, 0);
 	mesh.castShadow = false;
 	scene.add(mesh);
 	return mesh;
@@ -76,6 +89,7 @@ function burst(x, y, z, blockId, count, speed) {
 	const colorHex = BLOCK_COLORS[blockId] ?? 0x888888;
 	const center = Math.floor(x) + 0.5; // centro del bloque (x, y, z son enteros)
 	ensureLoop();
+	if (alive.length >= MAX_ALIVE) return; // tope duro (CL-8): no reservar más
 	for (let i = 0; i < count; i++) {
 		const a = Math.random() * Math.PI * 2;
 		const r = (0.3 + Math.random() * 0.9) * speed;

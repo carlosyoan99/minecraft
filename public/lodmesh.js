@@ -18,6 +18,7 @@ import {
 	WORLD_MIN_Y
 } from "./constants.js";
 import { setOrReuseAttribute } from "./geopool.js";
+import { worldMaterial } from "./materialstyle.js"; // Fase 19.6 (B): el LOD sigue el estilo global
 import { computeChunkSphere, geometryPool, lodMaterial } from "./meshbuild.js";
 
 // Oscurece un color (para los muros: dan profundidad frente a las tapas).
@@ -253,7 +254,7 @@ export function buildLodGeometry(cx, cz) {
 	setOrReuseAttribute(geo, "position", pos, 3, THREE.Float32BufferAttribute);
 	setOrReuseAttribute(geo, "normal", norm, 3, THREE.Float32BufferAttribute);
 	setOrReuseAttribute(geo, "color", col, 3, THREE.Float32BufferAttribute);
-	const mesh = new THREE.Mesh(geo, lodMaterial);
+	const mesh = new THREE.Mesh(geo, worldMaterial(undefined, lodMaterial));
 	mesh.userData.poolCat = "lod";
 	const group = new THREE.Group();
 	group.add(mesh);

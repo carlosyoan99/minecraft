@@ -25,6 +25,7 @@ import { setUnderwater, updateDayNight } from "./daynight.js";
 import { isDoorOpen } from "./network.js"; // Fase 13 (L2): estado local de puertas
 import { camera, controls, renderer, scene, sun } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
+import { updateTorchLights } from "./torchlights.js"; // Fase 19.6 (A2)
 import { shouldUnderwaterFog } from "./waterfog.js"; // Fase 16 (B1): niebla con inmersión real
 import {
 	applyFrustumCulling,
@@ -436,6 +437,9 @@ function animate() {
 		camera.position.z + 40
 	);
 	sun.target.updateMatrixWorld();
+	// Fase 19.6 (A2): luz puntual de antorchas cercanas (toggle torchLight,
+	// OFF por defecto). Internamente hace early-return si está desactivada.
+	updateTorchLights(camera.position.x, camera.position.y, camera.position.z);
 	renderer.render(scene, camera);
 	updateCoords(
 		camera.position.x,

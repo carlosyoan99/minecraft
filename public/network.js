@@ -25,6 +25,7 @@ import {
 	renameRemotePlayer,
 	spawnHearts,
 	spawnRemotePlayer,
+	triggerMobAttack, // Fase 19.6 (F): animación de ataque al recibir daño de mob
 	updateArrows,
 	updateMobs,
 	updateRemotePlayer,
@@ -280,6 +281,11 @@ socket.addEventListener("message", (e) => {
 				if (!window.__mcLastDamage) window.__mcLastDamage = [];
 				window.__mcLastDamage.push(data);
 				if (window.__mcLastDamage.length > 20) window.__mcLastDamage.shift();
+				// Fase 19.6 (F): si el daño viene de un mob hacia mi jugador, ese
+				// mob ejecuta su gesto de ataque (adelanta los brazos) — feedback
+				// visual de que el golpe "se ve" en el atacante.
+				if (data.source === "mob" && data.meta?.mobId)
+					triggerMobAttack(data.meta.mobId);
 				break;
 			}
 			case "teleport":

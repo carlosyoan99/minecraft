@@ -577,6 +577,23 @@ function connect() {
 		JSON.stringify(p.inventory.filter(Boolean).map((s) => [s.id, s.durability]))
 	);
 	p.craftingGrid.fill(null);
+	// Auditoría 2026-08-15 (B1): grid_set con fromInventorySlot NO ENTERO se
+	// rechaza — antes `"length"` resolvía a `p.inventory["length"]` (36,
+	// truthy) y se inyectaba un slot basura en la grid (7 en vez de 9 slots).
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "grid_set",
+			data: { fromInventorySlot: "length", toGridSlot: 0 }
+		})
+	);
+	check(
+		"B1 grid_set con fromInventorySlot no entero → rechazado (grid intacta)",
+		p.craftingGrid.every((c) => !c) &&
+			!p.inventory.some((s) => s === undefined),
+		JSON.stringify(p.craftingGrid)
+	);
 }
 
 // ============================================================
@@ -1212,6 +1229,74 @@ function connect() {
 }
 
 // ============================================================
+// AUDITORÍA 2026-08-15 (P1/P3): AJUSTES SIN PICO SÍNCRONO Y CORONA AL AMPLIAR
+// P1: el handler settings ya NO genera el radio de golpe (antes llamaba
+// world.ensureChunksAround(p.x,p.z,rd), hasta 441 chunks síncronos con r=10
+// que congelaban el event loop): solo REENVÍA lo ya cacheado y lo que falta
+// lo genera progresivamente fillForPlayers (chunk-fill).
+// P3: al AMPLIAR el radio solo se reenvía la CORONA (anillos prevRd+1..clamped,
+// los chunks que el cliente descartó al reducir): los del radio previo aún los
+// tiene. Al REDUCIR se mantiene el reenvío fragmentado del radio completo.
+// ============================================================
+{
+	const { ws, player } = connect();
+	const CHUNK = constants.CHUNK_SIZE;
+	const pcx = Math.floor(player.x / CHUNK),
+		pcz = Math.floor(player.z / CHUNK);
+	const ringOf = (key) => {
+		const [x, z] = key.split(",").map(Number);
+		return Math.max(Math.abs(x - pcx), Math.abs(z - pcz));
+	};
+	// Escenario controlado: cachear el radio completo 0..6 (lo que ya haría
+	// fillForPlayers) para poder comprobar la corona y la ausencia de generación.
+	world.ensureChunksAround(player.x, player.z, 6);
+	// Reducir 6→4 primero (el cliente descarta los anillos 5..6).
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "settings", data: { renderDistance: 4 } })
+	);
+	check(
+		"P1: reducir no genera más chunks (solo reenvía el radio menor)",
+		player.renderDistance === 4
+	);
+	// Snapshot del cache ANTES de ampliar: la corona debe ser un SUBCONJUNTO.
+	const beforeKeys = new Set(state.chunks.keys());
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "settings", data: { renderDistance: 6 } })
+	);
+	check("P3: ampliar al doble sube la distancia", player.renderDistance === 6);
+	const crownAdds = ws.events("chunks_add");
+	const crownKeys = crownAdds.flatMap((m) => Object.keys(m.data.chunkData));
+	check(
+		"P1: ampliar NO genera chunks (la corona es subconjunto del cache previo)",
+		crownKeys.length > 0 && crownKeys.every((k) => beforeKeys.has(k)),
+		`corona=${crownKeys.length}`
+	);
+	check(
+		"P1: state.chunks no crece con el settings (el relleno es de fillForPlayers)",
+		state.chunks.size === beforeKeys.size,
+		`${state.chunks.size} vs ${beforeKeys.size}`
+	);
+	check(
+		"P3: la corona solo trae anillos > prevRd (5..6, no reenvía el 0..4)",
+		crownKeys.length > 0 && crownKeys.every((k) => ringOf(k) >= 5),
+		`corona=${crownKeys.length}`
+	);
+	check(
+		"P3: corona no vacía (el cliente necesita de vuelta los descartados)",
+		crownKeys.length > 0
+	);
+	const firstCrown = crownAdds[0];
+	check(
+		"P3: la corona va fragmentada (≤CHUNK_FILL_PER_TICK por lote)",
+		!!firstCrown && Object.keys(firstCrown.data.chunkData).length <= 6
+	);
+}
+
+// ============================================================
 // FASE 7 (AUDITORÍA): EL INIT SOLO ENVÍA LOS CHUNKS DEL RADIO DE RENDER
 // Antes se reenviaba TODO el mundo en cada conexión (init de varios MB con
 // mundos grandes). Ahora solo entran los del radio de render del jugador
@@ -1315,6 +1400,49 @@ function connect() {
 	check(
 		"rate-limit: un socket fake (tests) no se corta (no es flood real)",
 		!wsF.rateLimited
+	);
+	state.players.clear();
+}
+
+// ============================================================
+// AUDITORÍA 2026-08-15 (B2): RATE-LIMIT POR ACCIÓN
+// Un mismo socket real puede emitir MAX_MSG_RATE moves/s sin tocar el tope
+// global; el flood de ACCIONES (block_action/chat/interact) iba por el mismo
+// contador y quedaba invisible. El tope separado MAX_ACTION_RATE corta un
+// socket real que dispare más de esa cantidad de eventos no-move por segundo.
+// ============================================================
+{
+	const wsA = new FakeWS();
+	wsA.closeCount = 0;
+	wsA.close = (code, reason) => {
+		wsA.closeCount++;
+		wsA.closeCode = code;
+	};
+	state.players.clear();
+	net.handleConnection(wsA, { url: "ws://localhost/?name=actflood" });
+	const pA = [...state.players.values()][0];
+	const accion = JSON.stringify({
+		event: "chat",
+		data: { text: "hola" }
+	});
+	// MAX_ACTION_RATE=20 < MAX_MSG_RATE=30: con 25 acciones no se dispara el
+	// rate global (no son 30 mensajes) pero sí el tope por acción.
+	for (let i = 0; i < 25; i++) wsA.emit("message", accion);
+	check(
+		"B2: flood de acciones (chat) salta el límite y corta la conexión",
+		wsA.rateLimited === true && wsA.closeCode === 1008,
+		`rateLimited=${wsA.rateLimited} code=${wsA.closeCode}`
+	);
+	// Y con menos acciones por segundo, dentro de la cuota, no se corta.
+	const wsOK = new FakeWS();
+	state.players.clear();
+	net.handleConnection(wsOK, { url: "ws://localhost/?name=actok" });
+	const pOK = [...state.players.values()][0];
+	for (let i = 0; i < 5; i++) wsOK.emit("message", accion);
+	check(
+		"B2: acciones moderadas por segundo no se cortan (no hay flood)",
+		!wsOK.rateLimited,
+		`rateLimited=${wsOK.rateLimited}`
 	);
 	state.players.clear();
 }

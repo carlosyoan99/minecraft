@@ -254,6 +254,7 @@ fs.writeFileSync(
 		const water = { pos: [], norm: [], uv: [], col: [] };
 		const lava = { pos: [], norm: [], uv: [], col: [] };
 		const torch = { pos: [], norm: [], uv: [], col: [] };
+		const plant = { pos: [], norm: [], uv: [], col: [], wind: [] };
 		// Fase 15 (D5): la referencia replica el greedy ACTUAL, que emite las
 		// posiciones en Y de MUNDO (local y + WORLD_MIN_Y). wy aquí es local
 		// (se usa para muestrear bloques); la emisión suma WORLD_MIN_Y.
@@ -322,7 +323,9 @@ fs.writeFileSync(
 			nx,
 			ny,
 			nz,
-			uv
+			uv,
+			buf = torch,
+			wind = null
 		) => {
 			const verts = [
 				[ax, ay, az],
@@ -336,16 +339,29 @@ fs.writeFileSync(
 				[0, 2, 3]
 			]) {
 				for (const idx of [i, j, k]) {
-					torch.pos.push(...verts[idx]);
-					torch.norm.push(nx, ny, nz);
+					buf.pos.push(...verts[idx]);
+					buf.norm.push(nx, ny, nz);
 					const [uu, vv] = QUAD_UVS[idx];
-					torch.uv.push(e0 + uu * (e1 - e0), f0 + vv * (f1 - f0));
-					torch.col.push(torchLight, torchLight, torchLight);
+					buf.uv.push(e0 + uu * (e1 - e0), f0 + vv * (f1 - f0));
+					buf.col.push(torchLight, torchLight, torchLight);
+					if (wind) buf.wind.push(wind[idx * 2], wind[idx * 2 + 1]);
 				}
 			}
 		};
 		// Y de emisión en MUNDO (D5): las posiciones de antorchas/plantas del
 		// greedy real salen con local + WORLD_MIN_Y (chunkGeometry.js).
+		// Fase 19.6 (C2): fase determinista por celda (mismo hash que
+		// chunkGeometry.js) + altura normalizada 0 (base) / 1 (topo).
+		const hashCell = (wx, wz) => {
+			const h = Math.sin(wx * 127.1 + wz * 311.7) * 43758.5453;
+			return h - Math.floor(h);
+		};
+		const makeWind = (wx, wz, wyW, plantH) => {
+			const ys = [wyW, wyW, wyW + plantH, wyW + plantH];
+			const w = [];
+			for (const y of ys) w.push(hashCell(wx, wz), y > wyW + 0.01 ? 1 : 0);
+			return w;
+		};
 		const pushTorch = (wx, wy, wz) => {
 			const uv = [tu0, tv0, tu1, tv1];
 			const wyW = wy + WORLD_MIN_Y;
@@ -389,6 +405,9 @@ fs.writeFileSync(
 		const pushPlant = (wx, wy, wz, block) => {
 			const uv = tileRect(tileForFace(block, 0));
 			const wyW = wy + WORLD_MIN_Y;
+			// Fase 19.6 (C2): el wind es idéntico al greedy (misma fase por
+			// celda y altura 0/1 según sea base o topo del quad cruzado).
+			const wind = makeWind(wx, wz, wyW, PLANT_H);
 			pushCrossQuad(
 				wx - PLANT_W,
 				wyW,
@@ -405,7 +424,9 @@ fs.writeFileSync(
 				-Math.SQRT1_2,
 				0,
 				Math.SQRT1_2,
-				uv
+				uv,
+				plant,
+				wind
 			);
 			pushCrossQuad(
 				wx + PLANT_W,
@@ -423,7 +444,9 @@ fs.writeFileSync(
 				-Math.SQRT1_2,
 				0,
 				-Math.SQRT1_2,
-				uv
+				uv,
+				plant,
+				wind
 			);
 		};
 		for (let x = 0; x < CHUNK_SIZE; x++)
@@ -458,7 +481,25 @@ fs.writeFileSync(
 						pushFace(block, fi, target, wx, wy, wz);
 					}
 				}
-		return { terrain, water, lava, torch };
+		const finalize = (b) => ({
+			pos: Float32Array.from(b.pos),
+			norm: Float32Array.from(b.norm),
+			uv: Float32Array.from(b.uv),
+			col: Float32Array.from(b.col)
+		});
+		return {
+			terrain: finalize(terrain),
+			water: finalize(water),
+			lava: finalize(lava),
+			torch: finalize(torch),
+			plant: {
+				pos: Float32Array.from(plant.pos),
+				norm: Float32Array.from(plant.norm),
+				uv: Float32Array.from(plant.uv),
+				col: Float32Array.from(plant.col),
+				wind: Float32Array.from(plant.wind)
+			}
+		};
 	};
 
 	// ----------------------------------------------------------
@@ -625,11 +666,26 @@ fs.writeFileSync(
 		return true;
 	};
 	check(
-		"3. identidad antorchas/plantas (cross-quads idénticos)",
+		"3. identidad antorchas (cross-quads idénticos)",
 		sameArray(isoG.torch.pos, isoN.torch.pos) &&
 			sameArray(isoG.torch.uv, isoN.torch.uv) &&
 			sameArray(isoG.torch.col, isoN.torch.col),
 		`verts=${isoG.torch.pos.length}`
+	);
+	check(
+		"3b. identidad plantas (cross-quads + wind idénticos)",
+		sameArray(isoG.plant.pos, isoN.plant.pos) &&
+			sameArray(isoG.plant.uv, isoN.plant.uv) &&
+			sameArray(isoG.plant.col, isoN.plant.col) &&
+			sameArray(isoG.plant.wind, isoN.plant.wind),
+		`verts=${isoG.plant.pos.length}`
+	);
+	check(
+		"3c. el wind de plantas lleva fase y altura (0 bot − 1 top)",
+		isoG.plant.wind.length === (isoG.plant.pos.length / 3) * 2 &&
+			Math.max(...isoG.plant.wind) === 1 &&
+			Math.min(...isoG.plant.wind) >= 0,
+		`wind=${isoG.plant.wind.length} floats`
 	);
 
 	// ----------------------------------------------------------

@@ -6,7 +6,7 @@
 > Este archivo se actualiza al **abrir**, **cerrar** o **cambiar de rumbo**
 > una fase (no es un log histórico: es un panel de control).
 
-**Última actualización:** 2026-08-15
+**Última actualización:** 2026-08-16
 
 ---
 
@@ -14,11 +14,11 @@
 
 | | |
 | --- | --- |
-| **Fase** | **19.6 — Motor 3D: iluminación, materiales, shaders, instancing y animación** [`[PROSPECTIVA]`](docs/spec/fase19.6-spec.md) |
+| **Fase** | **19.6 — Motor 3D: iluminación, materiales, shaders, instancing y animación** [`[COMPLETADA]`](docs/spec/fase19.6-spec.md) |
 | **Prerrequisito cumplido** | Fase 19.5 cerrada y auditada (2026-08-15) ✅ |
-| **Trabajo en curso** | Pendiente de implementar tras el cierre de la Fase 19.5 |
+| **Trabajo en curso** | Cierre commiteado (F19.6 + correcciones de la auditoría 2026-08-15) |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Ver `docs/spec/fase19.6-spec.md` y `TODO.md` |
+| **Próximo paso** | Abrir la Fase 20 (rolling release) — ver `docs/spec/fase20-spec.md` y `TODO.md` |
 
 ## Implementado (fases cerradas y auditadas)
 
@@ -46,20 +46,25 @@
 | 18 — Refactor a convenciones, cierre de fases | [`fase18-spec.md`](docs/spec/fase18-spec.md) | ✅ Completada y auditada |
 | 19 — Texturas de ítems, interfaces y pulido visual | [`fase19-spec.md`](docs/spec/fase19-spec.md) | ✅ Completada y auditada (2026-08-15, `acca3c9`) |
 | 19.5 — Skills del proyecto: audio por bioma, accesibilidad y refinamientos | [`fase19.5-spec.md`](docs/spec/fase19.5-spec.md) | ✅ Completada y auditada (2026-08-15, `82b288b`) |
+| 19.6 — Motor 3D: iluminación, materiales, shaders, instancing y animación | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | ✅ Completada (2026-08-16) |
 
-**Línea base de la fase activa:** suite **58/58 unitarios**, E2E clásicos
-6/6 + menú 7/7, auditorías 6/6, `biome` 0 errores, `node --check` limpio
-(cierre de la Fase 19.5, 2026-08-15).
+**Línea base de la fase activa:** suite **59/59 unitarios**, **E2E 7/7**,
+`biome` 0 errores, `node --check` limpio (cierre de la Fase 19.6,
+2026-08-16). Auditorías `--audit` **4/6 verdes** (fase4/5/6 + altura):
+`audit-fase3` (perf de mobs) y `audit-fase7` (render CDP) fallan por
+**causa ambiental** (CPU a carga 15-19 externa + SwiftShader) — fallan
+idénticamente en `HEAD` sin los cambios del cierre (ver
+`docs/audits/auditoria-2026-08-15.md` §6); `audit-fase7` ya estaba
+documentado como ROJO ambiental en esa auditoría.
 
 ## En revisión
 
-- Sin fases en revisión (Fase 19.5 cerrada; F19.6 pendiente de abrir).
+- Sin fases en revisión (Fase 19.6 completada; siguiente abrir F20).
 
 ## Prospectiva (planificadas, sin implementar)
 
 | Fase | Spec | Prerrequisito |
 | --- | --- | --- |
-| 19.6 — Motor 3D (riesgo técnico) | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | F19.5 cerrada ✅ |
 | 20 — Rolling release | [`fase20-spec.md`](docs/spec/fase20-spec.md) | F18 cerrada ✅ |
 | 21 — Biomas ampliados, estructuras, mobs | [`fase21-spec.md`](docs/spec/fase21-spec.md) | F20 cerrada |
 | 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate, Trial Chambers | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada |

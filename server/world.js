@@ -34,6 +34,11 @@ const structures = require("./structures.js");
 const generation = require("./generation.js");
 
 const SPAWN_SEARCH_RADIUS = 24;
+// Auditoría 2026-08-15 (F3): mayor ID de bloque definido (scripts de
+// validación de rango del guardado). Se deriva de constants.B en el arranque.
+const MAX_BLOCK_ID = Math.max(
+	...Object.values(B).filter((v) => typeof v === "number")
+);
 
 // Punto de aparición del jugador sobre terreno firme (Fase 4): si la columna
 // pedida es un lago, busca en espiral la columna firme más cercana para que
@@ -178,6 +183,23 @@ function readChunkFile(file, origen) {
 		log.warn(`⚠️  Archivo de chunk ignorado (longitud inesperada): ${origen}`);
 		return null;
 	}
+	// Auditoría 2026-08-15 (F3): validación de rango — el dato de un chunk es
+	// una lista de IDs de bloque; cualquier byte fuera del rango válido
+	// (0..MAX_BLOCK_ID) revela corrupción (escritura a medias, versión de
+	// otro mundo) y generaría bloques de aire con drops extraños. Se ignora
+	// el archivo y se regenera. El escaneo es linear en 16384 bytes y ocurre
+	// una sola vez por carga de chunk.
+	const arr = Uint8Array.from(parsed.data);
+	for (let i = 0; i < arr.length; i++) {
+		if (arr[i] > MAX_BLOCK_ID) {
+			log.warn(
+				`⚠️  Archivo de chunk ignorado (bloque ${arr[i]} fuera de rango en ${i}): ${origen}`
+			);
+			return null;
+		}
+	}
+	// Normalizar a Uint8Array (los archivos v6 se guardan como array plano).
+	parsed.data = Array.from(arr);
 	return parsed;
 }
 

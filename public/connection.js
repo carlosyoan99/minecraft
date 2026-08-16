@@ -40,21 +40,66 @@ export function setStoredSkin(skin) {
 	if (isValidSkin(skin)) localStorage.setItem(SKIN_KEY, skin);
 }
 
-export const socket = new WebSocket(
-	`${wsProtocol}://${location.host}/?name=${encodeURIComponent(defaultName())}&skin=${defaultSkin()}`
-);
+// Auditoría 2026-08-15 (CL-1): reconexión con backoff. Antes la conexión era
+// un único WebSocket: cualquier corte (reinicio del menú, caída breve de red,
+// el servidor reiniciando) dejaba el cliente en pantalla de error hasta el
+// F5. Ahora `socket` es un wrapper EventTarget que envuelve el WebSocket real
+// y re-despacha sus eventos; al cerrarse, se reintenta con backoff exponencial
+// (1 s → 2 s → 4 s → ... tope 30 s), de forma que network.js (que registra
+// `addEventListener` sobre este objeto al cargar) sigue funcionando sin
+// cambios. Cada reconexión vuelve a emitir `open`; el servidor reenvía el
+// `init` que resetea el cliente.
+const HOST_URL = () =>
+	`${wsProtocol}://${location.host}/?name=${encodeURIComponent(defaultName())}&skin=${defaultSkin()}`;
+
+class SocketWrapper extends EventTarget {
+	constructor() {
+		super();
+		this.attempt = 0;
+		this._connect();
+	}
+
+	_connect() {
+		const ws = new WebSocket(HOST_URL());
+		this.ws = ws;
+		ws.addEventListener("open", () => {
+			this.attempt = 0; // reconexión establecida: reiniciar backoff
+			setProgress(18);
+			setStatus("Conectado — generando el mundo...");
+			this.dispatchEvent(new Event("open"));
+		});
+		// El socket real re-despacha message/close/error sobre el wrapper
+		// (network.js escucha `socket` una sola vez al cargar).
+		ws.addEventListener("message", (e) =>
+			this.dispatchEvent(new MessageEvent("message", { data: e.data }))
+		);
+		ws.addEventListener("error", () => {});
+		ws.addEventListener("close", (e) => {
+			if (e.code === 4001) {
+				// Nombre en uso (M3, auditoría): NO reconectar en bucle — el
+				// problema es el nombre, no la red; el usuario debe elegir otro.
+				showConnectionError();
+				return;
+			}
+			this.dispatchEvent(new Event("close"));
+			const delay = Math.min(30000, 1000 * 2 ** this.attempt++);
+			setStatus("Reconectando... (el servidor se reinició)");
+			this.timer = setTimeout(() => this._connect(), delay);
+		});
+	}
+
+	send(data) {
+		if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(data);
+	}
+
+	get readyState() {
+		return this.ws ? this.ws.readyState : WebSocket.CLOSED;
+	}
+}
+
+export const socket = new SocketWrapper();
 
 export function send(event, data = {}) {
 	if (socket.readyState === WebSocket.OPEN)
 		socket.send(JSON.stringify({ event, data }));
 }
-
-socket.addEventListener("open", () => {
-	// La pantalla de carga ya está visible (import de loading.js); aquí solo
-	// se actualiza el estado: el 100% lo pone network.js cuando llega el init.
-	setProgress(18);
-	setStatus("Conectado — generando el mundo...");
-});
-socket.addEventListener("close", () => {
-	showConnectionError();
-});

@@ -26,12 +26,13 @@ import {
 	geometryPool,
 	groupFromBuffers,
 	lavaMaterial,
+	plantMaterialUniforms,
 	setTexFns,
 	setWorkerFallback,
 	setWorkerMessageHandler,
 	terrainMaterial,
 	tryGetWorker,
-	waterMaterial,
+	waterMaterialUniforms,
 	workerPending
 } from "./meshbuild.js";
 import { camera, scene } from "./scene.js";
@@ -339,14 +340,19 @@ export async function hotReloadTextures() {
 	// Liberar la textura anterior (el atlas se comparte entre los materiales;
 	// dispose es idempotente si apuntan a la misma).
 	if (terrainMaterial.map) terrainMaterial.map.dispose();
-	if (waterMaterial.map) waterMaterial.map.dispose();
 	if (lavaMaterial.map) lavaMaterial.map.dispose();
 	terrainMaterial.map = newAtlas;
 	terrainMaterial.needsUpdate = true;
-	waterMaterial.map = newAtlas;
-	waterMaterial.needsUpdate = true;
 	lavaMaterial.map = newAtlas;
 	lavaMaterial.needsUpdate = true;
+	// Fase 19.6 (C1/C2): el agua y las plantas son ShaderMaterial — la textura
+	// vive en el uniforme uMap, no en `material.map`. Se refresca igual que el
+	// resto del mundo (el atlas de terreno alimenta a las plantas; el agua
+	// conserva su tesela DEDICADA de buildWaterTexture, que no se rehace aquí).
+	if (waterMaterialUniforms.uMap.value?.dispose)
+		waterMaterialUniforms.uMap.value.dispose();
+	waterMaterialUniforms.uMap.value = newAtlas;
+	plantMaterialUniforms.uMap.value = newAtlas;
 	// Cambiar también las funciones de tesela/UV: la geometría reconstruida
 	// usa el layout nuevo (los chunks ya construidos se reconstruyen debajo).
 	// Solo los chunks de detalle completo usan el atlas: los LOD (color plano)
@@ -355,6 +361,56 @@ export async function hotReloadTextures() {
 	for (const key of [...chunkMeshes.keys(), ...lodMeshes.keys()])
 		rebuildChunk(key);
 	return newAtlas;
+}
+
+// ============================================================
+// MIPMAPS / ANISOTROPÍA DEL ATLAS (Fase 19.6, Bloque E)
+// Toggle de calidad (OFF por defecto: el look pixel-art crisp es la marca
+// del proyecto). Al activarlo, el atlas de terreno pasa a generar mipmaps
+// con filtrado lineal MIN y muestreo anisotrópico (extensión
+// EXT_texture_filter_anisotropic): los chunks lejanos se ven más nítidos a
+// costa del look 16×16 nítido de cerca.
+//
+// La geometría NO se reconstruye (el filtrado es solo del sampleo de la
+// textura): basta con marcar needsUpdate de la textura compartida y los
+// materiales que la usan. groundbreaking: ninguna referencia se duplica, los
+// ShaderMaterial (agua/plantas) leen el mismo objeto atlas.
+// ============================================================
+let worldMipmaps = false;
+// Ratio máximo soportado por la GPU (leído de la extensión, 1 si no está).
+const anisoExtension = (() => {
+	try {
+		const gl =
+			document.querySelector("canvas")?.getContext("webgl2") ||
+			document.querySelector("canvas")?.getContext("webgl");
+		if (!gl) return 1;
+		const ext = gl.getExtension("EXT_texture_filter_anisotropic");
+		if (!ext) return 1;
+		return Math.max(gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT), 1);
+	} catch {
+		return 1;
+	}
+})();
+const MIPMAP_ANISO = Math.min(8, anisoExtension); // ratio 4-8 (espec E)
+
+function applyMipmapsToTexture(tex) {
+	if (!tex) return;
+	tex.generateMipmaps = worldMipmaps;
+	tex.magFilter = worldMipmaps ? THREE.LinearFilter : THREE.NearestFilter;
+	tex.minFilter = worldMipmaps
+		? THREE.LinearMipmapLinearFilter
+		: THREE.NearestFilter;
+	tex.anisotropy = worldMipmaps ? MIPMAP_ANISO : 1;
+	tex.needsUpdate = true;
+}
+
+// Aplica el filtrado a la textura compartida del atlas y a la del agua (la
+// única otra textura con NeareFilter propia); lava y plantas comparten la del
+// atlas. Reconstruir los chunks NO es necesario (ver arriba).
+export function setWorldMipmaps(on) {
+	worldMipmaps = !!on;
+	applyMipmapsToTexture(terrainMaterial.map);
+	applyMipmapsToTexture(waterMaterialUniforms.uMap.value);
 }
 
 export function unloadChunks(keys) {

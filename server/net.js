@@ -17,6 +17,7 @@ const {
 	WS_MAX_PAYLOAD,
 	MAX_CONNECTIONS,
 	MAX_MSG_RATE,
+	MAX_ACTION_RATE,
 	B,
 	I,
 	NOT_MINEABLE,
@@ -378,24 +379,42 @@ function handleConnection(ws, req) {
 	const spawnX = spawn.x,
 		spawnY = spawn.y,
 		spawnZ = spawn.z;
-	// Fase 7 (auditoría): operador — el PRIMER jugador conectado (host) o
-	// cualquiera en la lista OPS (env var OPS="Nombre1,Nombre2"). Permiso para
-	// /tp /give /time /gamemode /reload /op (ver commands.js).
+	// Fase 7 (auditoría): operador — cualquiera en la lista OPS (env var
+	// OPS="Nombre1,Nombre2"). Permiso para /tp /give /time /gamemode /reload
+	// /op (ver commands.js).
+	// Auditoría 2026-08-15 (M4): el "PRIMER jugador conectado es OP" es una
+	// carrera de privilegios — el primer extraño en conectar tras un reinicio
+	// quedaba con poderes. Solo se mantiene ese fallback (host) cuando el
+	// admin NO configuró OPS explícito (LAN/E2E sin lista); con OPS definida,
+	// nada de "primero conectado": solo la lista manda.
 	const playerName = nameFromRequest(req) || `Jugador-${playerId.slice(0, 4)}`;
+	// Auditoría 2026-08-15 (M3): SUPLANTACIÓN por nombre. Un segundo socket con
+	// el MISMO nombre entraba en línea y restorePlayer le devolvía el inventario
+	// guardado del nombre (dos jugadores sobre el mismo archivo). Se rechaza la
+	// conexión nueva si el nombre ya está en línea (insensible a mayúsculas).
+	// En modo menú aún no hay identidad mundial compartida (cada jugador elige
+	// mundo en join_world): el duplicado se permite ahí (no restaura inventario
+	// hasta ese momento) y se comprueba de verdad al enlazar el nombre.
+	for (const q of state.players.values()) {
+		if (q.name && q.name.toLowerCase() === playerName.toLowerCase()) {
+			try {
+				ws.close(4001, "nombre en uso"); // 4001 = policy (definido por app)
+			} catch {
+				/* fake de test sin close: basta con no registrar */
+			}
+			return;
+		}
+	}
 	// Fase 17: skin del jugador (preferencia del cliente; la valida la lista
 	// oficial — ver skinFromRequest).
 	const playerSkin = skinFromRequest(req) || "steve";
-	// Fase 13 (C3): POO — el jugador es una instancia de Player (clase de
-	// players.js) construida desde los mismos campos planos de siempre. El
-	// resto del servidor lo sigue tratando por propiedades; los métodos de
-	// entidad (damage/eat/respawn/...) quedan disponibles en la instancia.
+	const hostIsOp = constants.OPS.size === 0 && state.players.size === 0;
 	const player = playerHelpers.createPlayer({
 		id: playerId,
 		ws,
 		name: playerName, // Fase 7: nombre visible
 		skin: playerSkin, // Fase 17: skin (Steve por defecto)
-		isOp:
-			state.players.size === 0 || constants.OPS.has(playerName.toLowerCase()),
+		isOp: hostIsOp || constants.OPS.has(playerName.toLowerCase()),
 		x: spawnX,
 		y: spawnY,
 		z: spawnZ,
@@ -581,6 +600,37 @@ function handleConnection(ws, req) {
 				}
 				return;
 			}
+			// Auditoría 2026-08-15 (B2): rate-limit POR ACCIÓN. El tope global
+			// de MAX_MSG_RATE lo agota casi solo `move` (~20/s de juego normal),
+			// así que antes un cliente hostil podía disparar hasta 30
+			// block_action/chest_action/interact/chat por segundo sin tocar el
+			// límite. Este contador SEPARADO pesa solo los eventos de mutación
+			// del mundo/inventario/chat: más de MAX_ACTION_RATE por segundo
+			// sostenido es flood de acciones y se corta. `move` y `tick` no
+			// cuentan (el rate global ya los cubre).
+			if (
+				event !== "move" &&
+				event !== "tick" &&
+				event !== "textures_reload" // del lado del SERVIDOR (reload)
+			) {
+				if (!ws.actionWindow) {
+					ws.actionWindow = nowRate;
+					ws.actionCount = 0;
+				}
+				if (nowRate - ws.actionWindow >= 1000) {
+					ws.actionWindow = nowRate;
+					ws.actionCount = 0;
+				}
+				if (++ws.actionCount > MAX_ACTION_RATE) {
+					try {
+						ws.rateLimited = true;
+						ws.close(1008, "demasiadas acciones"); // 1008 = policy violation
+					} catch {
+						/* ya cerrado */
+					}
+					return;
+				}
+			}
 		}
 
 		try {
@@ -621,19 +671,13 @@ function handleConnection(ws, req) {
 					// trayectoria posicional no reflejaría (un cliente que baja "sin
 					// daño" reportando alturas falsas).
 					playerHelpers.applyFallDamage(p, vyObs);
-					// Generar chunks nuevos bajo demanda al moverse
-					const newChunks = world.ensureChunksAround(cx, cz, 2);
-					if (newChunks.length) {
-						const extra = {};
-						for (const key of newChunks)
-							extra[key] = Array.from(state.chunks.get(key));
-						ws.send(
-							JSON.stringify({
-								event: "chunks_add",
-								data: { chunkData: extra }
-							})
-						);
-					}
+					// P1 (auditoría 2026-08-15): ya no se genera la frontera de forma
+					// síncrona aquí (world.ensureChunksAround(cx,cz,2) generaba hasta
+					// ~25 chunks por salto de chunk y congelaba el event loop de todos
+					// los jugadores). La generación progresiva de chunk-fill.js
+					// (fillForPlayers, un lote CHUNK_FILL_PER_TICK por tick, anillos
+					// Chebyshev desde el jugador) cubre todo el radio de render,
+					// frontera incluida, sin picos bloqueantes.
 					broadcast(
 						"player_move",
 						{ id: playerId, name: p.name, x, y, z, yaw: p.yaw, pitch: p.pitch },
@@ -645,8 +689,22 @@ function handleConnection(ws, req) {
 				case "set_name": {
 					// Fase 7: cambiar el nombre visible (desde el menú/ajustes). Se sanea y
 					// se propaga a todos los clientes con player_rename (tags flotantes).
+					// Auditoría 2026-08-15 (M3): renombrar a un nombre YA en línea se
+					// rechaza (un homónimo activo permitiría suplantarlo en el chat y a
+					// las mascotas); renombrarse a SÍ mismo está permitido.
 					const name = sanitizeName(data?.name);
 					if (!name) break;
+					let taken = false;
+					for (const q of state.players.values()) {
+						if (
+							q.id !== playerId &&
+							q.name.toLowerCase() === name.toLowerCase()
+						) {
+							taken = true;
+							break;
+						}
+					}
+					if (taken) break;
 					p.name = name;
 					broadcast("player_rename", { id: playerId, name });
 					break;
@@ -667,27 +725,30 @@ function handleConnection(ws, req) {
 
 				case "settings": {
 					// Fase 7: ajustes que afectan al servidor. Por ahora solo la distancia
-					// de render (2..10 chunks): al ampliarla se generan los chunks nuevos
-					// y se reenvían TAMBIÉN los ya generados del radio (si antes se bajó,
-					// el cliente descartó los lejanos y los necesita de nuevo). El cliente
-					// decide qué construir/ocultar.
+					// de render (2..10 chunks). P1 (auditoría 2026-08-15): al cambiarla NO
+					// se generan los chunks nuevos de golpe (world.ensureChunksAround con
+					// r=10 eran hasta 441 chunks síncronos que congelaban el event loop);
+					// los que falten los genera progresivamente fillForPlayers (chunk-fill).
+					// Aquí solo se REENVÍA lo YA cacheado en estado. P3 (misma auditoría):
+					// al AMPLIAR solo se reenvía la CORONA (anillo prevRd+1..clamped: los
+					// chunks que el cliente descartó al reducir); al reducir se mantiene el
+					// reenvío fragmentado del radio completo (C6-REN-3).
 					const rd = data?.renderDistance;
 					if (typeof rd === "number" && Number.isFinite(rd)) {
 						const clamped = Math.min(10, Math.max(2, Math.round(rd)));
 						if (clamped !== p.renderDistance) {
+							const prevRd = p.renderDistance;
 							p.renderDistance = clamped;
-							// Se generan los chunks nuevos del radio (síncrono, pocos
-							// tras el relleno progresivo del mainLoop) y se reenvía TODO
-							// el radio por LOTES (C6-REN-3): el cliente descargó los
-							// lejanos al reducir el radio y los necesita de nuevo, pero
-							// mandarlos en un único chunks_add gigante congelaba ambos
-							// lados.
-							world.ensureChunksAround(p.x, p.z, p.renderDistance);
 							const pcx = Math.floor(p.x / constants.CHUNK_SIZE),
 								pcz = Math.floor(p.z / constants.CHUNK_SIZE);
+							// Ampliar → solo la corona (distancia Chebyshev > prevRd);
+							// reducir/igual → todo el radio nuevo fragmentado.
+							const lo = clamped > prevRd ? prevRd + 1 : 0;
 							const keys = [];
 							for (let x = pcx - clamped; x <= pcx + clamped; x++) {
 								for (let z = pcz - clamped; z <= pcz + clamped; z++) {
+									if (Math.max(Math.abs(x - pcx), Math.abs(z - pcz)) < lo)
+										continue;
 									const key = `${x},${z}`;
 									if (state.chunks.has(key)) keys.push(key);
 								}
@@ -1064,7 +1125,13 @@ function handleConnection(ws, req) {
 		if (constants.MENU_MODE && state.players.size === 0) save.releaseWorld();
 	});
 
-	ws.on("error", () => {});
+	// Auditoría 2026-08-15 (F7): el error de socket antes eran silencioso
+	// (vacío). Se loguea sin romper la desconexión normal (el close handler
+	// sigue limpiando al jugador). Un socket roto genera un 'error' justo
+	// antes del 'close'; no es un error lógico del servidor.
+	ws.on("error", (err) => {
+		log.warn(`[net] socket de ${playerId} con error: ${err.message}`);
+	});
 }
 
 // ============================================================
