@@ -1013,34 +1013,40 @@
 
 > Especificación (la verdad de la fase): [`docs/spec/fase21-spec.md`](docs/spec/fase21-spec.md)
 > **En curso — abierta 2026-08-17** (Fase 20 cerrada: v20.2 con etiqueta
-> `v20.2`, suite 60/60, E2E 7/7, `--audit` 7/7, biome 0). La spec es de
-> **alcance** (no de implementación): al abrir la fase se hace la entrevista
-> del planificador para acotar qué biomas/estructuras/mobs entran en la
-> primera tanda y los criterios de aceptación. **Exclusiones de la
-> entrevista 2026-08-15: el selector de skins NO entra (ya en F17 C3) y el
-> audio por bioma se adelantó a la F19.5 (A1) — no se duplican aquí.**
+> `v20.2`, suite 60/60, E2E 7/7, `--audit` 7/7, biome 0). **P0 completada
+> (2026-08-17)**: primera tanda por valor percibido definida en la spec F21
+> §5 (A1 + sub-biomas A2 baratos + pozo B1 + pirámide B2 + vaca/gallina C1
+> + enderman C2); el resto queda diferido a P1 (§5.2 de la spec).
+> **Exclusiones de la entrevista 2026-08-15: el selector de skins NO entra
+> (ya en F17 C3) y el audio por bioma se adelantó a la F19.5 (A1) — no se
+> duplican aquí.**
 
-- [ ] P0 Planificación: entrevista del planificador para acotar la primera
+- [x] P0 Planificación: entrevista del planificador para acotar la primera
       tanda (biomas/estructuras/mobs por valor percibido), criterios de
-      aceptación y orden de implementación — resultado en la spec F21
-- [ ] A1 Biomas más grandes en extensión (escala del ruido de `getBiome`)
+      aceptación y orden de implementación — resultado en la spec F21 §5
+      (P1: §5.2)
+- [x] A1 Biomas más grandes en extensión (escala del ruido de `getBiome`)
       con recalibración de `unit-biomas`/`unit-mundo`/`audit-fase4`
-- [ ] A2 Biomas de superficie nuevos (tundra nevada, badlands, isla de
-      champiñones, bosque oscuro, bosque de abedules, taiga de árboles
-      gigantes, picos nevados, desierto, sabana) con paleta/vegetación;
-      bloques nuevos sincronizados B/I + receta + icono; cuevas de
-      lush/dripstone en segunda tanda
-- [ ] B1 Estructuras pasivas: pozo del desierto, iglú (solo edificio),
-      geoda de amatista — deterministas por hash 2D en su bioma
-- [ ] B2 Estructuras activas (acotadas en la entrevista): pirámide del
-      desierto (trampa TNT), cabaña del pantano, puesto de saqueadores,
-      mansión del bosque, fortaleza, ruinas/monumento oceánico
-- [ ] C1 Mobs pasivos nuevos: vaca (ordeñable), gallina (pone huevos),
-      pulpo (tinta); refinar oveja (comer pasto)
-- [ ] C2 Mobs neutrales nuevos: enderman (teletransporte), zombified piglin
-      (efecto dominó), abeja (pica y muere) — gólem de hierro Won't
+      (`BIOME_FREQ` 0.003; `unit-fase21.js` en verde, suite 61/61)
+- [ ] A2 Biomas de superficie nuevos — **P0: sub-biomas baratos** (bosque
+      de abedules, taiga de árboles gigantes 2×2, picos nevados; en
+      implementación); resto de superficie (sabana/badlands/oscuro/
+      champiñones) si reusan bloques existentes; cuevas de lush/dripstone
+      → P1 (bloques nuevos)
+- [ ] B1 Estructuras pasivas — **P0: pozo del desierto** (en
+      implementación); iglú y geoda de amatista → P1 (geoda reusa bloques
+      de la F22)
+- [ ] B2 Estructuras activas — **P0: pirámide del desierto** (trampa TNT
+      + cofres); cabaña, puesto, fortaleza, ruinas/monumento → P1; mansión
+      y monumento fuera de la fase si el presupuesto no da (decisión de
+      cierre)
+- [ ] C1 Mobs pasivos nuevos — **P0: vaca (ordeñable) y gallina (pone
+      huevos)**; pulpo y refinar oveja → P1
+- [ ] C2 Mobs neutrales nuevos — **P0: enderman** (neutralidad +
+      teletransporte; sin recoger bloques en P0); zombified piglin y abeja
+      → P1
 - [ ] C3 Mejoras de IA de mobs existentes (creeper huye de gatos, esqueleto
-      strafe, araña día/noche, zombi convoca) con tests
+      strafe, araña día/noche, zombi convoca) con tests — **P1**
 - [ ] D1 Cierre y auditoría de Fase 21: suite + E2E + auditorías en verde,
       verificación manual (explorar biomas/estructuras con semilla
       conocida), `SCHEMA_VERSION` 7 solo si cambia el formato (migración +

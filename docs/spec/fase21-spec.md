@@ -1,7 +1,9 @@
 # Fase 21 — Biomas ampliados, estructuras y más mobs (Spec prospectiva)
 
 > **Estado:** `[EN CURSO]` (abierta 2026-08-17 — Fase 20 cerrada con la
-> v20.2: suite 60/60, E2E 7/7, `--audit` 7/7, biome 0, etiqueta `v20.2`)
+> v20.2: suite 60/60, E2E 7/7, `--audit` 7/7, biome 0, etiqueta `v20.2`;
+> **P0 definida** 2026-08-17 — primera tanda por valor percibido en §5;
+> A1 implementado y testeado, sub-biomas A2 y pozo B1 en implementación)
 
 > Documento creado a partir de: `docs/Notas del usuario.md` ("Mejoras":
 > "Biomas más grandes en extensión y nuevos biomas", "Estructuras estáticas
@@ -15,6 +17,8 @@
 > la fase se hace la entrevista del planificador para acotar qué
 > biomas/estructuras/mobs entran en la primera tanda (P0 en `TODO.md`), el
 > orden por valor percibido y los criterios de aceptación concretos.
+> **P0: completada (2026-08-17)** — la primera tanda y el orden están en
+> §5; los ítems no incluidos quedan diferidos a P1 (§5.2).
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -180,7 +184,72 @@ fuera de alcance por ahora).
 
 ---
 
-## 5. Cierre y auditoría de la Fase 21 (tarea obligatoria)
+## 5. Entrevista del planificador (P0) — primera tanda por valor percibido
+
+> Entrevista P0 completada el **2026-08-17** (sesión del planificador con el
+> usuario, tras la apertura de la fase): se acota la primera tanda
+> (biomas/estructuras/mobs), el orden de implementación y los criterios de
+> aceptación por bloque. Lo que no entra en P0 queda **diferido a P1** (se
+> documenta aquí, no se elimina del TODO). El criterio transversal es el
+> **valor percibido por coste**: el jugador nota la variedad de mundo y la
+> fauna al explorar, así que se prioriza lo visible y barato (reuso de
+> bloques/ítems/patrones existentes) sobre lo caro o dependiente de la F22.
+
+### 5.1 Primera tanda (P0) — por valor percibido
+
+| Orden | Bloque | Ítems de P0 | Por qué entra (valor/coste) | Estado (2026-08-17) |
+| --- | --- | --- | --- | --- |
+| 1 | **A1** | Escala de biomas (extensión horizontal) | Cambio de una constante (`BIOME_FREQ`) que hace TODO el mundo más variado; coste mínimo, efecto máximo | ✅ **Implementado + testeado** (`65563d7`: `unit-fase21.js`; `BIOME_FREQ` 0.003) |
+| 2 | **A2** | Sub-biomas baratos: **bosque de abedules**, **taiga de árboles gigantes** (2×2), **picos nevados** | Reusan bloques/árboles existentes (abedul, abeto, nieve); ~1/3 de cada banda base queda como variante visible sin bloques nuevos | 🔨 Implementado en el árbol (sin commitear): `server/biomes.js` (gates `SUBBIOME_FREQ`/`PEAK_GATE`) + `server/generation.js` (abeto 2×2) |
+| 3 | **A2** | Biomas de superficie restantes **solo si reusan bloques existentes** (sabana con acacias, badlands con terracota/arena, bosque oscuro, isla de champiñones) | El resto de biomas nuevos de la spec que no exigen bloques sincronizados nuevos; se valoran en orden de coste tras los sub-biomas | ⏳ Pendiente de P0 (decisión por bioma al implementar) |
+| 4 | **B1** | **Pozo del desierto** | Estructura pequeña y muy reconocible; patrón hash-2D ya existente (templo/naufragio); sin bloques nuevos | 🔨 Implementado en el árbol (sin commitear): `server/structures.js` (`WELL_CELL` 40×40, gate 7 %, solo desierto firme) |
+| 5 | **B2** | **Pirámide del desierto** (trampa TNT + cofres) | Reusa la trampa/explosión existentes (F10/F11) y el loot de cofres; complementa al pozo en el mismo bioma | ⏳ Pendiente de P0 |
+| 6 | **C1** | **Vaca** (ordeñable con cubo → leche) y **gallina** (pone huevos; 1/8 pollito) | Los dos animales de granja que faltan; patrón F12 (subclase + `tickSpecies`/`onDeath` + drops/XP) ya consolidado; alto valor de juego (alimento/cría) por coste medio | ⏳ Pendiente de P0 |
+| 7 | **C2** | **Enderman** (neutralidad: solo agrede al mirarlo; teletransporte ya probado en `unit-mobs-ia`) | El neutral más icónico de las notas; la IA de teletransporte ya existe y se testea; mecánica acotada (agua, teletransporte, sin recoger bloques en P0) | ⏳ Pendiente de P0 |
+
+### 5.2 Diferido a P1 (segunda tanda)
+
+- **A2**: cuevas de lush/dripstone (requieren bloques nuevos: bayas
+  luminosas, dripstone) → P1, con sincronización B/I + receta + icono.
+- **B1**: iglú (solo edificio) y **geoda de amatista** → P1: la geoda
+  depende de los bloques de amatista de la **Fase 22 (B1)** (la F21 los
+  reusa, no los crea — `TODO.md` D2).
+- **B2**: cabaña del pantano, puesto de saqueadores (sin saqueadores: se
+  decide dejarlo vacío o con mobs existentes), fortaleza y ruinas/
+  monumento oceánico → P1 (las más caras — mansión del bosque, monumento
+  oceánico — quedan fuera de esta fase si el presupuesto no da; decisión de
+  cierre).
+- **C1**: pulpo (tinta → tinte negro, requiere ítem nuevo sincronizado o
+  reuso documentado) y refinamiento de la oveja (comer pasto) → P1.
+- **C2**: zombified piglin (efecto dominó) y abeja (requiere colmena/
+  miel como bloques nuevos) → P1.
+- **C3**: mejoras de IA de mobs existentes (creeper huye de gatos,
+  esqueleto strafe, araña día/noche, zombi convoca) → P1, con tests por
+  especie.
+
+### 5.3 Criterios de aceptación de P0 (por bloque)
+
+1. **A1/A2 (sub-biomas)**: misma semilla = mismo mundo (determinismo);
+   cada sub-bioma muestrea en el rango de tests (`unit-fase21.js` /
+   `unit-biomas.js`) y su vegetación es la esperada (abedul en
+   `birch_forest`, abeto 2×2 en `giant_taiga`, nieve en `snowy_peaks`);
+   los 8 biomas base siguen presentes.
+2. **B1 (pozo)**: solo en desierto firme (nunca sobre agua), determinista
+   por hash-2D, fuente de agua central con lecho de arena; los tests de
+   mundo ("charco válido") no se rompen.
+3. **B2 (pirámide)**: determinista en desierto, trampa de TNT funcional
+   (test F11 reusado), loot de cofres coherente.
+4. **C1/C2 (vaca, gallina, enderman)**: mecánica característica con test
+   por mecánica (ordeñar, poner huevos, neutralidad/teletransporte);
+   drops/XP en `unit-paridad`; texturas nuevas; sin regresión en los mobs
+   existentes.
+5. **Transversal**: sin bloques/ítems nuevos salvo los ya previstos (los
+   de amatista vienen de la F22); `SCHEMA_VERSION` 6 intacto; sin cambios
+   de protocolo WS ni de IDs B/I.
+
+---
+
+## 6. Cierre y auditoría de la Fase 21 (tarea obligatoria)
 
 Al implementarse (tras la entrevista del planificador), esta fase cierra con:
 
@@ -200,7 +269,7 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
 
 ---
 
-## 6. Criterios de aceptación (resumen)
+## 7. Criterios de aceptación (resumen)
 
 1. Los biomas nuevos y ampliados generan de forma determinista con su
    paleta/vegetación (test por bioma) sin romper la generación existente.
@@ -241,3 +310,10 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
 - 2026-08-17: apertura de la Fase 21 (prerrequisito F20 cumplido con la
   v20.2) — estado `[EN CURSO]`, spec pasa de alcance a fase activa con
   planificación P0 (entrevista del planificador) en `TODO.md`.
+
+**Cambios en esta spec (v4):**
+- 2026-08-17: **P0 completada** — nueva sección §5 con la primera tanda por
+  valor percibido (A1 + sub-biomas A2 + pozo B1 + pirámide B2 + vaca/gallina
+  C1 + enderman C2), los diferidos a P1 (§5.2) y los criterios de aceptación
+  por bloque (§5.3); cabecera y §1 actualizadas; cierre y criterios
+  renumerados a §6/§7.
