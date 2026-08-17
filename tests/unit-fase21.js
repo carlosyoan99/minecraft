@@ -37,7 +37,8 @@ const noise = require("../server/noise.js");
 const {
 	CHUNK_SIZE,
 	WORLD_MIN_Y,
-	B
+	B,
+	I
 } = require("../server/constants.js");
 
 function idx(x, y, z) {
@@ -455,6 +456,285 @@ if (firstWell) {
 		"el pozo tiene la fuente de agua en el centro",
 		centerWater
 	);
+}
+
+// ============================================================
+// FASE 21, Bloque B2 — pirámide del desierto (estructura activa).
+// Patrón del pozo/wellAt pero con esquema de celdas propio
+// (PYRAMID_CELL 48, gate 5 %, hash 2D con sal): solo en desierto firme,
+// determinista. Verifica:
+//   1. determinismo — misma celda → mismo centro; pyramidAt devuelve el
+//      footprint y null fuera; la trampa (pyramidTrapAt) cae en el centro,
+//   2. ubicación — todo pyramid está en desierto y nunca sobre agua,
+//   3. layout de bloques — cofres en las esquinas de la bandeja subterránea
+//      (foso 5×5, 2 de alto) con loot, y TNT en la celda central de la
+//      placa; el pozo de bajada central es AIR de la cima al fondo.
+// ============================================================
+let pyramidsFound = 0;
+let pyramidsInDesert = 0;
+let pyramidsOnWater = 0;
+let firstPyramid = null;
+for (let ccx = -24; ccx < 24 && !firstPyramid; ccx++) {
+	for (let ccz = -24; ccz < 24; ccz++) {
+		const p = world.pyramidCenterAt(ccx, ccz);
+		if (!p) continue;
+		pyramidsFound++;
+		if (world.getBiome(p.cx, p.cz) === "desert") pyramidsInDesert++;
+		if (world.columnFloorY(p.cx, p.cz) !== null) pyramidsOnWater++;
+		if (!firstPyramid) firstPyramid = p;
+	}
+}
+check(
+	"hay al menos 1 pirámide del desierto en la semilla",
+	pyramidsFound > 0,
+	`${pyramidsFound} pirámides en ±1152`
+);
+check(
+	"toda pirámide está en desierto firme",
+	pyramidsFound === pyramidsInDesert && pyramidsOnWater === 0,
+	`${pyramidsInDesert}/${pyramidsFound} en desierto; ${pyramidsOnWater} sobre agua`
+);
+if (firstPyramid) {
+	const cellX = Math.floor(firstPyramid.cx / 48);
+	const cellZ = Math.floor(firstPyramid.cz / 48);
+	const again = world.pyramidCenterAt(cellX, cellZ);
+	check(
+		"pyramidCenterAt es determinista (misma celda → mismo centro)",
+		again !== null && again.cx === firstPyramid.cx && again.cz === firstPyramid.cz,
+		`(${firstPyramid.cx},${firstPyramid.cz}) vs (${again && again.cx},${again && again.cz})`
+	);
+	const p1 = world.pyramidAt(firstPyramid.cx, firstPyramid.cz);
+	const px = world.pyramidAt(firstPyramid.cx + 8, firstPyramid.cz);
+	check(
+		"pyramidAt devuelve el footprint (centro) y null fuera (8 bloques)",
+		p1 !== null && p1.cx === firstPyramid.cx && px === null,
+		`centro ${p1 && p1.cx} | fuera ${px}`
+	);
+	check(
+		"pyramidTrapAt es true SOLO en la celda central",
+		world.pyramidTrapAt(firstPyramid.cx, firstPyramid.cz) === true &&
+			world.pyramidTrapAt(firstPyramid.cx + 1, firstPyramid.cz) === false,
+		`centro ${world.pyramidTrapAt(firstPyramid.cx, firstPyramid.cz)} | +1 ${world.pyramidTrapAt(firstPyramid.cx + 1, firstPyramid.cz)}`
+	);
+	// Layout de bloques: generar los chunks que tocan el footprint 15×15 +
+	// sótano (la bandeja) y comprobar cofres, TNT y pozo de bajada.
+	const { cx: wx0, cz: wz0 } = firstPyramid;
+	const R = 10;
+	for (let cgx = Math.floor((wx0 - R) / 16); cgx <= Math.floor((wx0 + R) / 16); cgx++) {
+		for (let cgz = Math.floor((wz0 - R) / 16); cgz <= Math.floor((wz0 + R) / 16); cgz++) {
+			world.generateChunk(cgx, cgz);
+		}
+	}
+	const pBaseY = world.getHeight(wx0, wz0);
+	const pBlk = (wx, wz, y) => {
+		const gx = Math.floor(wx / 16);
+		const gz = Math.floor(wz / 16);
+		const lx = ((wx % 16) + 16) % 16;
+		const lz = ((wz % 16) + 16) % 16;
+		const d = state.chunks.get(`${gx},${gz}`);
+		return d[idx(lx, y, lz)];
+	};
+	// Bandeja: foso 5×5 bajo el centro (baseY-2 a baseY-1), cofres en las
+	// esquinas interiores (±1,±1), TNT bajo la celda central (baseY-3).
+	let chestsInPyramid = 0;
+	let tntUnderCenter = false;
+	let shaftOpen = true;
+	for (let dx = -2; dx <= 2; dx++) {
+		for (let dz = -2; dz <= 2; dz++) {
+			if (Math.abs(dx) === 1 && Math.abs(dz) === 1) {
+				if (pBlk(wx0 + dx, wz0 + dz, pBaseY - 2) === B.CHEST) chestsInPyramid++;
+			}
+		}
+	}
+	tntUnderCenter = pBlk(wx0, wz0, pBaseY - 3) === B.TNT;
+	// Pozo de bajada central AIR desde el nivel superior (cima) hasta el piso.
+	for (let dy = 0; dy < 7; dy++) {
+		const y = pBaseY + dy;
+		if (dy === 0) continue; // el hueco central del nivel 0 es AIR
+		if (pBlk(wx0, wz0, y) !== B.AIR) {
+			shaftOpen = false;
+			break;
+		}
+	}
+	check(
+		"la pirámide tiene los 4 cofres en las esquinas de la bandeja",
+		chestsInPyramid === 4,
+		`${chestsInPyramid}/4 cofres`
+	);
+	check(
+		"la pirámide tiene TNT bajo la celda central (trampa)",
+		tntUnderCenter
+	);
+	check(
+		"el pozo de bajada central es AIR de la cima al piso (está abierto)",
+		shaftOpen
+	);
+	// Los cofres de la pirámide se registran en state.chests con loot.
+	let pyramidLootOk = 0;
+	for (const [key, slots] of state.chests) {
+		const m = key.split(",").map(Number);
+		if (m.length !== 3) continue;
+		if (Math.abs(m[0] - wx0) <= 2 && Math.abs(m[2] - wz0) <= 2) {
+			if (Array.isArray(slots) && slots.some((s) => s && s.id)) pyramidLootOk++;
+		}
+	}
+	check(
+		"los cofres de la pirámide están en state.chests con loot",
+		pyramidLootOk >= 1,
+		`${pyramidLootOk} cofres con items`
+	);
+}
+
+// ============================================================
+// FASE 21, Bloque C1 — vaca ordeñable y gallina ponedora.
+// Ordeñar (clic derecho con cubo sobre una vaca cercana) consume el cubo y
+// da leche (I.MILK); la gallina pone un huevo (I.EGG) en el inventario del
+// jugador más cercano cuando le toca (cooldown 5-10 min, tickChicken).
+// ============================================================
+{
+	const tnt = require("../server/tnt.js");
+	const actions = require("../server/actions.js");
+	const inventory = require("../server/inventory.js");
+	const mobsModule = require("../server/mobs.js");
+	// Jugador con cubo en la mano, junto a una vaca.
+	const p = {
+		id: "cowP",
+		inventory: new Array(36).fill(null),
+		selectedSlot: 0,
+		x: 0,
+		y: 64,
+		z: 0,
+		ws: { readyState: 3, send() {} },
+		inMenu: false
+	};
+	p.inventory[0] = { id: I.BUCKET, count: 1 };
+	inventory.addToInventory(p, I.MILK, 0) === false; // (no op, deja el cubo)
+	// Vaca a distancia corta (dentro del radio de ordeñar, 4 bloques).
+	const cow = mobsModule.createMob("cow", 0, 64, 1);
+	cow.id = "cow1";
+	state.mobs.push(cow);
+	const before = p.inventory.filter((s) => s && s.id === I.BUCKET).length;
+	actions.handleMilkCow(p, { mobId: cow.id });
+	const milkAfter = p.inventory.filter((s) => s && s.id === I.MILK).length;
+	const bucketAfter = p.inventory.filter((s) => s && s.id === I.BUCKET).length;
+	check(
+		"ordeñar: consume el cubo y da leche (I.MILK)",
+		bucketAfter === before - 1 && milkAfter === 1,
+		`cubos ${before}→${bucketAfter}, leche ${milkAfter}`
+	);
+	// Sin cubo en la mano: no hace nada.
+	const p2 = {
+		id: "cowP2",
+		inventory: new Array(36).fill(null),
+		selectedSlot: 0,
+		x: 0,
+		y: 64,
+		z: 0,
+		ws: { readyState: 3, send() {} },
+		inMenu: false
+	};
+	actions.handleMilkCow(p2, { mobId: cow.id });
+	check(
+		"ordeñar sin cubo: no da leche",
+		p2.inventory.filter((s) => s && s.id === I.MILK).length === 0
+	);
+	// Gallina: forzar el cooldown a pasado y tickear con el jugador cerca.
+	const hen = mobsModule.createMob("chicken", 0, 64, 2);
+	hen.id = "hen1";
+	hen.nextEggAt = 0; // ya le toca poner
+	state.mobs.push(hen);
+	const p3 = {
+		id: "eggP",
+		inventory: new Array(36).fill(null),
+		selectedSlot: 0,
+		x: 0,
+		y: 64,
+		z: 0,
+		ws: { readyState: 3, send() {} },
+		inMenu: false
+	};
+	state.players.set(p3.id, p3);
+	hen.tickSpecies(false, p3, 2);
+	check(
+		"la gallina pone 1 huevo (I.EGG) en el jugador cercano",
+		p3.inventory.filter((s) => s && s.id === I.EGG).length === 1,
+		`huevos ${p3.inventory.filter((s) => s && s.id === I.EGG).length}`
+	);
+	state.mobs.length = 0;
+	state.players.clear();
+}
+
+// ============================================================
+// FASE 21, Bloque C2 — enderman neutral: solo agrede si lo miran.
+// La línea de visión (isPlayerLookingAt) usa radianes (convención three
+// cliente); mirando al enderman (aggro) → hostil contra ese jugador;
+// sin mirar ni golpear → idle sin atacar.
+// ============================================================
+{
+	const mobsModule = require("../server/mobs.js");
+	const fakeWs = { readyState: 1, send() {} };
+	const viewer = {
+		id: "viewer",
+		x: 0,
+		y: 1.6,
+		z: 0,
+		yaw: 0,
+		pitch: 0,
+		gamemode: "survival",
+		inMenu: false,
+		ws: fakeWs
+	};
+	state.players.set(viewer.id, viewer);
+	// Enderman delante (yaw 0 → mira a -Z): a 4 bloques al -Z.
+	const e = mobsModule.createMob("enderman", 0, 0, -4);
+	e.id = "end1";
+	state.mobs.push(e);
+	check(
+		"isPlayerLookingAt(true): enderman delante de la mirada",
+		mobsModule.isPlayerLookingAt(viewer, e) === true
+	);
+	viewer.yaw = Math.PI; // ahora mira a +Z (el enderman queda detrás)
+	check(
+		"isPlayerLookingAt(false): enderman tras la mirada",
+		mobsModule.isPlayerLookingAt(viewer, e) === false
+	);
+	viewer.yaw = 0;
+	check(
+		"isEndermanWatched devuelve el jugador que lo mira",
+		mobsModule.isEndermanWatched(e, state) === viewer
+	);
+	// tickEnderman con alguien mirándolo → aggro contra ese jugador.
+	mobsModule.tickEnderman(e, false, viewer, 4);
+	check(
+		"al mirar al enderman se agrava contra el jugador (aggro 20s)",
+		e.isAggroed() && e.aggroTarget === viewer.id,
+		`aggro ${e.isAggroed()} target ${e.aggroTarget}`
+	);
+	// Enderman sin nadie que lo mire: no se agrava.
+	state.players.clear();
+	state.mobs.length = 0;
+	state.players.set("lejos", {
+		id: "lejos",
+		x: 999,
+		y: 1.6,
+		z: 999,
+		yaw: 0,
+		pitch: 0,
+		gamemode: "survival",
+		inMenu: false,
+		ws: fakeWs
+	});
+	const e2 = mobsModule.createMob("enderman", 0, 0, 0);
+	e2.id = "end2";
+	e2.aggroUntil = 0;
+	e2.aggroTarget = null;
+	mobsModule.tickEnderman(e2, false, state.players.get("lejos"), 999);
+	check(
+		"enderman sin mirada ni golpe: sigue neutral (sin aggro)",
+		!e2.isAggroed() && !e2.aggroTarget
+	);
+	state.players.clear();
+	state.mobs.length = 0;
 }
 
 world.setDiskLoader(null);

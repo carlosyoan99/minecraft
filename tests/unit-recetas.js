@@ -356,6 +356,9 @@ check(
 	//   255/256     — carne podrida (zombi) / pólvora (creeper) — Fase 16 (D2)
 	//   121          — patata: drop raro del zombi (2,5%, Fase 18 C-3); su
 	//                  cocinado (122) sale del horno (patata → patata al horno)
+	//   260/261     — leche/huevo (Fase 21 C1): se obtienen en juego usando el
+	//                  cubo en una vaca (ordeñar) y de la gallina que pone
+	//                  huevos al jugador cercano (tickChicken) — no craftean
 	const DROPS_JUSTIFICADOS = new Set([
 		I.COAL, // ORE_DROP (mena de carbón)
 		I.RAW_IRON, // ORE_DROP (mena de hierro) — Fase 20 B3
@@ -388,7 +391,11 @@ check(
 		I.FLINT,
 		I.FEATHER,
 		I.ROTTEN_FLESH,
-		I.GUNPOWDER
+		I.GUNPOWDER,
+		// Fase 21 (C1): no craftean — leche (ordeñar vaca con cubo) y huevo
+		// (pullo ponedora entregado al jugador cercano).
+		I.MILK,
+		I.EGG
 	]);
 	const huérfanos = Object.values(I)
 		.filter((id) => typeof id === "number")
