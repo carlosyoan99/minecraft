@@ -3,7 +3,9 @@
 > Documentación técnica del lado cliente (navegador) del clon de
 > Minecraft. Complementa a [`../README.md`](../README.md) y a las
 > especificaciones por fase. Aquí se explica **cómo funciona** y **por qué**
-> está hecho así; las mecánicas de render/gameplay están en
+> está hecho así; las mecánicas de render/gameplay viven en **ficheros
+> independientes por mecánica** (cómo funciona, por qué, mejoras a futuro
+> y constantes/cambios esperados) — índice en
 > [`mecanicas.md`](./mecanicas.md). Guía práctica del jugador:
 > [`help.md`](./help.md).
 
