@@ -1056,6 +1056,12 @@ function handleConnection(ws, req) {
 					break;
 				}
 
+				case "milk_cow": {
+					// Fase 21 (C1): ordeñar la vaca con el cubo vacío → leche
+					actions.handleMilkCow(p, data);
+					break;
+				}
+
 				case "bonemeal": {
 					actions.handleBonemeal(p, data);
 					break;

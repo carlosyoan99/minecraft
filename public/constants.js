@@ -315,7 +315,10 @@ export const ITEM_NAMES = {
 	// Fase 20 B3: mena cruda de hierro/oro — se mina así y se funde al lingote
 	// (paridad MC 1.17 restaurada). Sincronizados con server/constants.js.
 	258: "Hierro crudo",
-	259: "Oro crudo"
+	259: "Oro crudo",
+	// Fase 21 (C1): leche (ordeñar la vaca) y huevo (pone la gallina)
+	260: "Leche",
+	261: "Huevo"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -370,6 +373,12 @@ export const FEATHER = 253;
 export const COMPASS = 254;
 export const ROTTEN_FLESH = 255; // Fase 16 (D2): drop del zombi
 export const GUNPOWDER = 256; // Fase 16 (D2): drop del creeper + receta TNT
+export const CHARCOAL = 257; // Fase 18 (C-4): tronco al horno (ítem distinto del carbón)
+export const RAW_IRON = 258; // Fase 20 B3: mena cruda — se funde al lingote
+export const RAW_GOLD = 259; // Fase 20 B3
+// Fase 21 (C1): leche (ordeñar la vaca) y huevo (pone la gallina)
+export const MILK = 260;
+export const EGG = 261;
 // Durabilidad máxima por pieza (Fase 7). Mantener en sincronía con
 // ARMOR_DURABILITY de constants.js (servidor) — lo verifica unit-sync.js.
 export const ARMOR_DURABILITY = {

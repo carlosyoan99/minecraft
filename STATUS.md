@@ -16,9 +16,9 @@
 | --- | --- |
 | **Fase** | **21 — Biomas ampliados, estructuras y más mobs (abierta 2026-08-17)** [`[EN CURSO]`](docs/spec/fase21-spec.md) |
 | **Prerrequisito cumplido** | Fase 20 cerrada (v20.2 con etiqueta `v20.2`, suite 60/60, E2E 7/7, `--audit` 7/7, biome 0) ✅ |
-| **Trabajo en curso** | **Fase 20 cerrada** (ciclo rolling): v20.1 (paridad TNT knockback + mena cruda, rendimiento P4/P7) y **v20.2** (bugs D1 `#menu-bg` y D2 desconexión al cargar, backlog B6: SV-5 `MAX_STACK` 64, REN-1 `savePlayersAsync`, CI 19 timeouts CDP/perf, CI 20 `npm run audit`; `audit-fase20.js` nuevo, `--audit` 7/7; cierre commit `70541ec` + etiqueta `v20.2`; **verificación navegador 2026-08-17**: mena cruda → horno ✅, knockback TNT ✅ hasta integración, D2 estable) — ver [`docs/v20.1.md`](docs/v20.1.md) y [`docs/v20.2.md`](docs/v20.2.md). **Fase 21 abierta** ([spec](docs/spec/fase21-spec.md), de alcance): planificación P0 pendiente (entrevista del planificador para acotar la primera tanda de biomas/estructuras/mobs) |
+| **Trabajo en curso** | **Fase 21 en curso — iteración v21.1** (primera tanda P0 acotada en la entrevista 2026-08-17, ver spec F21 §5). **Código terminado (sin commitear):** A1 biomas más grandes (`BIOME_FREQ` 0.003, testeado en `unit-fase21.js`), A2 sub-biomas (bosque de abedules, taiga gigante 2×2, picos nevados), B1 pozo del desierto, C1 vaca ordeñable (`I.MILK` 260, `handleMilkCow`) y gallina ponedora (`I.EGG` 261, `tickChicken`) sincronizados en ambos `constants.js` + iconos. Tests dedicados quedan **para el final** (decisión del usuario): `unit-recetas` esperado en rojo (MILK/EGG huérfanos hasta añadirlos a `DROPS_JUSTIFICADOS`); suite actual 60/61 ✅ |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Planificar la **Fase 21** (P0): entrevista del planificador para acotar qué biomas/estructuras/mobs entran en la primera tanda, el orden por valor percibido y los criterios de aceptación (resultado en la spec F21 y `TODO.md`) |
+| **Próximo paso** | Commitear el código de la v21.1 (A1/A2/B1/C1) y luego la **fase de tests dedicada**: `DROPS_JUSTIFICADOS` con MILK/EGG (260/261) para dejar `unit-recetas` en verde, ampliar `unit-fase21.js` (estructuras/mobs), `unit-mobs-ia.js`, `unit-paridad.js`, recalibrar `audit-fase4.js`; cierre de la F21 (B2 pirámide y C2 enderman quedan diferidos a P1) |
 
 ## Implementado (fases cerradas y auditadas)
 

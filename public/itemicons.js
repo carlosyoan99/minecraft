@@ -1369,6 +1369,32 @@ function drawGunpowder(g, _rng) {
 		set(g, x, y, light);
 }
 
+// Leche (Fase 21, C1): cubo metálico lleno de leche blanca (el icono de MC
+// del cubo de leche); el cubo vacío (249/250/251) ya tiene drawBucket.
+function drawMilk(g) {
+	drawBucket(g, "#f5f5f2");
+}
+
+// Huevo (Fase 21, C1): óvalo crema con brillo y sombra (el huevo de MC).
+function drawEgg(g) {
+	const base = "#f0e6c8",
+		dark = "#d8caa0",
+		light = "#faf4e0";
+	for (let y = 5; y <= 11; y++) {
+		const t = Math.abs(y - 8) / 3.5;
+		const w = Math.max(1, Math.round(5 * (1 - t)));
+		for (let x = 8 - w; x <= 8 + w; x++) set(g, x, y, base);
+	}
+	rect(g, 5, 5, 1, 1, light);
+	rect(g, 6, 5, 1, 1, light);
+	rect(g, 5, 6, 1, 1, light);
+	set(g, 9, 9, dark);
+	set(g, 10, 10, dark);
+	set(g, 9, 10, dark);
+	set(g, 10, 9, dark);
+	set(g, 7, 11, dark);
+}
+
 // ============================================================
 // REGISTRO: id → función de dibujo (g, rng)
 // ============================================================
@@ -1440,6 +1466,9 @@ ICONS[254] = drawCompass;
 // Fase 16 (D2): carne podrida (zombi) y pólvora (creeper).
 ICONS[255] = drawFlesh;
 ICONS[256] = drawGunpowder;
+// Fase 21 (C1): leche (ordeñar la vaca) y huevo (pone la gallina).
+ICONS[260] = drawMilk;
+ICONS[261] = drawEgg;
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);

@@ -24,6 +24,10 @@ const state = require("./state.js");
 const world = require("./world.js");
 const projectiles = require("./projectiles.js");
 const { players } = state;
+// Fase 21 (C1): la gallina pone huevos DIRECTOS al jugador cercano (no hay
+// entidades de ítem en el suelo — decisión del proyecto). inventory.js no
+// requiere este módulo (ni mobs.js), así que no hay ciclo.
+const { addToInventory, sendInventory } = require("./inventory.js");
 
 // Salud del slime por tamaño (Fase 12, A2): grande 16, mediano 4, pequeño 1.
 const SLIME_HEALTH = { 2: 16, 1: 4, 0: 1 };
@@ -250,6 +254,40 @@ function tickPassive(mob, isNight) {
 		mob.state = "idle";
 		mob.wander();
 	}
+}
+
+// Gallina (Fase 21, C1): además del pasivo genérico (tickPassive), pone
+// huevos periódicamente. Como el juego no tiene entidades de ítem en el
+// suelo (decisión de diseño documentada en tnt.js), el huevo va DIRECTA al
+// inventario del jugador más cercano que esté a ≤ CHICKEN_EGG_RANGE bloques
+// (cooldown aleatorio por gallina: 5-10 min de juego, paridad MC de la nota
+// del usuario). Si no hay ningún jugador cerca no se entrega y el cooldown
+// sigue corriendo (el próximo tick cercano lo recoge).
+const CHICKEN_EGG_INTERVAL = [5, 10]; // minutos, extremos del intervalo
+const CHICKEN_EGG_RANGE = 6; // bloques: jugador necesita estar cerca
+function tickChicken(mob, isNight) {
+	if (Date.now() >= (mob.nextEggAt || 0)) {
+		// Próxima puesta: 5-10 min desde AHORA (el cooldown comienza ya; si hay
+		// un jugador cerca en el próximo tick se entrega enseguida).
+		mob.nextEggAt =
+			Date.now() +
+			(CHICKEN_EGG_INTERVAL[0] +
+				Math.random() * (CHICKEN_EGG_INTERVAL[1] - CHICKEN_EGG_INTERVAL[0])) *
+				60000;
+		// Entregar 1 huevo al jugador (survival) más cercano dentro del radio.
+		let best = null,
+			bestD = CHICKEN_EGG_RANGE;
+		for (const p of players.values()) {
+			if (p.inMenu) continue;
+			const d = Math.hypot(p.x - mob.x, p.z - mob.z);
+			if (d <= bestD) {
+				bestD = d;
+				best = p;
+			}
+		}
+		if (best && addToInventory(best, I.EGG, 1)) sendInventory(best);
+	}
+	tickPassive(mob, isNight);
 }
 
 // Ocelote (A3): pasivo huidizo — corre en dirección contraria al jugador
@@ -761,9 +799,12 @@ function createSpecies(Mob) {
 	class Chicken extends Mob {
 		constructor(x, y, z) {
 			super("chicken", x, y, z);
+			// Fase 21 (C1): próxima puesta de huevo (timestamp) — runtime, no se
+			// persiste (al recargar se repone con el intervalo aleatorio).
+			this.nextEggAt = 0;
 		}
 		tickSpecies(isNight) {
-			tickPassive(this, isNight);
+			tickChicken(this, isNight);
 		}
 	}
 
@@ -872,6 +913,7 @@ function createSpecies(Mob) {
 		tickSkeleton,
 		tickEnderman,
 		tickPassive,
+		tickChicken,
 		tickOcelot,
 		tickCat,
 		tickPet,

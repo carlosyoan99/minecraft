@@ -117,7 +117,7 @@ function oceanFloorY(wx, wz) {
 function columnFloorY(wx, wz) {
 	if (isLake(wx, wz)) return lakeFloorY(wx, wz);
 	if (isRiver(wx, wz)) {
-		const temp = noise.noise2D(wx * 0.005, wz * 0.005);
+		const temp = noise.noise2D(wx * BIOME_FREQ, wz * BIOME_FREQ);
 		const mnt = noise.noise2D_mountain(wx * 0.008, wz * 0.008);
 		const h = heightFrom(
 			temp,
@@ -143,6 +143,14 @@ function nearLake(wx, wz) {
 	return false;
 }
 
+// Fase 21 (A1): frecuencia del campo de temperatura (escala de los biomas
+// planos). Baja frecuencia = regiones de bioma más grandes. Calibrado por
+// transecto en la semilla: con 0.005 las llanuras/desiertos salían como
+// parches pequeños (60 cambios de bioma en 2000 bloques); con 0.003 quedan
+// extensiones amplias (44 cambios, ~35% más grandes) y los 8 biomas siguen
+// presentes en el rango de tests. La montaña (0.008) y el pantano (gate a
+// baja frecuencia) crecen con la misma escala del resto.
+const BIOME_FREQ = 0.003;
 // Umbral de temperatura para tundra: por debajo hace tanto frío que nieva.
 const SNOW_TEMP = -0.3;
 // Umbral del ruido de montaña: por encima el terreno se eleva en cordilleras.
@@ -201,15 +209,43 @@ function flatBaseHeight(temp) {
 //   0.2 .. 0.32      → forest
 //   >= 0.32          → jungle (selva caliente)
 //   ruido de montaña > umbral → mountain (manda sobre todo lo anterior)
+// Fase 21 (A2): sub-biomas por puertas deterministas (gates de ruido en
+// coordenadas de mundo, mismas que la superficie/árboles) que matizan las
+// bandas existentes sin cambiar sus umbrales:
+//   montaña + crest alto           → snowy_peaks (picos nevados)
+//   taiga + gate                   → giant_taiga (abetos gigantes 2×2)
+//   forest + gate                  → birch_forest (bosque puro de abedules)
+// Las etiquetas nuevas son retrocompatibles: el resto del código usa la
+// base (superficie por temp/mnt, árboles por bioma con lista), los testers
+// de muestras existentes siguen viendo mountain/taiga/forest.
 const SWAMP_GATE = 0.42; // ruido de pantano en [-1,1]: regiones templadas donde se activa
-function biomeFrom(temp, mnt, swamp) {
-	if (mnt > MOUNTAIN_THRESHOLD) return "mountain";
-	if (temp < SNOW_TEMP) return "snow"; // tundra: nieve en la superficie
-	if (temp < -0.2) return "taiga";
+// Gates de sub-biomas (Fase 21, A2): el MISMO ruido de detalle muestreado a
+// frecuencia propia decide taiga→giant_taiga y forest→birch_forest
+// (~1/3 de cada banda queda como variante), y el crest de montaña
+// (noise2D_mountain a 0.05, el mismo de heightFrom) marca los picos.
+const SUBBIOME_FREQ = 0.02;
+const SUBBIOME_GATE = 0.25;
+const PEAK_GATE = 0.1;
+function biomeFrom(temp, mnt, swamp, wx, wz) {
+	if (mnt > MOUNTAIN_THRESHOLD) {
+		if (wx !== undefined && noise.noise2D_mountain(wx * 0.05, wz * 0.05) > PEAK_GATE)
+			return "snowy_peaks";
+		return "mountain";
+	}
+	if (temp < SNOW_TEMP) return "snow";
+	if (temp < -0.2) {
+		if (wx !== undefined && noise.noise2D_detail(wx * SUBBIOME_FREQ, wz * SUBBIOME_FREQ) > SUBBIOME_GATE)
+			return "giant_taiga";
+		return "taiga";
+	}
 	if (temp < -0.05) return "desert";
 	if (swamp !== undefined && swamp > SWAMP_GATE && temp < 0.2) return "swamp";
 	if (temp > 0.38) return "jungle";
-	if (temp > 0.2) return "forest";
+	if (temp > 0.2) {
+		if (wx !== undefined && noise.noise2D_detail(wx * SUBBIOME_FREQ, wz * SUBBIOME_FREQ) > SUBBIOME_GATE)
+			return "birch_forest";
+		return "forest";
+	}
 	return "plains";
 }
 
@@ -220,9 +256,11 @@ function getBiome(wx, wz) {
 	biomeComputations++;
 	if (biomeCache.size >= MAX_BIOME_CACHE) biomeCache.clear();
 	const b = biomeFrom(
-		noise.noise2D(wx * 0.005, wz * 0.005),
+		noise.noise2D(wx * BIOME_FREQ, wz * BIOME_FREQ),
 		noise.noise2D_mountain(wx * 0.008, wz * 0.008),
-		noise.noise2D_swamp(wx * 0.005, wz * 0.005)
+		noise.noise2D_swamp(wx * BIOME_FREQ, wz * BIOME_FREQ),
+		wx,
+		wz
 	);
 	biomeCache.set(key, b);
 	return b;
@@ -246,7 +284,7 @@ function getHeight(wx, wz) {
 	// DESIGN_OFFSET para que la superficie real quede anclada en ~0.
 	return (
 		heightFrom(
-			noise.noise2D(wx * 0.005, wz * 0.005),
+			noise.noise2D(wx * BIOME_FREQ, wz * BIOME_FREQ),
 			smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
 			wx,
 			wz
@@ -306,6 +344,7 @@ module.exports = {
 	DESIGN_OFFSET,
 	LAKE_FLOOR,
 	SNOW_TEMP,
+	BIOME_FREQ,
 	MOUNTAIN_THRESHOLD,
 	MOUNTAIN_SNOW_LINE,
 	smoothstep,

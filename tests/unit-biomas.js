@@ -13,6 +13,7 @@ const state = require("../server/state.js");
 const {
 	CHUNK_SIZE,
 	WORLD_MIN_Y,
+	WORLD_MAX_Y,
 	B,
 	isSolidBlock,
 	NOT_MINEABLE
@@ -51,6 +52,14 @@ for (let wx = -100; wx <= 100; wx += 4) {
 for (const b of ["plains", "forest", "desert", "snow", "mountain"]) {
 	check(
 		`bioma '${b}' existe en la semilla`,
+		(counts[b] || 0) > 0,
+		`${counts[b] || 0} muestras`
+	);
+}
+// Fase 21 (A2): los sub-biomas de superficie nuevos existen (misma semilla).
+for (const b of ["birch_forest", "giant_taiga", "snowy_peaks"]) {
+	check(
+		`sub-bioma '${b}' existe en la semilla`,
 		(counts[b] || 0) > 0,
 		`${counts[b] || 0} muestras`
 	);
@@ -174,6 +183,55 @@ check(
 	"los lagos siguen teniendo fondo de arena",
 	waterSurface > 0,
 	`${waterSurface} columnas`
+);
+
+// --- 3b) Fase 21 (A2): vegetación de los sub-biomas nuevos ---
+// Los árboles usan Math.random global: fijarlo durante la generación NO da
+// un patrón de árboles exacto, así que los checks son de PRESENCIA (≥1
+// bloque del tronco esperado por bioma) en el área -4..4 ya generada.
+let birchLogs = 0,
+	giantSpruceLogs = 0,
+	spruceLogs = 0;
+let birchLogInBirch = 0,
+	giantLogInGiant = 0;
+for (let cx = -4; cx <= 4; cx++) {
+	for (let cz = -4; cz <= 4; cz++) {
+		const d = state.chunks.get(`${cx},${cz}`);
+		for (let x = 0; x < CHUNK_SIZE; x++) {
+			for (let z = 0; z < CHUNK_SIZE; z++) {
+				const biome = world.getBiome(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+				const height = world.getHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+				// Ciclo de 1 a 6 bloques por encima del suelo: el tronco (o la
+				// base de un abeto gigante) está ahí si hubo árbol en la columna.
+				for (let dy = 0; dy < 6; dy++) {
+					const wy = height + dy;
+					if (wy < WORLD_MIN_Y || wy > WORLD_MAX_Y) continue;
+					const blk = d[idx(x, wy, z)];
+					if (blk === B.BIRCH_LOG) {
+						birchLogs++;
+						if (biome === "birch_forest") birchLogInBirch++;
+					} else if (blk === B.SPRUCE_LOG) {
+						spruceLogs++;
+						if (biome === "giant_taiga") giantLogInGiant++;
+					}
+				}
+			}
+		}
+	}
+}
+// 1) El bosque de abedules contiene al menos un tronco de abedul (y no se
+// limita a los abedules sueltos del bosque común).
+check(
+	"el bosque de abedules tiene troncos de abedul",
+	birchLogInBirch > 0,
+	`${birchLogInBirch} troncos`
+);
+// 2) La taiga gigante tiene abetos (tronco SPRUCE). Los checks de densidad
+// exacta (2×2) viven en unit-fase21 (determinista con RNG sembrado).
+check(
+	"la taiga gigante tiene abetos gigantes",
+	giantLogInGiant > 0,
+	`${giantLogInGiant} troncos (de ${spruceLogs} de pino total)` 
 );
 
 // --- 4) La nieve es sólida y rompible ---

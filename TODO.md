@@ -1015,8 +1015,12 @@
 > **En curso — abierta 2026-08-17** (Fase 20 cerrada: v20.2 con etiqueta
 > `v20.2`, suite 60/60, E2E 7/7, `--audit` 7/7, biome 0). **P0 completada
 > (2026-08-17)**: primera tanda por valor percibido definida en la spec F21
-> §5 (A1 + sub-biomas A2 baratos + pozo B1 + pirámide B2 + vaca/gallina C1
-> + enderman C2); el resto queda diferido a P1 (§5.2 de la spec).
+> §5 (A1 + sub-biomas A2 baratos + pozo B1 + vaca/gallina C1); pirámide B2
+> y enderman C2 quedan **diferidos a P1** (§5.2 de la spec).
+> **Código de la v21.1 terminado (2026-08-17, sin commitear)**: A1+A2+B1+C1
+> implementados en el árbol; los tests de la tanda van **al final**
+> (decisión del usuario) — `unit-recetas` en rojo mientras MILK/EGG no
+> estén en `DROPS_JUSTIFICADOS` (ver `STATUS.md`).
 > **Exclusiones de la entrevista 2026-08-15: el selector de skins NO entra
 > (ya en F17 C3) y el audio por bioma se adelantó a la F19.5 (A1) — no se
 > duplican aquí.**
@@ -1028,23 +1032,29 @@
 - [x] A1 Biomas más grandes en extensión (escala del ruido de `getBiome`)
       con recalibración de `unit-biomas`/`unit-mundo`/`audit-fase4`
       (`BIOME_FREQ` 0.003; `unit-fase21.js` en verde, suite 61/61)
-- [ ] A2 Biomas de superficie nuevos — **P0: sub-biomas baratos** (bosque
-      de abedules, taiga de árboles gigantes 2×2, picos nevados; en
-      implementación); resto de superficie (sabana/badlands/oscuro/
-      champiñones) si reusan bloques existentes; cuevas de lush/dripstone
-      → P1 (bloques nuevos)
-- [ ] B1 Estructuras pasivas — **P0: pozo del desierto** (en
-      implementación); iglú y geoda de amatista → P1 (geoda reusa bloques
+- [x] A2 Biomas de superficie nuevos — **P0: sub-biomas baratos** (bosque
+      de abedules, taiga de árboles gigantes 2×2, picos nevados)
+      implementados en el árbol (`server/biomes.js` gates
+      `SUBBIOME_FREQ`/`PEAK_GATE`, abeto 2×2 en `server/generation.js`);
+      resto de superficie (sabana/badlands/oscuro/champiñones) y cuevas de
+      lush/dripstone → P1 (bloques nuevos)
+- [x] B1 Estructuras pasivas — **P0: pozo del desierto** implementado en
+      el árbol (`server/structures.js` `WELL_CELL` 40×40, gate 7 %, solo
+      desierto firme); iglú y geoda de amatista → P1 (geoda reusa bloques
       de la F22)
-- [ ] B2 Estructuras activas — **P0: pirámide del desierto** (trampa TNT
-      + cofres); cabaña, puesto, fortaleza, ruinas/monumento → P1; mansión
-      y monumento fuera de la fase si el presupuesto no da (decisión de
-      cierre)
-- [ ] C1 Mobs pasivos nuevos — **P0: vaca (ordeñable) y gallina (pone
-      huevos)**; pulpo y refinar oveja → P1
-- [ ] C2 Mobs neutrales nuevos — **P0: enderman** (neutralidad +
-      teletransporte; sin recoger bloques en P0); zombified piglin y abeja
-      → P1
+- [ ] B2 Estructuras activas — **diferido a P1** (pirámide del desierto,
+      trampa TNT + cofres); cabaña, puesto, fortaleza, ruinas/monumento →
+      P1; mansión y monumento fuera de la fase si el presupuesto no da
+      (decisión de cierre)
+- [x] C1 Mobs pasivos nuevos — **P0: vaca (ordeñable) y gallina (pone
+      huevos)** implementadas en el árbol (`I.MILK` 260 y `I.EGG` 261
+      sincronizados en ambos `constants.js` y `CREATIVE_ITEMS`, `tickChicken`
+      en `server/mob-species.js`, `handleMilkCow` en `server/actions.js` +
+      `net.js`, click derecho con cubo en `game-input.js`, iconos en
+      `itemicons.js`); pulpo, refinamiento de oveja y huevo lanzable 1/8
+      pollito → P1
+- [ ] C2 Mobs neutrales nuevos — **diferido a P1** (enderman: neutralidad +
+      teletransporte); zombified piglin y abeja → P1
 - [ ] C3 Mejoras de IA de mobs existentes (creeper huye de gatos, esqueleto
       strafe, araña día/noche, zombi convoca) con tests — **P1**
 - [ ] D1 Cierre y auditoría de Fase 21: suite + E2E + auditorías en verde,

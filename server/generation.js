@@ -137,7 +137,7 @@ function isLavaPondAt(wx, wz) {
 	// Fase 10 (A3): nunca lava en biomas de hielo/tundra (bug de las notas) y
 	// solo en regiones templadas o cálidas (el ruido de temperatura es el
 	// mismo que usa biomeFrom, así que es consistente con el bioma real).
-	const temp = noise.noise2D(wx * 0.005, wz * 0.005);
+	const temp = noise.noise2D(wx * biomes.BIOME_FREQ, wz * biomes.BIOME_FREQ);
 	if (temp < biomes.SNOW_TEMP) return false;
 	return (
 		noise.noise2D_pond_region(wx * 0.01, wz * 0.01) > LAVA_REGION_GATE &&
@@ -213,7 +213,7 @@ function generateChunk(cx, cz) {
 			// bajo el agua. Ruidos compartidos por columna (getHeight/getBiome son
 			// ruido puro: recalcularlos daría valores idénticos, pero se evita el
 			// triple muestreo en el bucle de generación).
-			const temp = noise.noise2D(wx * 0.005, wz * 0.005);
+			const temp = noise.noise2D(wx * biomes.BIOME_FREQ, wz * biomes.BIOME_FREQ);
 			const mnt = noise.noise2D_mountain(wx * 0.008, wz * 0.008);
 			const baseHeight =
 				biomes.heightFrom(
@@ -251,8 +251,8 @@ function generateChunk(cx, cz) {
 			const height = waterCol ? floorY : baseHeight; // Y de MUNDO de la superficie
 			// Fase 11 (Bloque B): el bioma ahora conoce la puerta de pantano
 			// (el ruido de pantano, muestreado a baja frecuencia).
-			const swampNoise = noise.noise2D_swamp(wx * 0.005, wz * 0.005);
-			const biome = biomes.biomeFrom(temp, mnt, swampNoise);
+			const swampNoise = noise.noise2D_swamp(wx * biomes.BIOME_FREQ, wz * biomes.BIOME_FREQ);
+			const biome = biomes.biomeFrom(temp, mnt, swampNoise, wx, wz);
 			const surfaceBlock = waterCol
 				? B.AIR
 				: // Fase 9 (Bloque F): playa — la costa de un lago se cubre de arena
@@ -390,6 +390,10 @@ function generateChunk(cx, cz) {
 			// vegetación (la estructura pisa el terreno; se rellena y recorta en
 			// placeTempleColumn/placeShipwreckColumn).
 			const struct = structures.structureAt(wx, wz);
+			// Fase 21 (B1): pozo del desierto — esquema de celdas propio; también
+			// se calcula antes de los árboles para que no crezca ninguno en el
+			// brocal de piedra (es un footprint 5×5 con fuente de agua).
+			const well = structures.wellAt(wx, wz);
 
 			// Minas abandonadas (Fase 7): excavar el pasillo horizontal en piedra
 			// (preserva minerales y el techo) a la profundidad del túnel; nunca
@@ -432,6 +436,7 @@ function generateChunk(cx, cz) {
 				!pond &&
 				!lavaPond &&
 				!struct &&
+				!well &&
 				surfaceBlock === B.GRASS;
 
 			// Fase 15 (A2): el tronco debe estar a ≥2 bloques del borde del chunk
@@ -486,14 +491,26 @@ function generateChunk(cx, cz) {
 			} else if (
 				canGrowTree &&
 				treeFits &&
-				(biome === "forest" || biome === "plains" || biome === "swamp") &&
+				(biome === "forest" ||
+					biome === "birch_forest" ||
+					biome === "plains" ||
+					biome === "swamp") &&
 				treeRoll <
-					(biome === "forest" ? 0.05 : biome === "swamp" ? 0.02 : 0.012)
+					(biome === "forest"
+						? 0.05
+						: biome === "birch_forest"
+							? 0.05
+							: biome === "swamp"
+								? 0.02
+								: 0.012)
 			) {
-				// Roble (bosque/llanura/pantano) o abedul (bosque, ~1/3): misma
-				// forma, madera distinta (tronco claro). En el pantano (Fase 11,
-				// B) los robles llevan lianas colgando del borde, como en Minecraft.
-				const birch = biome === "forest" && rand() < 0.33;
+				// Roble (bosque/llanura/pantano) o abedul (bosque, ~1/3; bosque de
+				// abedules F21 A2, SIEMPRE): misma forma, madera distinta (tronco
+				// claro). En el pantano (Fase 11, B) los robles llevan lianas
+				// colgando del borde, como en Minecraft.
+				const birch =
+					biome === "birch_forest" ||
+					(biome === "forest" && rand() < 0.33);
 				const log = birch ? B.BIRCH_LOG : B.OAK_LOG;
 				const leaves = birch ? B.BIRCH_LEAVES : B.OAK_LEAVES;
 				const treeHeight = 4 + Math.floor(rand() * 3);
@@ -533,6 +550,70 @@ function generateChunk(cx, cz) {
 									vines:
 										biome === "swamp" &&
 										(Math.abs(dx) === 2 || Math.abs(dz) === 2),
+									height
+								});
+						}
+					}
+				}
+			} else if (
+				canGrowTree &&
+				treeFits &&
+				biome === "giant_taiga" &&
+				treeRoll < 0.02
+			) {
+				// Taiga de árboles gigantes (Fase 21, A2: abeto 2×2 con copa cónica
+				// amplia). El tronco ocupa un cuadrado de 2×2 (como Montenegro);
+				// la pareja +x/+z se reserva con base de tronco en este chunk para
+				// que las columnas vecinas no planten su propio pino encima.
+				const treeHeight = 7 + Math.floor(rand() * 4);
+				for (let dx = 0; dx < 2; dx++) {
+					for (let dz = 0; dz < 2; dz++) {
+						for (let i = 0; i < treeHeight; i++) {
+							const y = height + i;
+							if (y <= WORLD_MAX_Y)
+								data[core.idx(x + dx, core.toLocal(y), z + dz)] =
+									B.SPRUCE_LOG;
+						}
+					}
+				}
+				// Copa cónica amplia (radio 3 en el centro, esfuerzo 2×2): hojas
+				// por capas como el pino normal pero más altas y anchas.
+				for (let dy = 0; dy < treeHeight - 1; dy++) {
+					const radius = dy < 2 ? 1 : dy < treeHeight - 3 ? 3 : 2;
+					for (let dx = -radius; dx <= radius + 1; dx++) {
+						for (let dz = -radius; dz <= radius + 1; dz++) {
+							if (
+								Math.abs(dx) === radius + 1 &&
+								Math.abs(dz) === radius + 1 &&
+								dy < treeHeight - 3 &&
+								rand() < 0.5
+							)
+								continue;
+							const lx = x + dx,
+								lz = z + dz;
+							if (
+								lx < 0 ||
+								lx >= CHUNK_SIZE ||
+								lz < 0 ||
+								lz >= CHUNK_SIZE
+							)
+								continue;
+							const leafWx = cx * CHUNK_SIZE + lx,
+								leafWz = cz * CHUNK_SIZE + lz;
+							if (
+								isPondAt(leafWx, leafWz) ||
+								isLavaPondAt(leafWx, leafWz) ||
+								isSwampPoolAt(leafWx, leafWz)
+							)
+								continue;
+							const y = height + dy;
+							if (y <= WORLD_MAX_Y)
+								pendingLeaves.push({
+									lx,
+									y,
+									lz,
+									block: B.SPRUCE_LEAVES,
+									vines: false,
 									height
 								});
 						}
@@ -629,6 +710,8 @@ function generateChunk(cx, cz) {
 					structures.placeTempleColumn(data, x, z, wx, wz, struct, height);
 				else structures.placeShipwreckColumn(data, x, z, wx, wz, struct);
 			}
+			// Fase 21 (B1): pozo del desierto — pisa el terreno después del resto.
+			if (well) structures.placeWellColumn(data, x, z, wx, wz, well, height);
 		}
 	}
 

@@ -290,6 +290,78 @@ function templeTrapAt(wx, wz) {
 	return dx === 0 && dz <= -1 && dz >= -4;
 }
 
+// ============================================================
+// POZO DEL DESIERTO (Fase 21, B1): estructura pasiva determinista.
+// Un brocal 5×5 (dos capas de piedra lisa alrededor de una fuente de agua
+// central) que se coloca en su propio esquema de celdas (WELL_CELL), con
+// hash 2D con sal —mismo patrón que templo/naufragio. Solo aparece en
+// desierto firme (nunca sobre agua: la fuente sería una piscina flotante).
+// Debajo del agua el relleno es arena para no romper la invariante de
+// unit-mundo ("el agua por encima del mar es charco válido: lecho de arena").
+// ============================================================
+const WELL_CELL = 40; // celdas de 40×40 (pozos un poco menos densos que los templos)
+const WELL_HALF = 2; // footprint 5×5 (dx,dz ∈ [-2,2])
+// Gate ~7% de celdas candidatas (la validación por bioma deja menos).
+const WELL_GATE = 0.07;
+
+function wellCenterAt(cellX, cellZ) {
+	const gate = structCellHash(cellX, cellZ, 21);
+	if (gate >= WELL_GATE) return null;
+	// Centro dentro de la celda, nunca a < 5 del borde (cabe el footprint).
+	const jx = Math.floor(structCellHash(cellX, cellZ, 22) * (WELL_CELL - 10));
+	const jz = Math.floor(structCellHash(cellX, cellZ, 23) * (WELL_CELL - 10));
+	const cx = cellX * WELL_CELL + 5 + jx;
+	const cz = cellZ * WELL_CELL + 5 + jz;
+	// Solo en desierto firme (sin agua): la fuente se asienta en arena seca.
+	if (biomes.getBiome(cx, cz) !== "desert") return null;
+	if (biomes.columnFloorY(cx, cz) !== null) return null;
+	return { cx, cz };
+}
+
+// ¿La columna (wx, wz) es parte de un pozo? Devuelve { cx, cz } o null.
+function wellAt(wx, wz) {
+	const w = wellCenterAt(Math.floor(wx / WELL_CELL), Math.floor(wz / WELL_CELL));
+	if (!w) return null;
+	if (Math.abs(wx - w.cx) > WELL_HALF || Math.abs(wz - w.cz) > WELL_HALF)
+		return null;
+	return w;
+}
+
+// Coloca la columna del pozo en el chunk local (x, z) → mundo (wx, wz).
+// baseY = terreno en el centro; el brocal pisa de baseY a baseY+2 (2 capas de
+// piedra en el borde + fuente central), y el terreno natural se recorta/rellena
+// como en el templo (piedra bajo el brocal si el suelo queda más bajo).
+function placeWellColumn(data, x, z, wx, wz, well, height) {
+	const cx = Math.floor(well.cx);
+	const cz = Math.floor(well.cz);
+	const baseY = biomes.getHeight(cx, cz);
+	const dx = wx - cx;
+	const dz = wz - cz;
+	if (Math.abs(dx) > WELL_HALF || Math.abs(dz) > WELL_HALF) return;
+	// Relleno de soporte si el terreno natural queda bajo el brocal.
+	for (let y = Math.max(WORLD_MIN_Y + 1, height); y < baseY; y++) {
+		if (y <= WORLD_MAX_Y) data[core.idx(x, core.toLocal(y), z)] = B.STONE;
+	}
+	// Capa 0: piso de arena en todo el footprint (incluida la fuente).
+	const floor = baseY;
+	if ((dx === 0 && dz === 0) || (Math.abs(dx) <= WELL_HALF && Math.abs(dz) <= WELL_HALF)) {
+		if (floor <= WORLD_MAX_Y && floor >= WORLD_MIN_Y)
+			data[core.idx(x, core.toLocal(floor), z)] = B.SAND;
+	}
+	// Capa 1 (baseY+1): borde de piedra + fuente de agua central.
+	const y1 = baseY + 1;
+	const isBorder1 = Math.abs(dx) === WELL_HALF || Math.abs(dz) === WELL_HALF;
+	if (y1 <= WORLD_MAX_Y) {
+		if (dx === 0 && dz === 0) data[core.idx(x, core.toLocal(y1), z)] = B.WATER;
+		else if (isBorder1) data[core.idx(x, core.toLocal(y1), z)] = B.STONE;
+		else data[core.idx(x, core.toLocal(y1), z)] = B.AIR;
+	}
+	// Capa 2 (baseY+2): segunda altura del brocal en el borde.
+	const y2 = baseY + 2;
+	if (y2 <= WORLD_MAX_Y && (Math.abs(dx) === WELL_HALF || Math.abs(dz) === WELL_HALF))
+		data[core.idx(x, core.toLocal(y2), z)] = B.STONE;
+}
+
 module.exports = {
 	mineshaftAt,
 	mineshaftDepth,
@@ -301,6 +373,9 @@ module.exports = {
 	shipwreckChestCount,
 	isShipwreckChest,
 	templeTrapAt,
+	wellAt,
+	wellCenterAt,
+	placeWellColumn,
 	MS_TUNNEL_H,
 	setCore
 };

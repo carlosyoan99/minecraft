@@ -12,6 +12,7 @@ import {
 	ARMOR_ITEMS,
 	BED,
 	BREED_FOOD,
+	BUCKET,
 	FARMLAND,
 	FOOD_ITEMS,
 	HOES,
@@ -333,6 +334,14 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 		) {
 			// Fase 11 (C): tijeras (141) sobre una oveja → esquilar (lana sin matar)
 			send("shear_mob", { mobId: hitMob.id });
+		} else if (
+			e.button === 2 &&
+			held &&
+			held.id === BUCKET &&
+			hitMob.type === "cow"
+		) {
+			// Fase 21 (C1): cubo vacío sobre una vaca → ordeñar (leche)
+			send("milk_cow", { mobId: hitMob.id });
 		} else if (
 			e.button === 2 &&
 			held &&

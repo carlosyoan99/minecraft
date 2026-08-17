@@ -57,6 +57,7 @@ let tickCreeper = () => {};
 let tickSkeleton = () => {};
 let tickEnderman = () => {};
 let tickPassive = () => {};
+let tickChicken = () => {}; // Fase 21 (C1): gallina — pone huevos al jugador cercano
 let tickOcelot = () => {};
 let tickCat = () => {};
 let _tickPet = () => {};
@@ -625,6 +626,7 @@ class Mob {
 	tickSkeleton,
 	tickEnderman,
 	tickPassive,
+	tickChicken, // Fase 21 (C1): gallina — pone huevos además de deambular
 	tickOcelot,
 	tickCat,
 	_tickPet,

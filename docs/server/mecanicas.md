@@ -320,6 +320,17 @@ creative conserva y no se persisten).
   podrida** (0-2, `I.ROTTEN_FLESH`) y creepers **pólvora** (0-2,
   `I.GUNPOWDER`) — ítems nuevos sincronizados en ambos `constants.js`; la
   pólvora además es ingrediente de la receta del TNT.
+- **Vaca ordeñable** (Fase 21, C1): con un cubo (`I.BUCKET`) en la mano y
+  botón derecho sobre una vaca cercana (≤4 bloques) se envía `milk_cow`
+  (`net.js` → `actions.handleMilkCow`), que consume el cubo y entrega una
+  **leche** (`I.MILK`, 260) en inventario. Sin entidades de ítem en el
+  suelo (decisión del proyecto): siempre al inventario del jugador.
+- **Gallina ponedora** (Fase 21, C1): en `tickChicken` (hook `tickSpecies`
+  de la subclase `Chicken`) la gallina pone un **huevo** (`I.EGG`, 261) al
+  jugador survival más cercano (≤6 bloques) cada 5–10 min (`nextEggAt`);
+  sin `nextEggAt` previo se arma en el primer tick. Ítems sincronizados en
+  ambos `constants.js` y en `CREATIVE_ITEMS`; **no son comida** ni
+  crafteables (leche no comestible, huevo no se lanza en v21.1).
 - **Persecución con `stuckTicks`:** si un hostil no avanza pese a
   perseguir, se desvía lateralmente; hay límite de rango con vuelta a
   wander.

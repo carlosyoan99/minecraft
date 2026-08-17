@@ -600,6 +600,20 @@ function handleShearMob(p, data) {
 	playerHelpers.sendInventory(p);
 }
 
+// Fase 21 (C1): ordeñar la vaca — clic derecho con el CUBO VACÍO sobre una
+// vaca la consume y devuelve el cubo LLENO DE LECHE (I.MILK). Como en MC, la
+// leche no es comida ni se craftea; aquí solo se obtiene ordeñando.
+function handleMilkCow(p, data) {
+	const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
+	if (!mob || mob.type !== "cow") return;
+	if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > 4) return;
+	const held = p.inventory[p.selectedSlot];
+	if (!held || held.id !== I.BUCKET) return;
+	if (!playerHelpers.removeFromInventory(p, I.BUCKET, 1)) return;
+	playerHelpers.addToInventory(p, I.MILK, 1);
+	playerHelpers.sendInventory(p);
+}
+
 // Fase 12 (A1/A3): domesticar — hueso sobre lobo salvaje, pescado crudo sobre
 // ocelote. ~33% por intento (MC real); el ítem se consume solo en el intento,
 // se denomine o no. En éxito: corazones (mob_breed) y el ocelote se vuelve
@@ -874,6 +888,7 @@ module.exports = {
 	handleEat,
 	handleFeedMob,
 	handleShearMob,
+	handleMilkCow, // Fase 21 (C1): ordeñar la vaca con un cubo → leche
 	handleTameMob,
 	handleSitPet,
 	handleThrowTrident,

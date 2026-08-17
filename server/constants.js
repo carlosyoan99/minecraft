@@ -454,7 +454,14 @@ const I = {
 	// Minecraft desde 1.17). Coal/diamante/redstone/esmeralda siguen saliendo
 	// directos (MC no los funde). Sincronizados en ambos constants + iconos.
 	RAW_IRON: 258,
-	RAW_GOLD: 259
+	RAW_GOLD: 259,
+	// Fase 21 (C1): leche (ordeñar la vaca con un cubo) y huevo (lo pone la
+	// gallina periódicamente). Ninguno es comida ni crafteable — la leche se
+	// obtiene ordeñando (consume el cubo vacío y lo devuelve lleno de leche)
+	// y el huevo es botín de la gallina. El huevo lanzable (1/8 pollito) y
+	// beberse la leche quedan para tandas posteriores de la Fase 21.
+	MILK: 260,
+	EGG: 261
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -1139,6 +1146,9 @@ const CREATIVE_ITEMS = [
 	I.FEATHER,
 	I.BUCKET,
 	I.WATER_BUCKET,
+	// Fase 21 (C1): leche (ordeñar la vaca) y huevo (pone la gallina)
+	I.MILK,
+	I.EGG,
 	I.LAVA_BUCKET
 ];
 // Todos los ítems/armas/herramientas del juego (para el picker creativo).
