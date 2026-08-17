@@ -88,6 +88,15 @@ const MAX_MSG_RATE = 30;
 // BAJO que el global (20/s), sí les pone un techo real: minar ~4/s + colocar
 // ~4/s + ráfagas de chest/inventario caben holgados; más es flood.
 const MAX_ACTION_RATE = 20;
+// Auditoría 2026-08-15 (CL-3/Notas del usuario): tope de TAMAÑO del JSON de
+// cada mensaje. El protocolo real es de mensajes pequeños (moves ~100 B,
+// chat ≤ 200 caracteres); `maxPayload` del WS (1 MiB) es el techo por FRAME,
+// pero un cliente hostil puede enviar frames pequeños con JSON enormes sin
+// tocar el límite por-ventana (30/s) y saturar el parse del servidor. Este
+// tope por mensaje (64 KiB, ~300× el mensaje más grande legítimo) descarta
+// el mensaje sin mutar estado ni inventario (misma política que la guardia
+// de forma del handler).
+const MAX_MSG_BYTES = 64 * 1024;
 // Fase 17 (A1): la semilla se configura con la env var SEED. Sin SEED el
 // servidor arranca en MODO MENÚ: no carga ningún mundo hasta que el primer
 // jugador elige/crea uno (join_world). Con SEED (p. ej. los E2E) arranca
@@ -1248,6 +1257,7 @@ module.exports = {
 	MAX_CONNECTIONS,
 	MAX_MSG_RATE,
 	MAX_ACTION_RATE,
+	MAX_MSG_BYTES,
 	WORLD_ROOT,
 	seedDir,
 	setWorldSeed,

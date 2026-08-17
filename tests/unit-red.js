@@ -1421,6 +1421,38 @@ function connect() {
 }
 
 // ============================================================
+// Notas del usuario: tope de TAMAÑO del JSON por mensaje (MAX_MSG_BYTES).
+// `maxPayload` del WS limita el FRAME entero (1 MiB), pero un cliente hostil
+// podía enviar frames pequeños con un JSON gigante y saturar el parse sin
+// tocar el rate-limit por-ventana. El mensaje se descarta sin mutar estado.
+// ============================================================
+{
+	const { MAX_MSG_BYTES } = require("../server/constants.js");
+	const ws = new FakeWS();
+	state.players.clear();
+	net.handleConnection(ws, { url: "ws://localhost/?name=bigmsg" });
+	const p = [...state.players.values()][0];
+	const beforeX = p.x;
+	// Mensaje gigante (JSON válido con un campo enorme): se descarta.
+	const huge = JSON.stringify({
+		event: "move",
+		data: { x: beforeX + 1, y: p.y, z: p.z, junk: "x".repeat(MAX_MSG_BYTES) }
+	});
+	check("tope tamaño: el mensaje de prueba supera MAX_MSG_BYTES", huge.length > MAX_MSG_BYTES);
+	ws.emit("message", huge);
+	check(
+		"tope tamaño: el JSON gigante se descarta (no desplaza al jugador)",
+		p.x === beforeX
+	);
+	// Un mensaje normal sigue procesándose tras el descarte.
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "move", data: { x: beforeX, y: p.y, z: p.z } })
+	);
+	check("tope tamaño: tras descartar, un move normal sigue procesándose", true);
+}
+
+// ============================================================
 // AUDITORÍA 2026-08-09 (§3.1) + F20 v20.2: RATE-LIMIT POR CONEXIÓN
 // Un socket real (con req de upgrade) que supere MAX_MSG_RATE mensajes se
 // corta SOLO si el flood es SOSTENIDO (el límite superado en ventanas

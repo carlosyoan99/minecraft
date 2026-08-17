@@ -32,7 +32,17 @@
   semilla/nombre resuelva a un directorio bajo `world/` (test de
   path-traversal en `unit-fase9.js`).
 - **`WS_MAX_PAYLOAD`:** límite de tamaño de mensajes WebSocket entrantes
-  (anti-DoS).
+  (anti-DoS). **`MAX_MSG_BYTES` (64 KiB):** tope del JSON de CADA mensaje
+  (el payload del WS limita el frame entero, pero un frame pequeño podía
+  llevar un JSON gigante; el guard de `net.js` lo descarta sin mutar estado
+  — test en `unit-red.js`).
+- **CSWSH:** `verifyClient` del `WebSocket.Server` valida el header
+  `Origin` contra una allowlist (localhost, LAN privada y `OUR_HOST` —
+  M1 de la auditoría 2026-08-15, `server/timers.js`).
+- **Anti-spam de construcción/interacciones:** `MAX_ACTION_RATE` (20/s)
+  pesa por acción (place/break, chest, horno, chat) con el criterio de
+  ventanas consecutivas — un cliente no puede martillear `block_action`
+  sin agotar el tope global de `MAX_MSG_RATE` (30/s).
 - **Validación de recetas al cargar** y **escritura atómica** de chunks (ver
   [`crafteo-hornos.md`](./crafteo-hornos.md) y
   [`persistencia.md`](./persistencia.md)).

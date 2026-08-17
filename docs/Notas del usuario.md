@@ -92,7 +92,7 @@ y **gallina (ponedora)** (F21 v21.1). Pendientes:
 | Rana, ajolote, cabra | F22/F23 |
 | Ghast, blaze, magma cube | F24 (Nether) |
 | Endermite | F25 (End) |
-| Aldeano, gólem de hierro, Wither, Dragón del End | **Won't** |
+| Aldeano, gólem de hierro, gólem de nieve, gólem de cobre, Wither, Dragón del End | **Won't** |
 
 ### Mundo
 
@@ -107,23 +107,18 @@ y **gallina (ponedora)** (F21 v21.1). Pendientes:
 
 > La lista completa de preguntas de la auditoría quedó respondida en
 > `docs/server/seguridad.md` y la auditoría SEC de la Fase 16 (spec §4).
-> **Solo quedan abiertos** estos puntos (verificados en el código):
+> **Cierre 2026-08-17:** 5 de los 6 gaps quedaron verificados como ya
+> cubiertos o cerrados (ver `docs/server/seguridad.md`); el único abierto
+> es la simulación de condiciones extremas:
 
-1. **Validación del header `Origin`** en el WebSocket (CSWSH) — no se
-   valida (un navegador externo puede abrir socket contra el servidor).
-   Riesgo bajo (sin cuentas ni datos sensibles), pero barato de cerrar.
-2. **Límite de tamaño del JSON** de cada mensaje (no solo el payload total
-   del WS) — un mensaje pequeño con un JSON gigante evade
-   `WS_MAX_PAYLOAD` por unidad.
-3. **Anti-spam de construcción** — no hay cuota de bloques colocados/
-   rotos por tiempo (un cliente puede martillear `block_action`).
-4. **Resiliencia a ráfagas de `move`** — el rate-limit (F20 D2) mide
-   llegada; falta medir el coste acumulado de N jugadores simultáneos.
-5. **Timeout de generación de chunk** — un chunk lento bloquea el tick; no
-   hay límite de tiempo por chunk.
-6. **Modo debug de condiciones extremas** (simular N jugadores, chunks
-   corruptos) — no existe; el CDP (`audit-fase7`) cubre el render, no la
-   carga.
+| Gap | Estado | Dónde se cubre |
+|---|---|---|
+| Validación del header `Origin` (CSWSH) | ✅ cerrado | `verifyClient` + allowlist en `server/timers.js` (M1 de la auditoría 2026-08-15) |
+| Tope de tamaño del JSON por mensaje | ✅ cerrado (2026-08-17) | `MAX_MSG_BYTES` (64 KiB) en `server/constants.js` + guard en `net.js` (descarta sin mutar estado; test en `unit-red.js`) |
+| Anti-spam de construcción | ✅ cubierto | `MAX_ACTION_RATE` (20/s) por acción: `block_action` place/break, chest, horno, chat — ventanas consecutivas (F20 D2) |
+| Resiliencia a ráfagas de `move` | ✅ cubierto | `MAX_MSG_RATE` (30/s) global + rate-limit por ventanas consecutivas; el coste acumulado se mide en `unit-perf-server.js` |
+| Timeout de generación de chunk | ✅ acotado | Generación ~1-5 ms/chunk con topes de llenado y cola asíncrona; el perfilado en vivo (auditoría 2026-08-15 §perfilado) decide si hace falta un timeout real |
+| Modo debug de condiciones extremas (N jugadores, chunks corruptos) | ⚪ **abierto** | No existe; `LOG_LEVEL=debug` + `OPS` + CDP (`audit-fase7`) cubren diagnósticos puntuales, no la simulación de carga — pendiente de planificar (F20 v20.3 o backlog) |
 
 ---
 

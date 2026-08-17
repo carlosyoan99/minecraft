@@ -16,6 +16,7 @@ const {
 	MAX_CONNECTIONS,
 	MAX_MSG_RATE,
 	MAX_ACTION_RATE,
+	MAX_MSG_BYTES,
 	B,
 	NOT_MINEABLE,
 	isSolidBlock,
@@ -557,6 +558,17 @@ function handleConnection(ws, req) {
 	const msgRate = createRateLimit(MAX_MSG_RATE);
 	const actionRate = createRateLimit(MAX_ACTION_RATE);
 	ws.on("message", (raw) => {
+		// Auditoría 2026-08-15 (Notas del usuario): tope de tamaño del JSON
+		// por mensaje (MAX_MSG_BYTES, 64 KiB). `maxPayload` del WS limita el
+		// FRAME entero (1 MiB), pero un cliente hostil podía enviar frames
+		// pequeños con un JSON gigante y saturar el parse sin tocar el
+		// rate-limit por-ventana. Los mensajes legítimos son de ~100 B-2 KiB;
+		// el descarte es silencioso para el emisor (misma política que la
+		// guardia de forma) y no muta estado ni inventario.
+		if (raw.length > MAX_MSG_BYTES) {
+			log.warn(`[net] mensaje de ${raw.length} B descartado (tope ${MAX_MSG_BYTES})`);
+			return;
+		}
 		let msg;
 		try {
 			msg = JSON.parse(raw);
