@@ -253,6 +253,28 @@ fuera de alcance por ahora).
    de amatista vienen de la F22); `SCHEMA_VERSION` 6 intacto; sin cambios
    de protocolo WS ni de IDs B/I.
 
+### 5.4 Iteración v21.2 — bugs de generación de las Notas (definida 2026-08-17)
+
+> Alcance: los **3 bugs de generación abiertos** de `Notas del usuario.md`
+> (sección "Bugs abiertos", añadidos por el usuario 2026-08-17). Iteración
+> de corrección de generación: **sin cambios de protocolo WS, de IDs B/I ni
+> de `SCHEMA_VERSION`** (criterio del ciclo); el determinismo por semilla
+> se mantiene (mismo mundo, solo cambia la forma del terreno). Los ítems de
+> contenido P1 (pirámide, enderman, biomas restantes...) NO entran aquí.
+
+| # | Bug (Notas) | Qué hacer | Criterio de aceptación |
+|---|---|---|---|
+| **D1** | **Ríos demasiado altos** — el agua no llega al nivel del mar, parecen un bug de generación | Bajar el lecho de los ríos hasta el nivel del mar **adaptando el terreno circundante** (las orillas se hunden gradualmente hacia el cauce); **disminuir la densidad** de ríos sin que el cambio se note; **variar anchos** (estrechos y amplios) y **aumentar un poco la profundidad** | Test determinista: todo río tiene agua en su cauce al nivel del mar (lecho ≤ `SEA_LEVEL`), las orillas son contiguas sin acantilados (salto ≤ 4, patrón `unit-biomas` §5), la densidad baja sin quebrar `unit-mundo` |
+| **D2** | **Océanos poco profundos** — sin variantes cálidas/profundas | **Aumentar la profundidad** del fondo oceánico (más lejos de la costa); **océano cálido** con **corales** (bloques/ítems nuevos sincronizados B/I + receta + icono si se añaden) y **océano profundo** (fondo más hondo); **no aumentar la probabilidad** de océano (`OCEAN_FREQ`/`OCEAN_GATE` intactos) | Test determinista: la profundidad media del fondo crece vs v21.1; existen regiones de océano cálido (con coral en su paleta) y profundo; `unit-biomas`/`unit-mundo` en verde |
+| **D3** | **Montañas bajas** — sin montañas altas ni nevadas | **Elevar las montañas base** (amplitud de la rampa/crest en `biomes.js`) manteniendo el rango v6 (Y ≤ +63) y los sub-biomas; los **picos nevados** (F21 A2) quedan sobre montañas realmente altas | Test determinista: la cima media/máxima de montaña crece vs v21.1 (dentro del presupuesto de `audit-altura`), la línea de nieve cubre más cumbres y `unit-biomas` (montaña máx ≥ 7) se recalibra sin romperse |
+
+**Orden:** D1 (ríos) → D2 (océanos) → D3 (montañas) — los tres tocan
+`server/biomes.js`/`server/generation.js`; cada uno con su test y su
+verificación (`--audit` sin regresiones). **Cierre de la v21.2**: suite
+unitaria + E2E + `--audit` en verde, `node --check`, biome 0, verificación
+manual en navegador (explorar ríos/océanos/montañas con semilla conocida) y
+`docs/v21.2.md` con la iteración (formato `docs/v20.2.md`).
+
 ---
 
 ## 6. Cierre y auditoría de la Fase 21 (tarea obligatoria)
@@ -334,3 +356,10 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
   (`I.MILK` 260/`I.EGG` 261 sincronizados, `tickChicken`, `handleMilkCow`),
   huevo lanzable 1/8 pollito diferido a P1; los tests de la tanda quedan
   para el final (decisión del usuario).
+
+**Cambios en esta spec (v6):**
+- 2026-08-17: **v21.2 definida** — nueva sección §5.4 con los 3 bugs de
+  generación abiertos de las Notas (D1 ríos al nivel del mar, D2 océanos
+  profundos/cálidos con coral, D3 montañas altas y nevadas), su orden,
+  criterios de aceptación por bug (test determinista) y el cierre de la
+  iteración; sin cambios de protocolo/IDs/SCHEMA_VERSION.

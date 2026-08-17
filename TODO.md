@@ -1017,10 +1017,10 @@
 > (2026-08-17)**: primera tanda por valor percibido definida en la spec F21
 > §5 (A1 + sub-biomas A2 baratos + pozo B1 + vaca/gallina C1); pirámide B2
 > y enderman C2 quedan **diferidos a P1** (§5.2 de la spec).
-> **Código de la v21.1 terminado (2026-08-17, sin commitear)**: A1+A2+B1+C1
-> implementados en el árbol; los tests de la tanda van **al final**
-> (decisión del usuario) — `unit-recetas` en rojo mientras MILK/EGG no
-> estén en `DROPS_JUSTIFICADOS` (ver `STATUS.md`).
+> **v21.1 cerrada (2026-08-17, `426efbf`)**: A1+A2+B1+C1 implementados y
+> testeado (`unit-fase21.js` A1/A2/B1); **v21.2 definida (2026-08-17,
+> spec §5.4)**: los 3 bugs de generación de las Notas (ríos, océanos,
+> montañas).
 > **Exclusiones de la entrevista 2026-08-15: el selector de skins NO entra
 > (ya en F17 C3) y el audio por bioma se adelantó a la F19.5 (A1) — no se
 > duplican aquí.**
@@ -1065,6 +1065,22 @@
       `AMETHYST_CLUSTER`, `AMETHYST_SHARD`) los aporta la **Fase 22**
       (B1); la geoda de la F21 los reusa y suelta shards — no añadir IDs
       duplicados cuando se implemente
+
+#### Iteración v21.2 — bugs de generación (spec F21 §5.4, definida 2026-08-17)
+
+- [ ] D1 Ríos al nivel del mar: bajar el lecho adaptando las orillas
+      (sin acantilados), menos ríos (densidad), variedad de anchos y más
+      profundidad — test determinista (todo río con agua en el cauce,
+      orillas contiguas, `unit-mundo` en verde)
+- [ ] D2 Océanos profundos/cálidos: más profundidad del fondo, océano
+      cálido con corales (B/I + receta + icono si aplica) y océano
+      profundo; sin subir la probabilidad de océano — test determinista
+- [ ] D3 Montañas altas y nevadas: elevar la rampa/crest dentro del rango
+      v6 (Y ≤ +63), picos nevados sobre cumbres reales, `audit-altura`
+      dentro de presupuesto — test determinista recalibrado
+- [ ] Cierre v21.2: suite + E2E + `--audit` en verde, biome 0, verificación
+      manual en navegador (semilla conocida) y `docs/v21.2.md` (formato
+      `docs/v20.2.md`)
 
 ---
 
