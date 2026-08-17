@@ -95,7 +95,8 @@ const AUDIT = [
 	"audit-fase5.js",
 	"audit-fase6.js",
 	"audit-fase7.js",
-	"audit-altura.js" // Fase 15 (D5): mundo de 128 bloques (−64..+63) — 72 checks
+	"audit-altura.js", // Fase 15 (D5): mundo de 128 bloques (−64..+63) — 72 checks
+	"audit-fase20.js" // Fase 20 (rolling release): ratelimit 2-ventanas, MAX_STACK, savePlayersAsync, P4/P7
 ];
 const args = process.argv.slice(2);
 
