@@ -92,7 +92,7 @@ Three/DOM para forzarlos.
 > reporte uniforme que parsea `run.js` (`N OK, M FAIL` + `# checks
 > fallidos`), `mkPlayer`, `withRandom` (LCG determinista) y `loaderESM`.
 
-## Suite unitaria (60 tests)
+## Suite unitaria (61 tests)
 
 > Orden de `UNIT` en `tests/run.js`. El `(*)` marca tests que importan código
 > del cliente (`public/`) como ESM.
@@ -159,6 +159,7 @@ Three/DOM para forzarlos.
 | `unit-fase19.5.js` | F19.5: paleta de audio por bioma (`musicpalette.js`) + toggle reduceMotion |
 | `unit-fase19.6.js` | F19.6: shaders de agua/plantas, toon, instancing (decisión) + **F20 B4/P7** índice espacial de antorchas (`getTorchesNear`, vecindario 3×3) |
 | `unit-fase20.js` | Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — `showMenuBg()` visible solo en el menú principal, oculto al entrar al mundo y en la pausa |
+| `unit-fase21.js` | Fase 21 (A1): biomas más grandes — coherencia de rachas (`BIOME_FREQ` 0.003, media ≥ 11 bloques, mediana ≥ 5) + determinismo de etiquetas + presencia de los 8 biomas base |
 
 ## Fase 21 (EN CURSO) — matriz de tests prevista
 
@@ -166,13 +167,13 @@ Three/DOM para forzarlos.
 > [`fase21-spec.md`](spec/fase21-spec.md)); su planificación P0 (entrevista
 > del planificador) está pendiente en `TODO.md`. Los tests nuevos se crean al
 > implementar cada bloque (cada uno con `// Fase 21, Bloque X` al inicio) y
-> los existentes se **amplían/recalibran** sin romper su contrato. Los
-> archivos nuevos (`unit-fase21.js`, `audit-fase21.js`) no existen aún —
-> `check-specs` los reporta como avisos (spec `[EN CURSO]`), no errores.
+> los existentes se **amplían/recalibran** sin romper su contrato. `unit-fase21.js`
+> ya existe (A1, 2026-08-17); `audit-fase21.js` se crea al cierre —
+> `check-specs` lo reporta como aviso (spec `[EN CURSO]`), no error.
 
 | Bloque F21 | Tests nuevos previstos | Tests existentes a ampliar/recalibrar |
 | --- | --- | --- |
-| **A1** Biomas más grandes (extensión) | — | `unit-biomas.js` (radio de coherencia crece), `unit-mundo.js`, `audit-fase4.js` (recalibrar ms/chunk sin romper determinismo) |
+| **A1** Biomas más grandes (extensión) | ✅ `unit-fase21.js` (2026-08-17: coherencia de rachas vs `BIOME_FREQ`, determinismo de etiquetas, presencia de los 8 biomas base) | `unit-biomas.js` (ampliado por el agente: sub-biomas A2), `unit-mundo.js`, `audit-fase4.js` (recalibrar ms/chunk sin romper determinismo) |
 | **A2** Biomas de superficie nuevos | `unit-fase21.js` (paleta/vegetación determinista por bioma) | `unit-biomas.js` (ampliar), `unit-sync.js`/`unit-recetas.js`/`unit-itemicons.js` (bloques nuevos B/I) |
 | **B1** Estructuras pasivas (pozo, iglú, geoda) | `unit-fase21.js` (determinismo por hash 2D, solo en su bioma) | `unit-terreno.js` (patrón de estructuras deterministas) |
 | **B2** Estructuras activas (pirámide, cabaña, puesto, mansión, fortaleza, ruinas/monumento) | `unit-fase21.js` (trampa TNT reusada + loot + determinismo) | `unit-fase11.js` (explosión/TNT), `unit-terreno.js` (loot de cofres) |

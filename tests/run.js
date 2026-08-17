@@ -73,7 +73,8 @@ const UNIT = [
 	"unit-fase19.js", // Fase 19 (D): drag & drop — lógica pura de transporte (draglogic.js) + hot-reload de iconos
 	"unit-fase19.5.js", // Fase 19.5 (A1): paleta musical por bioma (musicpalette.js) — lógica pura
 	"unit-fase19.6.js", // Fase 19.6: motor 3D — toon (materialstyle), viento por celda (chunkGeometry), ants-pool (geopool) y luz de antorcha (torchlogic)
-	"unit-fase20.js" // Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — showMenuBg solo en el menú principal
+	"unit-fase20.js", // Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — showMenuBg solo en el menú principal
+	"unit-fase21.js" // Fase 21 (A1): biomas más grandes — coherencia de rachas (BIOME_FREQ 0.003) + determinismo de etiquetas
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
