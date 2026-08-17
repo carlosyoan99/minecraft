@@ -286,14 +286,20 @@ Cada iteración (v20.x) sigue el flujo del borrador, ahora con reglas fijas:
   documentado en `docs/tests.md`.
 - **CI 20 — `npm audit` en el flujo** ✅: script `npm run audit` en
   `package.json` + paso documentado en `docs/tests.md` (0 vulnerabilidades).
-- **Pendiente para cerrar v20.2:** commitear el código del backlog B6
-  (SV-5/REN-1/CI 19/CI 20, en el árbol de trabajo) y la **auditoría de la
-  iteración** (C1: suite + E2E + `--audit` + biome + `node --check`);
-  `tests/audit-fase20.js` creado en el cierre (ratelimit 2-ventanas,
-  MAX_STACK, savePlayersAsync, P4 determinismo, P7 índice de antorchas;
-  `--audit` 7/7) y verificación manual en navegador (knockback, mena cruda
-  → horno). El documento `docs/v20.2.md` ya existe (2026-08-17, con unit
-  60/60, biome 0 y `npm audit` 0 verificados).
+- **Cierre de la v20.2 (2026-08-17, etiqueta `v20.2`):** backlog B6
+  commiteado (`6df80ad`: SV-5/REN-1/CI 19/CI 20), auditoría de la
+  iteración C1 (`caab252`: `tests/audit-fase20.js` con 17 checks —
+  ratelimit 2-ventanas, MAX_STACK, savePlayersAsync, P4 determinismo, P7
+  índice de antorchas — `--audit` 7/7; unit 60/60; E2E 7/7; biome 0;
+  `node --check`; `npm audit` 0), biome `9cce8ca` y cierre de docs/tracker
+  `70541ec`. **Verificación manual en navegador** (CDP + Chrome headless,
+  mundo desechable): mena cruda → horno ✅ end-to-end; knockback del TNT
+  ✅ hasta la integración (evento con vector correcto + `applyKnockback`
+  fija el impulso, sondeado; el desplazamiento visual de la cámara no es
+  medible de forma fiable bajo SwiftShader — el hilo se congela por el
+  meshing en los momentos de medir — queda como comprobación manual en
+  sesión real); D2 sin desconexiones en sesiones estables. Documento
+  `docs/v20.2.md` con la verificación completa.
 
 ---
 

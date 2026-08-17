@@ -915,10 +915,13 @@
 > Alcance: los dos bugs de `Notas del usuario.md` que seguían abiertos tras
 > la F19.6 (D1 y D2) + el backlog B6 de la auditoría Copilot (SV-5, REN-1
 > residual, CI 19 y CI 20) — **todos implementados 2026-08-16** (ver
-> abajo) y **auditoría de la iteración completada 2026-08-17** (unit 60/60,
+> abajo) y **cerrada 2026-08-17**: auditoría C1 (unit 60/60, E2E 7/7,
 > `--audit` 7/7 con `audit-fase20.js` nuevo, biome 0, `node --check`, npm
-> audit 0), ver [`docs/v20.2.md`](docs/v20.2.md). Pendiente: commit de
-> cierre con la etiqueta `v20.2` y la verificación manual en navegador.
+> audit 0) + verificación manual en navegador (mena cruda → horno ✅;
+> knockback del TNT ✅ hasta la integración — el desplazamiento visual no
+> es medible de forma fiable bajo SwiftShader, queda como comprobación
+> manual en sesión real; D2 estable), ver [`docs/v20.2.md`](docs/v20.2.md).
+> Etiqueta `v20.2` aplicada; Fase 21 abierta (`051e426`).
 
 - [x] D1 Bug «#menu-bg no se oculta al iniciar partida» (Notas del
       usuario): el fondo del menú (cielo con nubes, z-index 1 sobre el
@@ -988,14 +991,21 @@
       `npm run audit` en `package.json` + paso documentado en
       `docs/tests.md` (0 vulnerabilidades)
 - [x] C1 Auditoría de la iteración v20.2 (2026-08-17): suite **unit 60/60**
-      + **`--audit` 7/7** (creado `tests/audit-fase20.js`: ratelimit
-      2-ventanas D2, `MAX_STACK` 64 SV-5, `savePlayersAsync` REN-1,
-      generación determinista P4, índice de antorchas P7 — 17 checks;
-      registrado en `tests/run.js` y en la tabla de `docs/tests.md`) +
-      **biome 0** (excluye los `.tmp.js` del verificado) + `node --check`
-      + **npm audit 0** (CI 20); sin cambios de protocolo/IDs/`SCHEMA_VERSION`;
-      verificación manual en navegador (knockback, mena cruda →
-      horno, stack 64) pendiente de la sesión real del usuario
+      + **E2E 7/7** + **`--audit` 7/7** (creado `tests/audit-fase20.js`:
+      ratelimit 2-ventanas D2, `MAX_STACK` 64 SV-5, `savePlayersAsync`
+      REN-1, generación determinista P4, índice de antorchas P7 — 17
+      checks; registrado en `tests/run.js` y en la tabla de
+      `docs/tests.md`) + **biome 0** + `node --check` + **npm audit 0**
+      (CI 20); sin cambios de protocolo/IDs/`SCHEMA_VERSION`; commits
+      `6df80ad` (backlog B6), `caab252` (auditoría), `9cce8ca` (biome),
+      `70541ec` (cierre docs) + etiqueta `v20.2`; **verificación manual
+      en navegador completada** (mena cruda → horno ✅ end-to-end;
+      knockback del TNT ✅ hasta la integración — evento con vector
+      correcto + `applyKnockback` fija el impulso, sondeado; el
+      desplazamiento visual no es medible de forma fiable en CDP/SwiftShader
+      (hilo congelado por meshing) y queda como comprobación manual en
+      sesión real — ver `docs/v20.2.md`; D2 sin desconexiones por
+      rate-limit en sesiones estables; SV-5 cubierto por unit/audit)
 
 ---
 

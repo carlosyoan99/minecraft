@@ -22,10 +22,10 @@ build step desde `public/`. Todo el código, docs y commits en español.
 ```bash
 npm install                     # primera vez (node_modules está en .gitignore)
 node server.js                  # servidor en http://localhost:3000 (PORT=... para otro puerto)
-node tests/run.js               # 58 unitarios + 7 E2E si hay servidor vivo
+node tests/run.js               # 60 unitarios + 7 E2E si hay servidor vivo
 node tests/run.js --unit        # solo unitarios
 node tests/run.js --unit --filter <regex>   # solo los que casan (con tiempo por test)
-node tests/run.js --audit       # solo auditorías por fase standalone (3-6 + altura)
+node tests/run.js --audit       # solo auditorías por fase standalone (7: fase3-7 + altura + fase20)
 npm run test:coverage           # c8: % de cobertura de server/ y public/
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
 SEED=miSemilla2026 PORT=3998 node server.js  # servidor E2E (Fase 17: SIN SEED arranca en modo menú y nunca envía init; el E2E del menú levanta su propio servidor)
