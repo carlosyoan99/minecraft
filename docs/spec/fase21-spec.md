@@ -215,7 +215,15 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
 6. Cierre con suite/E2E/auditorías en verde, docs al día y auditoría final
    de la fase.
 
-> **Tests que cubren esta fase (previstos):** `tests/unit-fase21.js`, `tests/audit-fase21.js`.
+> **Tests que cubren esta fase (previstos):** `tests/unit-fase21.js` y `tests/audit-fase21.js` (ambos nuevos; el primero con los asserts de
+> biomas/estructuras/mobs de los bloques A-C y el segundo como auditoría de
+> la fase); **ampliar**
+> `unit-biomas.js` (A1 escala + A2 biomas nuevos), `unit-mundo.js` (A1),
+> `unit-mobs-ia.js` (C2 neutralidad + C3 IA), `unit-paridad.js` (C1
+> drops/XP), `unit-sync.js`/`unit-recetas.js`/`unit-itemicons.js` (bloques
+> nuevos B/I); **recalibrar** `audit-fase4.js` (A1 sin romper el
+> determinismo). (Cada test nuevo lleva `// Fase 21, Bloque X` al inicio;
+> la matriz bloque → test completa está en `docs/tests.md` §Fase 21.)
 
 ---
 
