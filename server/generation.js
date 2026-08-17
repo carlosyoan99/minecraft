@@ -394,6 +394,10 @@ function generateChunk(cx, cz) {
 			// se calcula antes de los árboles para que no crezca ninguno en el
 			// brocal de piedra (es un footprint 5×5 con fuente de agua).
 			const well = structures.wellAt(wx, wz);
+			// Fase 21 (B2): pirámide del desierto — se calcula antes que los
+			// árboles y el pilar de piedra para que ninguna vegetación crezca
+			// sobre el cuerpo escalonado (footprint 15×15) ni tape la cima.
+			const pyramid = structures.pyramidAt(wx, wz);
 
 			// Minas abandonadas (Fase 7): excavar el pasillo horizontal en piedra
 			// (preserva minerales y el techo) a la profundidad del túnel; nunca
@@ -437,6 +441,7 @@ function generateChunk(cx, cz) {
 				!lavaPond &&
 				!struct &&
 				!well &&
+				!pyramid &&
 				surfaceBlock === B.GRASS;
 
 			// Fase 15 (A2): el tronco debe estar a ≥2 bloques del borde del chunk
@@ -712,6 +717,18 @@ function generateChunk(cx, cz) {
 			}
 			// Fase 21 (B1): pozo del desierto — pisa el terreno después del resto.
 			if (well) structures.placeWellColumn(data, x, z, wx, wz, well, height);
+			// Fase 21 (B2): pirámide del desierto — pisa el terreno después del
+			// resto (escribe el sótano y el cuerpo escalonado completo).
+			if (pyramid)
+				structures.placePyramidColumn(
+					data,
+					x,
+					z,
+					wx,
+					wz,
+					pyramid,
+					height
+				);
 		}
 	}
 

@@ -35,6 +35,10 @@ const damageLog = [];
 // "cx,cz" del centro del templo → timestamp del último disparo (evita que
 // un jugador parado en el pasillo reciba un aluvión de flechas por tick).
 const templeTrapCooldowns = new Map();
+// Fase 21 (B2): cooldowns de la trampa TNT de las pirámides — clave "cx,cz"
+// del centro de la pirámide → timestamp de la última ignición (mismo patrón
+// que templeTrapCooldowns; la explosión es lenta y no debe re-ignitarse).
+const pyramidTrapCooldowns = new Map();
 // Fase 13 (L2): estado de las PUERTAS (y portones) — clave "x,y,z" →
 // { open: bool }. La puerta cerrada es sólida; la abierta no (como MC).
 // No se persiste: al recargar, las puertas vuelven a estar cerradas
@@ -54,5 +58,6 @@ module.exports = {
 	dirtyChunks,
 	timeOffset,
 	damageLog,
-	templeTrapCooldowns
+	templeTrapCooldowns,
+	pyramidTrapCooldowns
 };

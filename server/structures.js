@@ -362,6 +362,138 @@ function placeWellColumn(data, x, z, wx, wz, well, height) {
 		data[core.idx(x, core.toLocal(y2), z)] = B.STONE;
 }
 
+// ============================================================
+// PIRÁMIDE DEL DESIERTO (Fase 21, B2): estructura ACTIVA determinista.
+// Esquema de celdas propio (PYRAMID_CELL, patrón wellAt) con hash 2D con sal.
+// Solo aparece en desierto firme (nunca sobre agua). Cuerpo ESCALONADO de
+// piedra (reuso de bloques existentes; la arena cae por gravedad y no sirve
+// de volumen macizo excava) con un AGUJERO CENTRAL de bajada (1×1) que
+// atraviesa toda la pirámide hasta una bandeja subterránea (foso 5×5, 2 de
+// alto) con 4 cofres en las esquinas y la CELDA CENTRAL como placa de
+// presión simplificada: al pisarla se ignita el TNT enterrado debajo
+// (cadena tnt.ignite/explode existente, F10/F11). Sin redstone: la
+// detección es posicional (pyramidTrapAt, decisión del templo E5).
+// ============================================================
+const PYRAMID_CELL = 48; // celdas de 48×48 (estructura grande, poca densidad)
+const PYRAMID_HALF = 7; // footprint 15×15 (dx,dz ∈ [-7,7])
+const PYRAMID_LEVELS = 8; // capas escalonadas: 15,13,11,...,1 (cima)
+const PYRAMID_GATE = 0.05; // ~5% de celdas candidatas (la validación por bioma deja menos)
+// Bandeja interior: foso 5×5 (dx,dz ∈ [-2,2]) bajo el centro, 2 de alto; en
+// el piso los 4 cofres en las esquinas interiores (±1,±1) y la celda central
+// como placa de la trampa (TNT enterrado 1 bloque bajo ella).
+const PAN_HALF = 2;
+
+function pyramidCenterAt(cellX, cellZ) {
+	const gate = structCellHash(cellX, cellZ, 31);
+	if (gate >= PYRAMID_GATE) return null;
+	// Centro dentro de la celda, nunca a < 8 del borde (cabe el footprint
+	// 15×15 y la bandeja).
+	const jx = Math.floor(
+		structCellHash(cellX, cellZ, 32) * (PYRAMID_CELL - 16)
+	);
+	const jz = Math.floor(
+		structCellHash(cellX, cellZ, 33) * (PYRAMID_CELL - 16)
+	);
+	const cx = cellX * PYRAMID_CELL + 8 + jx;
+	const cz = cellZ * PYRAMID_CELL + 8 + jz;
+	// Solo en desierto firme (sin agua): la bandeja es un sótano seco.
+	if (biomes.getBiome(cx, cz) !== "desert") return null;
+	if (biomes.columnFloorY(cx, cz) !== null) return null;
+	return { cx, cz };
+}
+
+// ¿La columna (wx, wz) es parte de una pirámide? Devuelve { cx, cz } o null.
+function pyramidAt(wx, wz) {
+	const p = pyramidCenterAt(
+		Math.floor(wx / PYRAMID_CELL),
+		Math.floor(wz / PYRAMID_CELL)
+	);
+	if (!p) return null;
+	if (Math.abs(wx - p.cx) > PYRAMID_HALF || Math.abs(wz - p.cz) > PYRAMID_HALF)
+		return null;
+	return p;
+}
+
+// Bloque de la pirámide en (dx, dz, dy) relativos al centro y a baseY (el
+// piso exterior). dy < 0 es el sótano (bandeja): piso con 4 cofres en las
+// esquinas de la bandeja y TNT bajo la celda central; dy ∈ [0, LEVELS-1] es
+// el cuerpo escalonado con el agujero central de bajada (1×1 hasta la
+// bandeja). Devuelve `undefined` donde NO hay bloque de estructura (el
+// terreno natural de la columna se respeta, sin bolsas de aire bajo la
+// pirámide). Función pura y determinista (sin Math.random).
+function pyramidBlockAt(dx, dz, dy) {
+	// Sótano — bandeja central 5×5 (dx,dz ∈ [-2,2]):
+	if (Math.abs(dx) <= PAN_HALF && Math.abs(dz) <= PAN_HALF) {
+		if (dy === -1) return B.AIR; // caja de la bandeja (2 de alto)
+		if (dy === -2)
+			if (
+				(dx === -1 || dx === 1) &&
+				(dz === -1 || dz === 1)
+			)
+				return B.CHEST; // cofres de loot en las 4 esquinas interiores
+			else return B.STONE; // piso (incluye el centro = celda de trampa)
+	}
+	// TNT de la trampa: 1 bloque bajo la celda central del piso (baseY-3),
+	// solo justo bajo el centro (0,0); el resto del subsuelo se respeta.
+	if (dy === -3 && dx === 0 && dz === 0) return B.TNT;
+	// Cuerpo sobre el terreno. Nivel 0 (dy === 0): piso exterior de TODO el
+	// footprint 15×15 (evita charcos/agua natural visible en la base, como el
+	// templo), con el hueco central (0,0) de bajada. Niveles 1..LEVELS-1:
+	// escalones 13,11,...,1; el agujero central lo atraviesa hasta la bandeja.
+	if (dy === 0) {
+		if (dx === 0 && dz === 0) return B.AIR; // pozo de entrada
+		return B.STONE;
+	}
+	if (dy >= 1 && dy < PYRAMID_LEVELS) {
+		const half = PYRAMID_HALF - dy;
+		if (Math.abs(dx) <= half && Math.abs(dz) <= half) {
+			if (dx === 0 && dz === 0) return B.AIR; // continuación del pozo
+			return B.STONE;
+		}
+	}
+	return undefined;
+}
+
+// ¿La columna (wx, wz) es la celda de la trampa (el centro de la bandeja)?
+// Al pisarla, timers.js ignita el TNT enterrado debajo (patrón templeTrapAt).
+function pyramidTrapAt(wx, wz) {
+	const p = pyramidAt(wx, wz);
+	if (!p) return false;
+	return wx === Math.floor(p.cx) && wz === Math.floor(p.cz);
+}
+
+// Coloca la columna de la pirámide en el chunk local (x, z) → mundo (wx, wz).
+// baseY = terreno en el centro (el piso exterior); escribe el sótano
+// (baseY-3..baseY-1) y el cuerpo escalonado (baseY..baseY+7), recorta/rellena
+// el terreno natural bajo el footprint y registra los cofres de loot (una
+// vez, con guard en state.chests). Donde pyramidBlockAt devuelve undefined
+// la columna conserva el terreno natural (sin bolsas de aire).
+function placePyramidColumn(data, x, z, wx, wz, pyramid, height) {
+	const cx = Math.floor(pyramid.cx);
+	const cz = Math.floor(pyramid.cz);
+	const baseY = biomes.getHeight(cx, cz);
+	const dx = wx - cx;
+	const dz = wz - cz;
+	if (Math.abs(dx) > PYRAMID_HALF || Math.abs(dz) > PYRAMID_HALF) return;
+	// Relleno de soporte como el templo: si el terreno natural queda por
+	// debajo del piso exterior (baseY), se rellena de piedra.
+	for (let y = Math.max(WORLD_MIN_Y + 1, height); y < baseY; y++)
+		if (y <= WORLD_MAX_Y)
+			data[core.idx(x, core.toLocal(y), z)] = B.STONE;
+	// Sótano + cuerpo: la columna completa de la estructura (baseY-3..+7).
+	for (let y = baseY - 3; y <= baseY + PYRAMID_LEVELS - 1; y++) {
+		if (y < WORLD_MIN_Y || y > WORLD_MAX_Y) continue;
+		const block = pyramidBlockAt(dx, dz, y - baseY);
+		if (block === undefined) continue; // terreno natural intacto
+		data[core.idx(x, core.toLocal(y), z)] = block;
+		if (block === B.CHEST) {
+			const key = `${wx},${y},${wz}`;
+			if (!state.chests.has(key))
+				state.chests.set(key, chests.pyramidLootSlots());
+		}
+	}
+}
+
 module.exports = {
 	mineshaftAt,
 	mineshaftDepth,
@@ -376,6 +508,10 @@ module.exports = {
 	wellAt,
 	wellCenterAt,
 	placeWellColumn,
+	pyramidAt,
+	pyramidCenterAt,
+	pyramidTrapAt,
+	placePyramidColumn,
 	MS_TUNNEL_H,
 	setCore
 };

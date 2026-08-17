@@ -131,6 +131,54 @@ function tickTempleTraps() {
 }
 
 // ============================================================
+// TRAMPA TNT DE LA PIRÁMIDE DEL DESIERTO (Fase 21, B2)
+// Al pisar la celda central de la bandeja subterránea (pyramidTrapAt), se
+// ignita el TNT enterrado 1 bloque bajo ella (cadena tnt.ignite/explode
+// existente, F10/F11) con cooldown por pirámide (~3s): el cráter rompe el
+// piso y los cofres de las esquinas (aunque no siempre todos: los cofres
+// CON contenido se respetan en explode). Como en la del templo, sin
+// redstone: la detección es posicional (decisión E5).
+// ============================================================
+const PYRAMID_TRAP_COOLDOWN_MS = 3000;
+const PYRAMID_TRAP_TNT_Y = -3; // el TNT está 3 bloques bajo el piso exterior
+
+function tickPyramidTraps() {
+	for (const p of state.players.values()) {
+		if (!p || p.inMenu || p.ws.readyState !== WebSocket.OPEN) continue;
+		const bx = Math.floor(p.x);
+		const bz = Math.floor(p.z);
+		if (!world.pyramidTrapAt(bx, bz)) continue;
+		const pr = world.pyramidAt(bx, bz);
+		if (!pr) continue;
+		const cx = Math.floor(pr.cx);
+		const cz = Math.floor(pr.cz);
+		const key = `${cx},${cz}`;
+		const last = state.pyramidTrapCooldowns.get(key) || 0;
+		if (Date.now() - last < PYRAMID_TRAP_COOLDOWN_MS) continue;
+		state.pyramidTrapCooldowns.set(key, Date.now());
+		// El TNT enterrado bajo el centro de la bandeja (baseY-3 en Y de mundo).
+		const tntY = world.getHeight(cx, cz) + PYRAMID_TRAP_TNT_Y;
+		if (!tnt.ignite(cx, tntY, cz)) continue;
+		netBroadcast("chat", {
+			id: "⚙️ Pirámide",
+			message: "¡Tsss... TNT!"
+		});
+	}
+	// P9 (mismo patrón que el templo): limpiar cooldowns huérfanos — solo se
+	// conservan las pirámides con un jugador encima AHORA.
+	if (state.pyramidTrapCooldowns.size > 0) {
+		const active = new Set();
+		for (const q of state.players.values()) {
+			if (q.inMenu) continue;
+			const pr = world.pyramidAt(Math.floor(q.x), Math.floor(q.z));
+			if (pr) active.add(`${Math.floor(pr.cx)},${Math.floor(pr.cz)}`);
+		}
+		for (const k of state.pyramidTrapCooldowns.keys())
+			if (!active.has(k)) state.pyramidTrapCooldowns.delete(k);
+	}
+}
+
+// ============================================================
 // BUCLE PRINCIPAL
 // ============================================================
 // Métricas de rendimiento (Fase 7): media móvil de 1s del tiempo por tick
@@ -202,6 +250,11 @@ function mainLoop() {
 	// Fase 12 (Bloque B): trampa de los templos de jungla — al pisar el
 	// pasadizo se disparan flechas (con cooldown por templo).
 	tickTempleTraps();
+
+	// Fase 21 (B2): trampa TNT de las pirámides del desierto — al pisar la
+	// celda central de la bandeja se ignita el TNT enterrado (cooldown por
+	// pirámide; la explosión se encadena sola).
+	tickPyramidTraps();
 
 	// Fase 9 (Bloque C): crecimiento de cultivos — cada ~1s los cultivos
 	// sembrados avanzan de estado (hasta madurar, stage 7). Probabilidad por
@@ -434,6 +487,7 @@ function sendBiomeUpdates() {
 module.exports = {
 	mainLoop,
 	tickTempleTraps,
+	tickPyramidTraps,
 	getServerMetrics,
 	sendBiomeUpdates,
 	resetMobsDirty,

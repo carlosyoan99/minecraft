@@ -89,6 +89,23 @@ function shipwreckLootSlots() {
 	return lootSlotsFrom(SHIPWRECK_LOOT_TABLE);
 }
 
+// Fase 21 (B2): tesoro de la pirámide del desierto — como en Minecraft, oro
+// y esmeralda (el desierto), hierro, huesos y pólvora (la trampa de TNT); un
+// tridente raro completa la rareza de la estructura.
+const PYRAMID_LOOT_TABLE = [
+	[I.GOLD_INGOT, 1, 3],
+	[I.EMERALD, 1, 2],
+	[I.IRON_INGOT, 1, 4],
+	[I.BONE, 2, 5],
+	[I.GUNPOWDER, 1, 2],
+	[I.TRIDENT, 1, 1]
+];
+
+// Loot de los cofres de la pirámide del desierto (Fase 21, B2).
+function pyramidLootSlots() {
+	return lootSlotsFrom(PYRAMID_LOOT_TABLE);
+}
+
 function getOrCreateChest(key) {
 	let c = chests.get(key);
 	if (!c) {
@@ -121,5 +138,6 @@ module.exports = {
 	restoreChests,
 	lootSlots,
 	templeLootSlots,
-	shipwreckLootSlots
+	shipwreckLootSlots,
+	pyramidLootSlots
 };

@@ -58,6 +58,8 @@ let tickSkeleton = () => {};
 let tickEnderman = () => {};
 let tickPassive = () => {};
 let tickChicken = () => {}; // Fase 21 (C1): gallina — pone huevos al jugador cercano
+let isPlayerLookingAt = () => false; // Fase 21 (C2): neutralidad del enderman
+let isEndermanWatched = () => null; // ¿alguien mira a este enderman?
 let tickOcelot = () => {};
 let tickCat = () => {};
 let _tickPet = () => {};
@@ -551,6 +553,19 @@ class Mob {
 			if (attacker?.gamemode === "creative") return;
 			this.aggroUntil = Date.now() + MOB_AGGRO_MS;
 			this.aggroTarget = attacker.id;
+			// Fase 21 (C3): el ZOMBI convoca a otros zombis al recibir daño
+			// (como MC: los zombis avisan a los vecinos). Los zombis a ≤16
+			// bloques se vuelven hostiles contra el MISMO atacante.
+			if (this.type === "zombie" && attacker) {
+				for (const m of state.mobs) {
+					if (m.alive && m.type === "zombie" && m.id !== this.id) {
+						if (Math.hypot(m.x - this.x, m.z - this.z) <= 16) {
+							m.aggroUntil = Date.now() + MOB_AGGRO_MS;
+							m.aggroTarget = attacker.id;
+						}
+					}
+				}
+			}
 			return;
 		}
 		this.fleeUntil = Date.now() + 4000;
@@ -634,6 +649,8 @@ class Mob {
 	tickDrowned,
 	tickBee,
 	splitSlime,
+	isPlayerLookingAt,
+	isEndermanWatched,
 	mobDrops
 } = require("./mob-species.js").createSpecies(Mob));
 
@@ -813,5 +830,13 @@ module.exports = {
 	XP_ORB_RADIUS,
 	// Exponer las constantes por tamaño (para tests y paridad).
 	SLIME_HEALTH,
-	SLIME_DAMAGE
+	SLIME_DAMAGE,
+	// Fase 21 (C2): neutralidad del enderman — helpers de la mecánica "lo
+	// provoca mirarlo" (los tests los verifican en unit-mobs-ia).
+	isPlayerLookingAt,
+	isEndermanWatched,
+	// Fase 21 (C2): el tick del enderman se re-exporta para poder probarlo
+	// directamente (los del switch viajan por las variables `let`; el módulo
+	// lo expone como fachada como ya hacen tickZombie/tickSkeleton/…).
+	tickEnderman
 };

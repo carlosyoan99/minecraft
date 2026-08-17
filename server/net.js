@@ -1171,6 +1171,7 @@ module.exports = {
 	handleConnection,
 	mainLoop: timers.mainLoop,
 	tickTempleTraps: timers.tickTempleTraps,
+	tickPyramidTraps: timers.tickPyramidTraps,
 	getServerMetrics: timers.getServerMetrics,
 	// server.js llama a net.start(): el arranque vive en timers.js y recibe
 	// handleConnection + app (estático Express) desde aquí.

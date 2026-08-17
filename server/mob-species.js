@@ -20,6 +20,8 @@
 // ============================================================
 const constants = require("./constants.js");
 const { I, isSolidBlock, HOSTILE, TICK_MS, BREED_FOOD } = constants;
+// WebSocket global: p.ws.readyState (conexión abierta del jugador).
+const WebSocket = require("ws");
 const state = require("./state.js");
 const world = require("./world.js");
 const projectiles = require("./projectiles.js");
@@ -61,7 +63,10 @@ function tickZombie(mob, isNight, nearest, dist) {
 function tickSpider(mob, isNight, nearest, dist) {
 	// Fase 5: hostil rápido y frágil; Fase 9: escala y salta. Notas del
 	// usuario: aggro al ser golpeada (antes no reaccionaba).
-	if (nearest && (isNight || dist < 8 || mob.isAggroed())) {
+	// Fase 21 (C3): NEUTRAL DE DÍA — como MC, la araña solo es hostil de
+	// noche (o si la golpean: aggro). De día no ataca aunque esté cerca.
+	const hostile = isNight || mob.isAggroed();
+	if (nearest && hostile) {
 		mob.state = "chase";
 		mob.chase(nearest, 0.055);
 		// Escalar: si el camino está bloqueado por un sólido y hay hueco
@@ -151,11 +156,33 @@ function tickSkeleton(mob, isNight, nearest, dist) {
 	// (proyectil con gravedad). No arde (en Minecraft el esqueleto tampoco
 	// arde — solo el zombi); por eso se excluye de BURNS_IN_SUN en la Fase 9.
 	// Notas del usuario: aggro al ser golpeado.
-	if (nearest && (isNight || dist < 8 || mob.isAggroed())) {
+	// Fase 21 (C3): strafe lateral — en rango medio (6-12) se mueve en
+	// perpendicular al jugador (raro para que sus flechas no peguen siempre),
+	// en vez de quedarse quieto disparando. En rango corto retrocede y en
+	// largo se acerca (comportamiento previo).
+	if (nearest && (isNight || dist < 16 || mob.isAggroed())) {
 		mob.state = "chase";
 		if (dist < 6)
 			mob.chase({ x: 2 * mob.x - nearest.x, z: 2 * mob.z - nearest.z }, 0.03);
 		else if (dist > 12) mob.chase(nearest, 0.03);
+		else {
+			// Strafe lateral: perpendicular al vector que lo une al jugador.
+			const dx = nearest.x - mob.x,
+				dz = nearest.z - mob.z;
+			const len = Math.hypot(dx, dz) || 1;
+			// Perpendicular (+90°): (−dz, dx). El sentido alterna cada pocos
+			// segundos (por-mob) para no quedar pegado girando en círculos.
+			const dir = (mob.strafeFlip = !mob.strafeFlip)
+				? 1
+				: -1;
+			mob.chase(
+				{
+					x: mob.x + (-dz / len) * dir,
+					z: mob.z + (dx / len) * dir
+				},
+				0.025
+			);
+		}
 		if (dist < 18 && Date.now() > mob.shootCooldown) {
 			projectiles.shootArrow(mob, nearest);
 			mob.shootCooldown = Date.now() + 2500;
@@ -166,9 +193,73 @@ function tickSkeleton(mob, isNight, nearest, dist) {
 	}
 }
 
+// ============================================================
+// ENDERMAN (neutral, Fase 21 C2): no agrede por proximidad ni de noche.
+// Es NEUTRO: solo se vuelve hostil si (a) un jugador LO MIRA (los ojos del
+// jugador en el hitbox del enderman — la mecánica de "mirarlo para
+// provocarlo" de Minecraft, simplificada sin línea de bloqueo por rendimiento)
+// o (b) es golpeado (aggro, Fase 18). Fuera de eso: levelo (deambula) y si
+// lo están atacando o está agroadolo, se teletransporta y persigue al
+// agresor con su ataque cuerpo a cuerpo. Sin recoger bloques (acotado en la
+// spec F21 §5 P0).
+// ============================================================
+function isPlayerLookingAt(p, mob) {
+	// Vector de mirada del jugador. El cliente envía p.yaw/p.pitch YA EN
+	// RADIANES (camera.rotation.y/x de three, orden YXZ — verificado frente a
+	// getWorldDirection): yaw=0 → -Z, yaw=+90° → -X, pitch>0 → mirar arriba.
+	//   forward = (−sin yaw·cos pitch, sin pitch, −cos yaw·cos pitch)
+	const yaw = p.yaw || 0;
+	const pitch = p.pitch || 0;
+	const dirX = -Math.sin(yaw) * Math.cos(pitch);
+	const dirY = Math.sin(pitch);
+	const dirZ = -Math.cos(yaw) * Math.cos(pitch);
+	// Origen de la mirada: la cámara, que está EYE_HEIGHT sobre los pies del
+	// jugador (p.y es la altura del OJO, no los pies — combat.js calcula feet
+	// restando EYE_HEIGHT).
+	const ex = p.x,
+		ey = p.y,
+		ez = p.z;
+	// Punto más cercano de la LÍNEA de mirada al CENTRO del mob (su mitad,
+	// ~1 bloque sobre su y — el enderman es alto, 2.5). Si la línea pasa a
+	// < 1.5 bloques del centro (hitbox ~0.6×0.6×2.5 con tolerancia) y el
+	// jugador NO mira en la dirección opuesta (producto punteado > 0), se
+	// considera que lo mira. Alcance máximo de la mirada: 64 bloques.
+	const dx = mob.x - ex,
+		dy = mob.y + 1.0 - ey,
+		dz = mob.z - ez;
+	const along = dx * dirX + dy * dirY + dz * dirZ;
+	if (along <= 0) return false;
+	if (along > 64) return false;
+	const px = ex + dirX * along,
+		py = ey + dirY * along,
+		pz = ez + dirZ * along;
+	return Math.hypot(mob.x - px, mob.y + 1.0 - py, mob.z - pz) < 1.5;
+}
+
+// ¿Algún jugador está mirando este enderman? (lo provoca). Devuelve el
+// jugador que lo mira (primero el que lo provoca) o null.
+function isEndermanWatched(mob, state) {
+	for (const p of state.players.values()) {
+		if (!p || p.inMenu || p.ws.readyState !== WebSocket.OPEN) continue;
+		if (p.gamemode === "creative") continue; // B6: sin aggro a creativos
+		if (isPlayerLookingAt(p, mob)) return p;
+	}
+	return null;
+}
+
 function tickEnderman(mob, _isNight, nearest, dist) {
-	// Notas del usuario: aggro al ser golpeado (antes no reaccionaba) — el
-	// enderman teletransporta y ataca al agresor aunque sea de día.
+	// Neutralidad: mirar al enderman lo provoca (MC: se gira y gruñe antes de
+	// atacar). En cuanto alguien lo mira dentro del radio, se vuelve hostil
+	// contra ESO jugador (aggro). El golpe directo ya lo agreaba (Fase 18).
+	if (!mob.isAggroed() && !mob.aggroTarget) {
+		const watcher = isEndermanWatched(mob, state);
+		if (watcher) {
+			mob.aggroUntil = Date.now() + 20000; // ~20 s de hostilidad (MC prolonga)
+			mob.aggroTarget = watcher.id;
+		}
+	}
+	// Teletransporte (Fase 18): al acercarse o con aggro, salta a un punto
+	// random alrededor del objetivo y lo persigue en estado chase.
 	if (
 		nearest &&
 		(dist < 16 || mob.isAggroed()) &&
@@ -182,9 +273,15 @@ function tickEnderman(mob, _isNight, nearest, dist) {
 		mob.y = world.getHeight(Math.floor(mob.x), Math.floor(mob.z)) + 1;
 		mob.teleportCooldown = Date.now() + 3000;
 		mob.state = "chase";
-	} else if (nearest && dist < 2.5) {
+	} else if (nearest && dist < 2.5 && mob.isAggroed()) {
 		// Auditoría 2026-08-09 (§3.7): enderman 7 (MC Java normal), antes 4.
 		mob.attack(nearest, 7, 1500);
+	} else if (nearest && dist < 16 && !mob.isAggroed()) {
+		// Sin aggro: el enderman SE QUEDA mirando al jugador de lejos (levelo)
+		// en vez de perseguir (MC: solo ataca si lo provocan). No ataca ni se
+		// acerca: nivel de amenaza cero hasta la provocación.
+		mob.state = "idle";
+		mob.wander();
 	} else {
 		mob.state = "idle";
 		mob.wander();
@@ -919,6 +1016,8 @@ function createSpecies(Mob) {
 		tickPet,
 		tickSlime,
 		tickDrowned,
+		isPlayerLookingAt,
+		isEndermanWatched,
 		SLIME_HEALTH,
 		SLIME_DAMAGE,
 		mobDrops
