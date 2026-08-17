@@ -20,6 +20,7 @@ world/
 
 # --- Temporales de auditoría y diagnóstico ---
 tmp-*
+*.tmp.js
 /tmp/
 
 # --- Cobertura de tests (G1.2: c8, se regenera con npm run test:coverage) ---

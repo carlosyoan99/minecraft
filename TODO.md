@@ -915,8 +915,10 @@
 > Alcance: los dos bugs de `Notas del usuario.md` que seguían abiertos tras
 > la F19.6 (D1 y D2) + el backlog B6 de la auditoría Copilot (SV-5, REN-1
 > residual, CI 19 y CI 20) — **todos implementados 2026-08-16** (ver
-> abajo). Pendiente de cerrar la iteración: commitear el código del backlog
-> B6 (en el árbol de trabajo), auditoría C1 y documento `docs/v20.2.md`.
+> abajo) y **auditoría de la iteración completada 2026-08-17** (unit 60/60,
+> `--audit` 7/7 con `audit-fase20.js` nuevo, biome 0, `node --check`, npm
+> audit 0), ver [`docs/v20.2.md`](docs/v20.2.md). Pendiente: commit de
+> cierre con la etiqueta `v20.2` y la verificación manual en navegador.
 
 - [x] D1 Bug «#menu-bg no se oculta al iniciar partida» (Notas del
       usuario): el fondo del menú (cielo con nubes, z-index 1 sobre el
@@ -985,6 +987,15 @@
       la metodología del ciclo). Implementado 2026-08-16: script
       `npm run audit` en `package.json` + paso documentado en
       `docs/tests.md` (0 vulnerabilidades)
+- [x] C1 Auditoría de la iteración v20.2 (2026-08-17): suite **unit 60/60**
+      + **`--audit` 7/7** (creado `tests/audit-fase20.js`: ratelimit
+      2-ventanas D2, `MAX_STACK` 64 SV-5, `savePlayersAsync` REN-1,
+      generación determinista P4, índice de antorchas P7 — 17 checks;
+      registrado en `tests/run.js` y en la tabla de `docs/tests.md`) +
+      **biome 0** (excluye los `.tmp.js` del verificado) + `node --check`
+      + **npm audit 0** (CI 20); sin cambios de protocolo/IDs/`SCHEMA_VERSION`;
+      verificación manual en navegador (knockback, mena cruda →
+      horno, stack 64) pendiente de la sesión real del usuario
 
 ---
 
