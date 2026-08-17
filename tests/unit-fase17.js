@@ -197,6 +197,49 @@ function mkPlayer(name, overrides = {}) {
 	);
 }
 
+// REN-1 (v20.2): el autosave de jugadores va por la cola asíncrona
+// (savePlayersAsync, lotes con setImmediate). El test espera a que drene
+// la cola y comprueba que el archivo queda escrito con el estado del
+// momento de programar (no del de escribir).
+{
+	constants.setWorldSeed("persist-ren1", "REN1", "survival");
+	state.players.clear();
+	const ws = connect();
+	const init = ws.events("init")[0];
+	const p = state.players.get(init.data.playerId);
+	p.inventory[0] = { id: I.DIAMOND, count: 3 };
+	p.health = 11;
+	p.x = 4;
+	p.y = 63;
+	p.z = 1;
+	const f = path.join(
+		constants.worldPaths.worldRoot,
+		"persist-ren1",
+		"players",
+		`${init.data.name}.json`
+	);
+	save.savePlayersAsync();
+	// drenar la cola (al menos 2 ciclos de setImmediate) antes de comprobar
+	setImmediate(() =>
+		setImmediate(() => {
+			const data = fs.existsSync(f)
+				? JSON.parse(fs.readFileSync(f, "utf8"))
+				: null;
+			r.check("REN-1: savePlayersAsync escribe el archivo del jugador", !!data);
+			r.check(
+				"REN-1: estado del jugador persistido por la cola",
+				data &&
+					data.health === 11 &&
+					data.inventory[0] &&
+					data.inventory[0].id === I.DIAMOND &&
+					data.inventory[0].count === 3 &&
+					data.x === 4,
+				data ? JSON.stringify(data).slice(0, 80) : "sin archivo"
+			);
+		})
+	);
+}
+
 // ============================================================
 // B4 — ROMPER EL BLOQUE BAJO UNA PLANTA LA DESTRUYE (con drop)
 // ============================================================
@@ -433,4 +476,6 @@ function mkPlayer(name, overrides = {}) {
 	);
 }
 
-r.done();
+// Los checks async de savePlayersAsync (bloque REN-1) corren en la cola de
+// setImmediate; hay que diferir done() dos niveles para no salir antes.
+setImmediate(() => setImmediate(() => r.done()));

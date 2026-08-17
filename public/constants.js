@@ -36,6 +36,7 @@ export const MOON_CYCLE_MS = DAY_CYCLE_MS * MOON_DAYS;
 // vertical inferida (h = v²/(2·GRAVITY)). Lo verifica tests/unit-sync.js.
 export const JUMP_SPEED = 7; // bloques/s de velocidad vertical inicial del salto
 export const GRAVITY = 18; // bloques/s² de gravedad (caída libre)
+export const MAX_STACK = 64; // tope de apilamiento de ítems (paridad MC; SV-5)
 
 export const BLOCK_COLORS = {
 	1: 0x8b5a2b,

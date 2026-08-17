@@ -14,7 +14,15 @@ const fs = require("node:fs");
 const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const constants = require("./constants.js");
+const state = require("./state.js");
 const world = require("./world.js"); // atomicWrite (swap atómico tmp+rename)
+
+// REN-1 (v20.2): el autosave de jugadores va por la MISMA estrategia que los
+// chunks (save-chunks.js): lotes con setImmediate que ceden el turno al event
+// loop. Con muchos jugadores, escribir N archivos de una vez en el setInterval
+// bloquea el tick; aquí cada lote escribe pocos archivos y suelta el bucle.
+const PLAYERS_SAVE_BATCH = 4; // jugadores por lote
+let playersAsyncSaving = false;
 
 // Atajos a las rutas del mundo ACTIVO (holder mutable de constants.js: la
 // semilla puede cambiar en runtime con switchWorld).
@@ -56,13 +64,14 @@ function playerSnapshot(player) {
 		respawnPoint: player.respawnPoint
 	};
 }
-function savePlayer(player) {
-	const data = playerSnapshot(player);
-	if (!data) return;
+// Escribe un snapshot en su archivo (copia previa .bak + swap atómico).
+// La ruta se recibe ya calculada (playerFilePath al programar): la cola
+// puede drenar después de que el mundo activo cambie (switchWorld), y el
+// archivo debe ir a la semilla del momento del autosave, no a la actual.
+function writePlayerData(f, data) {
 	try {
-		if (!fs.existsSync(playersDir()))
-			fs.mkdirSync(playersDir(), { recursive: true });
-		const f = playerFilePath(player.name);
+		if (!fs.existsSync(path.dirname(f)))
+			fs.mkdirSync(path.dirname(f), { recursive: true });
 		// Auditoría 2026-08-15 (F4): rotación de copia — antes de sobrescribir
 		// se preserva el archivo anterior en <nombre>.json.bak (misma rotación
 		// que world.json). Si el guardado nuevo se corrompe a medias, el backup
@@ -71,15 +80,48 @@ function savePlayer(player) {
 			try {
 				fs.copyFileSync(f, `${f}.bak`);
 			} catch (e) {
-				log.warn(
-					`⚠️  No se pudo crear el backup de ${player.name}: ${e.message}`
-				);
+				log.warn(`⚠️  No se pudo crear el backup de ${data.name}: ${e.message}`);
 			}
 		}
 		world.atomicWrite(f, JSON.stringify(data, null, 2));
 	} catch (e) {
-		log.warn(`⚠️  No se pudo guardar el jugador ${player.name}: ${e.message}`);
+		log.warn(`⚠️  No se pudo guardar el jugador ${data.name}: ${e.message}`);
 	}
+}
+function savePlayer(player) {
+	writePlayerData(playerFilePath(player.name), playerSnapshot(player));
+}
+
+// REN-1 (v20.2): autosave de jugadores por la cola asíncrona. Idempotente
+// (si una cola está en curso, esa drena el resto). Los snapshots se toman al
+// PROGRAMAR (momento del autosave), no al escribir: así el estado es el del
+// intervalo, aunque un jugador cambie mientras se drena la cola. Igual con
+// la ruta del archivo: el drenado puede llegar después de un switchWorld y
+// no debe reescribir el mundo equivocado.
+function savePlayersAsync() {
+	if (!P.currentSeed) return;
+	if (playersAsyncSaving) return;
+	const list = [];
+	for (const p of state.players.values()) {
+		const data = playerSnapshot(p);
+		if (data) list.push({ f: playerFilePath(p.name), data });
+	}
+	if (!list.length) return;
+	playersAsyncSaving = true;
+	const processBatch = () => {
+		let n = 0;
+		while (list.length) {
+			const { f, data } = list.shift();
+			writePlayerData(f, data);
+			if (++n >= PLAYERS_SAVE_BATCH) break;
+		}
+		if (list.length) {
+			setImmediate(processBatch); // ceder el turno: el tick sigue
+			return;
+		}
+		playersAsyncSaving = false;
+	};
+	setImmediate(processBatch);
 }
 
 // Restaura el estado persistido del jugador (por nombre) en la instancia
@@ -149,5 +191,6 @@ module.exports = {
 	sanitizePlayerFile,
 	playerSnapshot,
 	savePlayer,
+	savePlayersAsync,
 	restorePlayer
 };

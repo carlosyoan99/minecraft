@@ -39,7 +39,6 @@ const check = (_name, ok, _extra = "") => {
 	if (!ok) {
 		failed++;
 		failedChecks.push(_name);
-		// biome-ignore lint/suspicious/noConsole: resumen del test (convención del repo)
 		console.log(`FAIL: ${_name} | ${_extra}`);
 	}
 };
@@ -217,18 +216,39 @@ check(
 		saturation: 20
 	});
 	check("createPlayer fabrica un Player", p instanceof playerHelpers.Player);
+	p.addItem(B.COBBLESTONE, 5);
 	check(
 		"addItem crea un ItemStack en el inventario",
-		(p.addItem(B.COBBLESTONE, 5), p.inventory[0] instanceof ItemStack)
+		p.inventory[0] instanceof ItemStack
 	);
-	check(
-		"addItem apila en el slot existente",
-		(p.addItem(B.COBBLESTONE, 3), p.inventory[0].count === 8)
-	);
+	p.addItem(B.COBBLESTONE, 3);
+	check("addItem apila en el slot existente", p.inventory[0].count === 8);
 	check("countItem cuenta por id", p.countItem(B.COBBLESTONE) === 8);
+	p.removeItem(B.COBBLESTONE, 8);
+	check("removeItem retira el stack", p.inventory[0] === null);
+	// SV-5 (v20.2): tope de stack MC — añadir >64 reparte entre slots hasta
+	// MAX_STACK (64) en lugar de inflar un sloth con count infinito.
+	p.addItem(B.COBBLESTONE, 100);
 	check(
-		"removeItem retira el stack",
-		(p.removeItem(B.COBBLESTONE, 8), p.inventory[0] === null)
+		"SV-5: addItem de 100 reparte en stacks de 64+36",
+		p.inventory[0].count === 64 && p.inventory[1].count === 36,
+		`slot0=${p.inventory[0]?.count} slot1=${p.inventory[1]?.count}`
+	);
+	check(
+		"SV-5: ningún slot supera MAX_STACK",
+		p.inventory.every((s) => !s || s.count <= 64)
+	);
+	p.addItem(B.COBBLESTONE, 64);
+	check("SV-5: apila en el slot parcial hasta 64", p.inventory[1].count === 64);
+	check(
+		"SV-5: el exceso del parcial pasa a slot vacío",
+		p.inventory[2] && p.inventory[2].count === 36,
+		`slot2=${p.inventory[2]?.count}`
+	);
+	p.removeItem(B.COBBLESTONE, 192);
+	check(
+		"SV-5: limpieza del inventario tras el topado",
+		p.inventory[2] === null
 	);
 	// G2.5: inventario lleno (sin slot libre y sin merge posible) → rechazo.
 	{
@@ -251,13 +271,14 @@ check(
 			pFull.addItem(B.DIRT, 1) === false
 		);
 	}
-	check(
-		"damage() descuenta salud",
-		(p.damage(5, { armor: false }), p.health === 15)
-	);
-	check("heal() restaura hasta maxHealth", (p.heal(3), p.health === 18));
-	check("heal() no supera la salud máxima", (p.heal(99), p.health === 20));
-	check("addXp acumula experiencia", (p.addXp(10), p.xp === 10));
+	p.damage(5, { armor: false });
+	check("damage() descuenta salud", p.health === 15);
+	p.heal(3);
+	check("heal() restaura hasta maxHealth", p.health === 18);
+	p.heal(99);
+	check("heal() no supera la salud máxima", p.health === 20);
+	p.addXp(10);
+	check("addXp acumula experiencia", p.xp === 10);
 	p.food = 10;
 	check(
 		"eat() aplica comida si no está lleno",
@@ -343,6 +364,5 @@ check(
 // ============================================================
 // RESUMEN
 // ============================================================
-// biome-ignore lint/suspicious/noConsole: resumen del test (convención del repo)
 console.log(`${total} OK, ${failed} FAIL`);
 process.exit(failed ? 1 : 0);

@@ -17,7 +17,8 @@ const {
 	ARMOR_DURABILITY,
 	HOE_DURABILITY,
 	isBow,
-	BOW_DURABILITY
+	BOW_DURABILITY,
+	MAX_STACK
 } = require("./constants.js");
 const { ItemStack } = require("./items.js"); // Fase 13 (C3): slots como clase
 
@@ -41,17 +42,28 @@ function addToInventory(player, itemId, count = 1, durability) {
 		);
 		return true;
 	}
-	// Apilar en un slot existente del mismo tipo (sin límite de stack, simplificado)
-	for (let i = 0; i < player.inventory.length; i++) {
-		if (player.inventory[i] && player.inventory[i].id === itemId) {
-			player.inventory[i].count += count;
-			return true;
-		}
+	// SV-5 (v20.2): apilar respetando el tope de stack MC (MAX_STACK, 64).
+	// Antes se sumaba sin límite en el primer slot del mismo tipo. Ahora se
+	// rellena cada slot hasta MAX_STACK y se pasa al siguiente (como MC), y
+	// solo se crea slot nuevo para el excedente. Devuelve false si no cabe
+	// TODO el count (el invocador decide — MC descarta el sobrante).
+	let remaining = count;
+	// 1) Rellenar slots existentes del mismo tipo hasta MAX_STACK.
+	for (let i = 0; i < player.inventory.length && remaining > 0; i++) {
+		const s = player.inventory[i];
+		if (!s || s.id !== itemId || s.count >= MAX_STACK) continue;
+		const add = Math.min(MAX_STACK - s.count, remaining);
+		s.count += add;
+		remaining -= add;
 	}
-	const empty = player.inventory.findIndex((s) => !s);
-	if (empty === -1) return false;
-	player.inventory[empty] = new ItemStack(itemId, count);
-	return true;
+	// 2) Crear slots nuevos con el excedente (cada uno hasta MAX_STACK).
+	for (let i = 0; i < player.inventory.length && remaining > 0; i++) {
+		if (player.inventory[i]) continue;
+		const add = Math.min(MAX_STACK, remaining);
+		player.inventory[i] = new ItemStack(itemId, add);
+		remaining -= add;
+	}
+	return remaining === 0;
 }
 
 function removeFromInventory(player, itemId, count = 1) {

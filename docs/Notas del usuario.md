@@ -6,6 +6,8 @@ description: List of bugs identified during real-world gameplay sessions and sug
 # Notas del usuario
 Esta es una auditoría manual echa por el usuario tras probar el juego, donde se van recogiendo **bugs**, **nuevas características** y otras sugerencias del usuario que no han sido inluidas en alguna de las fases programadas hasta ahora. Son la base para las próximas especificaciones a no ser que se detecte un error crítico.
 
+---
+
 ## Bugs
 - Al estar sobre el agua, solo mostrar la neblina si se esta a 2 o más bloques de profundidad, si los ojos estan por encima del agua no se debe mostrar la neblina.
 - Se puede abrir cofres con click del mouse, pero estos no se pueden eliminar, hacerlo similar a Minecraft, donde te agachas para poderlo destruir.
@@ -32,6 +34,10 @@ TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterato
 ```
 - Al minar, dejar el **click presionado** hace que se siga minando el bloque siguiente, siempre que se esté a una distancia de minado, así funciona en Minecraft.
 - No hay **persistencia del inventario** entre sesiones.
+- **#menu-bg** no se oculta al iniciar una partida en un mundo.
+- Al terminar de cargar el mundo este desconecta la jugador y el servidor descarga el mundo de la memoria y el juego muestra el menú principal y vuelve a logear al usuario en el servidor, el cliente mantiene cargado el mundo, pero como el servidor lo descargó de la memoria es imposible jugar, además, esta la pantalla del menú principal enfrente que impide hacer y ver lo que estas haciendo. (El bug B2 de la Fase 19.6 no se ha solucionado aún)
+
+---
 
 ## Mejoras
 - Genera **música lofi** procedural diferente para cada bioma, que deuna sensación más inmersiva.
@@ -251,9 +257,13 @@ NBT, sin encantamientos/pociones, sin clima, sin autenticación/BD externa.
 El Nether es estático por naturaleza (sin oxidación ni crecimiento) — ayuda
 a la paridad.
 
+----
+
 ## Importante
 Migrar el código a **programación orientada a objetos**, valorar que su rentablilidad, si optimiza el rendimiento y ws más fácil la lectura del código y la implementación de nuevas características.
 Usar skills siempre que sea útil para el proyecto.
+
+---
 
 ## Futuro
 Caracteristicas sugeridas pero fuera del alcance actual, documentar como restricciones del proyecto. No ser'an agregadas en un corto periodo de tiempo o no lo serán nunca.
@@ -265,3 +275,74 @@ Caracteristicas sugeridas pero fuera del alcance actual, documentar como restric
 - Autenticación y base de datos externa.
 - Mobs: Aldeanos, Wither, Dragón del End, Blaze, Ghast, Gólem de hierro, están documentados para conocer su funcionamiemto, pero no implementar aún.
 - Estructuras: Villas, Ciudad Antigua, etc...
+
+----
+
+## 🔐 **Preguntas necesarias sobre seguridad y rendimiento para tus agentes**
+
+Para una auditoría exhaustiva, necesitas preguntas específicas que cubran áreas no exploradas. Aquí tienes una lista estructurada de preguntas que tus agentes deben responder, junto con el propósito de cada una.
+
+---
+
+¿El servidor valida el origen de las conexiones WebSocket (Origin header) para prevenir ataques CSWSH (Cross-Site WebSocket Hijacking)?
+¿El servidor tiene un tiempo de inactividad máximo (timeout) para conexiones WebSocket inactivas?
+¿El servidor limita el tamaño de los mensajes entrantes (no solo el payload de WebSocket, sino también el contenido del JSON)?
+¿Se utiliza un sistema de reintentos con backoff exponencial en el cliente al perder la conexión, o simplemente recarga la página?
+¿El servidor distingue entre mensajes de diferentes clientes para evitar que un cliente pueda suplantar a otro (ej. enviando `player_move` con ID de otro jugador)?
+¿Se han probado las conexiones simultáneas con un cliente WebSocket personalizado (no el navegador) para simular un ataque de flooding?
+¿El servidor valida que los IDs de bloques/ítems enviados por el cliente (ej. `place`, `creative_pick`) existen en el juego y no son IDs inventados?
+¿El servidor limita la cantidad de bloques que un jugador puede colocar/romper en un período de tiempo (anti-spam de construcción)?
+¿El servidor valida que el inventario del cliente esté sincronizado con el servidor antes de procesar acciones (ej. crafteo, colocación)?
+¿El servidor tiene un límite de mobs por chunk o por jugador?
+¿El servidor valida que las coordenadas de colocación/rotura estén dentro del mundo (no solo dentro del radio de 7 bloques)?
+¿El servidor valida que los mensajes de chat no contengan etiquetas HTML o scripts (XSS) antes de transmitirlos?
+¿El servidor almacena las contraseñas de los usuarios (si las hubiera) de forma segura (hash + salt)?
+¿El servidor cifra la comunicación (WSS) o es solo WS?
+¿El servidor tiene algún mecanismo para prevenir ataques de fuerza bruta contra el sistema de operadores (ej. `/op`)?
+¿Los archivos de guardado (`world.json`, chunks) están protegidos contra lectura/escritura directa desde el cliente (acceso HTTP)? 
+¿El servidor valida que el nombre de jugador no contenga caracteres especiales que puedan causar path traversal (ej. `../`)?
+¿El servidor tiene un sistema de logs que registre acciones de operadores (ej. `/give`, `/tp`)?
+¿El servidor utiliza un pool de conexiones para la base de datos (si existiera)?
+¿El servidor tiene algún sistema de caché para reducir el acceso a disco (ej. chunks en memoria)?
+¿El servidor limita la cantidad de chunks que puede tener un jugador en memoria (radio de render)?
+¿El servidor procesa los mensajes de movimiento en el orden correcto para evitar desincronización?
+¿El servidor tiene algún sistema de priorización de mensajes (ej. movimiento sobre chat)?
+¿El cliente utiliza WebGL 2.0 y está optimizado para no saturar la GPU con partículas o efectos innecesarios?
+¿El servidor realiza algún tipo de garbage collection manual o usa estructuras de datos eficientes (ej. Map vs Object)?
+¿El servidor guarda el estado periódicamente (autosave) y también al recibir señales de cierre (SIGINT)?
+¿El servidor tiene un sistema de backups del mundo (ej. `world.json.bak`)?
+¿El servidor es capaz de recuperarse de un archivo de chunk corrupto (ej. JSON inválido)? 
+¿El cliente es capaz de recuperarse de una desconexión del servidor sin recargar la página (reconexión automática)?
+¿El servidor tiene un límite de tiempo máximo para la generación de un chunk (timeout)?
+¿El servidor es capaz de reiniciar sin perder el estado de los jugadores (inventario, posición)?
+¿El cliente tiene un límite en la cantidad de líneas de chat mostradas para evitar consumo excesivo de memoria?
+¿El cliente tiene un mecanismo para evitar que el puntero se bloquee al abrir el chat o los paneles?
+¿El cliente maneja correctamente la pérdida de foco (ej. ventana en segundo plano) para no consumir CPU innecesariamente?
+¿El cliente tiene un sistema de notificaciones para eventos importantes (ej. muerte, nivel up)? 
+¿El cliente valida que los ítems del inventario no excedan el stack máximo (64) y muestra correctamente el contador?
+¿El servidor tiene un sistema de logs estructurados (ej. JSON) para facilitar el análisis?
+¿El servidor expone métricas de rendimiento (ej. tiempo de tick, uso de memoria) que puedan ser monitorizadas?
+¿El cliente tiene un sistema de telemetría para reportar errores al servidor (ej. fallos de render)?
+¿El servidor tiene un modo de debug que permita simular condiciones extremas (ej. 100 jugadores, chunks corruptos)?
+¿Se ha realizado una auditoría de dependencias (npm audit) recientemente?
+¿El servidor tiene un límite de archivos abiertos (file descriptors) configurado?
+¿Puede un cliente modificar su inventario localmente (ej. inyectando JavaScript) y el servidor no lo detecta?
+¿El servidor es vulnerable a ataques de inyección de comandos a través del chat (ej. si el chat se pasa a un shell)?
+¿El servidor es vulnerable a ataques de path traversal en los nombres de mundo o jugador?
+¿El servidor puede ser sobrecargado enviando muchos mensajes de `move` aunque estén dentro del rate-limit (ej. 30 msg/s de cada uno de 10 jugadores)?
+¿El cliente es vulnerable a ataques XSS a través de nombres de jugador o mensajes de chat?
+¿El servidor tiene fugas de memoria en sesiones largas (ej. chunks nunca descargados)?
+¿El servidor guarda correctamente el estado cuando se cierra inesperadamente (ej. kill -9)?
+¿El cliente se bloquea si recibe un chunk con datos corruptos?
+¿El servidor es capaz de manejar peticiones HTTP concurrentes (no solo WebSocket) sin bloquearse?
+¿El servidor tiene un mecanismo de autenticación para evitar que un cliente se conecte con el nombre de otro jugador?
+
+---
+
+## 📋 **Instrucciones**
+
+1. **Para cada pregunta**, investigar el código correspondiente (usando `grep`, revisión manual, o pruebas automatizadas).
+2. **Proporcionar evidencia** con referencias a archivos y líneas de código.
+3. **Clasificar el riesgo**: Alto, Medio, Bajo, o Sin riesgo.
+4. **Proponer una solución** si el riesgo es Alto o Medio.
+5. **Si no se puede responder** (ej. porque no hay código), indicar "No implementado" y proponer una mejora.

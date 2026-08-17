@@ -171,6 +171,7 @@ Three/DOM para forzarlos.
 | `audit-fase6.js` | LOD (caras/triángulos con y sin LOD), memoria por chunk, pool, determinismo del caparazón |
 | `audit-fase7.js` | Métricas de tick + FPS en Chrome headless vía CDP + integridad del guardado |
 | `audit-altura.js` | Mundo de 128 bloques (−64..+63): layout, superficie, cuevas, biomas, minerales, agua, estructuras, costuras, migración v5→v6, geometría (72 checks) |
+| `audit-fase20.js` | Fase 20 (rolling release, 17 checks): ratelimit 2-ventanas (D2), MAX_STACK 64 en `addToInventory` (SV-5), `savePlayersAsync` por cola (REN-1), generación determinista por chunk (P4), índice espacial de antorchas (P7) |
 
 ## E2E (7, necesitan servidor en `WS_URL` / `ws://localhost:3998` salvo e2e-menu)
 

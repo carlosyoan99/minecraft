@@ -88,8 +88,10 @@ async function waitFor(pred, tries, delayMs) {
 }
 
 // Espera a que el endpoint /json de CDP exponga una página del navegador.
+// CI 19 (v20.2): ventana ampliada — Chrome headless con SwiftShader tarda
+// más en exponer el target bajo CPU cargada (causa ambiental, no regresión).
 async function waitForPageTarget(url) {
-	for (let i = 0; i < 60; i++) {
+	for (let i = 0; i < 90; i++) {
 		try {
 			const { status, data } = await httpGet(url);
 			if (status === 200) {
@@ -130,7 +132,7 @@ class CDP {
 			});
 		});
 	}
-	send(method, params = {}, timeoutMs = 15000) {
+	send(method, params = {}, timeoutMs = 25000) {
 		const id = ++this.id;
 		return new Promise((resolve, reject) => {
 			const timer = setTimeout(() => {
@@ -141,7 +143,7 @@ class CDP {
 			this.ws.send(JSON.stringify({ id, method, params }));
 		});
 	}
-	async eval(expression, timeoutMs = 15000) {
+	async eval(expression, timeoutMs = 25000) {
 		const r = await this.send(
 			"Runtime.evaluate",
 			{
@@ -207,7 +209,6 @@ function findChrome() {
 async function auditCdp() {
 	const chrome = findChrome();
 	if (!chrome) {
-		// biome-ignore lint/suspicious/noConsole: aviso de entorno (como los E2E sin servidor)
 		console.log(
 			"⚠️  CDP omitido: no se encontró Chrome/Chromium (instálalo para auditar métricas del navegador)"
 		);
@@ -224,6 +225,8 @@ async function auditCdp() {
 	let chromeProc = null;
 	const userData = fs.mkdtempSync(path.join(os.tmpdir(), "mc-audit7-chrome-"));
 	try {
+		// CI 19 (v20.2): ventana de arranque ampliada (60→90 intentos de 250ms)
+		// — la generación del mundo v6 + SwiftShader tardan más bajo carga.
 		const up = await waitFor(
 			async () => {
 				// Si el servidor hijo murió (p. ej. puerto 3999 ocupado), no confiar en
@@ -233,7 +236,7 @@ async function auditCdp() {
 					(await httpGet(`http://127.0.0.1:${AUDIT_PORT}/`)).status === 200
 				);
 			},
-			60,
+			90,
 			250
 		);
 		check("CDP: el servidor desechable responde HTTP 200", up);
@@ -279,6 +282,8 @@ async function auditCdp() {
 		// El cliente conecta y renderiza desde el arranque (sin hacer clic en
 		// Jugar): esperar a que el mundo cargue y llegue la primera métrica de
 		// tick (server_metrics se emite ~1 vez/s; la primera ventana es completa).
+		// CI 19 (v20.2): la carga del mundo v6 + primera métrica tardan más
+		// bajo CPU cargada — ventana ampliada (30→45 intentos de 1000ms).
 		const ready = await waitFor(
 			async () => {
 				const v = await cdp.eval(
@@ -291,7 +296,7 @@ async function auditCdp() {
 					typeof v.tick === "number"
 				);
 			},
-			30,
+			45,
 			1000
 		);
 		check(
@@ -334,11 +339,10 @@ async function auditCdp() {
 		// window.__mcMods tiene los módulos. Un eval que falle se loguea y
 		// registra check fallido (uiEval) o se reintenta en silencio (poll) —
 		// nunca tumba la auditoría.
-		const uiEval = async (label, expression, timeoutMs = 15000) => {
+		const uiEval = async (label, expression, timeoutMs = 25000) => {
 			try {
 				return await cdp.eval(expression, timeoutMs);
 			} catch (e) {
-				// biome-ignore lint/suspicious/noConsole: diagnóstico de la auditoría
 				console.log(`   ⚠ G3.7 (CDP ${label}): ${e.message}`);
 				check(`G3.7 (CDP ${label})`, false, `error: ${e.message}`);
 				return null;
@@ -413,7 +417,7 @@ async function auditCdp() {
 				quality.scales[0] < quality.scales[1] &&
 				quality.scales[1] < quality.scales[2] &&
 				quality.prBaja < quality.prAlta,
-			JSON.stringify(quality && quality.scales)
+			JSON.stringify(quality?.scales)
 		);
 		check(
 			"G3.7 B6: applyQuality cambia la resolución real del canvas (baja < alta)",
@@ -427,7 +431,7 @@ async function auditCdp() {
 		// así que en vez de esperas fijas se sondea hasta que el estado aparece
 		// (o se agota el intento). Devuelve el valor o null. Un error CDP
 		// puntual se reintenta en silencio (no es un fallo del juego).
-		const waitDom = async (label, expression, tries = 15, delayMs = 700) => {
+		const waitDom = async (_label, expression, tries = 15, delayMs = 700) => {
 			for (let i = 0; i < tries; i++) {
 				try {
 					const v = await cdp.eval(expression, 8000);
@@ -485,8 +489,7 @@ async function auditCdp() {
 		);
 		check(
 			"G3.7 B5: libro abre con mouse liberado y recetas con iconos (sin fallback de texto)",
-			bookState &&
-				bookState.open &&
+			bookState?.open &&
 				!bookState.pointerLocked &&
 				bookState.ico > 0 &&
 				bookState.txt === 0,
@@ -503,7 +506,6 @@ async function auditCdp() {
 			"B5-esc-state",
 			"(() => { const book = document.getElementById('recipe-book'); const pause = document.getElementById('menu-pause'); const c = window.__mcMods.scene.controls; return { bookHidden: book.classList.contains('hidden'), pauseOpen: !pause.classList.contains('hidden'), isLocked: !!c.isLocked, pointerLocked: document.pointerLockElement !== null }; })()"
 		);
-		// biome-ignore lint/suspicious/noConsole: diagnóstico de la auditoría
 		console.log(`   [B5-esc] ${JSON.stringify(escState)}`);
 		const bookClosed = await waitDom(
 			"B5-closed",
@@ -556,12 +558,10 @@ async function auditCdp() {
 			chunks > 0,
 			`${chunks}`
 		);
-		// biome-ignore lint/suspicious/noConsole: informe de métricas de la auditoría
 		console.log(
 			`📊 CDP: tick ${tickAvg.toFixed(2)} ms · gen ${genAvg.toFixed(2)} ms · ${fpsAvg.toFixed(1)} fps · ${chunks} chunks · ${visAvg} visibles · ${trisAvg} tris`
 		);
 		if (fpsAvg < 1) {
-			// biome-ignore lint/suspicious/noConsole: aviso de números headless (no comparables)
 			console.log(
 				"   (FPS bajos: render por software en CPU — los números de SwiftShader no son comparables a una GPU real; la señal de cuellos de botella es tick/chunkGen)"
 			);
@@ -777,13 +777,11 @@ function auditGuardado() {
 		);
 		check("Regresión: suite unitaria de fases 0-6 en verde", r.status === 0);
 	}
-	// biome-ignore lint/suspicious/noConsole: resultado de la auditoría
 	console.log(
 		fails ? `AUDITORÍA FASE 7: ${fails} fallos` : "AUDITORÍA FASE 7: OK"
 	);
 	process.exit(fails ? 1 : 0);
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real de la auditoría
 	console.error("audit-fase7:", e.message);
 	process.exit(1);
 });

@@ -236,6 +236,11 @@ check(
 	parseNum("GRAVITY") === server.GRAVITY,
 	`cliente=${parseNum("GRAVITY")} servidor=${server.GRAVITY}`
 );
+check(
+	"MAX_STACK cliente == servidor (SV-5: tope de stack MC)",
+	parseNum("MAX_STACK") === server.MAX_STACK,
+	`cliente=${parseNum("MAX_STACK")} servidor=${server.MAX_STACK}`
+);
 
 // --- 7b) Curva de XP (Fase 13, paridad B2): xpToNext cliente (función por
 // tramos MC) == servidor en TODO el rango de niveles. El cliente la usa para

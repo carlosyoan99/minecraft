@@ -110,9 +110,11 @@ if (!MENU_MODE) {
 // SIGINT, que necesitan el resultado inmediato.
 // Fase 17 (B1): el autosave también persiste el estado de los jugadores
 // conectados (inventario/salud/posición) en su archivo aditivo por nombre.
+// REN-1 (v20.2): los jugadores también van por lotes asíncronos — con N
+// conectados, escribir todos de golpe en el setInterval bloqueaba el tick.
 setInterval(() => {
 	save.saveWorldAsync();
-	for (const p of state.players.values()) save.savePlayer(p);
+	save.savePlayersAsync();
 }, SAVE_INTERVAL_MS);
 setInterval(save.unloadFarChunks, UNLOAD_INTERVAL_MS);
 process.on("SIGINT", () => {

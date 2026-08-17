@@ -18,11 +18,11 @@ const {
 	DAY_PHASES, // Fase 18 (C-1): franjas MC — /time set night = inicio de la noche estricta
 	MOON_CYCLE_MS,
 	seedMoonOffsetMs,
-	WORLD_HEIGHT,
 	WORLD_MIN_Y,
 	WORLD_MAX_Y,
 	isTool,
-	NOT_MINEABLE
+	NOT_MINEABLE,
+	MAX_STACK
 } = constants;
 
 // Índice nombre -> ID: claves de B/I en minúsculas (wooden_pickaxe, diamond,
@@ -352,7 +352,10 @@ function executeCommand(player, raw, ctx) {
 			// SV-5 (C6): /give con tope de stack 64 (paridad MC) — antes se podía
 			// pedir 999 y meter un stack infinito en un slot. Las herramientas y
 			// la armadura siguen siendo 1 (no apilan; addToInventory lo ignora).
-			const count = Math.max(1, Math.min(64, parseInt(args[1], 10) || 1));
+			const count = Math.max(
+				1,
+				Math.min(MAX_STACK, parseInt(args[1], 10) || 1)
+			);
 			if (!playerHelpers.addToInventory(player, id, count)) {
 				systemMessage(player, "Inventario lleno");
 				break;

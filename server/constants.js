@@ -137,6 +137,7 @@ const VOID_Y = -72; // por debajo del fondo del mundo (−64) → caída al vac�
 // (lo verifica tests/unit-sync.js).
 const JUMP_SPEED = 7; // bloques/s de velocidad vertical inicial del salto
 const GRAVITY = 18; // bloques/s² de gravedad (caída libre)
+const MAX_STACK = 64; // tope de apilamiento de ítems (paridad MC; SV-5)
 
 // Límite de tamaño de mensaje WS entrante (Fase 8, mejora documentada): la
 // librería `ws` aplica su default de ~100 MiB por mensaje; los mensajes
@@ -1232,6 +1233,7 @@ module.exports = {
 	VOID_Y,
 	JUMP_SPEED,
 	GRAVITY,
+	MAX_STACK,
 	WS_MAX_PAYLOAD,
 	MAX_CONNECTIONS,
 	MAX_MSG_RATE,
