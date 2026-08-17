@@ -97,7 +97,8 @@ const AUDIT = [
 	"audit-fase6.js",
 	"audit-fase7.js",
 	"audit-altura.js", // Fase 15 (D5): mundo de 128 bloques (−64..+63) — 72 checks
-	"audit-fase20.js" // Fase 20 (rolling release): ratelimit 2-ventanas, MAX_STACK, savePlayersAsync, P4/P7
+	"audit-fase20.js", // Fase 20 (rolling release): ratelimit 2-ventanas, MAX_STACK, savePlayersAsync, P4/P7
+	"audit-fase21.js" // Fase 21: pirámide end-to-end (B2), ríos D1, enderman radianes (C2), IA C3
 ];
 const args = process.argv.slice(2);
 
