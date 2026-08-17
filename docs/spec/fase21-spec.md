@@ -203,24 +203,23 @@ fuera de alcance por ahora).
 | 2 | **A2** | Sub-biomas baratos: **bosque de abedules**, **taiga de árboles gigantes** (2×2), **picos nevados** | Reusan bloques/árboles existentes (abedul, abeto, nieve); ~1/3 de cada banda base queda como variante visible sin bloques nuevos | 🔨 Implementado en el árbol (sin commitear): `server/biomes.js` (gates `SUBBIOME_FREQ`/`PEAK_GATE`) + `server/generation.js` (abeto 2×2) |
 | 3 | **A2** | Biomas de superficie restantes **solo si reusan bloques existentes** (sabana con acacias, badlands con terracota/arena, bosque oscuro, isla de champiñones) | El resto de biomas nuevos de la spec que no exigen bloques sincronizados nuevos; se valoran en orden de coste tras los sub-biomas | ⏳ Pendiente de P0 (decisión por bioma al implementar) |
 | 4 | **B1** | **Pozo del desierto** | Estructura pequeña y muy reconocible; patrón hash-2D ya existente (templo/naufragio); sin bloques nuevos | 🔨 Implementado en el árbol (sin commitear): `server/structures.js` (`WELL_CELL` 40×40, gate 7 %, solo desierto firme) |
-| 5 | **B2** | **Pirámide del desierto** (trampa TNT + cofres) | Reusa la trampa/explosión existentes (F10/F11) y el loot de cofres; complementa al pozo en el mismo bioma | ⏳ Pendiente de P0 |
-| 6 | **C1** | **Vaca** (ordeñable con cubo → leche) y **gallina** (pone huevos; 1/8 pollito) | Los dos animales de granja que faltan; patrón F12 (subclase + `tickSpecies`/`onDeath` + drops/XP) ya consolidado; alto valor de juego (alimento/cría) por coste medio | ⏳ Pendiente de P0 |
-| 7 | **C2** | **Enderman** (neutralidad: solo agrede al mirarlo; teletransporte ya probado en `unit-mobs-ia`) | El neutral más icónico de las notas; la IA de teletransporte ya existe y se testea; mecánica acotada (agua, teletransporte, sin recoger bloques en P0) | ⏳ Pendiente de P0 |
+| 5 | **B2** | ~~Pirámide del desierto~~ (trampa TNT + cofres) | Reusa la trampa/explosión existentes (F10/F11) y el loot de cofres; complementa al pozo en el mismo bioma | ⏳ **Diferido a P1** (decisión de la entrevista: la v21.1 se acota a A1+A2+B1+C1) |
+| 6 | **C1** | **Vaca** (ordeñable con cubo → leche) y **gallina** (pone huevos; 1/8 pollito) | Los dos animales de granja que faltan; patrón F12 (subclase + `tickSpecies`/`onDeath` + drops/XP) ya consolidado; alto valor de juego (alimento/cría) por coste medio | ✅ Implementado en el árbol (sin commitear): `server/constants.js`/`public/constants.js` (`I.MILK` 260, `I.EGG` 261), `tickChicken` en `server/mob-species.js`, `handleMilkCow` en `server/actions.js` + `net.js`, click derecho con cubo en `game-input.js`, iconos en `itemicons.js` (huevo lanzable 1/8 pollito diferido a P1) |
+| 7 | **C2** | ~~Enderman~~ (neutralidad: solo agrede al mirarlo; teletransporte ya probado en `unit-mobs-ia`) | El neutral más icónico de las notas; la IA de teletransporte ya existe y se testea; mecánica acotada (agua, teletransporte, sin recoger bloques en P0) | ⏳ **Diferido a P1** (decisión de la entrevista: la v21.1 se acota a A1+A2+B1+C1) |
 
 ### 5.2 Diferido a P1 (segunda tanda)
 
 - **A2**: cuevas de lush/dripstone (requieren bloques nuevos: bayas
   luminosas, dripstone) → P1, con sincronización B/I + receta + icono.
-- **B1**: iglú (solo edificio) y **geoda de amatista** → P1: la geoda
-  depende de los bloques de amatista de la **Fase 22 (B1)** (la F21 los
-  reusa, no los crea — `TODO.md` D2).
-- **B2**: cabaña del pantano, puesto de saqueadores (sin saqueadores: se
-  decide dejarlo vacío o con mobs existentes), fortaleza y ruinas/
-  monumento oceánico → P1 (las más caras — mansión del bosque, monumento
-  oceánico — quedan fuera de esta fase si el presupuesto no da; decisión de
-  cierre).
+- **B2**: **pirámide del desierto** (trampa TNT + cofres; diferida de la
+  P0 en la entrevista), cabaña del pantano, puesto de saqueadores (sin
+  saqueadores: se decide dejarlo vacío o con mobs existentes), fortaleza y
+  ruinas/monumento oceánico → P1 (las más caras — mansión del bosque,
+  monumento oceánico — quedan fuera de esta fase si el presupuesto no da;
+  decisión de cierre).
 - **C1**: pulpo (tinta → tinte negro, requiere ítem nuevo sincronizado o
-  reuso documentado) y refinamiento de la oveja (comer pasto) → P1.
+  reuso documentado), refinamiento de la oveja (comer pasto) y **huevo
+  lanzable 1/8 pollito** → P1.
 - **C2**: zombified piglin (efecto dominó) y abeja (requiere colmena/
   miel como bloques nuevos) → P1.
 - **C3**: mejoras de IA de mobs existentes (creeper huye de gatos,
@@ -286,11 +285,12 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
 
 > **Tests que cubren esta fase (previstos):** `tests/unit-fase21.js` (creado
 > 2026-08-17 con los asserts de **A1** — coherencia de rachas, determinismo
-> y presencia de los 8 biomas base — y **A2** — bandas coherentes de los
+> y presencia de los 8 biomas base —, **A2** — bandas coherentes de los
 > sub-biomas, abedul 100 % en `birch_forest`, abeto 2×2 en `giant_taiga`,
-> nieve en las cumbres de `snowy_peaks`) y `tests/audit-fase21.js`
-> (pendiente, al cierre); el primero se ampliará con los asserts de
-> estructuras/mobs de los bloques B-C; **ampliar**
+> nieve en las cumbres de `snowy_peaks` — y **B1** — pozo del desierto
+> determinista, solo en desierto firme y con su layout MC) y
+> `tests/audit-fase21.js` (pendiente, al cierre); el primero se ampliará
+> con los asserts de mobs de los bloques C; **ampliar**
 > `unit-biomas.js` (A1 escala + A2 biomas nuevos), `unit-mundo.js` (A1),
 > `unit-mobs-ia.js` (C2 neutralidad + C3 IA), `unit-paridad.js` (C1
 > drops/XP), `unit-sync.js`/`unit-recetas.js`/`unit-itemicons.js` (bloques

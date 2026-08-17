@@ -326,5 +326,136 @@ check(
 	`${peaksSnowAtLine}/${peaksAtLine} cumbres emergidas`
 );
 
+// ============================================================
+// FASE 21, Bloque B1 — pozo del desierto (estructura pasiva determinista)
+// ============================================================
+// Patrón del templo/naufragio (unit-fase12 §16-17): hash 2D con sal sobre
+// celdas de 40×40, solo en desierto firme. Verifica:
+//   7. determinismo — misma celda → mismo centro (wellCenterAt), y
+//      wellAt devuelve el mismo footprint en llamadas repetidas,
+//   8. ubicación — todo pozo está en desierto (getBiome) y nunca sobre
+//      agua (columnFloorY nula, la fuente no sería una piscina flotante),
+//   9. layout de bloques — el footprint 5×5 se genera como el pozo MC:
+//      piso de arena, brocal de piedra de 2 capas en el borde, fuente de
+//      agua central y aire en el interior (en el primer pozo de la semilla).
+let wellsFound = 0;
+let wellsInDesert = 0;
+let wellsOnWater = 0;
+let firstWell = null;
+for (let ccx = -32; ccx < 32 && !firstWell; ccx++) {
+	for (let ccz = -32; ccz < 32; ccz++) {
+		const w = world.wellCenterAt(ccx, ccz);
+		if (!w) continue;
+		wellsFound++;
+		if (world.getBiome(w.cx, w.cz) === "desert") wellsInDesert++;
+		if (world.columnFloorY(w.cx, w.cz) !== null) wellsOnWater++;
+		if (!firstWell) firstWell = w;
+	}
+}
+check(
+	"hay al menos 1 pozo del desierto en la semilla",
+	wellsFound > 0,
+	`${wellsFound} pozos en ±1280`
+);
+check(
+	"todo pozo está en desierto",
+	wellsFound === wellsInDesert,
+	`${wellsInDesert}/${wellsFound} en desierto`
+);
+check(
+	"ningún pozo sobre agua",
+	wellsOnWater === 0,
+	`${wellsOnWater} sobre agua`
+);
+// Determinismo: el centro de una celda dada y el footprint de una columna
+// dada son estables entre llamadas (mismo hash 2D, sin Math.random).
+if (firstWell) {
+	const cellX = Math.floor(firstWell.cx / 40);
+	const cellZ = Math.floor(firstWell.cz / 40);
+	const again = world.wellCenterAt(cellX, cellZ);
+	check(
+		"wellCenterAt es determinista (misma celda → mismo centro)",
+		again !== null && again.cx === firstWell.cx && again.cz === firstWell.cz,
+		`(${firstWell.cx},${firstWell.cz}) vs (${again && again.cx},${again && again.cz})`
+	);
+	const w1 = world.wellAt(firstWell.cx, firstWell.cz);
+	// El footprint es 5×5 (dx,dz ∈ [−2,2]): +3 cae FUERA (el +1 del check
+	// anterior queda dentro y devolvería el pozo correctamente).
+	const w2 = world.wellAt(firstWell.cx + 3, firstWell.cz);
+	const w3 = world.wellAt(firstWell.cx, firstWell.cz + 3);
+	check(
+		"wellAt devuelve el footprint (centro) y null fuera de él",
+		w1 !== null && w1.cx === firstWell.cx && w2 === null && w3 === null,
+		`centro ${w1 && w1.cx},${w1 && w1.cz} | fuera ${w2 || w3}`
+	);
+	// Layout de bloques del primer pozo: generar los chunks que tocan el
+	// footprint 5×5 y comprobar el patrón del brocal (las capas y el bloque
+	// central se leen como en el resto de asserts de estructura).
+	const { cx: wx0, cz: wz0 } = firstWell;
+	const R = 3;
+	for (let cgx = Math.floor((wx0 - R) / 16); cgx <= Math.floor((wx0 + R) / 16); cgx++) {
+		for (let cgz = Math.floor((wz0 - R) / 16); cgz <= Math.floor((wz0 + R) / 16); cgz++) {
+			world.generateChunk(cgx, cgz);
+		}
+	}
+	const baseY = world.getHeight(wx0, wz0);
+	const blk = (wx, wz, y) => {
+		const gx = Math.floor(wx / 16);
+		const gz = Math.floor(wz / 16);
+		const lx = ((wx % 16) + 16) % 16;
+		const lz = ((wz % 16) + 16) % 16;
+		const d = state.chunks.get(`${gx},${gz}`);
+		return d[idx(lx, y, lz)];
+	};
+	let borderOk = 0;
+	let borderCells = 0;
+	let interiorAir = 0;
+	let interiorCells = 0;
+	let centerWater = false;
+	let floorSand = 0;
+	for (let dx = -2; dx <= 2; dx++) {
+		for (let dz = -2; dz <= 2; dz++) {
+			const wx = wx0 + dx;
+			const wz = wz0 + dz;
+			if (blk(wx, wz, baseY) === B.SAND) floorSand++;
+			if (dx === 0 && dz === 0) {
+				centerWater = blk(wx, wz, baseY + 1) === B.WATER;
+				continue;
+			}
+			const border = Math.abs(dx) === 2 || Math.abs(dz) === 2;
+			if (border) {
+				borderCells++;
+				if (
+					blk(wx, wz, baseY + 1) === B.STONE &&
+					blk(wx, wz, baseY + 2) === B.STONE
+				)
+					borderOk++;
+			} else {
+				interiorCells++;
+				if (blk(wx, wz, baseY + 1) === B.AIR) interiorAir++;
+			}
+		}
+	}
+	check(
+		"el pozo tiene piso de arena en todo el footprint",
+		floorSand === 25,
+		`${floorSand}/25`
+	);
+	check(
+		"el pozo tiene brocal de piedra de 2 capas en el borde",
+		borderOk === borderCells && borderCells === 16,
+		`${borderOk}/${borderCells} celdas de borde`
+	);
+	check(
+		"el pozo tiene aire en el interior (excepto la fuente)",
+		interiorAir === interiorCells && interiorCells === 8,
+		`${interiorAir}/${interiorCells} celdas interiores`
+	);
+	check(
+		"el pozo tiene la fuente de agua en el centro",
+		centerWater
+	);
+}
+
 world.setDiskLoader(null);
 process.exit(failed ? 1 : 0);

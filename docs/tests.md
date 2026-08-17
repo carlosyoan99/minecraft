@@ -159,7 +159,7 @@ Three/DOM para forzarlos.
 | `unit-fase19.5.js` | F19.5: paleta de audio por bioma (`musicpalette.js`) + toggle reduceMotion |
 | `unit-fase19.6.js` | F19.6: shaders de agua/plantas, toon, instancing (decisión) + **F20 B4/P7** índice espacial de antorchas (`getTorchesNear`, vecindario 3×3) |
 | `unit-fase20.js` | Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — `showMenuBg()` visible solo en el menú principal, oculto al entrar al mundo y en la pausa |
-| `unit-fase21.js` | Fase 21 (A1+A2): biomas más grandes — coherencia de rachas (`BIOME_FREQ` 0.003, media ≥ 11, mediana ≥ 5) + determinismo/presencia de los 8 biomas base; sub-biomas — bandas coherentes (0 violaciones), abedul 100 % en `birch_forest` (vs ~1/3 en `forest`), abeto 2×2 en `giant_taiga`, nieve en las cumbres emergidas de `snowy_peaks` |
+| `unit-fase21.js` | Fase 21 (A1+A2+B1): biomas más grandes — coherencia de rachas (`BIOME_FREQ` 0.003, media ≥ 11, mediana ≥ 5) + determinismo/presencia de los 8 biomas base; sub-biomas — bandas coherentes (0 violaciones), abedul 100 % en `birch_forest` (vs ~1/3 en `forest`), abeto 2×2 en `giant_taiga`, nieve en las cumbres emergidas de `snowy_peaks`; pozo del desierto — solo en desierto firme (nunca agua), determinista y con el layout MC (piso arena, brocal 2 capas, fuente central) |
 
 ## Fase 21 (EN CURSO) — matriz de tests prevista
 
@@ -175,7 +175,7 @@ Three/DOM para forzarlos.
 | --- | --- | --- |
 | **A1** Biomas más grandes (extensión) | ✅ `unit-fase21.js` (2026-08-17: coherencia de rachas vs `BIOME_FREQ`, determinismo de etiquetas, presencia de los 8 biomas base) | `unit-biomas.js` (ampliado por el agente: sub-biomas A2), `unit-mundo.js`, `audit-fase4.js` (recalibrar ms/chunk sin romper determinismo) |
 | **A2** Biomas de superficie nuevos | ✅ `unit-fase21.js` (2026-08-17: bandas coherentes, abedul puro vs bosque común, abeto 2×2, nieve en picos) | `unit-biomas.js` (ampliado por el agente: presencia de sub-biomas y su vegetación), `unit-sync.js`/`unit-recetas.js`/`unit-itemicons.js` (bloques nuevos B/I si aplica) |
-| **B1** Estructuras pasivas (pozo, iglú, geoda) | `unit-fase21.js` (determinismo por hash 2D, solo en su bioma) | `unit-terreno.js` (patrón de estructuras deterministas) |
+| **B1** Estructuras pasivas (pozo, iglú, geoda) | ✅ `unit-fase21.js` (2026-08-17: pozo — determinismo hash 2D, solo en desierto firme, layout de bloques MC) | `unit-terreno.js` (patrón de estructuras deterministas); iglú y geoda → P1 (geoda reusa bloques de la F22) |
 | **B2** Estructuras activas (pirámide, cabaña, puesto, mansión, fortaleza, ruinas/monumento) | `unit-fase21.js` (trampa TNT reusada + loot + determinismo) | `unit-fase11.js` (explosión/TNT), `unit-terreno.js` (loot de cofres) |
 | **C1** Mobs pasivos nuevos (vaca, gallina, pulpo) | `unit-fase21.js` (mecánica: ordeñar, poner huevos, tinta) | `unit-paridad.js` (drops/XP en `MOB_XP`), `unit-mobs-poo.js` (subclases por especie), `unit-cria.js` (cría) |
 | **C2** Mobs neutrales nuevos (enderman, zombified piglin, abeja) | `unit-fase21.js` + ampliar `unit-mobs-ia.js` (neutralidad: solo agreden si se les provoca) | `unit-mobs-ia.js` (máquina de estados), `unit-fase12.js` (patrón de doma/mascota) |
