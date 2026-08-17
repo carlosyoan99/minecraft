@@ -1,6 +1,6 @@
 # Fase 20 — Rolling release (ciclo de estabilización y paridad) (Spec)
 
-> **Estado:** `[PROSPECTIVA]`
+> **Estado:** `[EN CURSO]` (iteración v20.1 cerrada; ciclo rolling activo)
 
 > Documento creado a partir de: `docs/Notas del usuario.md` (\"Próximas Fases\":
 > la 20 es el \"rolling release del proyecto, fase larga donde solo se
@@ -12,9 +12,10 @@
 > del borrador `docs/spec/fase20-spec.md`, del estado real del proyecto y de la
 > entrevista con el usuario (2026-08-12).
 > Fecha: 2026-08-12 · Proyecto: clon de Minecraft.
-> Estado: **prospectiva (sin implementar)** — prerrequisito: **Fase 18 cerrada**
-> (y con ella F16/F17). La primera iteración (v20.1) está definida con el
-> estado real del proyecto; las siguientes se definen al inicio de cada ciclo.
+> Estado: **en curso** — prerrequisito: **Fase 18 cerrada**
+> (y con ella F16/F17). La primera iteración (v20.1) está **cerrada** (ver
+> [`docs/v20.1.md`](../v20.1.md)); las siguientes se definen al inicio de
+> cada ciclo.
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -226,3 +227,39 @@ La F20 se considera cerrada cuando, en una auditoría de iteración:
 
 **Cambios en esta spec (v1):**
 - 2026-08-12: creación del spec (documento de planificación de la fase 20), incorporando el backlog del borrador `fase20-spec.md`.
+
+**Cambios en esta spec (v2, 2026-08-16 — arranque de la v20.1):**
+- Alcance de la v20.1 confirmado por el usuario: rendimiento **completo**
+  (P1, P3, P4, P2/P7 con perfilado, CL-6) y **sí** al fundido explícito de
+  mena. Estado de implementación (detalle en `TODO.md` § Fase 20):
+  - **B1** verificado (restos de F16/F17 cerrados, auditoría 2026-08-16).
+  - **B2** los bugs de las notas quedaron cerrados en fases previas (con su
+    fix verificado); únicos pendientes documentados de la auditoría del día
+    16 (comentario de TNT y wording de dimensiones) resueltos.
+  - **B3** TNT knockback implementado (evento `knockback` + ventana de
+    confianza `kbUntil` en el anti-cheat para jugadores; `mob.kb` integrado
+    en el tick de los mobs; test `unit-fase11.js` 10b). Fundido explícito
+    de mena restaurado (RAW_IRON 258 / RAW_GOLD 259 → lingote en el horno;
+    carbón/diamante/redstone/esmeralda siguen directos, paridad MC 1.17).
+    CSP/SRI cerrado (Three.js local desde F19.6).
+  - **B4** P1 (generación por lotes) y P3 (corona nueva) ya estaban
+    implementados en el árbol y se verificaron; **P4** generación
+    determinista por chunk (PRNG sembrado por semilla+cx,cz — la generación
+    ya no marca dirty: explorar no persiste cientos de archivos); **P7**
+    índice espacial de antorchas por chunk (`getTorchesNear`, vecindario
+    3×3 — `hasTorchNear`/`bakeChunkLight` dejan de escanear el torchSet
+    completo); **P2 evaluado y rechazado con métrica** (gzipSync 1,36
+    ms/chunk → ~8 ms por lote de 6, ya espaciado con setImmediate: un
+    worker no justifica su complejidad); **CL-6** telemetría del cliente
+    (`__mcClientErrors` → `client_errors`, ya en el árbol).
+- **B5** iteración cerrada: documento [`docs/v20.1.md`](../v20.1.md),
+  etiqueta `v20.1` y `TODO.md` al día (B5/C1 marcados).
+- **C1** auditoría de la iteración: suite **unit 59/59**, **E2E 7/7**
+  (mundo desechable limpio), **`--audit` 6/6**, **biome 0 errores**,
+  `node --check` limpio, sin regresiones en la matriz `docs/tests.md`,
+  protocolo WS/IDs B-I/`SCHEMA_VERSION` 6 intactos. Los CDP de render
+  (fase3/fase7) requieren carga de CPU baja (SwiftShader); bajo carga
+  externa fallan igual en HEAD (ambiental, documentado).
+- Verificación manual en navegador de las mecánicas nuevas (knockback,
+  mena cruda → horno): pendiente de la sesión real del usuario (próximo
+  paso de la v20.2 si confirma algo).

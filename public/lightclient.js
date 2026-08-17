@@ -5,7 +5,7 @@
 // (ciclo de vida de mallas) importa de aquí.
 // ============================================================
 
-import { getChunkData, getClientBlock, getTorches } from "./chunkstore.js";
+import { getChunkData, getClientBlock, getTorchesNear } from "./chunkstore.js";
 import { CHUNK_SIZE, WORLD_HEIGHT, WORLD_MIN_Y } from "./constants.js";
 import { computeChunkLight, LIGHT_RADIUS } from "./lighting.js";
 
@@ -24,17 +24,22 @@ export function bakeChunkLight(cx, cz) {
 	if (!chunk) return;
 	const x0 = cx * CHUNK_SIZE,
 		z0 = cz * CHUNK_SIZE;
-	const relevant = [];
-	for (const t of getTorches().values()) {
-		if (
+	// Fase 20 B4 (P7): antorchas del vecindario 3×3 de chunks (cubre el radio
+	// de luz 7 < chunk 16) vía el índice espacial — antes se escaneaba el
+	// torchSet COMPLETO por bake (O(todas las antorchas)). El filtro de caja
+	// se conserva para dejar fuera las antorchas del vecindario más lejanas
+	// que el radio (comportamiento idéntico al previo).
+	const relevant = getTorchesNear(
+		x0 + CHUNK_SIZE / 2,
+		0,
+		z0 + CHUNK_SIZE / 2
+	).filter(
+		(t) =>
 			t[0] >= x0 - LIGHT_RADIUS &&
 			t[0] <= x0 + CHUNK_SIZE - 1 + LIGHT_RADIUS &&
 			t[2] >= z0 - LIGHT_RADIUS &&
 			t[2] <= z0 + CHUNK_SIZE - 1 + LIGHT_RADIUS
-		) {
-			relevant.push(t);
-		}
-	}
+	);
 	if (relevant.length === 0) {
 		lightStore.set(key, null);
 		return;
@@ -73,7 +78,9 @@ export function hasTorchNear(wx, wy, wz) {
 		z1 = wz + r,
 		y0 = wy - r,
 		y1 = wy + r;
-	for (const t of getTorches().values()) {
+	// Fase 20 B4 (P7): solo antorchas del vecindario 3×3 de chunks del bloque
+	// (antes: escaneo del torchSet completo por cada cambio de bloque).
+	for (const t of getTorchesNear(wx, wy, wz)) {
 		if (
 			t[0] >= x0 &&
 			t[0] <= x1 &&

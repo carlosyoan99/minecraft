@@ -17,6 +17,8 @@ const {
 	WORLD_MIN_Y,
 	WORLD_MAX_Y
 } = require("./constants.js");
+// Fase 20 B4 (P4): semilla activa del mundo para el RNG determinista por chunk.
+const constants = require("./constants.js");
 const state = require("./state.js");
 const { chunks } = state;
 const chests = require("./chests.js");
@@ -28,6 +30,45 @@ const structures = require("./structures.js");
 let core = null;
 function setCore(c) {
 	core = c;
+}
+
+// ============================================================
+// RNG DETERMINISTA POR CHUNK (Fase 20 B4, P4)
+// Árboles y vegetación usan un PRNG sembrado por (semilla del mundo, cx, cz)
+// en vez del Math.random global. Con generación determinista un chunk nunca
+// tocado por el jugador se regenera IDÉNTICO en la próxima sesión, así que
+// NO hace falta persistirlo (se retira el markChunkDirty de la generación):
+// explorar 300+ chunks ya no escribe 300+ archivos en cada sesión. Mismo
+// mulberry32 que noise.js; `setChunkRng` permite a los tests inyectar su
+// PRNG (antes inyectaban Math.random, que la generación ya no consulta).
+// ============================================================
+function hashCoord(seedStr, cx, cz) {
+	let h = 1779033703 ^ seedStr.length;
+	const s = `${seedStr},${cx},${cz}`;
+	for (let i = 0; i < s.length; i++)
+		h = Math.imul(h ^ s.charCodeAt(i), 3432918353);
+	h = Math.imul(h ^ (h >>> 13), 3896748745);
+	return (h ^ (h >>> 16)) >>> 0;
+}
+function mulberry32(seed) {
+	let a = seed >>> 0;
+	return () => {
+		a = (a + 0x6d2b79f5) | 0;
+		let t = Math.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+let chunkRngFactory = null; // tests: inyectan su PRNG (null = determinista)
+function setChunkRng(fn) {
+	chunkRngFactory = fn;
+}
+function chunkRngFor(cx, cz) {
+	const seed =
+		constants.worldPaths?.currentSeed || process.env.SEED || "miSemilla2026";
+	return chunkRngFactory
+		? chunkRngFactory(cx, cz)
+		: mulberry32(hashCoord(seed, cx, cz));
 }
 
 const CAVE_FREQ = 0.032; // escala horizontal: túneles ~2x más largos/anchas
@@ -132,7 +173,8 @@ function generateChunk(cx, cz) {
 		return new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
 	}
 	// Si el chunk ya fue guardado en disco (p.ej. tras descargarse), recuperarlo
-	// tal cual en vez de regenerarlo: la generación usa Math.random y perdería cambios.
+	// tal cual en vez de regenerarlo: puede tener modificaciones del jugador
+	// (aunque la generación base ya sea determinista, Fase 20 B4/P4).
 	const fromDisk = core.diskLoader
 		? core.diskLoader(cx, cz)
 		: core.loadChunkFromDisk(cx, cz);
@@ -142,6 +184,7 @@ function generateChunk(cx, cz) {
 	}
 
 	const genT0 = performance.now();
+	const rand = chunkRngFor(cx, cz); // Fase 20 B4 (P4): determinista por chunk
 	const data = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
 	const baseX = cx * CHUNK_SIZE,
 		baseZ = cz * CHUNK_SIZE;
@@ -397,11 +440,11 @@ function generateChunk(cx, cz) {
 			const treeFits =
 				x >= 2 && x <= CHUNK_SIZE - 3 && z >= 2 && z <= CHUNK_SIZE - 3;
 
-			const treeRoll = Math.random();
+			const treeRoll = rand();
 			if (canGrowTree && treeFits && biome === "jungle" && treeRoll < 0.09) {
 				// Árbol de jungla (Fase 11, B): tronco alto (5-8) y copa ancha y
 				// densa con lianas colgando del envés — el sello de la selva.
-				const treeHeight = 5 + Math.floor(Math.random() * 4);
+				const treeHeight = 5 + Math.floor(rand() * 4);
 				for (let i = 0; i < treeHeight; i++) {
 					const y = height + i;
 					if (y <= WORLD_MAX_Y)
@@ -450,10 +493,10 @@ function generateChunk(cx, cz) {
 				// Roble (bosque/llanura/pantano) o abedul (bosque, ~1/3): misma
 				// forma, madera distinta (tronco claro). En el pantano (Fase 11,
 				// B) los robles llevan lianas colgando del borde, como en Minecraft.
-				const birch = biome === "forest" && Math.random() < 0.33;
+				const birch = biome === "forest" && rand() < 0.33;
 				const log = birch ? B.BIRCH_LOG : B.OAK_LOG;
 				const leaves = birch ? B.BIRCH_LEAVES : B.OAK_LEAVES;
-				const treeHeight = 4 + Math.floor(Math.random() * 3);
+				const treeHeight = 4 + Math.floor(rand() * 3);
 				for (let i = 0; i < treeHeight; i++) {
 					const y = height + i;
 					if (y <= WORLD_MAX_Y) data[core.idx(x, core.toLocal(y), z)] = log;
@@ -503,7 +546,7 @@ function generateChunk(cx, cz) {
 			) {
 				// Pino cónico (abeto) en frío: tronco alto y estrecho con copa cónica.
 				// En la taiga (Fase 11, B) es el árbol dominante (pinos densos).
-				const treeHeight = 5 + Math.floor(Math.random() * 4);
+				const treeHeight = 5 + Math.floor(rand() * 4);
 				for (let i = 0; i < treeHeight; i++) {
 					const y = height + i;
 					if (y <= WORLD_MAX_Y)
@@ -516,7 +559,7 @@ function generateChunk(cx, cz) {
 							if (
 								Math.abs(dx) === radius &&
 								Math.abs(dz) === radius &&
-								Math.random() < 0.5
+								rand() < 0.5
 							)
 								continue;
 							const lx = x + dx,
@@ -552,7 +595,7 @@ function generateChunk(cx, cz) {
 			// hierba alta, flores (amapola/diente de león) y, raramente, un pilar
 			// de piedra con piedra de musgo (estructura decorativa).
 			if (canGrowTree && data[core.idx(x, core.toLocal(height), z)] === B.AIR) {
-				const veg = Math.random();
+				const veg = rand();
 				if (veg < 0.1)
 					data[core.idx(x, core.toLocal(height), z)] = B.TALL_GRASS;
 				else if (veg < 0.12)
@@ -563,10 +606,10 @@ function generateChunk(cx, cz) {
 			if (
 				canGrowTree &&
 				(biome === "plains" || biome === "forest") &&
-				Math.random() < 0.004
+				rand() < 0.004
 			) {
 				// Pilar de piedra: columna de 1-3 bloques con la cima de musgo.
-				const h = 1 + Math.floor(Math.random() * 3);
+				const h = 1 + Math.floor(rand() * 3);
 				for (let i = 0; i < h; i++) {
 					const y = height + i;
 					if (
@@ -603,7 +646,10 @@ function generateChunk(cx, cz) {
 	}
 
 	chunks.set(key, data);
-	core.markChunkDirty(cx, cz); // la generación usa Math.random (árboles), así que se persiste
+	// Fase 20 B4 (P4): NO se marca dirty al generar — el RNG por chunk hace la
+	// generación determinista, así que un chunk nunca modificado se regenera
+	// idéntico en la próxima sesión y no necesita escribirse a disco. Solo las
+	// modificaciones del jugador marcan dirty (world.js markChunkDirty).
 	core.addChunkGenMs(performance.now() - genT0);
 	return data;
 }
@@ -615,5 +661,6 @@ module.exports = {
 	isSwampPoolAt,
 	isCaveBlock,
 	caveStrength,
-	setCore
+	setCore,
+	setChunkRng // Fase 20 B4 (P4): inyección de PRNG para los tests
 };

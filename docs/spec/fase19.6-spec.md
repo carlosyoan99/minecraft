@@ -9,10 +9,11 @@
 > que va a afectar al juego" — riesgo técnico que se ejecuta después de las
 > skills visuales).
 > Fecha: 2026-08-15 · Proyecto: clon de Minecraft.
-> Estado: **prospectiva (sin implementar)** — prerrequisito: **Fase 19.5
+> Estado: **completada (2026-08-16)** — prerrequisito: **Fase 19.5
 > cerrada** (skills no-motor + audio + accesibilidad). Orden acordado:
 > **1) texturas/UI (F19) → 2) skills visuales (F19.5) → 3) riesgo técnico
-> (esta fase, F19.6) → 4) rolling release (F20)**.
+> (esta fase, F19.6) → 4) rolling release (F20)**. Cierre con auditoría
+> 2026-08-15 (correcciones §10) y verificación completa en `STATUS.md`.
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -309,6 +310,11 @@ navegador encontró regresiones).
 - **Ficheros:** `public/meshbuild.js` (añadir `vertexColors: true` a
   `waterMaterial` y `plantMaterial`, o declarar `attribute vec3 color;`
   manualmente en los vertex shaders).
+- **Corrección (2026-08-16, verificada):** `vertexColors: true` añadido a
+  `waterMaterial` y `plantMaterial` (`public/meshbuild.js`); los dos
+  shaders vuelven a compilar en WebGL2 y agua/plantas se dibujan. Se
+  documenta el porqué en un comentario junto a cada material para que no
+  se vuelva a quitar.
 - **Criterio:** agua y plantas se ven animadas en navegador sin errores
   `Shader Error` en consola; verificación CDP de render con 0 excepciones;
   test de regresión que compile un `ShaderMaterial` con `color` (p. ej.
@@ -344,6 +350,18 @@ navegador encontró regresiones).
   cierre).
 - **Criterio:** sesión estable 10+ min sin volver al menú, con el espam de B1
   resuelto; test de regresión del síntoma corregido (E2E 7/7 en verde).
+- **Veredicto final (2026-08-16, revisión con repro dedicado):** el fallo de
+  "vuelve a la pantalla de inicio justo al terminar la carga" que motivaba
+  este bug resultó ser **de causa ambiental, no defecto del código**: un
+  repro dirigido (`/tmp/opencode/repro-b2-v4.js`, máquina descargada)
+  ejecuta crear→entrar→salir→`menu_state`→`menuVisible:true` con
+  `closeCount:0` — el happy path es correcto. La reproducción con
+  `closeCount:2`/`menuVisible:false` persistente solo ocurría con la CPU a
+  carga 15-19: el renderer congelado hacía que el heartbeat del servidor
+  (terminate a los 15 s) cortara (close externo) y el wrapper CL-1
+  reconectaba — de ahí el doble close. Queda documentado junto a la
+  prueba en `docs/audits/auditoria-2026-08-15.md` §6 y los
+  harnesses en `/tmp/opencode/repro-b2-v3/v4`.
 
 ### B3 — Falso positivo de `flotando` en el anti-cheat (cazado en el cierre)
 
@@ -389,3 +407,13 @@ navegador encontró regresiones).
   `docs/audits/auditoria-2026-08-15.md` §6); `SCHEMA_VERSION` 6, protocolo
   WS e IDs B/I intactos; `public/vendor/` añadido al `files.includes` de
   biome.json (código de terceros, no se formatea).
+
+**Cambios en esta spec (v4, 2026-08-16):**
+- Cierre de la corrección B1 (`vertexColors: true` en `waterMaterial` y
+  `plantMaterial`, `public/meshbuild.js`) y nota final del veredicto de B2.
+- Añadido el detalle de la sesión siguiente a la auditoría 2026-08-15 en
+  `docs/audits/auditoria-2026-08-15.md` §6: P1 y P3 (generación/reenvío de
+  `settings`) corregidos en red, P2 y P7 con veredicto de perf **medido**
+  (gzipSync p50 6.33 ms/chunk; `computeChunkLight` ~8-13 ms por antorcha
+  cercana), P4 diferido a Fase 20 y CL-6 (telemetría `client_errors`)
+  implementado.

@@ -241,6 +241,56 @@ const { Reporter, loaderESM } = require("./helpers.js");
 		);
 	}
 
+	// ============================================================
+	// P7 (Fase 20 B4) — índice espacial de antorchas en chunkstore
+	// bakeChunkLight/hasTorchNear consultan el vecindario 3×3 de chunks
+	// (getTorchesNear), no el torchSet completo. Se verifica que el índice
+	// se alimenta en paralelo (storeChunkData y setClientBlock) y que
+	// getTorchesNear SOLO devuelve antorchas del vecindario pedido.
+	// ============================================================
+	{
+		const cs = await loaderESM("public/chunkstore.js");
+		const { CHUNK_SIZE, TORCH } = await loaderESM("public/constants.js");
+		const full = CHUNK_SIZE * 128 * CHUNK_SIZE;
+		// Antorcha en el chunk (0,0) y otra en el (2,0): la segunda NO está en
+		// el vecindario 3×3 de un bloque del (0,0).
+		const arr = new Uint8Array(full);
+		arr[0] = TORCH; // (0,0) local x0 y0 z0 → mundo (0,-64,0)
+		cs.storeChunkData("0,0", arr);
+		const far = new Uint8Array(full);
+		far[0] = TORCH; // mundo (32,-64,0) → chunk (2,0)
+		cs.storeChunkData("2,0", far);
+		const near = cs.getTorchesNear(1, -60, 1); // bloque del chunk (0,0)
+		r.check(
+			"P7: getTorchesNear devuelve la antorcha del vecindario (chunk 0,0)",
+			near.some((t) => t[0] === 0 && t[2] === 0)
+		);
+		r.check(
+			"P7: no devuelve antorchas fuera del vecindario 3×3 (chunk 2,0)",
+			near.every((t) => t[0] < CHUNK_SIZE)
+		);
+		// setClientBlock mantiene el índice: colocar una antorcha en el chunk
+		// (0,0) la hace visible al vecindario; romperla la retira.
+		cs.setClientBlock(5, -60, 5, TORCH);
+		const after = cs.getTorchesNear(5, -60, 5);
+		r.check(
+			"P7: setClientBlock con TORCH alimenta el índice espacial",
+			after.some((t) => t[0] === 5 && t[1] === -60 && t[2] === 5)
+		);
+		cs.setClientBlock(5, -60, 5, 0);
+		const removed = cs.getTorchesNear(5, -60, 5);
+		r.check(
+			"P7: romper la antorcha la retira del índice espacial",
+			removed.every((t) => !(t[0] === 5 && t[1] === -60 && t[2] === 5))
+		);
+		// chunks_unload limpia el índice del chunk.
+		cs.removeChunkData("0,0");
+		r.check(
+			"P7: removeChunkData limpia el índice del chunk",
+			cs.getTorchesNear(1, -60, 1).every((t) => t[0] !== 0 || t[2] !== 0)
+		);
+	}
+
 	r.done();
 })().catch((e) => {
 	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar, convención del proyecto)

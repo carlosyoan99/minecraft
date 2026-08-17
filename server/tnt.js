@@ -107,6 +107,45 @@ function explode(x, y, z) {
 			});
 		}
 	}
+	// Knockback (Fase 20 B3, paridad MC — hallazgo F16 G2.6 y auditoría del
+	// 2026-08-16 §2.1: el comentario lo prometía pero la explosión solo
+	// dañaba). Empuje horizontal RADIAL desde el centro + impulso vertical:
+	// los jugadores reciben el evento `knockback` (el cliente lo integra en su
+	// física local; el anti-cheat tolera los moves rápidos durante la ventana
+	// de confianza `kbUntil`) y los mobs, que son simulados en el servidor,
+	// reciben el impulso `mob.kb` que integra su tick.
+	const KB_STRENGTH = 0.55; // bloques por tick de impulso (~3.3 m/s horizontal)
+	const KB_UP = 0.35; // impulso vertical (parábola MC: sube y cae)
+	const KB_UNTIL_MS = 600; // ventana de confianza del anti-cheat (cliente)
+	const KB_TTL_TICKS = 10; // duración del impulso de los mobs (10 × 50 ms)
+	for (const p of state.players.values()) {
+		const distXZ = Math.hypot(p.x - bx, p.z - bz);
+		if (distXZ < 0.01 || distXZ >= TNT_RADIUS + 2.5) continue;
+		const nx = (p.x - bx) / distXZ;
+		const nz = (p.z - bz) / distXZ;
+		p.kbUntil = Date.now() + KB_UNTIL_MS;
+		try {
+			p.ws.send(
+				JSON.stringify({
+					event: "knockback",
+					data: { vx: nx * KB_STRENGTH, vy: KB_UP, vz: nz * KB_STRENGTH }
+				})
+			);
+		} catch {
+			/* socket cerrado: la ventana de confianza caduca sola */
+		}
+	}
+	for (const m of state.mobs) {
+		if (!m.alive) continue;
+		const distXZ = Math.hypot(m.x - bx, m.z - bz);
+		if (distXZ < 0.01 || distXZ >= TNT_RADIUS + 2.5) continue;
+		m.kb = {
+			vx: ((m.x - bx) / distXZ) * KB_STRENGTH,
+			vy: KB_UP,
+			vz: ((m.z - bz) / distXZ) * KB_STRENGTH,
+			ttl: KB_TTL_TICKS
+		};
+	}
 	if (broadcastHandler)
 		broadcastHandler("tnt_explode", {
 			x: bx,

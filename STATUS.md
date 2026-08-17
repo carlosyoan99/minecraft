@@ -14,11 +14,11 @@
 
 | | |
 | --- | --- |
-| **Fase** | **19.6 — Motor 3D: iluminación, materiales, shaders, instancing y animación** [`[COMPLETADA]`](docs/spec/fase19.6-spec.md) |
-| **Prerrequisito cumplido** | Fase 19.5 cerrada y auditada (2026-08-15) ✅ |
-| **Trabajo en curso** | Cierre commiteado (F19.6 + correcciones de la auditoría 2026-08-15) |
+| **Fase** | **20 — Rolling release (ciclo activo; v20.1 cerrada)** [`[EN CURSO]`](docs/spec/fase20-spec.md) |
+| **Prerrequisito cumplido** | Fase 18 cerrada (F16/F17/F19/19.5/19.6 en verde) ✅ |
+| **Trabajo en curso** | **v20.1 cerrada** (commit + etiqueta `v20.1`): paridad (TNT knockback, fundido explícito de mena) y rendimiento del backlog 2026-08-15 (P4 generación determinista, P7 índice espacial de antorchas; P1/P3/CL-6 verificados; P2 rechazado con métrica) — ver [`docs/v20.1.md`](docs/v20.1.md) |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Abrir la Fase 20 (rolling release) — ver `docs/spec/fase20-spec.md` y `TODO.md` |
+| **Próximo paso** | Definir la iteración **v20.2** (primer punto: verificación manual en navegador de knockback y mena cruda → horno) |
 
 ## Implementado (fases cerradas y auditadas)
 
@@ -47,6 +47,7 @@
 | 19 — Texturas de ítems, interfaces y pulido visual | [`fase19-spec.md`](docs/spec/fase19-spec.md) | ✅ Completada y auditada (2026-08-15, `acca3c9`) |
 | 19.5 — Skills del proyecto: audio por bioma, accesibilidad y refinamientos | [`fase19.5-spec.md`](docs/spec/fase19.5-spec.md) | ✅ Completada y auditada (2026-08-15, `82b288b`) |
 | 19.6 — Motor 3D: iluminación, materiales, shaders, instancing y animación | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | ✅ Completada (2026-08-16) |
+| 20 — Rolling release (ciclo de estabilización y paridad) | [`fase20-spec.md`](docs/spec/fase20-spec.md) | 🔄 **En curso (v20.1)** |
 
 **Línea base de la fase activa:** suite **59/59 unitarios**, **E2E 7/7**,
 `biome` 0 errores, `node --check` limpio (cierre de la Fase 19.6,

@@ -15,6 +15,7 @@
 // densidad no baje perceptiblemente (observado ≥ 0.5 × esperado por bioma).
 // ============================================================
 const world = require("../server/world.js");
+const generation = require("../server/generation.js");
 const {
 	CHUNK_SIZE,
 	WORLD_MIN_Y,
@@ -74,12 +75,12 @@ const THRESH = {
 };
 
 world.setDiskLoader(() => null);
-const realRandom = Math.random;
-
+// Fase 20 B4 (P4): la generación ya no consulta Math.random — usa un RNG
+// determinista por chunk (setChunkRng lo sustituye en los tests).
 try {
 	// ================== SECCIÓN 1 (Fase 15 A2): copa completa ==================
 	// Zona central [-3,3] con LCG: árboles dispersos, verificables por copa.
-	Math.random = lcg(12345);
+	generation.setChunkRng(() => lcg(12345));
 	for (let cx = -3; cx <= 3; cx++)
 		for (let cz = -3; cz <= 3; cz++) world.generateChunk(cx, cz);
 
@@ -281,11 +282,11 @@ try {
 	);
 
 	// ============ SECCIÓN 2 (regresión): árboles sobre el suelo ============
-	// Modo denso (Math.random = 0): TODA columna de bosque/llanura genera un
-	// árbol (de altura 4). Zona lejana [8,12] para no chocar con el caché de
-	// la sección 1 (generada con otra RNG). Así el test encuentra muchos
-	// troncos sin depender de la suerte y verifica el invariante de no-flote.
-	Math.random = () => 0;
+	// Modo denso (RNG = 0): TODA columna de bosque/llanura genera un árbol
+	// (de altura 4). Zona lejana [8,12] para no chocar con el caché de la
+	// sección 1 (generada con otra RNG). Así el test encuentra muchos troncos
+	// sin depender de la suerte y verifica el invariante de no-flote.
+	generation.setChunkRng(() => () => 0);
 	for (let cx = 8; cx <= 12; cx++)
 		for (let cz = 8; cz <= 12; cz++) world.generateChunk(cx, cz);
 
@@ -346,6 +347,6 @@ try {
 			.join("; ")
 	);
 } finally {
-	Math.random = realRandom;
+	generation.setChunkRng(null); // restaurar el RNG determinista por chunk
 }
 process.exit(failed ? 1 : 0);

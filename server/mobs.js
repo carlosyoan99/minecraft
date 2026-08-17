@@ -462,6 +462,23 @@ class Mob {
 			this.age += TICK_MS;
 			if (this.age >= 60000) this.isBaby = false;
 		}
+		// Knockback de TNT (Fase 20 B3): el impulso que puso el servidor al
+		// explotar se integra aquí (los mobs son simulados en el servidor).
+		// Mientras dura, el mob "vuela" y su IA se pausa (breve aturdimiento
+		// estilo MC); la fricción 0.8 decae el impulso y la gravedad lo hace
+		// caer hasta aterrizar (settleOnGround lo apoya en el suelo).
+		if (this.kb && this.kb.ttl > 0) {
+			this.kb.ttl--;
+			this.x += this.kb.vx;
+			this.y += this.kb.vy;
+			this.z += this.kb.vz;
+			this.kb.vx *= 0.8;
+			this.kb.vz *= 0.8;
+			this.kb.vy -= 0.02; // gravedad por tick
+			if (this.kb.ttl <= 0) this.kb = null;
+			this.settleOnGround();
+			return;
+		}
 		// Quema solar: antes del comportamiento, para que un no-muerto en llamas
 		// no siga persiguiendo mientras arde (y para que el flag llegue al
 		// snapshot en el mismo tick). Fase 18 (C-1): recibe además el día

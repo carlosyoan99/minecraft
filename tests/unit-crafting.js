@@ -180,13 +180,22 @@ function freshFurnace(over = {}) {
 	);
 }
 
-// 14) isCookable: tronco (carbón vegetal), arena y comida cruda sí; planks y
-// aire no. (Fase 18, C-7: las menas ya NO son cocinables — ORE_DROP da el
-// drop directo al minar; el tronco funde a carbón vegetal 257.)
+// 14) isCookable: tronco (carbón vegetal), arena, comida cruda y el CRUDO de
+// hierro/oro sí; planks y aire no. (Fase 18, C-7 + Fase 20 B3: el bloque de
+// mena no es cocinable — se mina a crudo (RAW) y ESE sí funde a lingote;
+// el tronco funde a carbón vegetal 257.)
 check("isCookable(4) tronco -> true", crafting.isCookable(4) === true);
 check("isCookable(107) carne cruda -> true", crafting.isCookable(107) === true);
 check("isCookable(6) arena -> true", crafting.isCookable(6) === true);
-check("isCookable(9) mena NO -> false", crafting.isCookable(9) === false);
+check(
+	"isCookable(258) hierro crudo -> true",
+	crafting.isCookable(258) === true
+);
+check("isCookable(259) oro crudo -> true", crafting.isCookable(259) === true);
+check(
+	"isCookable(9) mena (bloque) NO -> false",
+	crafting.isCookable(9) === false
+);
 check("isCookable(7) planks no -> false", crafting.isCookable(7) === false);
 check("isCookable(0) aire no -> false", crafting.isCookable(0) === false);
 

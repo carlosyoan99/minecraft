@@ -410,11 +410,11 @@ for (let cx = -12; cx <= 12; cx++) {
 		world.getBlock(tx + 2, ty, tz) === B.BEDROCK
 	);
 }
-// 10b) TNT (G2.6): reacción en cadena y daño a jugadores (knockback no
-// implementado: la explosión solo daña — ver docs/tests.md). Determinista:
-// Math.random se fija a 0 para que TODAS las celdas del cráter se procesen
-// (la probabilidad de romper por celda es `0.75 - dist*0.13`, que con el
-// azar real volvería el test flaky).
+// 10b) TNT (G2.6): reacción en cadena, daño a jugadores y KNOCKBACK
+// (Fase 20 B3 — paridad MC: la explosión empuja a jugadores y mobs).
+// Determinista: Math.random se fija a 0 para que TODAS las celdas del
+// cráter se procesen (la probabilidad de romper por celda es
+// `0.75 - dist*0.13`, que con el azar real volvería el test flaky).
 {
 	const prevRandom = Math.random;
 	try {
@@ -451,9 +451,15 @@ for (let cx = -12; cx <= 12; cx++) {
 		);
 		// Daño: un jugador a distancia 1 dentro del radio pierde vida.
 		state.players.clear();
+		const sent = [];
 		const pl = players.createPlayer({
 			id: "tntp",
-			ws: { readyState: 3, send() {} },
+			ws: {
+				readyState: 1,
+				send(str) {
+					sent.push(JSON.parse(str));
+				}
+			},
 			health: 20,
 			maxHealth: 20,
 			x: cx + 1,
@@ -466,6 +472,9 @@ for (let cx = -12; cx <= 12; cx++) {
 			craftingGrid: ItemStack.slots(9)
 		});
 		state.players.set("tntp", pl);
+		// Un zombi dentro del radio: el impulso lo pone el servidor (mob.kb).
+		const mob = mobs.createMob("zombie", cx - 1, cy, cz);
+		state.mobs.push(mob);
 		world.setBlock(cx, cy, cz, B.TNT);
 		tnt.ignite(cx, cy, cz);
 		tnt.tick(2000);
@@ -474,7 +483,35 @@ for (let cx = -12; cx <= 12; cx++) {
 			pl.health < 20,
 			`health=${pl.health}`
 		);
+		// Fase 20 B3 (knockback): empuje radial + ventana de confianza + mob.
+		const kbEvt = sent.find((m) => m.event === "knockback");
+		check(
+			"el jugador recibe el evento knockback con impulso finito",
+			!!kbEvt &&
+				Number.isFinite(kbEvt.data.vx) &&
+				Number.isFinite(kbEvt.data.vy) &&
+				Number.isFinite(kbEvt.data.vz) &&
+				Math.sign(kbEvt.data.vx) === Math.sign(cx + 1 - cx),
+			JSON.stringify(kbEvt?.data)
+		);
+		check(
+			"el jugador entra en la ventana de confianza (kbUntil)",
+			typeof pl.kbUntil === "number" && pl.kbUntil > Date.now()
+		);
+		check(
+			"el mob recibe el impulso (mob.kb con ttl)",
+			!!mob.kb && mob.kb.ttl > 0 && Number.isFinite(mob.kb.vx)
+		);
+		// El impulso se integra en el tick del mob: el zombi se desplaza y el
+		// ttl decrece (la IA queda pausada mientras dura).
+		const xBefore = mob.x;
+		mob.tick(true, false);
+		check(
+			"el tick del mob integra el impulso (se desplaza y decrece ttl)",
+			mob.x !== xBefore && mob.kb.ttl === 9
+		);
 		state.players.clear();
+		state.mobs.length = 0;
 	} finally {
 		Math.random = prevRandom;
 	}

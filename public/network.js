@@ -32,7 +32,7 @@ import {
 	updateRemotePlayerSkin // Fase 17: skins en vivo (player_skin)
 } from "./mobs.js";
 import { spawnBlockBreak, spawnBlockPlace } from "./particles.js"; // Fase 7: partículas
-import { teleport } from "./player.js";
+import { applyKnockback, teleport } from "./player.js"; // applyKnockback: F20 B3 (TNT)
 import { camera } from "./scene.js";
 import { applyStoredSettings } from "./settings.js";
 import {
@@ -286,6 +286,13 @@ socket.addEventListener("message", (e) => {
 				// visual de que el golpe "se ve" en el atacante.
 				if (data.source === "mob" && data.meta?.mobId)
 					triggerMobAttack(data.meta.mobId);
+				break;
+			}
+			case "knockback": {
+				// Fase 20 B3 (TNT): impulso del servidor → física local del jugador.
+				const { vx, vy, vz } = data || {};
+				if (Number.isFinite(vx) && Number.isFinite(vy) && Number.isFinite(vz))
+					applyKnockback(vx, vy, vz);
 				break;
 			}
 			case "teleport":

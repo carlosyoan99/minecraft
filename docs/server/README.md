@@ -54,7 +54,7 @@ independiente y testeable en Node (los tests requieren los módulos sin red).
 | `constants.js` | Constantes (IDs de bloques/ítems `B`/`I`, física, mundo), `worldPaths` mutable, curva XP, minería, franjas día/noche MC (C-1) | — |
 | `state.js` | Estado compartido: chunks, players, furnaces, chests, crops, mobs, arrows, dirtyChunks, timeOffset, damageLog | — |
 | `world.js` | Núcleo del mundo: clases `World`/`Chunk` (**POO F13**), `getBlock`/`setBlock`, límites (`DESIGN_OFFSET`, mundo de 128 bloques Y ∈ −64..+63, Fase 15 D5), serialización y `ensureChunksAround`. La generación vive en `noise.js`/`biomes.js`/`generation.js`/`structures.js` (Fase 18 D-3) | constants, state, chests |
-| `generation.js` | Ruido + `generateChunk` (columnas, cuevas, minerales C-2, árboles, pozos, lagos) — el bloque más pesado de la generación | constants, noise, biomes |
+| `generation.js` | Ruido + `generateChunk` (columnas, cuevas, minerales C-2, árboles, pozos, lagos) — el bloque más pesado de la generación; **RNG determinista por chunk (F20 B4/P4)**: mulberry32 sembrado por semilla+cx,cz (`setChunkRng` para tests) — la generación ya no marca dirty | constants, noise, biomes |
 | `biomes.js` | `getBiome`, transiciones, elevación y vegetación por bioma | constants |
 | `structures.js` | Templo de jungla, naufragio, minas, pozos y hash 2D de estructuras | constants |
 | `noise.js` | Ruido compartido (simplex/multi-octava) para terreno y biomas | constants |
@@ -72,7 +72,7 @@ independiente y testeable en Node (los tests requieren los módulos sin red).
 | `projectiles.js` | `tickArrows`, `tickTridents`, impacto y recogida (flechas/tridentes con hooks inyectables) | constants, state |
 | `crafting.js` | Recetas 3×3 + hornos, hot-reload de `recetas.json`, tick de hornos (desperdicio/cola C-6), `emptyFurnace` | state, constants |
 | `mining.js` | Sesiones de rotura con progreso (dureza × herramienta), grietas al cliente | constants |
-| `tnt.js` | TNT: mechas, explosión con cráter, reacciones en cadena, knockback (Fase 10) | state, constants |
+| `tnt.js` | TNT: mechas, explosión con cráter, reacciones en cadena, **knockback (F20 B3)**: empuje radial a jugadores (evento `knockback` + ventana `kbUntil` en el anti-cheat) y a mobs (`mob.kb` integrado en su tick) | state, constants |
 | `chests.js` | Cofres (estado + snapshot), loot de minas abandonadas | state, constants |
 | `commands.js` | Comandos de chat (`/help`, `/tp`, `/give`, `/time`, `/gamemode`), reloj del mundo | constants |
 | `anticheat.js` | Validación del `move`: coords, void, bordes, sólidos, parábola del salto/hover y ventana de velocidad (Fase 18 D-1) | constants, world |

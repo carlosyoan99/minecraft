@@ -576,6 +576,31 @@ function drawIngot(g, base, light, dark) {
 	rect(g, 5, 1, 1, 2, light);
 	rect(g, 10, 1, 1, 2, dark);
 }
+// Fase 20 B3: mena cruda (raw iron/gold) — trozo irregular con brillo y
+// sombra, como el icono de MC (nuggets apelmazados), distinto del lingote.
+function drawRaw(g, base, dark, light) {
+	for (let y = 3; y <= 12; y++) {
+		for (let x = 3; x <= 12; x++) {
+			const dx = x - 7.5,
+				dy = y - 7.5;
+			// masa irregular: dos lóbulos con huecos (no un rectángulo)
+			const inBlob =
+				(dx * dx) / 22 + (dy * dy) / 26 <= 1 &&
+				!(x === 6 && y === 4) &&
+				!(x === 10 && y === 11) &&
+				!(x === 5 && y === 10) &&
+				!(x === 11 && y === 5);
+			if (inBlob) set(g, x, y, base);
+		}
+	}
+	set(g, 4, 5, light);
+	set(g, 5, 4, light);
+	set(g, 8, 3, light);
+	set(g, 4, 9, dark);
+	set(g, 10, 10, dark);
+	set(g, 11, 9, dark);
+	line(g, 7, 4, 7, 12, dark); // veta central (textura de mineral)
+}
 function drawGem(g, base, light, dark) {
 	for (let y = 1; y <= 14; y++) {
 		const t = Math.abs(y - 7.5) / 6.5;
@@ -1362,6 +1387,9 @@ ICONS[100] = drawStick;
 ICONS[101] = drawCoal;
 ICONS[102] = (g) => drawIngot(g, C.iron.m, C.iron.light, C.iron.dark);
 ICONS[103] = (g) => drawIngot(g, C.gold.m, C.gold.light, C.gold.dark);
+// Fase 20 B3: mena cruda — hierro/oro se minan así y se funden al lingote.
+ICONS[258] = (g) => drawRaw(g, "#cfc8c0", "#8a8378", "#f2ede4");
+ICONS[259] = (g) => drawRaw(g, "#e0c23a", "#9c7c14", "#f7e58a");
 ICONS[104] = (g) => drawGem(g, C.diamond.m, C.diamond.light, C.diamond.dark);
 ICONS[105] = drawRedstone;
 ICONS[106] = (g) => drawGem(g, "#2ed06a", "#8ff0b0", "#1a9a4a");

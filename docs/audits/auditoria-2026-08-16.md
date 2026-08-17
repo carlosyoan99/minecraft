@@ -6,6 +6,15 @@ real por fase. Auditoría manual (lectura de código + ejecución de la
 suite propia), no automatizada con los subagentes de `.opencode/`.
 **No se modificó código** — todo lo de abajo es hallazgo, no parche.
 
+> **Nota posterior (mismo día):** esta auditoría auditó `7b5b83f`; en el
+> cierre posterior de la **Fase 19.6** (commit `161721c` + session de
+> correcciones) se resolvieron los dos hallazgos de aquí — el comentario de
+> `server/tnt.js` (§2.1) porque el **TNT ahora tiene knockback real**
+> (ver `server/tnt.js`, Fase 20 B3) y el §2.2 se alinea con la redacción
+> condicional de `TODO.md` § Won't (Fase 24/25). La fila "19.6 Prospectiva"
+> de la tabla §1 queda obsoleta: la fase está **implementada y auditada**
+> (spec `docs/spec/fase19.6-spec.md` marcada `[COMPLETADA]`).
+
 ## Resumen ejecutivo
 
 El proyecto está en buen estado: 58/58 tests unitarios en verde,
@@ -23,7 +32,7 @@ reales**, ambos menores y de bajo riesgo — ninguno bloquea nada.
 | Fases | Estado verificado | Nota |
 |---|---|---|
 | 0 – 19.5 | ✅ Cerradas — 0 tareas `[ ]` pendientes en `TODO.md` | Coincide con `STATUS.md` |
-| 19.6 (Motor 3D) | 🔲 Prospectiva, sin implementar | Spec completa en `docs/spec/fase19.6-spec.md`; es la fase activa siguiente |
+| 19.6 (Motor 3D) | ✅ Implementada y auditada (cierre 2026-08-16, commit `161721c`) | Spec `docs/spec/fase19.6-spec.md` marcada `[COMPLETADA]`; unidad, E2E y auditorías en verde |
 | 20 (Rolling release) | 🔲 Prospectiva | Backlog de rendimiento/paridad ya bien definido (ver §4) |
 | 21 – 21.5 – 22 – 23 | 🔲 Prospectivas | Specs completas, con exclusiones ("Won't de fase") bien documentadas |
 | 24 (Nether) – 25 (End) | 🔲 Prospectivas | Ver inconsistencia de documentación en §2 |

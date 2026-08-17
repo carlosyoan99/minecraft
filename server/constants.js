@@ -447,7 +447,13 @@ const I = {
 	// Fase 18 (C-4): carbón vegetal — 1 tronco → 1 CHARCOAL (horno), como en
 	// MC. El COAL (101) sigue saliendo SOLO de la mena; el CHARCOAL es ítem
 	// distinto (paridad tabla #9).
-	CHARCOAL: 257
+	CHARCOAL: 257,
+	// Fase 20 B3 (paridad MC real del fundido): la mena de hierro/oro se mina
+	// como RAW_IRON/RAW_GOLD (crudo) y se funde en el horno → lingote (como
+	// Minecraft desde 1.17). Coal/diamante/redstone/esmeralda siguen saliendo
+	// directos (MC no los funde). Sincronizados en ambos constants + iconos.
+	RAW_IRON: 258,
+	RAW_GOLD: 259
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -995,15 +1001,16 @@ const ORE_XP = {
 	[B.REDSTONE_ORE]: 1,
 	[B.EMERALD_ORE]: 5
 };
-// Fase 14 (Bloque B): QUÉ suelta cada mineral al minarlo (paridad 1.17 con
-// fundición implícita, sin ítem "raw"). El bloque de mena EN SÍ no es un
-// ítem utilizable: el clon solo dropea la gema/lingote/carbón directamente.
-// El crafteo aquí NO mete artefactos: no existen "bloques de mena" en el
-// inventario ni recetas para ellos.
+// Fase 14 (Bloque B) + Fase 20 B3: QUÉ suelta cada mineral al minarlo
+// (paridad 1.17). El bloque de mena EN SÍ no es un ítem utilizable: el clon
+// no dropea "bloques de mena" (no hay ítem del bloque ni recetas para él).
+// F20: hierro/oro sueltan el CRUDO (RAW_IRON/RAW_GOLD) y el horno lo funde a
+// lingote (paridad MC real restaurada — decisión del usuario 2026-08-16);
+// carbón/diamante/redstone/esmeralda se dropean directos (MC no los funde).
 const ORE_DROP = {
 	[B.COAL_ORE]: I.COAL,
-	[B.IRON_ORE]: I.IRON_INGOT,
-	[B.GOLD_ORE]: I.GOLD_INGOT,
+	[B.IRON_ORE]: I.RAW_IRON,
+	[B.GOLD_ORE]: I.RAW_GOLD,
 	[B.DIAMOND_ORE]: I.DIAMOND,
 	[B.REDSTONE_ORE]: I.REDSTONE,
 	[B.EMERALD_ORE]: I.EMERALD

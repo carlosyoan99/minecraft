@@ -77,7 +77,15 @@ function handleMove(p, ws, data, ctx) {
 	const cx = Math.max(-half + 0.6, Math.min(half - 0.6, x));
 	const cz = Math.max(-half + 0.6, Math.min(half - 0.6, z));
 	const dist = Math.hypot(cx - p.x, cz - p.z, y - p.y);
-	if (dist > MOVE_MAX_DIST) {
+	// Fase 20 B3 (knockback de TNT): durante la ventana de confianza `kbUntil`
+	// (la pone el servidor al explotar el TNT) el impulso recibido mueve al
+	// jugador más rápido de lo legítimo. Se relaja el límite por-move (y más
+	// abajo la parábola/vuelo y la ventana de velocidad horizontal) para no
+	// corregir con teleports el propio empuje del servidor. La ventana caduca
+	// sola (~600 ms); un cliente que la aproveche para "volar" solo gana esos
+	// milisegundos y vuelve a quedar bajo el anti-cheat estricto.
+	const kbActive = (p.kbUntil || 0) > Date.now();
+	if (dist > (kbActive ? 3 : MOVE_MAX_DIST)) {
 		rejectMove(ws, p);
 		return null;
 	}
@@ -139,7 +147,7 @@ function handleMove(p, ws, data, ctx) {
 	} else {
 		p.hoverSink = 0; // al tocar suelo se descarta la deriva
 	}
-	if (inAir && p.gamemode !== "creative") {
+	if (inAir && p.gamemode !== "creative" && !kbActive) {
 		// Parábola del salto: vy = JUMP_SPEED − GRAVITY·t (máx al iniciar el
 		// salto). Margen 1.5× por latencia/jitter; además ningún salto legítimo
 		// sube más de ~0.4 s seguido (tras >1 s en el aire, subir o flotar es
@@ -157,7 +165,7 @@ function handleMove(p, ws, data, ctx) {
 	// módulo: se mide la ventana REAL con los timestamps (distancia total ÷
 	// tiempo real transcurrido, piso de 0.1 s solo para no dividir por un
 	// micro-instante con un puñado de muestras).
-	if (p.gamemode !== "creative") {
+	if (p.gamemode !== "creative" && !kbActive) {
 		let sumDist = 0;
 		let first = Infinity,
 			last = 0,

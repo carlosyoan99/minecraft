@@ -195,9 +195,11 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   Lush Caves/Breeze/trims/Tuff-Caliza), 24 (Nether Update) y 25 (End
   Update, sin dragón) y **21.5 (contenido y paridad ampliados: pesca,
   bloques 1.8-1.15, combate y Trial Chambers, insertada entre 21 y 22) son
-  prospectivas** (`fase20-spec.md`, `fase21-spec.md`,
+  prospectivas** (`fase21-spec.md`,
   `fase21.5-spec.md`, `fase22-spec.md`, `fase23-spec.md`, `fase24-spec.md`,
-  `fase25-spec.md`): la 19.6 exige la 19.5; la 20 exige la 18; la 21 exige
+  `fase25-spec.md`): la 19.6 exige la 19.5; la **Fase 20 está EN CURSO
+  (iteración v20.1 cerrada — ciclo rolling activo; ver `docs/v20.1.md`) y
+  exige la 18**; la 21 exige
   la 20; la 21.5
   exige la 21; la 22 exige la 21.5; la 23 exige la 22; la 24 exige la 23;
   la 25 exige la 24. La

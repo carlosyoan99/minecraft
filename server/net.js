@@ -759,6 +759,20 @@ function handleConnection(ws, req) {
 					break;
 				}
 
+				// Auditoría 2026-08-15 (CL-6): telemetría de errores del cliente para
+				// monitorización (mirror de window.__mcClientErrors). Solo se LOGUEA;
+				// nunca se cierra el socket ni se responde (el cliente no espera nada).
+				case "client_errors": {
+					const errs = Array.isArray(data?.errors)
+						? data.errors.slice(0, 5)
+						: [];
+					for (const e of errs) {
+						if (e && typeof e.text === "string" && e.text.length <= 500)
+							log.warn(`[cliente:${playerId}] ${e.text.slice(0, 500)}`);
+					}
+					break;
+				}
+
 				case "block_action": {
 					const { action, x, y, z, itemId } = data;
 					// C2 (SV-3/SEC-3): solo las acciones CON coordenadas las validan;

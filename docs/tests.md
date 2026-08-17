@@ -109,12 +109,12 @@ Three/DOM para forzarlos.
 | `unit-poo-entities.js` | POO (F13): `Player`/`World`/`Chunk`/`ItemStack` como clases (+ G2.5: serialización, merge/clamp, durabilidad 0, inventario lleno) |
 | `unit-lagunas.js` | Lagunas L1-L5: arco, puertas, escaleras/losas/vallas, cubo, recetas |
 | `unit-red.js` | Handlers de `net.js` con ws fake (sin servidor) + **C2 coords inválidas** + **C4 cooldown de `set_seed`** + CL-3 parse seguro. F18 D-1: los handlers de juego viven en `actions.js` y el arranque/tick en `timers.js` (fachadas de `net.js` intactas) |
-| `unit-recetas.js` | Integridad de recetas + cadena de obtención de las 20 herramientas |
+| `unit-recetas.js` | Integridad de recetas + cadena de obtención de las 20 herramientas + **F20 B3** cadena minar→crudo→horno (RAW_IRON/RAW_GOLD, ORE_DROP como fuente en huérfanos) |
 | `unit-recipecats.js` | Categorías del libro de recetas |
 | `unit-sync.js` | Sincronía de IDs/constantes `server/constants.js` ↔ `public/constants.js` |
 | `unit-paridad.js` | Tabla oficial de MC fijada (vida 20, curva XP, espadas, armadura, durezas, durabilidad) + **F18 C-5** `MOB_XP`↔`mobXp()` coherente (checks D6) + **C-3** comida (zanahoria/patata) + **C-1** franjas día/noche + sonidos C-9 (hooks) |
 | `unit-commands.js` | `/help` `/tp` `/give` `/time set` `/gamemode` `/reload` + **SV-5 `/give` tope 64** + **SV-6 `/tp` clamp** |
-| `unit-arboles.js` | Copas de árboles completas en bordes de chunk (`pendingLeaves`) |
+| `unit-arboles.js` | Copas de árboles completas en bordes de chunk (`pendingLeaves`) + **F20 B4/P4** inyecta el PRNG vía `setChunkRng` (generación determinista) |
 | `unit-reload.js` | Hot-reload de recetas (swap atómico, JSON inválido) |
 | `unit-mineria.js` | Dureza/velocidad de rotura, drop condicional, sesiones de minería |
 | `unit-lod.js` | LOD puro del cliente (`public/lod.js`): fronteras, histéresis |
@@ -124,7 +124,7 @@ Three/DOM para forzarlos.
 | `unit-raycast.js` | Raycast de minería con three real (fix del pool de bounds) |
 | `unit-mobray.js` | Raycast de mobs multibloque |
 | `unit-camara.js` | Clamp de pitch del PLC (sin vueltas) con three real |
-| `unit-fase11.js` | 4 biomas nuevos, lianas, esquileo, bonemeal, agua infinita + pendientes F10 (TNT mecha/cráter/bedrock + **G2.6 cadena y daño**, mundo-size, `/kill`) |
+| `unit-fase11.js` | 4 biomas nuevos, lianas, esquileo, bonemeal, agua infinita + pendientes F10 (TNT mecha/cráter/bedrock + **G2.6 cadena y daño + F20 B3 knockback**: evento `knockback`, ventana `kbUntil`, `mob.kb` integrado en el tick, mundo-size, `/kill`) |
 | `unit-fase12.js` | Slimes, lobo/gato, tridentes del ahogado, drops, persistencia de mascotas |
 | `unit-mining-click.js` | Decisión de clic mob delante/detrás |
 | `unit-fase9.js` | Gamemode por mundo, `world_delete` (path-traversal), cultivos, `creative_pick`/`fly`, libro |
@@ -152,6 +152,8 @@ Three/DOM para forzarlos.
 | `unit-fase18.js` | Fase 18 (C-8): orbes de XP — suelte en survival, recogida al pisar (radio 2), creative conserva, no se persisten, expiran (5 min) |
 | `unit-minerales.js` | Fase 18 (C-2): bandas de profundidad de las menas por percentil MC |
 | `unit-fase19.js` | Fase 19 (D): drag & drop — lógica pura de transporte (`public/draglogic.js`) + hot-reload de iconos |
+| `unit-fase19.5.js` | F19.5: paleta de audio por bioma (`musicpalette.js`) + toggle reduceMotion |
+| `unit-fase19.6.js` | F19.6: shaders de agua/plantas, toon, instancing (decisión) + **F20 B4/P7** índice espacial de antorchas (`getTorchesNear`, vecindario 3×3) |
 
 ## Auditorías standalone
 

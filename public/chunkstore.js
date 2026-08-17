@@ -20,6 +20,51 @@ const chunkStore = new Map(); // "cx,cz" -> Uint8Array
 // horneada (lightclient.js) y la limpieza de chunks_unload.
 const torchSet = new Map();
 
+// Fase 20 B4 (P7, REN-7): índice ESPACIAL por chunk de antorchas
+// ("cx,cz" -> Set de "wx,wy,wz"). bakeChunkLight y hasTorchNear escaneaban
+// el torchSet COMPLETO (O(todas las antorchas) por consulta — con 2000+
+// antorchas y cambios de bloque frecuentes era el cuello de botella). Como
+// LIGHT_RADIUS (7) < CHUNK_SIZE (16), una antorcha solo afecta a su propio
+// chunk y a los 8 vecinos: consultar el vecindario 3×3 acota la búsqueda a
+// decenas de antorchas, no a miles. torchSet se mantiene (lo usa la limpieza
+// de chunks_unload) y el índice se alimenta en paralelo.
+const torchesByChunk = new Map(); // "cx,cz" -> Set("wx,wy,wz")
+function addTorch(wx, wy, wz) {
+	const ck = `${Math.floor(wx / CHUNK_SIZE)},${Math.floor(wz / CHUNK_SIZE)}`;
+	let s = torchesByChunk.get(ck);
+	if (!s) {
+		s = new Set();
+		torchesByChunk.set(ck, s);
+	}
+	s.add(`${wx},${wy},${wz}`);
+}
+function removeTorch(wx, wy, wz) {
+	const ck = `${Math.floor(wx / CHUNK_SIZE)},${Math.floor(wz / CHUNK_SIZE)}`;
+	const s = torchesByChunk.get(ck);
+	if (s) {
+		s.delete(`${wx},${wy},${wz}`);
+		if (!s.size) torchesByChunk.delete(ck);
+	}
+}
+// Antorchas del vecindario 3×3 de chunks de un bloque: cubre SIEMPRE el
+// radio de luz (LIGHT_RADIUS 7 < 16). O(torchSet del vecindario), no O(todas).
+export function getTorchesNear(wx, wy, wz) {
+	const cx = Math.floor(wx / CHUNK_SIZE),
+		cz = Math.floor(wz / CHUNK_SIZE);
+	const out = [];
+	for (let dx = -1; dx <= 1; dx++) {
+		for (let dz = -1; dz <= 1; dz++) {
+			const s = torchesByChunk.get(`${cx + dx},${cz + dz}`);
+			if (!s) continue;
+			for (const k of s) {
+				const [tx, ty, tz] = k.split(",").map(Number);
+				out.push([tx, ty, tz]);
+			}
+		}
+	}
+	return out;
+}
+
 export function cIdx(x, y, z) {
 	return (y * CHUNK_SIZE + z) * CHUNK_SIZE + x;
 }
@@ -70,8 +115,14 @@ export function setClientBlock(wx, wy, wz, block) {
 	const prev = chunk[cIdx(x, wyL, z)];
 	chunk[cIdx(x, wyL, z)] = block;
 	const torchKey = `${wx},${wy},${wz}`;
-	if (prev === TORCH) torchSet.delete(torchKey);
-	if (block === TORCH) torchSet.set(torchKey, [wx, wy, wz]);
+	if (prev === TORCH) {
+		torchSet.delete(torchKey);
+		removeTorch(wx, wy, wz); // Fase 20 B4 (P7): índice espacial
+	}
+	if (block === TORCH) {
+		torchSet.set(torchKey, [wx, wy, wz]);
+		addTorch(wx, wy, wz);
+	}
 	return prev;
 }
 
@@ -90,8 +141,7 @@ export function storeChunkData(key, arr) {
 		return null;
 	const data = Uint8Array.from(arr);
 	chunkStore.set(key, data);
-	const [cx, cz] = key.split(",").map(Number);
-	// Registrar las antorchas del chunk (puede venir con un mundo guardado).
+	const [cx, cz] = key.split(",").map(Number); // Registrar las antorchas del chunk (puede venir con un mundo guardado).
 	for (let i = 0; i < data.length; i++) {
 		if (data[i] === TORCH) {
 			const lx = i % CHUNK_SIZE;
@@ -102,6 +152,7 @@ export function storeChunkData(key, arr) {
 			const wx = cx * CHUNK_SIZE + lx,
 				wz = cz * CHUNK_SIZE + lz;
 			torchSet.set(`${wx},${wy},${wz}`, [wx, wy, wz]);
+			addTorch(wx, wy, wz); // Fase 20 B4 (P7): índice espacial
 		}
 	}
 	return data;
@@ -127,6 +178,8 @@ export function removeChunkData(key) {
 		)
 			torchSet.delete(tKey);
 	}
+	// Fase 20 B4 (P7): el índice espacial se limpia por chunk directamente.
+	torchesByChunk.delete(`${cx},${cz}`);
 	chunkStore.delete(key);
 }
 

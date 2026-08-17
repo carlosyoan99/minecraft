@@ -125,6 +125,9 @@ function updateHud() {
 	// Fase 8 (B2): telemetría de daño — última entrada recibida (damage_debug).
 	// Se muestra solo si hay registros o si el usuario pidió el detalle.
 	const lastDmg = window.__mcLastDamage?.at(-1);
+	// Auditoría 2026-08-15 (CL-6): último error capturado del lado del cliente
+	// (telemetry.js → window.__mcClientErrors, también enviado al servidor).
+	const lastErr = window.__mcClientErrors?.at(-1);
 	const p = camera.position;
 	hudEl.innerHTML = [
 		"<b>⛏ Mi Minecraft — Depuración (F3)</b>",
@@ -136,7 +139,8 @@ function updateHud() {
 		`Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
 		`Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : "--"}`,
 		`Tick servidor: ${Number.isFinite(srvTick) ? srvTick.toFixed(2) : "--"} ms · Gen chunk: ${Number.isFinite(srvGen) ? srvGen.toFixed(2) : "--"} ms`,
-		`Daño: ${lastDmg ? `${lastDmg.source} ${lastDmg.amount}→${lastDmg.realAmount} @ ${lastDmg.x.toFixed(0)},${lastDmg.y.toFixed(0)},${lastDmg.z.toFixed(0)}` : "--"}`
+		`Daño: ${lastDmg ? `${lastDmg.source} ${lastDmg.amount}→${lastDmg.realAmount} @ ${lastDmg.x.toFixed(0)},${lastDmg.y.toFixed(0)},${lastDmg.z.toFixed(0)}` : "--"}`,
+		`Fallos cliente: ${lastErr ? `${window.__mcClientErrors.length} (${new Date(lastErr.t).toLocaleTimeString()} ${lastErr.text.slice(0, 60)})` : "ninguno"}`
 	].join("<br>");
 }
 

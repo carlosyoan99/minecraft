@@ -56,6 +56,16 @@ const SWIM_UP_SPEED = 4; // nadar hacia arriba con espacio
 
 let velocityY = 0;
 let onGround = false;
+// Fase 20 B3 (knockback de TNT): impulso aplicado por el servidor (evento
+// `knockback`). Se integra en la física local con decaimiento lineal ~0.5 s;
+// el servidor abre la ventana de confianza (kbUntil) para no corregir con
+// teleports los moves rápidos del empuje.
+let kbX = 0,
+	kbZ = 0,
+	kbY = 0,
+	kbT = 0;
+const KB_TOTAL = 0.5; // duración del impulso en segundos
+const KB_GAIN = 14; // factor de integración (≈ 0.55 bloques/tick × 20 Hz → m/s)
 export const move = {
 	forward: false,
 	back: false,
@@ -90,6 +100,15 @@ export function toggleFly() {
 export function teleport(x, y, z) {
 	camera.position.set(x, y, z);
 	velocityY = 0;
+	kbX = kbZ = kbY = kbT = 0; // un teletransporte cancela el impulso
+}
+
+// Fase 20 B3 (knockback de TNT): el servidor manda el impulso al explotar.
+export function applyKnockback(vx, vy, vz) {
+	kbX = vx;
+	kbY = vy;
+	kbZ = vz;
+	kbT = KB_TOTAL;
 }
 
 function solidAt(x, y, z) {
@@ -298,6 +317,17 @@ function animate() {
 			dz = (dz / len) * speed * dt;
 		}
 		tryMove(dx, dz);
+
+		// Fase 20 B3 (knockback): integra el impulso del TNT mientras dura
+		// (decae linealmente). Horizontal como desplazamiento adicional;
+		// vertical empujando velocityY hacia arriba (la gravedad sigue).
+		if (kbT > 0) {
+			kbT -= dt;
+			const k = Math.max(0, kbT / KB_TOTAL);
+			tryMove(kbX * k * KB_GAIN * dt, kbZ * k * KB_GAIN * dt);
+			if (kbY > 0 && !flying) velocityY = Math.max(velocityY, kbY * k * 12);
+			if (kbT <= 0) kbX = kbZ = kbY = 0;
+		}
 
 		// Fase 10 (D3): efecto de FOV al correr — se abre ~10° con transición
 		// suave (lerp por frame) y vuelve al valor del ajuste al dejar de correr.

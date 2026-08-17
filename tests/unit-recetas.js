@@ -205,20 +205,26 @@ check(
 	pairingOk
 );
 
-// 9) Los minerales dropean su ítem DIRECTAMENTE al minar (ORE_DROP) — la
-// cadena minar→gema/lingote/carbón está implícita, sin recetas de horno de
-// mena (Fase 18, C-7; el diamante ya era directo, como Minecraft).
+// 9) Los minerales dropean su ítem al minar (ORE_DROP) — Fase 20 B3 (decisión
+// del usuario 2026-08-16): hierro/oro sueltan el CRUDO y el horno los funde a
+// lingote (paridad MC 1.17 restaurada); carbón/diamante/redstone/esmeralda
+// salen directos (MC no los funde). Los bloques de mena (9-14) NO tienen
+// receta de horno (no hay ítem de "bloque de mena").
 let smeltOk = true;
-for (const [ore, ingot] of Object.entries(ORE_DROP)) {
+for (const [ore, drop] of Object.entries(ORE_DROP)) {
 	// El resultado debe ser un ítem obtenible distinto de la mena misma.
-	if (Number(ore) === ingot || !KNOWN.has(ingot)) smeltOk = false;
+	if (Number(ore) === drop || !KNOWN.has(drop)) smeltOk = false;
 }
+check("todas las menas dropean un ítem obtenible (ORE_DROP)", smeltOk);
 check(
-	"todas las menas dropean su ítem directo (ORE_DROP, sin receta de horno)",
-	smeltOk
+	"hierro/oro se minan como crudo (RAW) y se funden a lingote en el horno",
+	ORE_DROP[B.IRON_ORE] === I.RAW_IRON &&
+		ORE_DROP[B.GOLD_ORE] === I.RAW_GOLD &&
+		horno[String(I.RAW_IRON)]?.result.id === I.IRON_INGOT &&
+		horno[String(I.RAW_GOLD)]?.result.id === I.GOLD_INGOT
 );
 check(
-	"ninguna mena tiene receta de horno (el fundido está en ORE_DROP)",
+	"el bloque de mena no tiene receta de horno (se mina, no se funde)",
 	[9, 10, 11, 12, 13, 14].every((o) => !horno[String(o)])
 );
 
@@ -280,19 +286,21 @@ check(
 		"el horno (16) se craftea de adoquín",
 		recetas.furnace && recetas.furnace.ingredients["#"] === B.COBBLESTONE
 	);
-	// Lingotes: el mineral se dropea con pico y ORE_DROP da el lingote directo
-	// (Fase 18, C-7: ya no hay receta de horno de mena).
+	// Lingotes (Fase 20 B3): el mineral se dropea con pico → CRUDO (RAW) y el
+	// horno lo funde a lingote (paridad MC 1.17 restaurada).
 	check(
-		"hierro: pico de piedra cosecha hierro (madera no) → lingote directo",
+		"hierro: pico de piedra cosecha hierro (madera no) → crudo → horno → lingote",
 		canHarvest(201, B.IRON_ORE) &&
 			!canHarvest(200, B.IRON_ORE) &&
-			ORE_DROP[B.IRON_ORE] === I.IRON_INGOT
+			ORE_DROP[B.IRON_ORE] === I.RAW_IRON &&
+			horno[String(I.RAW_IRON)]?.result.id === I.IRON_INGOT
 	);
 	check(
-		"oro: pico de piedra cosecha oro (madera no) → lingote directo",
+		"oro: pico de piedra cosecha oro (madera no) → crudo → horno → lingote",
 		canHarvest(201, B.GOLD_ORE) &&
 			!canHarvest(200, B.GOLD_ORE) &&
-			ORE_DROP[B.GOLD_ORE] === I.GOLD_INGOT
+			ORE_DROP[B.GOLD_ORE] === I.RAW_GOLD &&
+			horno[String(I.RAW_GOLD)]?.result.id === I.GOLD_INGOT
 	);
 	// Diamante: se mina directo con pico (no se funde, como Minecraft).
 	check(
@@ -333,9 +341,10 @@ check(
 	);
 	const resultadoHorno = new Set(Object.values(horno).map((r) => r.result.id));
 	// Drop/uso justificado (sin receta, como en Minecraft):
-	//   101-103     — carbón/lingotes: ORE_DROP al minar la mena directo
-	//                  (Fase 18, C-7: sin receta de horno — la cadena
-	//                  minar→lingote está implícita en ORE_DROP)
+	//   101          — carbón: ORE_DROP al minar la mena de carbón directo
+	//   258/259      — hierro/oro CRUDO: ORE_DROP al minar la mena (Fase 20
+	//                  B3); los LINGOTES (102/103) salen del horno de esos
+	//                  crudos (resultadoHorno, no están aquí)
 	//   104/105/106 — minerales que se minan directo (diamante sin horno)
 	//   107-110/118  — carnes crudas (drops de mobs; se cocinan en el horno)
 	//   115-117     — cosecha de cultivos (trigo/zanahoria/semillas)
@@ -349,8 +358,8 @@ check(
 	//                  cocinado (122) sale del horno (patata → patata al horno)
 	const DROPS_JUSTIFICADOS = new Set([
 		I.COAL, // ORE_DROP (mena de carbón)
-		I.IRON_INGOT, // ORE_DROP (mena de hierro)
-		I.GOLD_INGOT, // ORE_DROP (mena de oro)
+		I.RAW_IRON, // ORE_DROP (mena de hierro) — Fase 20 B3
+		I.RAW_GOLD, // ORE_DROP (mena de oro) — Fase 20 B3
 		I.DIAMOND,
 		I.REDSTONE,
 		I.EMERALD,

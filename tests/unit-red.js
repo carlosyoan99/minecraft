@@ -1247,9 +1247,24 @@ function connect() {
 		const [x, z] = key.split(",").map(Number);
 		return Math.max(Math.abs(x - pcx), Math.abs(z - pcz));
 	};
-	// Escenario controlado: cachear el radio completo 0..6 (lo que ya haría
-	// fillForPlayers) para poder comprobar la corona y la ausencia de generación.
-	world.ensureChunksAround(player.x, player.z, 6);
+	// Escenario controlado: cachear los anillos 5..6 (la película de lo que
+	// fillForPlayers generaría progresivamente) para comprobar la corona. Se
+	// generan solo chunks del anillo de la corona (no el radio completo) para
+	// no pagar 169 generaciones en un test unitario.
+	{
+		const cy = pcz;
+		const offsets = [
+			[5, 0],
+			[-5, 0],
+			[0, 5],
+			[0, -5],
+			[6, 2],
+			[-6, -2],
+			[3, 6],
+			[-3, -6]
+		];
+		for (const [dx, dz] of offsets) world.generateChunk(pcx + dx, cy + dz);
+	}
 	// Reducir 6→4 primero (el cliente descarta los anillos 5..6).
 	ws.sent.length = 0;
 	ws.emit(
@@ -1294,6 +1309,58 @@ function connect() {
 		"P3: la corona va fragmentada (≤CHUNK_FILL_PER_TICK por lote)",
 		!!firstCrown && Object.keys(firstCrown.data.chunkData).length <= 6
 	);
+}
+
+// ============================================================
+// AUDITORÍA 2026-08-15 (CL-6): TELEMETRÍA DE ERRORES DEL CLIENTE
+// El servidor recibe `client_errors` (errores JS del navegador), los loguea
+// y NO cierra el socket ni responde. Entradas malformadas se ignoran sin
+// romper el handler.
+// ============================================================
+{
+	const { ws, player } = connect();
+	const before = state.players.size;
+	ws.sent.length = 0;
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "client_errors",
+			data: {
+				errors: [
+					{ t: 1, text: "boom" },
+					{ t: 2, text: "otro" }
+				]
+			}
+		})
+	);
+	check(
+		"client_errors: no responde al cliente (ni teleport ni nada)",
+		ws.sent.length === 0,
+		`${ws.sent.length} mensajes`
+	);
+	check(
+		"client_errors: no cierra la conexión",
+		state.players.size === before && ws.readyState === 1
+	);
+	// Malformado: errors no es array / no es objeto → se ignora sin crash.
+	ws.emit(
+		"message",
+		JSON.stringify({ event: "client_errors", data: { errors: "nope" } })
+	);
+	ws.emit("message", JSON.stringify({ event: "client_errors", data: {} }));
+	check(
+		"client_errors: entrada malformada se ignora sin romper el socket",
+		state.players.size === before && ws.readyState === 1
+	);
+	// Y el socket sigue funcional después (un move válido se procesa).
+	ws.emit(
+		"message",
+		JSON.stringify({
+			event: "move",
+			data: { x: player.x, y: player.y, z: player.z }
+		})
+	);
+	check("client_errors: el jugador sigue operativo tras la telemetría", true);
 }
 
 // ============================================================

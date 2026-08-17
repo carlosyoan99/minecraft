@@ -295,14 +295,43 @@ Correcto: malla en worker (`chunkWorker.js:36` → `buildChunkGeometryData` gree
 | **CL-4/CL-5** | `Number.isFinite` en `setClientBlock` + validación de longitud en `storeChunkData` (`public/chunkstore.js`) | `unit-fase19.6.js`/lectura |
 | **CL-8** | pool + tope duro `MAX_ALIVE` (200) de partículas (`public/particles.js`) | lectura + suite |
 
-### Diferido a la Fase 20 (backlog de rendimiento, sin tocar)
+### Rendimiento: corregido tras la auditoría o medido (2026-08-16 sesión siguiente)
 
-- **P1** (lotear generación del `settings` r=10), **P2** (gzip en worker),
-  **P3** (reenviar solo la corona nueva), **P4** (no marcar dirty los
-  generados; depende de generación determinista), **P7** (perfilar
-  `bakeChunkLight` con 2000+ antorchas) y **Monitorización CL-6**
-  (telemetría cliente `__mcClientErrors`): priorizados en
-  `docs/spec/fase20-spec.md`, no implementados en este cierre.
+- **P1** (generación síncrona del `settings` r=10 y del `move`:
+  **CORREGIDO tras la auditoría** — el handler `settings` y `move` ya no
+  generan chunks; solo reenvían lo cacheado y el relleno progresivo lo hace
+  `fillForPlayers` (`server/chunk-fill.js`) en `mainLoop`, 6 chunks/tick).
+- **P2** (gzip del autosave): **MEDIDO, veredicto documentado** — sin cambio
+  de código. Payload ≈114 KiB/chunk; `zlib.gzipSync` p50=6.33 ms,
+  p95=24.1 ms, media 9.26 ms; lote `SAVE_BATCH_SIZE`=6 ≈38 ms p50. Se deja la
+  mejora (gzip en worker) priorizada en `docs/spec/fase20-spec.md` B4.
+- **P3** (reenvío del radio completo al ampliar/encoger `settings`:
+  **CORREGIDO tras la auditoría** — al AMPLIAR radio se reenvía solo la
+  **corona** de anillos nuevos (Chebyshev, fragmentado ≤6/lote); al reducir
+  se mantiene el reenvío completo fragmentado (lo exige el test de
+  `unit-red.js`). El servidor sigue sin recordar por cliente, pero el
+  volumen en el caso habitual (ampliación progresiva) baja de ~441 a un
+  anillo. Test nuevo en `tests/unit-red.js` §"AUDITORÍA 2026-08-15 (P1/P3)".
+- **P4** (no marcar dirty los chunks generados): **CORREGIDO en la Fase 20
+  v20.1** (2026-08-16) — generación determinista por chunk en
+  `server/generation.js` (PRNG mulberry32 sembrado por semilla+cx,cz vía
+  `setChunkRng`); la generación ya no marca dirty y `unit-arboles` inyecta
+  su PRNG. Ver `docs/v20.1.md`.
+- **P7** (`bakeChunkLight`/`hasTorchNear` O(`torchSet`)): **MEDIDO,
+  veredicto documentado; CORREGIDO en la Fase 20 v20.1** — el escaneo
+  completo era 24-267 ms en el peor caso todo-aire; el **índice espacial
+  por chunk** (`getTorchesNear`, vecindario 3×3) lo reduce a O(torchSet del
+  vecindario). `computeChunkLight` realista (blockAt con
+  superficie): ~8.7/8.0/9.3/13.2 ms **por antorcha cercana** para
+  |torchSet|=50/200/800/2000 (dominio BFS 6-direccional; el barrido
+  O(total) es negligible); peor caso todo-aire 24.4→266.8 ms. No es un
+  cuello de botella en juego real (pocas antorchas por chunk); el índice
+  espacial queda como mejora a valorar en `docs/spec/fase20-spec.md` B4.
+- **Monitorización CL-6** (telemetría cliente): **implementada tras la
+  auditoría** — `public/telemetry.js` (cola `window.__mcClientErrors`,
+  máx 50, lote ≤5 cada ≥5 s, best-effort) + handler `client_errors` en
+  `server/net.js` (solo `log.warn`, nunca cierra ni responde) + línea
+  "Fallos cliente" en el F3 (`public/debug.js`). Test en `tests/unit-red.js`.
 
 ### Hallazgo nuevo del cierre (anticheat)
 

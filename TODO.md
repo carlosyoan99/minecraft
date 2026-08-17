@@ -841,11 +841,11 @@
 - [x] **Res** F7 `log.warn` del error del socket — `server/net.js:1068`
 - [x] **Res** F8 env vars `SAVE_INTERVAL_MS`/`LOG_LEVEL` (+ hook de fallo para tests) + F6 logs con nivel/timestamp
 - [x] **Res** REN-2 poda de hornos huérfanos (ver F1+`world.json`) — ya implementada en `crafting.js` (tick)
-- [ ] **Perf** P1 lotear la generación del `settings` r=10 (441 síncronos) y `move` — `server/generation.js`, `server/net.js:686`
-- [ ] **Perf** P2 gzip en worker si el perfilado lo pide — `server/save-chunks.js`
-- [ ] **Perf** P3 reenviar solo la corona nueva de chunks al ampliar radio — `server/net.js:84-100`
+- [x] **Perf** P1 lotear la generación del `settings` r=10 (441 síncronos) y `move` — `server/net.js` (el handler `settings` y `move` ya no generan; el relleno lo hace `fillForPlayers` en `mainLoop`; test en `unit-red.js`)
+- [ ] **Perf** P2 gzip en worker si el perfilado lo pide — `server/save-chunks.js` (medido 2026-08-16: gzipSync p50 6.33 ms/chunk, p95 24.1; lote-6 ≈38 ms → veredicto documentado en auditoría 2026-08-15 §6/§Diferido; mejora priorizada en Fase 20 B4)
+- [x] **Perf** P3 reenviar solo la corona nueva de chunks al ampliar radio — `server/net.js:84-100` (corona de anillos nuevos, Chebyshev, fragmentado ≤6/lote; al reducir sigue el reenvío completo; test en `unit-red.js`)
 - [ ] **Perf** P4 no marcar dirty los chunks generados sin cambios — `server/generation.js:606` (diferido: rompe `unit-arboles.js` que inyecta `Math.random`; requiere generación determinista, Fase 20)
-- [ ] **Perf** P7 evaluar `bakeChunkLight`/`hasTorchNear` O(`torchSet`) con profiler — `public/lighting.js`, `public/chunkstore.js:103-115`
+- [ ] **Perf** P7 evaluar `bakeChunkLight`/`hasTorchNear` O(`torchSet`) con profiler — `public/lighting.js`, `public/chunkstore.js:103-115` (medido 2026-08-16: ~8-13 ms por antorcha cercana con blockAt realista; peor caso todo-aire 24-267 ms → veredicto documentado; no es cuello de botella real, índice espacial en Fase 20 B4)
 - [x] **Cli** CL-1 reconexión con backoff + reinit (reset local) — `public/connection.js`
 - [x] **Cli** CL-2 pausa de render/audio en background (blur/oculta) — `audio.js` listo; la pausa de RENDER vive en `player.js` (WIP F19.6, no tocar)
 - [x] **Cli** CL-4 `Number.isFinite` en `setClientBlock` — `public/chunkstore.js:52-71`
@@ -857,40 +857,58 @@
       en `server/anticheat.js` (spec F19.6 §10 B3; `unit-caida` estable bajo
       carga, 10/10)
 - [ ] **Monitorización** (diferida a F20): logs JSON + `LOG_LEVEL` (F6 — log
-      con nivel/timestamp ya) y telemetría cliente `__mcClientErrors` (CL-6)
+      con nivel/timestamp ya) — la **telemetría cliente `__mcClientErrors`
+      (CL-6) ya está implementada** (`public/telemetry.js` + handler
+      `client_errors` en `net.js` + línea F3; test en `unit-red.js`)
 
 ---
 
 ## Fase 20 — Rolling release (ciclo de estabilización y paridad)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase20-spec.md`](docs/spec/fase20-spec.md)
-> **Prospectiva (sin implementar)** — prerrequisito: Fase 18 cerrada
-> (y con ella F16/F17). Ciclo largo con iteraciones v20.x; cada iteración
-> con auditoría obligatoria; no se avanza hasta que todo esté en verde.
-> Integrado el backlog del borrador `fase20-spec.md` (Descargas) en B3/B4.
+> **En curso — v20.1 cerrada (ciclo rolling activo)** — prerrequisito:
+> Fase 18 cerrada (y con ella F16/F17). Ciclo largo con iteraciones v20.x;
+> cada iteración con auditoría obligatoria; no se avanza hasta que todo
+> esté en verde. Integrado el backlog del borrador `fase20-spec.md`
+> (Descargas) en B3/B4. Documento de la iteración:
+> [`docs/v20.1.md`](docs/v20.1.md).
 
-- [ ] A1 Metodología del ciclo (planificar → implementar → probar → revisar
+- [x] A1 Metodología del ciclo (planificar → implementar → probar → revisar
       → release v20.x → auditoría de la iteración); Won't íntegro; cambios
       de protocolo/guardado retrocompatibles con migración y test
-- [ ] B1 v20.1: verificar que no quedan restos de F16 (G3b/G3.7/G4/G6) ni
-      de F17 (Bloque E) — cerrados el 2026-08-12 en sus fases (no reabrir)
-- [ ] B2 v20.1: bugs de estabilidad (3-5 de alta prioridad de las notas y
-      auditorías) cada uno con causa raíz + test de regresión + manual
-- [ ] B3 v20.1: paridad restante de la F18 (C-1..C-9) si algo quedó sin
-      cerrar + backlog del borrador: **TNT knockback** (hallazgo F16 G2.6),
-      **recetas de mena en el horno** (evaluar reponer fundido explícito),
-      **CSP + SRI de Three.js o servirlo local** (SEC-4) — cada uno con su
-      assert en `unit-paridad.js`/`unit-recetas.js`
-- [ ] B4 v20.1: rendimiento dentro de presupuesto (solo cuellos de botella
-      reales; candidatos del borrador: formato de guardado coste/beneficio,
-      `switchWorld`/`releaseWorld` asíncronos, gzip en worker,
-      `SAVE_BATCH_SIZE` calibrado, perfilado c8 con umbrales, presupuestos
-      LOD, luz de antorcha `torchSet`)
-- [ ] B5 v20.1: release `v20.1` (etiqueta + documento de la iteración con
-      bugs/paridad/métricas + TODO al día)
-- [ ] C1 Auditoría por iteración obligatoria (suite + E2E + `--audit` 6/6 +
+- [x] B1 v20.1: verificado que no quedan restos de F16 ni de F17 — cerrados
+      en sus fases (auditoría 2026-08-16 §1: 0 tareas `[ ]` hasta F19.5)
+- [x] B2 v20.1: bugs de estabilidad — los candidatos de las notas quedaron
+      cerrados en fases previas (flor bajo bloque, aggro en creative, crash
+      de semilla, chunks vacíos: todos con su fix ya verificado); único
+      pendiente documentado (comentario de TNT + Won't de dimensiones de la
+      auditoría del día 16) corregido con la paridad B3 y el wording
+- [x] B3 v20.1: paridad restante — **TNT knockback** (empuje radial a
+      jugadores con evento `knockback` + ventana de confianza `kbUntil` en
+      el anti-cheat, e impulso `mob.kb` integrado en el tick de los mobs;
+      test en `unit-fase11.js` 10b), **fundido explícito de mena** (minar
+      hierro/oro → `RAW_IRON`/`RAW_GOLD` 258/259 y el horno los funde a
+      lingote — paridad MC 1.17; `unit-recetas`/`unit-crafting`/iconos
+      actualizados), CSP/SRI **ya cerrado** (Three.js local desde F19.6)
+- [x] B4 v20.1: rendimiento — P1 (generación por lotes en chunk-fill, sin
+      picos síncronos) y P3 (solo corona nueva al ampliar radio) **ya
+      implementados** y verificados; P4 **RNG determinista por chunk**
+      (`generation.js`: mulberry32 sembrado por semilla+cx,cz → la
+      generación ya no marca dirty; explorar no escribe cientos de archivos;
+      `unit-arboles` inyecta el PRNG vía `setChunkRng`); P7 **índice
+      espacial de antorchas por chunk** (`getTorchesNear`, vecindario 3×3 —
+      `hasTorchNear`/`bakeChunkLight` ya no escanean el torchSet completo);
+      P2 **evaluado y rechazado con métrica** (gzipSync 1,36 ms/chunk ≈ 8 ms
+      por lote, ya repartido con setImmediate — worker sin beneficio);
+      CL-6 telemetría `__mcClientErrors` + `client_errors` ya en el árbol
+- [x] B5 v20.1: release `v20.1` — documento de la iteración
+      [`docs/v20.1.md`](docs/v20.1.md) (bugs/paridad/métricas/verificación),
+      etiqueta `v20.1` y `TODO.md` al día
+- [x] C1 Auditoría por iteración obligatoria (suite + E2E + `--audit` 6/6 +
       CDP si toca render + manual + docs); sin regresiones en la matriz
-      `docs/tests.md`
+      `docs/tests.md` — **unit 59/59, E2E 7/7, `--audit` 6/6, biome 0,
+      `node --check` limpio; verificación manual en navegador pendiente de
+      la sesión real del usuario (queda como primer punto de la v20.2)**
 
 ---
 
@@ -1177,8 +1195,10 @@
 
 ## Fuera de alcance (Won't)
 
-- BD externa, autenticación/cuentas, redstone, dimensiones (Nether/End),
-  aldeas generadas, clima
+- BD externa, autenticación/cuentas, redstone, aldeas generadas, clima;
+  dimensiones (Nether/End) — Won't hasta después de la Fase 20/21 (Fase 24
+  Nether y Fase 25 End las desbloquean con su propia cadena de
+  prerrequisitos, ver STATUS.md)
 - Optimización prematura (greedy meshing, workers...) salvo que una spec lo
   indique
 - Encantamientos/pociones, texturas de ítems faltantes y rediseño de

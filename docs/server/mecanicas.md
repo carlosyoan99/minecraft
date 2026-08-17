@@ -154,13 +154,13 @@
   al llegar a 0, `tool_broke` y la herramienta desaparece.
 - **Grietas al cliente:** `block_break_progress` con stage 0-9 (y -1 para
   ocultar) para pintar el crack como en Minecraft.
-- **Drop de las menas** (Fase 14, Bloque B): cada mineral suelta
-  DIRECTAMENTE su ítem usable — carbón → `I.COAL`, hierro/oro → lingote,
-  diamante/redstone/esmeralda → gema (`ORE_DROP`); ya no cae el bloque de
-  mena (que no es útilizable). Por eso **no existen recetas de horno de
-  mena** (Fase 18, C-7): fundir mena sería un dato muerto inaccesible — la
-  cadena minar→lingote está implícita en `ORE_DROP` (se puede proponer el
-  fundido explícito en una fase de paridad futura, sin cambiar la cadena).
+- **Drop de las menas** (Fase 14, Bloque B + Fase 20 B3): cada mineral
+  suelta su cadena MC — carbón → `I.COAL`, diamante/redstone/esmeralda →
+  gema, hierro/oro → **mena cruda** `I.RAW_IRON`/`I.RAW_GOLD` (258/259)
+  (`ORE_DROP`); ya no cae el bloque de mena (que no es útilizable). La
+  mena cruda se **funde en el horno** → lingote (`recetas_horno.json`
+  `258→102`, `259→103`), paridad MC 1.17 restaurada en la F20 v20.1
+  (la F18 C-7 la había dejado implícita; ver `docs/v20.1.md`).
 - **Tier mínimo por mineral** (Fase 14, Bloque B): `PICKAXE_TIER`
   (madera 1, piedra 2, hierro 3, oro 1, diamante 4) frente a `ORE_TIER`
   (carbón 1, hierro/oro 2, redstone/diamante/esmeralda 3). Con pico de
@@ -197,9 +197,18 @@
   generarse (la columna se asienta); el broadcast es `block_update`.
 - **TNT** (Fase 10): `tnt.ignite` arma una mecha (`state.fuses`, ~1.6 s)
   con `tnt_fuse`; al explotar (`tnt_explode`) hace un cráter por radio con
-  `NOT_MINEABLE` respetado (bedrock/agua/lava intactos), knockback y daño,
-  y puede encender TNT vecino (reacciones en cadena). El creeper también
-  lo enciende. Los cofres con contenido no se rompen.
+  `NOT_MINEABLE` respetado (bedrock/agua/lava intactos), daño y puede
+  encender TNT vecino (reacciones en cadena). El creeper también lo
+  enciende. Los cofres con contenido no se rompen.
+- **Knockback de TNT** (Fase 20 B3, paridad MC): la explosión empuja
+  **radialmente** desde el centro. Jugadores: evento WS `knockback`
+  (`{vx, vy, vz}`) que el cliente integra en su física local, con la
+  **ventana de confianza** `kbUntil` (~600 ms) en el anti-cheat
+  (`server/anticheat.js`) que relaja el límite por-move/parábola/velocidad
+  para no corregir con teleports el propio empuje. Mobs (simulados en el
+  servidor): impulso `mob.kb` integrado en su tick (fricción 0.8,
+  gravedad, `settleOnGround`; IA pausada mientras dura — aturdimiento
+  estilo MC, 10 ticks).
 
 ### Por qué así
 
@@ -211,7 +220,8 @@
 ### Verificación
 
 `tests/unit-fase11.js` (sección de mecánicas de Fase 10: grava cae al
-primer soporte, TNT explota con cráter y el bedrock sobrevive).
+primer soporte, TNT explota con cráter y el bedrock sobrevive; **F20 B3**:
+knockback — evento, `kbUntil` y `mob.kb` integrado en el tick).
 
 ---
 
@@ -375,10 +385,12 @@ creative conserva y no se persisten).
   sincronizado en ambos `constants.js` con su icono; `COAL` (101) sigue
   saliendo solo de la mena de carbón (el drop directo de `ORE_DROP`).
   Justificado por paridad (MC usa ítems distintos).
-- **Recetas de mena eliminadas** (Fase 18, C-7): `recetas_horno.json` ya
-  no tiene claves de mena→gema — el fundido está implícito en `ORE_DROP`
-  (minar da el lingote directo). Cobertura en `unit-recetas`: toda
-  receta del horno es alcanzable con ítems obtenibles.
+- **Fundido explícito de mena** (Fase 20 B3): `recetas_horno.json` tiene
+  `258→102` (hierro crudo → lingote de hierro) y `259→103` (oro crudo →
+  lingote de oro) — la F18 C-7 había eliminado las recetas de mena porque
+  el drop daba el lingote directo; la v20.1 restaura la cadena MC 1.17
+  (minar → crudo → horno → lingote). Cobertura en `unit-recetas`
+  (cadena minar→crudo→horno + `ORE_DROP` como fuente de huérfanos).
 - **Validación estructural** (`isValidRecipes`): receta malformada se
   rechaza al cargar, nunca deja el juego a medias.
 
@@ -512,6 +524,11 @@ infinita).
   (`dirtyChunks`) y `world.json` (mobs, hornos, cofres, cultivos, hora) al
   final; `atomicWrite` (tmp+rename) y el `.bak` del `world.json` anterior
   mantienen la integridad.
+- **Generación determinista (Fase 20 B4/P4):** la generación ya no marca
+  dirty — el RNG por chunk (`generation.js`, sembrado por semilla+cx,cz)
+  regenera los chunks intactos IDÉNTICOS, así que explorar no escribe
+  cientos de archivos sin cambios (solo los chunks con modificaciones del
+  jugador se persisten).
 - **Cola asíncrona fuera del event loop** (`saveWorldAsync`, Fase 16,
   C1/REN-1/SV-4): el autosave del `setInterval` ya no escribe síncronamente
   (que congelaba el servidor con cientos de chunks y era la causa de los

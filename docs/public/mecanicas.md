@@ -151,6 +151,12 @@ skill `performance-optimization`: **no allocar en bucles calientes**.
   en las antorchas dentro de `TORCH_LIGHT_BUDGET` (4) y radio 14 del
   jugador. Toggle de calidad `torchLight`, **OFF por defecto** — la luz
   horneada sigue siendo la base; es un extra de volumen, no un reemplazo.
+- **Índice espacial de antorchas (F20 B4/P7):** `public/chunkstore.js`
+  mantiene `torchesByChunk` (antorcha → chunk propio) y expone
+  `getTorchesNear(wx, wy, wz)` con el vecindario 3×3 de chunks (cubre el
+  radio de luz 7 < chunk 16). `bakeChunkLight` y `hasTorchNear` ya no
+  escanean el `torchSet` completo (O(todas las antorchas) → O(torchSet del
+  vecindario)).
 
 ### Por qué así
 
@@ -252,6 +258,12 @@ mobs visibles en escena).
   bordes, no caerse).
 - **Vuelo creativo** (`creative_fly`, doble Espacio): sube/baja con
   Shift/Espacio; el servidor lo permite solo en gamemode creativo.
+- **Knockback de TNT (F20 B3):** el servidor manda el evento `knockback`
+  (`{vx, vy, vz}`, empuje radial desde el centro de la explosión) y el
+  cliente lo integra en su física local (`applyKnockback`, decaimiento
+  lineal ~0.5 s; vertical empuja `velocityY` contra la gravedad). El
+  servidor abre la ventana de confianza `kbUntil` (~600 ms) en el
+  anti-cheat para no corregir con teleports el propio empuje.
 - Envía `move` al servidor en cada cambio; el servidor responde la
   posición validada (la autoritativa).
 

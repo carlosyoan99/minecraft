@@ -310,7 +310,11 @@ export const ITEM_NAMES = {
 	254: "Compás", // Fase 13 (L5): 4 lingotes de hierro + redstone
 	255: "Carne podrida", // Fase 16 (D2): drop del zombi
 	256: "Pólvora", // Fase 16 (D2): drop del creeper; material del TNT
-	257: "Carbón vegetal" // Fase 18 (C-4): tronco al horno (ítem distinto del carbón)
+	257: "Carbón vegetal", // Fase 18 (C-4): tronco al horno (ítem distinto del carbón)
+	// Fase 20 B3: mena cruda de hierro/oro — se mina así y se funde al lingote
+	// (paridad MC 1.17 restaurada). Sincronizados con server/constants.js.
+	258: "Hierro crudo",
+	259: "Oro crudo"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
