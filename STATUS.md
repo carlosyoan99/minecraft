@@ -14,11 +14,11 @@
 
 | | |
 | --- | --- |
-| **Fase** | **20 — Rolling release (ciclo activo; v20.2 en curso)** [`[EN CURSO]`](docs/spec/fase20-spec.md) |
-| **Prerrequisito cumplido** | Fase 18 cerrada (F16/F17/F19/19.5/19.6 en verde) ✅ |
-| **Trabajo en curso** | **v20.1 cerrada** (commit + etiqueta `v20.1`): paridad (TNT knockback, fundido explícito de mena) y rendimiento del backlog 2026-08-15 (P4 generación determinista, P7 índice espacial de antorchas; P1/P3/CL-6 verificados; P2 rechazado con métrica) — ver [`docs/v20.1.md`](docs/v20.1.md). Auditoría de **GitHub Copilot (2026-08-16)** reconciliada en [`docs/audits/auditoria-2026-08-16-copilot.md`](docs/audits/auditoria-2026-08-16-copilot.md): críticos/altos y casi todos los medios ya corregidos en `161721c`; pendientes planificados en la spec F20 B6. **v20.2** (definida en la spec F20 B7 y [`docs/v20.2.md`](docs/v20.2.md)): bugs de las notas **D1** `#menu-bg` (`875f8e1`) y **D2** desconexión al cargar el mundo (`18bbc2e` — rate-limit por procesamiento, fix `ratelimit.js`) + backlog B6 completo implementado (SV-5 `MAX_STACK` 64, REN-1 `savePlayersAsync`, CI 19 timeouts CDP/perf, CI 20 `npm run audit`); auditoría de cierre verificada (unit 60/60, `--audit` **7/7** con `audit-fase20.js` nuevo, biome 0, `node --check`, npm audit 0) |
+| **Fase** | **21 — Biomas ampliados, estructuras y más mobs (abierta 2026-08-17)** [`[EN CURSO]`](docs/spec/fase21-spec.md) |
+| **Prerrequisito cumplido** | Fase 20 cerrada (v20.2 con etiqueta `v20.2`, suite 60/60, E2E 7/7, `--audit` 7/7, biome 0) ✅ |
+| **Trabajo en curso** | **Fase 20 cerrada** (ciclo rolling): v20.1 (paridad TNT knockback + mena cruda, rendimiento P4/P7) y **v20.2** (bugs D1 `#menu-bg` y D2 desconexión al cargar, backlog B6: SV-5 `MAX_STACK` 64, REN-1 `savePlayersAsync`, CI 19 timeouts CDP/perf, CI 20 `npm run audit`; `audit-fase20.js` nuevo, `--audit` 7/7; cierre commit `70541ec` + etiqueta `v20.2`) — ver [`docs/v20.1.md`](docs/v20.1.md) y [`docs/v20.2.md`](docs/v20.2.md). **Fase 21 abierta** ([spec](docs/spec/fase21-spec.md), de alcance): planificación P0 pendiente (entrevista del planificador para acotar la primera tanda de biomas/estructuras/mobs) |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Cerrar la iteración **v20.2**: verificación manual en navegador (knockback, mena cruda → horno, stack 64), commit de cierre + etiqueta `v20.2`, y documento `docs/v20.2.md` al día |
+| **Próximo paso** | Planificar la **Fase 21** (P0): entrevista del planificador para acotar qué biomas/estructuras/mobs entran en la primera tanda, el orden por valor percibido y los criterios de aceptación (resultado en la spec F21 y `TODO.md`) |
 
 ## Implementado (fases cerradas y auditadas)
 
@@ -47,25 +47,24 @@
 | 19 — Texturas de ítems, interfaces y pulido visual | [`fase19-spec.md`](docs/spec/fase19-spec.md) | ✅ Completada y auditada (2026-08-15, `acca3c9`) |
 | 19.5 — Skills del proyecto: audio por bioma, accesibilidad y refinamientos | [`fase19.5-spec.md`](docs/spec/fase19.5-spec.md) | ✅ Completada y auditada (2026-08-15, `82b288b`) |
 | 19.6 — Motor 3D: iluminación, materiales, shaders, instancing y animación | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | ✅ Completada (2026-08-16) |
-| 20 — Rolling release (ciclo de estabilización y paridad) | [`fase20-spec.md`](docs/spec/fase20-spec.md) | 🔄 **En curso (v20.2)** |
+| 20 — Rolling release (ciclo de estabilización y paridad) | [`fase20-spec.md`](docs/spec/fase20-spec.md) | ✅ **Cerrada (v20.2, etiqueta `v20.2`)** — v20.1 + v20.2 (D1/D2, backlog B6, `audit-fase20`, `--audit` 7/7) |
 
-**Línea base de la fase activa:** suite **60/60 unitarios** (v20.2 añade
-checks de SV-5 y REN-1), **E2E 7/7**, `biome` 0 errores, `node --check`
-limpio, `npm run audit` 0 vulnerabilidades. Auditorías `--audit` verdes:
-fase3 (umbrales ampliados, CI 19), fase4/5/6 + altura; `audit-fase7`
+**Línea base de la fase activa (F21):** suite **60/60 unitarios** (v20.2
+añade checks de SV-5 y REN-1), **E2E 7/7**, `biome` 0 errores, `node
+--check` limpio, `npm run audit` 0 vulnerabilidades. Auditorías `--audit`
+verdes: fase3 (umbrales ampliados, CI 19), fase4/5/6 + altura + **fase20
+(nueva)**; `audit-fase7`
 (render CDP) depende de CPU baja (SwiftShader; ventanas ampliadas en CI 19
 — ver `docs/tests.md`).
 
 ## En revisión
 
-- Sin fases en revisión (Fase 19.6 completada; siguiente abrir F20).
+- Sin fases en revisión (Fase 20 cerrada; **Fase 21 en curso**).
 
 ## Prospectiva (planificadas, sin implementar)
 
 | Fase | Spec | Prerrequisito |
 | --- | --- | --- |
-| 20 — Rolling release | [`fase20-spec.md`](docs/spec/fase20-spec.md) | F18 cerrada ✅ |
-| 21 — Biomas ampliados, estructuras, mobs | [`fase21-spec.md`](docs/spec/fase21-spec.md) | F20 cerrada |
 | 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate, Trial Chambers | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada |
 | 22 — Profundidad, minerales y fauna 1.17-1.21 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | F21.5 cerrada |
 | 23 — Diferidos de la F22 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada |

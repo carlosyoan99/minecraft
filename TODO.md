@@ -999,16 +999,20 @@
 
 ---
 
-## Fase 21 — Biomas ampliados, estructuras y más mobs (prospectiva)
+## Fase 21 — Biomas ampliados, estructuras y más mobs (EN CURSO)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase21-spec.md`](docs/spec/fase21-spec.md)
-> **Prospectiva (sin implementar)** — prerrequisito: Fase 20 cerrada.
-> Mejoras grandes de `Notas del usuario.md` (entrevistas 2026-08-12 y
-> 2026-08-15): biomas/estructuras/mobs no entran en 19/19.5/19.6/20; se
-> planifican aquí. **Exclusiones de la entrevista 2026-08-15: el selector
-> de skins NO entra (ya en F17 C3) y el audio por bioma se adelantó a la
-> F19.5 (A1) — no se duplican aquí.**
+> **En curso — abierta 2026-08-17** (Fase 20 cerrada: v20.2 con etiqueta
+> `v20.2`, suite 60/60, E2E 7/7, `--audit` 7/7, biome 0). La spec es de
+> **alcance** (no de implementación): al abrir la fase se hace la entrevista
+> del planificador para acotar qué biomas/estructuras/mobs entran en la
+> primera tanda y los criterios de aceptación. **Exclusiones de la
+> entrevista 2026-08-15: el selector de skins NO entra (ya en F17 C3) y el
+> audio por bioma se adelantó a la F19.5 (A1) — no se duplican aquí.**
 
+- [ ] P0 Planificación: entrevista del planificador para acotar la primera
+      tanda (biomas/estructuras/mobs por valor percibido), criterios de
+      aceptación y orden de implementación — resultado en la spec F21
 - [ ] A1 Biomas más grandes en extensión (escala del ruido de `getBiome`)
       con recalibración de `unit-biomas`/`unit-mundo`/`audit-fase4`
 - [ ] A2 Biomas de superficie nuevos (tundra nevada, badlands, isla de

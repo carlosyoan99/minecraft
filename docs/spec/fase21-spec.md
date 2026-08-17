@@ -1,6 +1,7 @@
 # Fase 21 — Biomas ampliados, estructuras y más mobs (Spec prospectiva)
 
-> **Estado:** `[PROSPECTIVA]`
+> **Estado:** `[EN CURSO]` (abierta 2026-08-17 — Fase 20 cerrada con la
+> v20.2: suite 60/60, E2E 7/7, `--audit` 7/7, biome 0, etiqueta `v20.2`)
 
 > Documento creado a partir de: `docs/Notas del usuario.md` ("Mejoras":
 > "Biomas más grandes en extensión y nuevos biomas", "Estructuras estáticas
@@ -8,13 +9,12 @@
 > `fase21-spec.md` (Descargas) y de la entrevista con el usuario (2026-08-12
 > y 2026-08-15): estas mejoras grandes **no entran en las fases 19/19.5/19.6
 > y 20**; se planifican aquí, como fase futura.
-> Fecha: 2026-08-15 (actualizada) · Proyecto: clon de Minecraft.
-> Estado: **prospectiva (sin implementar)** — prerrequisito: **Fase 20
-> cerrada** (rolling release estable). Esta spec recoge el **alcance** de las
-> notas y del borrador, con las exclusiones decididas en la entrevista de
-> 2026-08-15; la planificación detallada (qué entra en la primera tanda,
-> prioridades, entrevista) se hará con el proceso habitual del planificador
-> cuando se llegue a ella.
+> Fecha: 2026-08-15 (actualizada 2026-08-17 — apertura) · Proyecto: clon de
+> Minecraft. Estado: **en curso** — prerrequisito: **Fase 20 cerrada**
+> (cumplido). Esta spec es de **alcance** (no de implementación): al abrir
+> la fase se hace la entrevista del planificador para acotar qué
+> biomas/estructuras/mobs entran en la primera tanda (P0 en `TODO.md`), el
+> orden por valor percibido y los criterios de aceptación concretos.
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -226,3 +226,8 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
 
 **Cambios en esta spec (v2):**
 - 2026-08-15: actualización de la entrevista (exclusiones y alcance definitivo de biomas/estructuras/mobs).
+
+**Cambios en esta spec (v3):**
+- 2026-08-17: apertura de la Fase 21 (prerrequisito F20 cumplido con la
+  v20.2) — estado `[EN CURSO]`, spec pasa de alcance a fase activa con
+  planificación P0 (entrevista del planificador) en `TODO.md`.
