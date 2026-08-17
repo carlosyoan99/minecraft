@@ -5,6 +5,8 @@
 > y una tabla de **constantes/funciones, cambios a realizar y resultados
 > esperados**. Para la arquitectura general ver
 > [`README.md`](./README.md).
+> Qué no puede hacer hoy el proyecto y por qué:
+> [`limitaciones-tecnicas.md`](../limitaciones-tecnicas.md).
 
 ## Índice de mecánicas
 

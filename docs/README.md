@@ -79,6 +79,7 @@ Documentación de arquitectura y mecánicas — **cómo funciona** cada pieza y
 | [`public/README.md`](public/README.md) | Arquitectura del cliente: sin build step, módulos puros vs impuros, bucle de render, persistencia local, verificación (CDP) |
 | [`public/mecanicas.md`](public/mecanicas.md) | **Índice** de las mecánicas del cliente, cada una en su fichero: [`render-chunks.md`](public/render-chunks.md), [`pool-geometrias.md`](public/pool-geometrias.md), [`lod-chunks.md`](public/lod-chunks.md), [`luz-antorcha.md`](public/luz-antorcha.md), [`texturas-iconos.md`](public/texturas-iconos.md), [`mobs-remotos.md`](public/mobs-remotos.md), [`fisica-prediccion.md`](public/fisica-prediccion.md), [`dia-noche-cielo.md`](public/dia-noche-cielo.md), [`input-raycast.md`](public/input-raycast.md), [`audio.md`](public/audio.md), [`accesibilidad.md`](public/accesibilidad.md) y [`ui-hud.md`](public/ui-hud.md) — cada uno con cómo funciona, por qué, mejoras a futuro y constantes/cambios esperados |
 | [`public/help.md`](public/help.md) | Guía del jugador: requisitos del navegador, pantalla inicial, controles, cómo jugar, solución de problemas y consejos |
+| [`limitaciones-tecnicas.md`](limitaciones-tecnicas.md) | **Limitaciones técnicas** del proyecto: qué no puede hacer hoy, por qué (decisión de diseño vs deuda técnica) y qué haría falta para superarlo (fase que lo aborda) — mundo, jugabilidad, servidor, cliente y rendimiento |
 
 ## Otros documentos
 

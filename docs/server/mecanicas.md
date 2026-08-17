@@ -6,6 +6,8 @@
 > esperados**. Para la arquitectura general ver
 > [`README.md`](./README.md). Los IDs de bloques/ítems están en
 > `server/constants.js` (y sincronizados en `public/constants.js`).
+> Qué no puede hacer hoy el proyecto y por qué:
+> [`limitaciones-tecnicas.md`](../limitaciones-tecnicas.md).
 
 ## Índice de mecánicas
 
