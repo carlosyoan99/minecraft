@@ -217,13 +217,80 @@ Cada iteración (v20.x) sigue el flujo del borrador, ahora con reglas fijas:
   mover ese guardado a la cola (o confiar en el guardado por eventos ya
   mitigado, F1). Prioridad **baja-media**; solo si la medición muestra
   bloqueos reales del tick con el intervalo reducido a 10-15 s.
+  **[IMPLEMENTADO 2026-08-16, v20.2]** — nuevo `savePlayersAsync()` en
+  `server/save-players.js` (misma estrategia que la cola de chunks: lotes
+  de `PLAYERS_SAVE_BATCH` con `setImmediate`, idempotente); snapshots y
+  rutas de archivo capturados al PROGRAMAR (un switchWorld durante el
+  drenado no reescribe el mundo equivocado); el autosave de `server.js`
+  usa `savePlayersAsync()`; `savePlayer` síncrono se conserva para
+  desconexión/switchWorld/SIGINT-SIGTERM (necesitan el resultado
+  inmediato); checks en `unit-fase17.js` (REN-1: escribe y persiste el
+  estado).
 - **CI 19 — timeouts de `audit-fase3`/`audit-fase7`.** Subir la tolerancia
   (Causa ambiental: SwiftShader + CPU bajo carga; no regresión). Acción:
   aumentar ventanas/timeouts y documentar el umbral en `docs/tests.md`.
+  **[IMPLEMENTADO 2026-08-16, v20.2]** — audit-fase7: arranque del
+  servidor y carga del target CDP a 90×250 ms, `ready` a 45×1000 ms,
+  timeouts de `send`/`eval`/`uiEval` a 25 s; audit-fase3: umbrales de perf
+  ~2× (30 mobs < 1 ms, 300 < 4 ms — sigue siendo guarda de regresión);
+  documentado en `docs/tests.md`.
 - **CI 20 — `npm audit` en el flujo de verificación.** Añadir
   `npm audit --audit-level=moderate` como paso documentado (sin CI en el
   repo actualmente; script en `package.json` o instrucción en la
-  metodología del ciclo).
+  metodología del ciclo). **[IMPLEMENTADO 2026-08-16, v20.2]** — script
+  `npm run audit` en `package.json` y documentado como paso de la
+  verificación mínima en `docs/tests.md` (resultado actual: 0
+  vulnerabilidades).
+
+---
+
+### B7 — Iteración v20.2 (definida 2026-08-16)
+
+> Alcance de la segunda iteración del ciclo: los **dos bugs de
+> `Notas del usuario.md`** reportados como sin resolver tras la F19.6 (D1 y
+> D2) + el **backlog B6 de la auditoría Copilot** (SV-5, REN-1 residual,
+> CI 19 y CI 20). Sin cambios de protocolo WS, IDs B/I ni `SCHEMA_VERSION`
+> (criterio del ciclo). Detalle y verificación en `TODO.md` §Fase 20 y el
+> changelog v5.
+
+- **D1 — `#menu-bg` no se oculta al iniciar partida** ✅ (`875f8e1`): el
+  fondo del menú (z-index 1 sobre el canvas) nunca se ocultaba en JS — solo
+  `#blocker`; fix `showMenuBg()` en `public/scene.js` (visible SOLO en el
+  menú principal), cableado en `menus.js` (showMenu → visible,
+  onWorldLoaded → oculto, onSeedRejected → visible; la pausa no lo muestra).
+  Regresión `tests/unit-fase20.js` + verificación navegador CDP 3/3.
+- **D2 — Desconexión al terminar de cargar el mundo** ✅ (`18bbc2e`): el
+  rate-limit por conexión medía el tiempo de PROCESAMIENTO, no el de
+  llegada. La carga síncrona del mundo en `join_world` (switchWorld →
+  loadWorld/saveWorld) bloquea el event loop; el cliente con pointer lock
+  acumula moves a 20 Hz y, al terminar el bloqueo, se procesan en ráfaga en
+  la misma ventana de 1 s → `MAX_MSG_RATE` parecía superado y el servidor
+  cerraba 1008 «demasiados mensajes» (desconexión → releaseWorld → menú →
+  re-logueo). Fix `server/ratelimit.js` (módulo puro): el cierre exige
+  superar el límite en DOS ventanas consecutivas (flood sostenido); una
+  ráfaga tras un bloqueo es legítima. Reproducido end-to-end (bloqueo de
+  3 s simulado: antes cerraba con 128 moves, ahora 188 sin cierre) y
+  recalibrado en `unit-red.js` (ráfaga 1 ventana → no corta; 2 ventanas →
+  1008). Es el B2 de la F19.6, cuyo veredicto «ambiental» quedó corregido
+  en `fase19.6-spec.md`.
+- **SV-5 — tope de stack 64** ✅ (código en el árbol): `MAX_STACK = 64`
+  compartida (unit-sync), `addToInventory` apila con split de slots y
+  rechazo atómico si no cabe todo, `/give` con `MAX_STACK`; checks en
+  `unit-poo-entities.js`.
+- **REN-1 residual — `savePlayer` async** ✅ (código en el árbol):
+  `savePlayersAsync()` (lotes setImmediate, idempotente) en
+  `save-players.js`; el autosave de `server.js` lo usa; `savePlayer`
+  síncrono se conserva para desconexión/switchWorld/SIGINT/SIGTERM.
+- **CI 19 — timeouts de los CDP** ✅: ventanas ampliadas en
+  `audit-fase3/7` (arranque/ready/eval) y umbrales de perf ~2×,
+  documentado en `docs/tests.md`.
+- **CI 20 — `npm audit` en el flujo** ✅: script `npm run audit` en
+  `package.json` + paso documentado en `docs/tests.md` (0 vulnerabilidades).
+- **Pendiente para cerrar v20.2:** commitear el código del backlog B6
+  (SV-5/REN-1/CI 19/CI 20, en el árbol de trabajo), auditoría de la
+  iteración (C1: suite + E2E + `--audit` + biome + `node --check`),
+  verificación manual en navegador (knockback, mena cruda → horno) y
+  documento `docs/v20.2.md`.
 
 ---
 
@@ -312,6 +379,10 @@ La F20 se considera cerrada cuando, en una auditoría de iteración:
   `addToInventory` con tope (split en slots) + `/give` con `MAX_STACK`;
   checks en `unit-poo-entities.js` y sincronía en `unit-sync.js`. Restan
   REN-1, CI 19 y CI 20.
+- **v20.2 (2026-08-16): backlog B6 completo** — SV-5 (stack), REN-1
+  (`savePlayersAsync`, cola de jugadores), CI 19 (umbrales CDP/perf
+  ampliados) y CI 20 (`npm run audit`) implementados y documentados. Sin
+  cambios de protocolo WS ni `SCHEMA_VERSION` (sigue v6).
 
 **Cambios en esta spec (v4, 2026-08-16 — inicio de la v20.2):**
 - **D1** primer ítem de la v20.2 cerrado: bug de `Notas del usuario.md`
@@ -332,3 +403,23 @@ La F20 se considera cerrada cuando, en una auditoría de iteración:
   El resto de la v20.2 = backlog B6 (SV-5, REN-1 residual, timeouts CDP,
   `npm audit`) + el segundo bug de las notas (desconexión al cargar el
   mundo).
+
+**Cambios en esta spec (v5, 2026-08-16 — definición de la v20.2):**
+- Añadida la sección **B7** con la definición formal de la iteración v20.2:
+  los dos bugs de las notas (**D1** `#menu-bg` y **D2** desconexión al
+  cargar el mundo) + el backlog **B6** completo (SV-5, REN-1 residual,
+  CI 19 y CI 20), este último implementado 2026-08-16 (código en el árbol
+  de trabajo, pendiente de commit).
+- **D2** cerrado (`18bbc2e`): causa raíz real del «desconexión al terminar
+  de cargar el mundo» (F19.6 B2, que se había dado por ambiental) — el
+  rate-limit por conexión medía el tiempo de PROCESAMIENTO, no el de
+  llegada; el bloqueo síncrono de la carga del mundo (switchWorld →
+  loadWorld/saveWorld) acumulaba los moves del cliente (pointer lock) en
+  el buffer TCP y, al procesarlos en ráfaga en la misma ventana de 1 s, el
+  servidor cerraba 1008 «demasiados mensajes» justo al terminar la carga.
+  Fix `server/ratelimit.js` (cierre solo con 2 ventanas consecutivas
+  sobre el límite = flood sostenido; una ráfaga tras un bloqueo es
+  legítima) + recalibración de `unit-red.js`; reproducción end-to-end con
+  bloqueo de 3 s simulado (128 moves cerraban; 188 ya no) y E2E menú 7/7;
+  unit 60/60, biome 0. Verdicto corregido también en `fase19.6-spec.md`
+  B2.

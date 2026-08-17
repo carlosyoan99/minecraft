@@ -14,11 +14,11 @@
 
 | | |
 | --- | --- |
-| **Fase** | **20 — Rolling release (ciclo activo; v20.1 cerrada)** [`[EN CURSO]`](docs/spec/fase20-spec.md) |
+| **Fase** | **20 — Rolling release (ciclo activo; v20.2 en curso)** [`[EN CURSO]`](docs/spec/fase20-spec.md) |
 | **Prerrequisito cumplido** | Fase 18 cerrada (F16/F17/F19/19.5/19.6 en verde) ✅ |
-| **Trabajo en curso** | **v20.1 cerrada** (commit + etiqueta `v20.1`): paridad (TNT knockback, fundido explícito de mena) y rendimiento del backlog 2026-08-15 (P4 generación determinista, P7 índice espacial de antorchas; P1/P3/CL-6 verificados; P2 rechazado con métrica) — ver [`docs/v20.1.md`](docs/v20.1.md) |
+| **Trabajo en curso** | **v20.1 cerrada** (commit + etiqueta `v20.1`): paridad (TNT knockback, fundido explícito de mena) y rendimiento del backlog 2026-08-15 (P4 generación determinista, P7 índice espacial de antorchas; P1/P3/CL-6 verificados; P2 rechazado con métrica) — ver [`docs/v20.1.md`](docs/v20.1.md). Auditoría de **GitHub Copilot (2026-08-16)** reconciliada en [`docs/audits/auditoria-2026-08-16-copilot.md`](docs/audits/auditoria-2026-08-16-copilot.md): críticos/altos y casi todos los medios ya corregidos en `161721c`; pendientes planificados en la spec F20 B6. **v20.2 en curso** (definida en la spec F20 B7): bugs de las notas **D1** `#menu-bg` (`875f8e1`) y **D2** desconexión al cargar el mundo (`18bbc2e` — rate-limit por procesamiento, fix `ratelimit.js`) + backlog B6 completo implementado (SV-5 `MAX_STACK` 64, REN-1 `savePlayersAsync`, CI 19 timeouts CDP/perf, CI 20 `npm run audit`) |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Definir la iteración **v20.2** (primer punto: verificación manual en navegador de knockback y mena cruda → horno) |
+| **Próximo paso** | Cerrar la iteración **v20.2**: auditoría de la iteración (suite unit + E2E + `--audit` + biome + `node --check`), verificación manual en navegador de knockback y mena cruda → horno, y documento `docs/v20.2.md` |
 
 ## Implementado (fases cerradas y auditadas)
 
@@ -47,16 +47,14 @@
 | 19 — Texturas de ítems, interfaces y pulido visual | [`fase19-spec.md`](docs/spec/fase19-spec.md) | ✅ Completada y auditada (2026-08-15, `acca3c9`) |
 | 19.5 — Skills del proyecto: audio por bioma, accesibilidad y refinamientos | [`fase19.5-spec.md`](docs/spec/fase19.5-spec.md) | ✅ Completada y auditada (2026-08-15, `82b288b`) |
 | 19.6 — Motor 3D: iluminación, materiales, shaders, instancing y animación | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | ✅ Completada (2026-08-16) |
-| 20 — Rolling release (ciclo de estabilización y paridad) | [`fase20-spec.md`](docs/spec/fase20-spec.md) | 🔄 **En curso (v20.1)** |
+| 20 — Rolling release (ciclo de estabilización y paridad) | [`fase20-spec.md`](docs/spec/fase20-spec.md) | 🔄 **En curso (v20.2)** |
 
-**Línea base de la fase activa:** suite **59/59 unitarios**, **E2E 7/7**,
-`biome` 0 errores, `node --check` limpio (cierre de la Fase 19.6,
-2026-08-16). Auditorías `--audit` **4/6 verdes** (fase4/5/6 + altura):
-`audit-fase3` (perf de mobs) y `audit-fase7` (render CDP) fallan por
-**causa ambiental** (CPU a carga 15-19 externa + SwiftShader) — fallan
-idénticamente en `HEAD` sin los cambios del cierre (ver
-`docs/audits/auditoria-2026-08-15.md` §6); `audit-fase7` ya estaba
-documentado como ROJO ambiental en esa auditoría.
+**Línea base de la fase activa:** suite **60/60 unitarios** (v20.2 añade
+checks de SV-5 y REN-1), **E2E 7/7**, `biome` 0 errores, `node --check`
+limpio, `npm run audit` 0 vulnerabilidades. Auditorías `--audit` verdes:
+fase3 (umbrales ampliados, CI 19), fase4/5/6 + altura; `audit-fase7`
+(render CDP) depende de CPU baja (SwiftShader; ventanas ampliadas en CI 19
+— ver `docs/tests.md`).
 
 ## En revisión
 

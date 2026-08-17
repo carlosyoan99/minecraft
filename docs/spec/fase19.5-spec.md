@@ -1,6 +1,6 @@
 # Fase 19.5 — Skills del proyecto: audio ambiental por bioma, accesibilidad y refinamientos (Spec)
 
-> **Estado:** `[CERRADA]` — verificada 2026-08-15: suite 58/58, auditorías
+> **Estado:** `[COMPLETADA]` — verificada 2026-08-15: suite 58/58, auditorías
 > 6/6, E2E 7/7, biome 0 errores.
 
 > Documento creado a partir de: `docs/Notas del usuario.md` (Mejoras:

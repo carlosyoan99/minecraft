@@ -277,7 +277,8 @@ activen.
 5. Auditoría de cierre con mediciones antes/después documentadas por bloque y
    docs/tracker al día.
 
-> **Tests que cubren esta fase (previstos):** `tests/unit-fase19.6.js`, `tests/audit-fase19.6.js`.
+> **Tests que cubren esta fase (previstos):** `tests/unit-fase19.6.js`.
+> La cobertura de render/CDP de F19.6 queda incluida en `tests/audit-fase7.js`.
 
 ---
 
@@ -362,6 +363,21 @@ navegador encontró regresiones).
   reconectaba — de ahí el doble close. Queda documentado junto a la
   prueba en `docs/audits/auditoria-2026-08-15.md` §6 y los
   harnesses en `/tmp/opencode/repro-b2-v3/v4`.
+- **Veredicto corregido (F20 v20.2, `18bbc2e`):** el veredicto «ambiental»
+  era incompleto — el bug del usuario persista y SÍ había un defecto real.
+  Causa raíz: el rate-limit por conexión (`server/net.js`) medía el tiempo
+  de PROCESAMIENTO, no el de llegada. La carga síncrona del mundo en
+  `join_world` (switchWorld → loadWorld/saveWorld) bloquea el event loop;
+  el cliente (pointer lock activo) acumula moves a 20 Hz en el buffer TCP
+  y, al terminar el bloqueo, se procesan en ráfaga dentro de la misma
+  ventana de 1 s → `MAX_MSG_RATE=30` parecía superado y el servidor cerraba
+  `1008 «demasiados mensajes»` justo al terminar la carga (la cadena
+  completa: desconexión → releaseWorld → menú → re-logueo CL-1). Reproducido
+  end-to-end con un bloqueo de 3 s simulado (128 moves cerraban; con el fix,
+  188 no). Fix: `server/ratelimit.js` (módulo puro) — el cierre exige
+  superar el límite en DOS ventanas consecutivas (flood sostenido), así una
+  ráfaga de una ventana tras un bloqueo es legítima; `unit-red.js`
+  recalibrado y E2E menú 7/7. Detalle en `fase20-spec.md` B7/v5.
 
 ### B3 — Falso positivo de `flotando` en el anti-cheat (cazado en el cierre)
 

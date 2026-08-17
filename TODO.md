@@ -910,11 +910,13 @@
       `node --check` limpio; verificación manual en navegador pendiente de
       la sesión real del usuario (queda como primer punto de la v20.2)**
 
-### Iteración v20.2 — en curso
+### Iteración v20.2 — en curso (definida 2026-08-16, ver spec F20 B7)
 
-> Primer ítem cerrado: el bug de `#menu-bg` de `Notas del usuario.md`. El
-> resto de candidatos son el backlog de la auditoría Copilot (SV-5, REN-1
-> residual, timeouts de los CDP y `npm audit` en el flujo) — ver abajo.
+> Alcance: los dos bugs de `Notas del usuario.md` que seguían abiertos tras
+> la F19.6 (D1 y D2) + el backlog B6 de la auditoría Copilot (SV-5, REN-1
+> residual, CI 19 y CI 20) — **todos implementados 2026-08-16** (ver
+> abajo). Pendiente de cerrar la iteración: commitear el código del backlog
+> B6 (en el árbol de trabajo), auditoría C1 y documento `docs/v20.2.md`.
 
 - [x] D1 Bug «#menu-bg no se oculta al iniciar partida» (Notas del
       usuario): el fondo del menú (cielo con nubes, z-index 1 sobre el
@@ -925,6 +927,22 @@
       unit-camara); verificación navegador CDP 3/3 (visible en el menú →
       oculto tras join_world → visible tras leave_world); unit 60/60,
       biome 0, `node --check` limpio. Commit `875f8e1`
+- [x] D2 Bug «al terminar de cargar el mundo este desconecta al jugador»
+      (Notas del usuario; el B2 de la F19.6 que se había dado por
+      ambiental): el rate-limit por conexión medía el tiempo de
+      PROCESAMIENTO, no el de llegada. La carga síncrona del mundo en
+      `join_world` (switchWorld → loadWorld/saveWorld) bloquea el event
+      loop; el cliente (pointer lock activo) acumula moves a 20 Hz en el
+      buffer TCP y, al terminar el bloqueo, se procesan en ráfaga en la
+      misma ventana de 1 s → `MAX_MSG_RATE` parecía superado y el servidor
+      cerraba 1008 «demasiados mensajes»: desconexión → releaseWorld →
+      menú → re-logueo. Fix `server/ratelimit.js` (módulo puro): cierre
+      solo con 2 ventanas consecutivas sobre el límite (flood sostenido);
+      una ráfaga de una ventana tras un bloqueo es legítima. Reproducido
+      end-to-end (bloqueo de 3 s simulado: 128 moves cerraban, 188 ya no)
+      y recalibrado en `unit-red.js` (ráfaga 1 ventana → no corta; 2
+      ventanas → 1008); unit 60/60, E2E menú 7/7, biome 0. Commit
+      `18bbc2e`; veredicto corregido en `fase19.6-spec.md` B2
 
 ### Auditoría 2026-08-16 (GitHub Copilot) — integración
 
@@ -951,15 +969,22 @@
       Implementado 2026-08-16: `MAX_STACK = 64` compartida (unit-sync),
       apilado por split de slots + rechazo atómico, `/give` con
       `MAX_STACK`; checks en `unit-poo-entities.js`
-- [ ] **REN-1 residual** `savePlayer` síncrono en el autosave
+- [x] **REN-1 residual** `savePlayer` síncrono en el autosave
       (`server.js:115`): mover a la cola asíncrona o confiar en el guardado
-      por eventos (mitigación F1 ya en 10-15 s); prioridad baja-media
-- [ ] Sugerencia de proceso: subir timeouts de `audit-fase3`/`audit-fase7`
+      por eventos (mitigación F1 ya en 10-15 s); prioridad baja-media.
+      Implementado 2026-08-16: `savePlayersAsync()` (lotes setImmediate,
+      idempotente; snapshot+ruta al programar) en `save-players.js`;
+      autosave de `server.js` lo usa; `savePlayer` síncrono sigue para
+      desconexión/switchWorld/SIGINT/SIGTERM; checks `unit-fase17.js`
+- [x] Sugerencia de proceso: subir timeouts de `audit-fase3`/`audit-fase7`
       (causa ambiental SwiftShader/CPU) y documentar el umbral en
-      `docs/tests.md`
-- [ ] Sugerencia de proceso: `npm audit --audit-level=moderate` como paso
+      `docs/tests.md`. Implementado 2026-08-16: ventanas CDP ampliadas
+      (arranque/ready/timeouts eval) y umbrales de perf ~2×; documentado
+- [x] Sugerencia de proceso: `npm audit --audit-level=moderate` como paso
       del flujo de verificación (sin CI en el repo; script o instrucción en
-      la metodología del ciclo)
+      la metodología del ciclo). Implementado 2026-08-16: script
+      `npm run audit` en `package.json` + paso documentado en
+      `docs/tests.md` (0 vulnerabilidades)
 
 ---
 

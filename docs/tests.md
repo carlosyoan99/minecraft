@@ -30,6 +30,7 @@ node tests/run.js --unit        # solo unitarios
 node tests/run.js --audit       # solo auditorías por fase standalone
 WS_URL=ws://localhost:3998 node tests/run.js --e2e   # solo E2E (necesita servidor)
 node tests/run.js --unit --filter <regex>            # solo los tests que casan con <regex>
+npm run audit        # CI 20 (v20.2): dependencias sin vulnerabilidades (--audit-level=moderate)
 ```
 
 - Cada unitario es un script Node plano que termina con salida 0/1; el runner
@@ -46,7 +47,10 @@ node tests/run.js --unit --filter <regex>            # solo los tests que casan 
   levanta su propio servidor sin `SEED` en el puerto 3997.
 - **Verificación mínima antes de entregar** (`CLAUDE.md` §"Cómo trabajar"):
   `node --check` sobre los `.js` tocados + `node tests/run.js --unit` +
-  arrancar el servidor y confirmar que sirve `/`.
+  arrancar el servidor y confirmar que sirve `/`. **CI 20 (v20.2):** sumar
+  `npm run audit` — sin CI en el repo, pero el paso queda documentado y
+  scripteado (`--audit-level=moderate`: solo falla con vulnerabilidades
+  moderadas o peores).
 
 ## Cobertura
 
@@ -205,7 +209,15 @@ Three/DOM para forzarlos.
   - `audit-fase6`: memoria bruta del área activa con LOD **< 800 MB**
     (medido ~619 MB; geometría pre-greedy-meshing, el cliente funde 3-5×),
     reducción LOD ≥ 20 % (medido 78 %).
+  - `audit-fase3` (bench del tick de mobs): 30 mobs **< 1 ms/tick** y 300
+    **< 4 ms/tick** (recalibrado CI 19, 2026-08-16: ~2× sobre los medidos
+    ~0.2-1.5 ms — tolera CPU cargada 15-19 sin dejar de ser guarda de
+    regresión).
   - `audit-fase7` (CDP, Chrome headless/SwiftShader + máquina de desarrollo
     bajo carga): tick **< 1000 ms** y gen **< 800 ms** (medidos 246-580 / 
     156-386 ms; la ventana de 6 s cae sobre el relleno inicial, que es el
-    coste no optimizado del mundo v6).
+    coste no optimizado del mundo v6). **Ventanas de tiempo (CI 19,
+    2026-08-16)**: arranque del servidor 90×250 ms, carga del target CDP
+    90×250 ms, `ready` 45×1000 ms y timeouts de `CDP.send`/`eval`/`uiEval`
+    a 25 s — la causa de los fallos es ambiental (SwiftShader + CPU bajo
+    carga), no una regresión.
