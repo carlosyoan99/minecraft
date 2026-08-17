@@ -335,6 +335,10 @@ let maxPlain = 0,
 for (let wx = -200; wx <= 200; wx += 2) {
 	for (let wz = -200; wz <= 200; wz += 2) {
 		const biome = world.getBiome(wx, wz);
+		// Fase 21 (v21.2, D1): excluir columnas de agua (lecho de río/océano/
+		// lago) del valle de montaña — el cauce del río baja hasta −7 y es
+		// agua, no un valle del terreno (misma recalibración que unit-biomas).
+		if (world.columnFloorY(wx, wz) !== null) continue;
 		const h = world.getHeight(wx, wz);
 		if (biome === "mountain") {
 			maxMountain = Math.max(maxMountain, h);
@@ -603,6 +607,98 @@ let temples = 0,
 	shipwrecks = 0,
 	templeOk = 0,
 	shipwreckOk = 0;
+// Fase 21 (v21.2, recalibración): con los biomas ampliados (A1, BIOME_FREQ
+// 0.003) la jungla/el océano pueden quedar fuera de ±R16 chunks (antes el
+// barrido de estructuras recorría los chunks generados y ya no encontraba
+// templo/naufragio en la semilla). Los CENTROS se buscan por CELDA con
+// structCenterAt (función pura y cacheada — sin generar chunks) en un radio
+// amplio (±STRUCT_SEARCH_CELLS celdas de 32 bloques) y solo se generan los
+// chunks alrededor de cada estructura para verificar sus bloques.
+const STRUCT_SEARCH_CELLS = 32; // ±32 celdas ≈ ±1024 bloques
+const centers = [];
+for (let cellX = -STRUCT_SEARCH_CELLS; cellX <= STRUCT_SEARCH_CELLS; cellX++) {
+	for (let cellZ = -STRUCT_SEARCH_CELLS; cellZ <= STRUCT_SEARCH_CELLS; cellZ++) {
+		const s = world.structCenterAt(cellX, cellZ);
+		if (s) centers.push(s);
+	}
+}
+for (const struct of centers) {
+	const wx = struct.cx,
+		wz = struct.cz;
+	// Generar los chunks que tocan el footprint (≤ 11×11 → 3×3 alrededor).
+	for (
+		let gx = Math.floor((wx - 6) / CHUNK_SIZE);
+		gx <= Math.floor((wx + 6) / CHUNK_SIZE);
+		gx++
+	)
+		for (
+			let gz = Math.floor((wz - 6) / CHUNK_SIZE);
+			gz <= Math.floor((wz + 6) / CHUNK_SIZE);
+			gz++
+		)
+			world.generateChunk(gx, gz);
+	const gx = Math.floor(wx / CHUNK_SIZE);
+	const gz = Math.floor(wz / CHUNK_SIZE);
+	const data = state.chunks.get(`${gx},${gz}`);
+	const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+	const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+	if (struct.type === "temple") {
+		temples++;
+		const baseY = world.getHeight(wx, wz);
+		const floor = data[idx(lx, baseY, lz)];
+		const chest = data[idx(lx, baseY + 1, lz)];
+		const tower = baseY + 5 <= WORLD_MAX_Y;
+		if (
+			world.getBiome(wx, wz) === "jungle" &&
+			world.columnFloorY(wx, wz) === null &&
+			floor === B.MOSSY_COBBLESTONE &&
+			chest === B.CHEST &&
+			tower
+		)
+			templeOk++;
+		else if (!tower)
+			info(
+				`templo en (${wx},${wz}): torre se sale del mundo (baseY ${baseY})`
+			);
+	} else if (struct.type === "shipwreck") {
+		shipwrecks++;
+		const baseY = world.oceanFloorY(wx, wz) - world.DESIGN_OFFSET + 1;
+		const floorBlock = data[idx(lx, baseY, lz)];
+		const aboveTop = data[idx(lx, baseY + 4, lz)];
+		if (
+			world.isOcean(wx, wz) &&
+			baseY >= WORLD_MIN_Y &&
+			baseY + 3 <= WORLD_MAX_Y &&
+			(floorBlock === B.SPRUCE_LOG || floorBlock === B.JUNGLE_LOG) &&
+			(aboveTop === B.WATER || aboveTop === B.AIR)
+		)
+			shipwreckOk++;
+	}
+}
+check(
+	"se encontró al menos un templo en jungla",
+	temples > 0,
+	`${temples} templos`
+);
+check(
+	"los templos cumplen invariantes (piso, cofre, torre, jungla firme)",
+	templeOk === temples && temples > 0,
+	`${templeOk}/${temples}`
+);
+check(
+	"se encontró al menos un naufragio en océano",
+	shipwrecks > 0,
+	`${shipwrecks} naufragios`
+);
+check(
+	"los naufragios cumplen invariantes (lecho oceánico, casco, dentro de límites)",
+	shipwreckOk === shipwrecks && shipwrecks > 0,
+	`${shipwreckOk}/${shipwrecks}`
+);
+// Minas abandonadas: el guard real de la generación es `!waterCol`
+// (mineshaftAt es ruido puro, no sabe del agua). Se verifica sobre el área
+// R16 ya generada que en columnas de agua NO se excave ningún túnel y que
+// en tierra el túnel nunca rompe la superficie.
 let mineshaftCols = 0,
 	mineshaftBad = 0;
 for (let cx = -R16; cx <= R16; cx++) {
@@ -612,46 +708,6 @@ for (let cx = -R16; cx <= R16; cx++) {
 			for (let z = 0; z < CHUNK_SIZE; z++) {
 				const wx = cx * CHUNK_SIZE + x,
 					wz = cz * CHUNK_SIZE + z;
-				const struct = world.structureAt(wx, wz);
-				if (struct && struct.cx === wx && struct.cz === wz) {
-					if (struct.type === "temple") {
-						temples++;
-						const baseY = world.getHeight(struct.cx, struct.cz);
-						const floor = data[idx(x, baseY, z)];
-						const chest = data[idx(x, baseY + 1, z)];
-						const tower = baseY + 5 <= WORLD_MAX_Y;
-						if (
-							world.getBiome(wx, wz) === "jungle" &&
-							world.columnFloorY(wx, wz) === null &&
-							floor === B.MOSSY_COBBLESTONE &&
-							chest === B.CHEST &&
-							tower
-						)
-							templeOk++;
-						else if (!tower)
-							info(
-								`templo en (${wx},${wz}): torre se sale del mundo (baseY ${baseY})`
-							);
-					} else if (struct.type === "shipwreck") {
-						shipwrecks++;
-						const baseY =
-							world.oceanFloorY(struct.cx, struct.cz) - world.DESIGN_OFFSET + 1;
-						const floorBlock = data[idx(x, baseY, z)];
-						const aboveTop = data[idx(x, baseY + 4, z)];
-						if (
-							world.isOcean(wx, wz) &&
-							baseY >= WORLD_MIN_Y &&
-							baseY + 3 <= WORLD_MAX_Y &&
-							(floorBlock === B.SPRUCE_LOG || floorBlock === B.JUNGLE_LOG) &&
-							(aboveTop === B.WATER || aboveTop === B.AIR)
-						)
-							shipwreckOk++;
-					}
-				}
-				// Minas abandonadas: el guard real de la generación es `!waterCol`
-				// (mineshaftAt es ruido puro, no sabe del agua). Se verifica que en
-				// columnas de agua NO se excave ningún túnel y que en tierra el
-				// túnel nunca rompe la superficie.
 				if (world.mineshaftAt(wx, wz)) {
 					mineshaftCols++;
 					const floor = world.columnFloorY(wx, wz);
@@ -677,26 +733,6 @@ for (let cx = -R16; cx <= R16; cx++) {
 		}
 	}
 }
-check(
-	"se encontró al menos un templo en jungla",
-	temples > 0,
-	`${temples} templos`
-);
-check(
-	"los templos cumplen invariantes (piso, cofre, torre, jungla firme)",
-	templeOk === temples && temples > 0,
-	`${templeOk}/${temples}`
-);
-check(
-	"se encontró al menos un naufragio en océano",
-	shipwrecks > 0,
-	`${shipwrecks} naufragios`
-);
-check(
-	"los naufragios cumplen invariantes (lecho oceánico, casco, dentro de límites)",
-	shipwreckOk === shipwrecks && shipwrecks > 0,
-	`${shipwreckOk}/${shipwrecks}`
-);
 check("hay minas abandonadas", mineshaftCols > 0, `${mineshaftCols} columnas`);
 check(
 	"las minas nunca están en columnas de agua ni rompen la superficie",
@@ -891,26 +927,37 @@ console.log("== 10. Geometría del cliente (índice local → Y de mundo) ==");
 
 	// --- Un chunk con la SUPERFICIE del agua expuesta al aire: la cara +Y
 	// del bloque de agua más alto debe emitirse en Y de MUNDO (wy + 0.875).
+	// Fase 21 (v21.2, recalibración): se excluyen los chunks con charcos
+	// decorativos (agua sobre el mar, y ≥ −2): la geometría del chunk
+	// mezclaría la superficie del lago/río con la del charco y el rango de
+	// agua dejaría de estar bajo el nivel del mar (fallo espurio).
 	let waterChunk = null,
 		waterSurfWy = -Infinity;
-	for (let cx = -4; cx <= 4 && !waterChunk; cx++) {
-		for (let cz = -4; cz <= 4 && !waterChunk; cz++) {
+	outer: for (let cx = -4; cx <= 4; cx++) {
+		for (let cz = -4; cz <= 4; cz++) {
 			const data = state.chunks.get(`${cx},${cz}`);
+			let surf = -Infinity;
+			let pond = false;
 			for (let i = 0; i < data.length; i++) {
 				if (data[i] !== B.WATER) continue;
 				const ly = Math.floor(i / (CHUNK_SIZE * CHUNK_SIZE));
 				const wy = ly + WORLD_MIN_Y;
+				// Charcos decorativos de la Fase 7: agua por encima del mar.
+				if (wy > world.WORLD_SEA_LEVEL) pond = true;
 				// Bloque de agua con AIRE encima = superficie de lago/río/océano
-				// (y ≤ −4; los charcos decorativos viven en la superficie, y ≥ −2).
+				// (y ≤ −4).
 				if (
 					ly + 1 < WORLD_HEIGHT &&
 					data[i + CHUNK_SIZE * CHUNK_SIZE] === 0 &&
-					wy <= world.WORLD_SEA_LEVEL - 1 &&
-					wy > waterSurfWy
-				) {
-					waterSurfWy = wy;
-					waterChunk = { cx, cz };
-				}
+					wy <= world.WORLD_SEA_LEVEL - 1
+				)
+					surf = Math.max(surf, wy);
+			}
+			if (pond) continue; // chunk con charco decorativo: no sirve
+			if (surf > -Infinity) {
+				waterSurfWy = surf;
+				waterChunk = { cx, cz };
+				break outer;
 			}
 		}
 	}

@@ -73,6 +73,11 @@ let maxPlain = 0,
 for (let wx = -100; wx <= 100; wx += 2) {
 	for (let wz = -100; wz <= 100; wz += 2) {
 		const biome = world.getBiome(wx, wz);
+		// Fase 21 (v21.2, D1): las columnas de agua (lecho de río/océano/lago)
+		// no cuentan como terreno de montaña — el lecho del río baja al nivel
+		// del mar (−7..−6) y es AGUA, no un valle del terreno. Antes el río
+		// cortaba con lecho en −4; con D1 baja hasta −7 (cauce más profundo).
+		if (world.columnFloorY(wx, wz) !== null) continue;
 		const h = world.getHeight(wx, wz);
 		if (biome === "mountain") {
 			maxMountain = Math.max(maxMountain, h);

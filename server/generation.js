@@ -215,17 +215,22 @@ function generateChunk(cx, cz) {
 			// triple muestreo en el bucle de generación).
 			const temp = noise.noise2D(wx * biomes.BIOME_FREQ, wz * biomes.BIOME_FREQ);
 			const mnt = noise.noise2D_mountain(wx * 0.008, wz * 0.008);
+			// Fase 21 (v21.2, D1): altura base en ESPACIO DE DISEÑO; el río la
+			// hunde después (riverCarvedHeight: orillas inclinadas hacia el
+			// cauce, cauce bajo el nivel del mar). El lecho del río se deriva
+			// de baseDesign (el cauce YA es el fondo, no se vuelve a hundir).
+			const baseDesign = biomes.heightFrom(
+				temp,
+				biomes.smoothstep(
+					biomes.MOUNTAIN_RAMP[0],
+					biomes.MOUNTAIN_RAMP[1],
+					mnt
+				),
+				wx,
+				wz
+			);
 			const baseHeight =
-				biomes.heightFrom(
-					temp,
-					biomes.smoothstep(
-						biomes.MOUNTAIN_RAMP[0],
-						biomes.MOUNTAIN_RAMP[1],
-						mnt
-					),
-					wx,
-					wz
-				) - biomes.DESIGN_OFFSET; // diseño (3..27) → MUNDO (terreno anclado en ~0)
+				biomes.riverCarvedHeight(wx, wz, baseDesign) - biomes.DESIGN_OFFSET; // diseño → MUNDO
 			// Fase 15 (cierre): lecho de la columna de agua derivado de los flags
 			// y ruidos YA muestreados (lake/river/ocean + baseHeight). Antes se
 			// llamaba a biomes.columnFloorY(wx, wz), que volvía a muestrear isLake +
@@ -236,16 +241,11 @@ function generateChunk(cx, cz) {
 			let floorY = 0; // Y de MUNDO del lecho
 			if (lake) floorY = biomes.lakeFloorY(wx, wz) - biomes.DESIGN_OFFSET;
 			else if (river) {
-				// columnFloorY: max(1, min(h − riverDepth, biomes.SEA_LEVEL−1)) con
-				// h = biomes.heightFrom(...) = baseHeight + biomes.DESIGN_OFFSET.
-				floorY =
-					Math.max(
-						1,
-						Math.min(
-							baseHeight + biomes.DESIGN_OFFSET - biomes.riverDepth(wx, wz),
-							biomes.SEA_LEVEL - 1
-						)
-					) - biomes.DESIGN_OFFSET;
+				// Fase 21 (v21.2, D1): lecho compartido con columnFloorY — el
+				// cauce se clava bajo el nivel del mar (RIVER_FLOOR_CAP) y el
+				// agua SIEMPRE lo cubre (≥ 2 bloques). Antes el tope era
+				// SEA_LEVEL−1 y en terreno alto el río no generaba agua.
+				floorY = biomes.riverFloorY(wx, wz, baseDesign) - biomes.DESIGN_OFFSET;
 			} else if (ocean)
 				floorY = biomes.oceanFloorY(wx, wz) - biomes.DESIGN_OFFSET;
 			const height = waterCol ? floorY : baseHeight; // Y de MUNDO de la superficie

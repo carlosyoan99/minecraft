@@ -75,23 +75,89 @@ function lakeFloorY(wx, wz) {
 	return Math.max(1, Math.floor(d * (LAKE_FLOOR + 1))); // 1..3 → agua de 2 a 4 bloques
 }
 
-// Fase 10 (A4): RÍOS pequeños — banda estrecha del ruido de río donde el
-// terreno se hunde en un canal y el agua lo llena hasta SEA_LEVEL (agua
-// siempre por debajo del nivel del mar: la invariante de unit-mundo de
-// "agua sobre SEA_LEVEL = charco" se conserva).
+// Fase 10 (A4): RÍOS — canal donde el terreno se hunde y el agua lo llena
+// hasta SEA_LEVEL. Fase 21 (v21.2, D1): ríos reales "al nivel del mar"
+// (bug de las Notas: "el agua no llega al nivel del mar, parecen un bug").
+//   - el cauce se clava SIEMPRE bajo el nivel del mar (RIVER_FLOOR_CAP) →
+//     todo río tiene agua (antes el lecho podía quedar en SEA_LEVEL−1 y la
+//     columna NO generaba agua en terreno alto),
+//   - las ORRILLAS se hunden gradualmente hacia el cauce (riverInfluence →
+//     riverCarvedHeight): sin acantilados de 8-10 bloques en el borde,
+//   - menos densidad (RIVER_WIDTH 0.14 → 0.08: ~17 % → ~9-10 % de
+//     columnas, medido en la semilla) y ancho VARIABLE (RIVER_WIDTH_VAR:
+//     tramos estrechos y amplios a lo largo del cauce),
+//   - un poco más de profundidad (riverDepth 2..4 → 3..6).
+// El agua sigue siempre por debajo del nivel del mar (la invariante de
+// unit-mundo "agua sobre SEA_LEVEL = charco" se conserva).
 const RIVER_FREQ = 0.008; // frecuencia baja → meandros amplios
-const RIVER_WIDTH = 0.14; // banda del ruido que es río (≈5% de columnas)
+const RIVER_WIDTH = 0.08; // banda base del ruido que es río (antes 0.14)
+// Variación del ancho: 0.6×..1.4× la banda base según un ruido de detalle
+// de baja frecuencia → tramos estrechos y amplios a lo largo del cauce.
+const RIVER_WIDTH_VAR = 0.4;
+// Margen de ORRILLA en unidades de ruido: columnas con |n| ∈ (W, W+BANK)
+// se hunden gradualmente hacia el cauce (playa inclinada, no acantilado).
+// La rampa es LINEAL (pendiente 1/bank, no smoothstep: la cuadrática
+// concentraba la pendiente en el centro) y ADAPTATIVA: el ancho escala con
+// el desnivel h−floor del valle (bank ≈ (h−2)·0.014) para que la pendiente
+// quede ≤ ~3.5 bloques/columna SIN importar la altura del terreno — un
+// río en una montaña (h≈21) necesita una orilla de ~0.27 unidades de
+// ruido, uno en llanura (h≈8) de ~0.08. El máximo gradiente del ruido de
+// río medido en la semilla es ~0.049/bloque; con bank mínimo 0.05 las
+// pendientes pequeñas también quedan suaves.
+const RIVER_BANK_MIN = 0.05;
+const RIVER_BANK_K = 0.014; // (h − 2) · K → pendiente ≤ |∇n|/K ≈ 3.5
+// Tope del lecho del cauce (espacio de diseño): el fondo nunca sube de
+// SEA_LEVEL − 3 → SIEMPRE hay ≥ 2 bloques de agua en el cauce (antes el
+// tope era SEA_LEVEL − 1 y en terreno alto no quedaba agua: el bug D1).
+const RIVER_FLOOR_CAP = 2;
+// Ancho local de la banda (con variación): ruido de detalle a baja
+// frecuencia modula el umbral del cauce de forma suave y determinista.
+function riverBandW(wx, wz) {
+	const v = (noise.noise2D_detail(wx * 0.02, wz * 0.02) + 1) / 2; // 0..1
+	return RIVER_WIDTH * (1 - RIVER_WIDTH_VAR + v * 2 * RIVER_WIDTH_VAR);
+}
 function isRiver(wx, wz) {
 	return (
 		Math.abs(noise.noise2D_river(wx * RIVER_FREQ, wz * RIVER_FREQ)) <
-		RIVER_WIDTH
+		riverBandW(wx, wz)
 	);
 }
-// Profundidad del canal (1-4 bloques bajo el terreno, según la fuerza del
+// Profundidad del canal (3-6 bloques bajo el terreno, según la fuerza del
 // ruido en esa columna) — los ríos son valles, no zanjas rectas.
 function riverDepth(wx, wz) {
 	const n = noise.noise2D_river(wx * RIVER_FREQ, wz * RIVER_FREQ);
-	return 2 + Math.floor((Math.abs(n) / RIVER_WIDTH) * 2); // 2..4
+	return 3 + Math.floor((Math.abs(n) / riverBandW(wx, wz)) * 3); // 3..6
+}
+// Fondo real del cauce (espacio de diseño), compartido por columnFloorY y
+// la generación: nunca por encima del tope (agua garantizada) ni por
+// debajo de 1.
+function riverFloorY(wx, wz, h) {
+	return Math.max(1, Math.min(h - riverDepth(wx, wz), RIVER_FLOOR_CAP));
+}
+// Influencia del río en la columna: 1 dentro del cauce (|n| < W), 0..1 en
+// las orillas (W..W+bank) y 0 fuera. La rampa es LINEAL y su ancho crece
+// con el desnivel h−2 (orilla adaptativa): pendiente ≈ |∇n|/K ≤ 3.5
+// bloques/columna en cualquier terreno (ver RIVER_BANK_K).
+function riverInfluence(wx, wz, h) {
+	const n = Math.abs(noise.noise2D_river(wx * RIVER_FREQ, wz * RIVER_FREQ));
+	const W = riverBandW(wx, wz);
+	const bank = Math.max(RIVER_BANK_MIN, (h - RIVER_FLOOR_CAP) * RIVER_BANK_K);
+	return Math.max(0, Math.min(1, 1 - (n - W) / bank));
+}
+// Altura del terreno (espacio de diseño) tras el río: el cauce baja al
+// fondo (riverFloorY) y las orillas se hunden gradualmente hacia él, sin
+// pasar nunca de la línea de agua (SEA_LEVEL) ni por encima del terreno
+// natural. Fuera del río devuelve h sin cambios.
+function riverCarvedHeight(wx, wz, h) {
+	const infl = riverInfluence(wx, wz, h);
+	if (infl <= 0) return h;
+	const floor = riverFloorY(wx, wz, h);
+	if (infl >= 1) return floor;
+	// Fase 21 (v21.2, D1): el resultado se redondea a bloque (como heightFrom)
+	// — getHeight debe devolver enteros para que los índices de los tests y
+	// la superficie (y === height − 1) coincidan con la generación real.
+	const carved = Math.floor(h - (h - floor) * infl);
+	return Math.min(Math.max(carved, SEA_LEVEL), h);
 }
 
 // Fase 11 (Bloque B): OCÉANO — cuencas amplias de agua (bioma de terreno).
@@ -125,7 +191,9 @@ function columnFloorY(wx, wz) {
 			wx,
 			wz
 		);
-		return Math.max(1, Math.min(h - riverDepth(wx, wz), SEA_LEVEL - 1));
+		// Fase 21 (v21.2, D1): lecho compartido con la generación — el cauce
+		// siempre queda bajo el nivel del mar (agua garantizada).
+		return riverFloorY(wx, wz, h);
 	}
 	if (isOcean(wx, wz)) return oceanFloorY(wx, wz);
 	return null;
@@ -280,16 +348,19 @@ function heightFrom(temp, wMnt, wx, wz) {
 
 function getHeight(wx, wz) {
 	const mnt = noise.noise2D_mountain(wx * 0.008, wz * 0.008);
+	const h = heightFrom(
+		noise.noise2D(wx * BIOME_FREQ, wz * BIOME_FREQ),
+		smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
+		wx,
+		wz
+	);
+	// Fase 21 (v21.2, D1): la altura real del terreno incluye el valle del
+	// río (orillas inclinadas hacia el cauce y el cauce bajo el nivel del
+	// mar) — la misma altura que genera los chunks, para que los tests de
+	// saltos/transiciones midan el terreno REAL.
 	// Fase 15 (D5): Y de MUNDO — el diseño (3..27) se re-basa restando
 	// DESIGN_OFFSET para que la superficie real quede anclada en ~0.
-	return (
-		heightFrom(
-			noise.noise2D(wx * BIOME_FREQ, wz * BIOME_FREQ),
-			smoothstep(MOUNTAIN_RAMP[0], MOUNTAIN_RAMP[1], mnt),
-			wx,
-			wz
-		) - DESIGN_OFFSET
-	);
+	return riverCarvedHeight(wx, wz, h) - DESIGN_OFFSET;
 }
 
 // Bloque de superficie: la etiqueta dominante manda (nieve en tundra y
@@ -350,5 +421,13 @@ module.exports = {
 	smoothstep,
 	MOUNTAIN_RAMP,
 	riverDepth,
+	riverFloorY,
+	riverCarvedHeight,
+	riverInfluence,
+	riverBandW,
+	RIVER_WIDTH,
+	RIVER_BANK_MIN,
+	RIVER_BANK_K,
+	RIVER_FLOOR_CAP,
 	biomeFrom
 };
