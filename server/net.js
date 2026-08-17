@@ -5,21 +5,18 @@
 // ============================================================
 const express = require("express");
 const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
-const http = require("node:http");
+const _http = require("node:http");
 const WebSocket = require("ws");
 const path = require("node:path");
 const { v4: uuidv4 } = require("uuid");
 const constants = require("./constants.js");
 const {
-	PORT,
 	VIEW_DISTANCE_CHUNKS,
 	SPAWN_GRACE_MS,
-	WS_MAX_PAYLOAD,
 	MAX_CONNECTIONS,
 	MAX_MSG_RATE,
 	MAX_ACTION_RATE,
 	B,
-	I,
 	NOT_MINEABLE,
 	isSolidBlock,
 	xpToNext,
@@ -36,6 +33,9 @@ const tnt = require("./tnt.js"); // Fase 10 (D2)
 // Fase 18 (D-1): validación del move extraída — coords, void, bordes,
 // sólidos, parábola del salto/hover y ventana de velocidad (anticheat.js).
 const anticheat = require("./anticheat.js");
+// F20 v20.2: rate-limit por conexión en módulo puro (ventanas consecutivas —
+// una ráfaga tras un bloqueo del event loop no se confunde con un flood).
+const { createRateLimit } = require("./ratelimit.js");
 // Fase 18 (D-1): el relleno progresivo (chunkFill) lo consume el mainLoop de
 // timers.js; aquí solo se re-exporta lo que los handlers del switch necesitan.
 const worldSession = require("./world-session.js"); // Fase 18 (D-1): sesión de mundos
@@ -550,6 +550,12 @@ function handleConnection(ws, req) {
 		);
 	}
 
+	// Rate-limits por conexión (F20 v20.2): un contador para el tope global
+	// de mensajes y otro para el tope de acciones. Estado propio en el cierre
+	// del handler (el socket se comparte con los tests fake, que no deben
+	// arrastrar ventanas entre conexiones).
+	const msgRate = createRateLimit(MAX_MSG_RATE);
+	const actionRate = createRateLimit(MAX_ACTION_RATE);
 	ws.on("message", (raw) => {
 		let msg;
 		try {
@@ -579,19 +585,13 @@ function handleConnection(ws, req) {
 		// reales — los fakes de los tests reutilizan el mismo objeto con decenas
 		// de mensajes en milisegundos y no son un flood). El juego normal emite
 		// ~20 mensajes/s (moves) con picos al chatear/minear; más de 30/s
-		// sostenidos es flood (bots o cliente roto) y se corta la conexión. La
-		// ventana es deslizante (1 s).
+		// sostenidos es flood (bots o cliente roto) y se corta la conexión.
+		// F20 v20.2 (bug de Notas del usuario): el cierre exige superar el
+		// límite en ventanas CONSECUTIVAS — una ráfaga legítima tras un
+		// bloqueo síncrono del event loop (carga de mundo en join_world) ya no
+		// se confunde con un flood (ver server/ratelimit.js).
 		if (realSocket) {
-			const nowRate = Date.now();
-			if (!ws.rateWindow) {
-				ws.rateWindow = nowRate;
-				ws.rateCount = 0;
-			}
-			if (nowRate - ws.rateWindow >= 1000) {
-				ws.rateWindow = nowRate;
-				ws.rateCount = 0;
-			}
-			if (++ws.rateCount > MAX_MSG_RATE) {
+			if (msgRate.hit()) {
 				try {
 					ws.rateLimited = true;
 					ws.close(1008, "demasiados mensajes"); // 1008 = policy violation
@@ -607,21 +607,14 @@ function handleConnection(ws, req) {
 			// límite. Este contador SEPARADO pesa solo los eventos de mutación
 			// del mundo/inventario/chat: más de MAX_ACTION_RATE por segundo
 			// sostenido es flood de acciones y se corta. `move` y `tick` no
-			// cuentan (el rate global ya los cubre).
+			// cuentan (el rate global ya los cubre). Mismo criterio de ventanas
+			// consecutivas que el global.
 			if (
 				event !== "move" &&
 				event !== "tick" &&
 				event !== "textures_reload" // del lado del SERVIDOR (reload)
 			) {
-				if (!ws.actionWindow) {
-					ws.actionWindow = nowRate;
-					ws.actionCount = 0;
-				}
-				if (nowRate - ws.actionWindow >= 1000) {
-					ws.actionWindow = nowRate;
-					ws.actionCount = 0;
-				}
-				if (++ws.actionCount > MAX_ACTION_RATE) {
+				if (actionRate.hit()) {
 					try {
 						ws.rateLimited = true;
 						ws.close(1008, "demasiadas acciones"); // 1008 = policy violation

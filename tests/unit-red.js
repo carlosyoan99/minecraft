@@ -1421,15 +1421,21 @@ function connect() {
 }
 
 // ============================================================
-// AUDITORÍA 2026-08-09 (§3.1): RATE-LIMIT POR CONEXIÓN
-// Un socket real (con req de upgrade) que supere MAX_MSG_RATE mensajes en la
-// ventana de 1 s se corta (se marca rateLimited). El FakeWS se adapta para
+// AUDITORÍA 2026-08-09 (§3.1) + F20 v20.2: RATE-LIMIT POR CONEXIÓN
+// Un socket real (con req de upgrade) que supere MAX_MSG_RATE mensajes se
+// corta SOLO si el flood es SOSTENIDO (el límite superado en ventanas
+// consecutivas, server/ratelimit.js). Una RÁFAGA de una sola ventana —p. ej.
+// los moves acumulados durante un bloqueo síncrono del event loop al cargar
+// un mundo en join_world— es LEGÍTIMA y no debe cortar (bug «desconexión al
+// terminar de cargar el mundo», Notas del usuario). El FakeWS se adapta para
 // registrar "close" sin romper; handleConnection recibe req truthy.
 // ============================================================
 {
+	// Flood SOSTENIDO: 40 mensajes en la ventana 1 + 40 en la ventana 2
+	// (tras 1,1 s) → se corta en la transición a la ventana 2.
 	const wsR = new FakeWS();
 	wsR.closeCount = 0;
-	wsR.close = (code, reason) => {
+	wsR.close = (code, _reason) => {
 		wsR.closeCount++;
 		wsR.closeCode = code;
 	};
@@ -1440,17 +1446,45 @@ function connect() {
 		event: "move",
 		data: { x: pR.x, y: pR.y, z: pR.z }
 	});
-	// El rate-limit exige MAX_MSG_RATE+1 mensajes en la misma ventana (1 s);
-	// sin esperar, todos caen en la misma ventana — el límite debe cortar.
-	for (let i = 0; i < 40; i++) wsR.emit("message", flood);
+	for (let i = 0; i < 40; i++) wsR.emit("message", flood); // ventana 1: ráfaga
+	// La 1ª ventana sola NO corta (es la ráfaga tras un bloqueo del loop).
 	check(
-		"rate-limit: un flood de mensajes salta el límite y cierra la conexión",
-		wsR.rateLimited === true && wsR.closeCount >= 1,
-		`rateLimited=${wsR.rateLimited} close=${wsR.closeCount}`
+		"rate-limit: una ráfaga de una ventana no corta (backlog tras bloqueo)",
+		!wsR.rateLimited,
+		`rateLimited=${wsR.rateLimited}`
+	);
+	// Esperar a la ventana 2 y volver a inundar: 2ª ventana consecutiva
+	// sobre el límite → flood sostenido → cierre.
+	const wsR2 = new FakeWS();
+	wsR2.closeCount = 0;
+	wsR2.close = (code, _reason) => {
+		wsR2.closeCount++;
+		wsR2.closeCode = code;
+	};
+	state.players.clear();
+	net.handleConnection(wsR2, { url: "ws://localhost/?name=rate2" });
+	const pR2 = [...state.players.values()][0];
+	const flood2 = JSON.stringify({
+		event: "move",
+		data: { x: pR2.x, y: pR2.y, z: pR2.z }
+	});
+	// Ventana 1: ráfaga + mensajes normales hasta rebasar el límite.
+	for (let i = 0; i < 40; i++) wsR2.emit("message", flood2);
+	// Ventana 2: esperar 1,1 s (nueva ventana) y volver a inundar → el
+	// cierre se decide en la transición de la ventana 2.
+	const end = Date.now() + 1100;
+	while (Date.now() < end) {
+		/* espera síncrona: 1,1 s (el rate usa Date.now) */
+	}
+	for (let i = 0; i < 40; i++) wsR2.emit("message", flood2);
+	check(
+		"rate-limit: un flood SOSTENIDO (2 ventanas) salta el límite y cierra",
+		wsR2.rateLimited === true && wsR2.closeCount >= 1,
+		`rateLimited=${wsR2.rateLimited} close=${wsR2.closeCount}`
 	);
 	check(
 		"rate-limit: cierre con código 1008 (policy violation)",
-		wsR.closeCode === 1008
+		wsR2.closeCode === 1008
 	);
 	state.players.clear();
 	// Y un jugador FAKE (sin req) no sufre el límite: los tests de la suite
@@ -1481,30 +1515,59 @@ function connect() {
 {
 	const wsA = new FakeWS();
 	wsA.closeCount = 0;
-	wsA.close = (code, reason) => {
+	wsA.close = (code, _reason) => {
 		wsA.closeCount++;
 		wsA.closeCode = code;
 	};
 	state.players.clear();
 	net.handleConnection(wsA, { url: "ws://localhost/?name=actflood" });
-	const pA = [...state.players.values()][0];
+	const _pA = [...state.players.values()][0];
 	const accion = JSON.stringify({
 		event: "chat",
 		data: { text: "hola" }
 	});
 	// MAX_ACTION_RATE=20 < MAX_MSG_RATE=30: con 25 acciones no se dispara el
-	// rate global (no son 30 mensajes) pero sí el tope por acción.
+	// rate global (no son 30 mensajes) pero sí el tope por acción. El cierre
+	// exige flood SOSTENIDO (2 ventanas consecutivas, F20 v20.2): la 1ª
+	// ventana de 25 acciones es una ráfaga y NO corta; la 2ª consecutiva sí.
 	for (let i = 0; i < 25; i++) wsA.emit("message", accion);
 	check(
-		"B2: flood de acciones (chat) salta el límite y corta la conexión",
-		wsA.rateLimited === true && wsA.closeCode === 1008,
-		`rateLimited=${wsA.rateLimited} code=${wsA.closeCode}`
+		"B2: una ráfaga de acciones (1 ventana) no corta (backlog legítimo)",
+		!wsA.rateLimited,
+		`rateLimited=${wsA.rateLimited}`
+	);
+	const wsA2 = new FakeWS();
+	wsA2.closeCount = 0;
+	wsA2.close = (code, _reason) => {
+		wsA2.closeCount++;
+		wsA2.closeCode = code;
+	};
+	state.players.clear();
+	net.handleConnection(wsA2, { url: "ws://localhost/?name=actflood2" });
+	const _pA2 = [...state.players.values()][0];
+	// Ventana 1: 25 acciones (ráfaga, no corta).
+	for (let i = 0; i < 25; i++) wsA2.emit("message", accion);
+	check(
+		"B2: 1ª ventana de acciones no corta (ráfaga tras bloqueo)",
+		!wsA2.rateLimited,
+		`rateLimited=${wsA2.rateLimited}`
+	);
+	// Ventana 2 (1,1 s después): 25 acciones consecutivas → flood sostenido.
+	const endA = Date.now() + 1100;
+	while (Date.now() < endA) {
+		/* espera síncrona: 1,1 s (nueva ventana) */
+	}
+	for (let i = 0; i < 25; i++) wsA2.emit("message", accion);
+	check(
+		"B2: flood SOSTENIDO de acciones (2 ventanas) corta la conexión",
+		wsA2.rateLimited === true && wsA2.closeCode === 1008,
+		`rateLimited=${wsA2.rateLimited} code=${wsA2.closeCode}`
 	);
 	// Y con menos acciones por segundo, dentro de la cuota, no se corta.
 	const wsOK = new FakeWS();
 	state.players.clear();
 	net.handleConnection(wsOK, { url: "ws://localhost/?name=actok" });
-	const pOK = [...state.players.values()][0];
+	const _pOK = [...state.players.values()][0];
 	for (let i = 0; i < 5; i++) wsOK.emit("message", accion);
 	check(
 		"B2: acciones moderadas por segundo no se cortan (no hay flood)",
@@ -1702,7 +1765,7 @@ function connect() {
 // entradas por templo visitado — se limpian cuando nadie pisa el templo.
 // ============================================================
 {
-	const { ws, player: p } = connect();
+	const { player: p } = connect();
 	// Cooldown huérfano: templo con una entrada pero sin jugador encima.
 	state.templeTrapCooldowns.set("990,990", Date.now() - 1000);
 	// Jugador lejos de cualquier templo.
