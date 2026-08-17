@@ -22,6 +22,7 @@
 | Comandos y reloj del mundo (día/noche MC, luna) | [`comandos-reloj.md`](./comandos-reloj.md) | `commands.js` |
 | Persistencia (guardado asíncrono, migraciones) | [`persistencia.md`](./persistencia.md) | `save.js`, `save-chunks.js`, `save-meta.js`, `save-players.js` |
 | Seguridad y robustez (validación, rate-limit, anti-DoS) | [`seguridad.md`](./seguridad.md) | `net.js`, `actions.js`, `anticheat.js`, `ratelimit.js` |
+| Pesca (**planificada** — F21.5 A1/A8) | [`pesca.md`](./pesca.md) | `fishing.js` (nuevo), `projectiles.js`, `chests.js`, `recetas.json` |
 
 ## El bucle principal (20 ticks/s)
 
