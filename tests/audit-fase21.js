@@ -167,11 +167,18 @@ const r = new Reporter();
 		for (let wx = -800; wx <= 800; wx += 4) {
 			for (let wz = -800; wz <= 800; wz += 4) {
 				if (!biomes.isRiver(wx, wz)) continue;
-				const temp = noise.noise2D(wx * biomes.BIOME_FREQ, wz * biomes.BIOME_FREQ);
+				const temp = noise.noise2D(
+					wx * biomes.BIOME_FREQ,
+					wz * biomes.BIOME_FREQ
+				);
 				const mnt = noise.noise2D_mountain(wx * 0.008, wz * 0.008);
 				const h = biomes.heightFrom(
 					temp,
-					biomes.smoothstep(biomes.MOUNTAIN_RAMP[0], biomes.MOUNTAIN_RAMP[1], mnt),
+					biomes.smoothstep(
+						biomes.MOUNTAIN_RAMP[0],
+						biomes.MOUNTAIN_RAMP[1],
+						mnt
+					),
 					wx,
 					wz
 				);

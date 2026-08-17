@@ -1438,7 +1438,10 @@ function connect() {
 		event: "move",
 		data: { x: beforeX + 1, y: p.y, z: p.z, junk: "x".repeat(MAX_MSG_BYTES) }
 	});
-	check("tope tamaño: el mensaje de prueba supera MAX_MSG_BYTES", huge.length > MAX_MSG_BYTES);
+	check(
+		"tope tamaño: el mensaje de prueba supera MAX_MSG_BYTES",
+		huge.length > MAX_MSG_BYTES
+	);
 	ws.emit("message", huge);
 	check(
 		"tope tamaño: el JSON gigante se descarta (no desplaza al jugador)",
