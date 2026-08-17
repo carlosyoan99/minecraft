@@ -19,7 +19,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const SPEC_DIR = path.join(ROOT, "docs", "spec");
-const AUDIT_DIR = path.join(ROOT, "docs", "audits");
+const _AUDIT_DIR = path.join(ROOT, "docs", "audits");
 
 const VALID_STATES = [
 	"[COMPLETADA]",
@@ -67,7 +67,7 @@ function allowsPendingTests(content) {
 }
 
 function main() {
-	const verbose = process.argv.includes("--verbose");
+	const _verbose = process.argv.includes("--verbose");
 	const errors = [];
 	const warnings = [];
 	let specCount = 0;

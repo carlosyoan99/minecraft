@@ -48,7 +48,7 @@ function removeTorch(wx, wy, wz) {
 }
 // Antorchas del vecindario 3×3 de chunks de un bloque: cubre SIEMPRE el
 // radio de luz (LIGHT_RADIUS 7 < 16). O(torchSet del vecindario), no O(todas).
-export function getTorchesNear(wx, wy, wz) {
+export function getTorchesNear(wx, _wy, wz) {
 	const cx = Math.floor(wx / CHUNK_SIZE),
 		cz = Math.floor(wz / CHUNK_SIZE);
 	const out = [];

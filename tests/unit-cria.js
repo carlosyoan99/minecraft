@@ -15,11 +15,12 @@ process.on("exit", () => {
 		);
 });
 const check = (n, c, x) => {
-	c
-		? ok++
-		: (fail++,
-			failedChecks.push(n),
-			console.log("FAIL: " + n + " " + (x || "")));
+	if (c) ok++;
+	else {
+		fail++;
+		failedChecks.push(n);
+		console.log(`FAIL: ${n} ${x || ""}`);
+	}
 };
 
 // Patch seguro para el tick: suelo siempre sólido, así no dependemos del mundo real
@@ -131,8 +132,8 @@ for (let i = 0; i < 1300; i++) {
 check(
 	"bebé crece a adulto tras ~1200 ticks",
 	!bebe3.isBaby && ticks >= 1190 && ticks <= 1200,
-	"ticks=" + ticks
+	`ticks=${ticks}`
 );
 
-console.log(ok + " OK, " + fail + " FAIL");
+console.log(`${ok} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

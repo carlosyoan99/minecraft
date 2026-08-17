@@ -30,7 +30,6 @@ process.on("exit", () => {
 		);
 });
 const check = (name, ok, extra = "") => {
-	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(`${ok ? "OK " : "✗  "}${name}${extra ? ` — ${extra}` : ""}`);
 	if (!ok) {
 		failed++;
@@ -112,7 +111,7 @@ fs.writeFileSync(
 	// Lee el color del vértice del terreno en (vx,vy,vz) con normal +Y.
 	// Devuelve la lista de colores (el vértice se repite en 2 triángulos).
 	const colorAt = (geo, vx, vy, vz) => {
-		if (!geo || !geo.pos) return [];
+		if (!geo?.pos) return [];
 		const pos = geo.pos,
 			norm = geo.norm,
 			col = geo.col;

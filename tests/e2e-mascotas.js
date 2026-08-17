@@ -36,8 +36,8 @@ let followInitial = null; // distancia inicial tras alejar al jugador
 let followMin = Infinity;
 let tamedTick = 0;
 let sitOk = false;
-const seenTameMobs = new Set(); // ids de tame_mob ya enviados
-let tameAttempts = 0;
+const _seenTameMobs = new Set(); // ids de tame_mob ya enviados
+let _tameAttempts = 0;
 // Auditoría 2026-08-15 (B2): el rate-limit POR ACCIÓN (MAX_ACTION_RATE =
 // 20/s) cortaba la conexión durante el equipado: cada equip_armor dispara
 // un inventory_update y el test respondía con inventory_select + equip_armor
@@ -51,15 +51,15 @@ let armorSent = 0;
 // aparecería. Mientras se espera al lobo, /kill mobs (comando dev nuevo)
 // vacía el mundo cada 8s para que el sorteo por bioma tenga hueco.
 let killMobsTimer = null;
-let killMobsPending = false;
+let _killMobsPending = false;
 function startKillMobs() {
-	killMobsPending = true;
+	_killMobsPending = true;
 	killMobsTimer = setInterval(() => {
 		if (phase === "esperar-lobo") send("chat", { message: "/kill mobs" });
 	}, 8000);
 }
 function stopKillMobs() {
-	killMobsPending = false;
+	_killMobsPending = false;
 	if (killMobsTimer) {
 		clearInterval(killMobsTimer);
 		killMobsTimer = null;
@@ -309,7 +309,7 @@ ws.on("message", (d) => {
 			setTimeout(
 				() => {
 					send("tame_mob", { mobId: wolfId });
-					tameAttempts++;
+					_tameAttempts++;
 				},
 				i < 10 ? 0 : i < 20 ? 1100 : 2200
 			);

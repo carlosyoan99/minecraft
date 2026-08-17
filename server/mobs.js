@@ -22,7 +22,6 @@ const { v4: uuidv4 } = require("uuid");
 const constants = require("./constants.js");
 const {
 	B,
-	I,
 	WORLD_MAX_Y,
 	MOB_XP,
 	MOB_COLORS,
@@ -60,7 +59,7 @@ let tickEnderman = () => {};
 let tickPassive = () => {};
 let tickOcelot = () => {};
 let tickCat = () => {};
-let tickPet = () => {};
+let _tickPet = () => {};
 let tickSlime = () => {};
 let tickDrowned = () => {};
 let tickBee = () => {};
@@ -628,7 +627,7 @@ class Mob {
 	tickPassive,
 	tickOcelot,
 	tickCat,
-	tickPet,
+	_tickPet,
 	tickSlime,
 	tickDrowned,
 	tickBee,

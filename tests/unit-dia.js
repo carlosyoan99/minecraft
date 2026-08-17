@@ -212,7 +212,6 @@ const { Reporter, loaderESM } = require("./helpers.js");
 
 	r.done();
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar, convención del proyecto)
 	console.error("unit-dia:", e.message);
 	process.exit(1);
 });

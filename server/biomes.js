@@ -10,7 +10,7 @@
 // necesitan (structures, generation). Las cachés se limpian al re-sembrar
 // (noise.onReinit — mismo ciclo de vida que en world.js).
 // ============================================================
-const { B, WORLD_MIN_Y } = require("./constants.js");
+const { B } = require("./constants.js");
 const noise = require("./noise.js");
 
 const MAX_BIOME_CACHE = 65536;

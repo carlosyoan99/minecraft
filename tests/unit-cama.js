@@ -11,7 +11,7 @@ const state = require("../server/state.js");
 const world = require("../server/world.js");
 const crafting = require("../server/crafting.js");
 const playerHelpers = require("../server/players.js");
-const { B, I, DAY_CYCLE_MS, DAY_PHASES } = require("../server/constants.js");
+const { B, DAY_CYCLE_MS, DAY_PHASES } = require("../server/constants.js");
 
 world.setDiskLoader(() => null);
 crafting.loadRecipes();

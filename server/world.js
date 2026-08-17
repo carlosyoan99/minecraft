@@ -20,7 +20,7 @@ const {
 	GRAVITY_BLOCKS
 } = constants;
 const state = require("./state.js");
-const chests = require("./chests.js"); // cofres de loot de las minas abandonadas (Fase 7)
+const _chests = require("./chests.js"); // cofres de loot de las minas abandonadas (Fase 7)
 
 const { chunks, dirtyChunks } = state;
 // Fase 18 (D-3): ruido, biomas, estructuras y generación extraídos a sus
@@ -316,7 +316,7 @@ function isSolidAt(wx, wy, wz) {
 		const d = state.doors.get(
 			`${Math.floor(wx)},${Math.floor(wy)},${Math.floor(wz)}`
 		);
-		return !d || !d.open;
+		return !d?.open;
 	}
 	// Losa: media caja inferior (la Y fraccionaria del punto decide).
 	if (b === B.OAK_SLAB || b === B.STONE_SLAB) {

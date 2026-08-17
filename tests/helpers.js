@@ -30,13 +30,11 @@ class Reporter {
 		else {
 			this.fail++;
 			this.failedChecks.push(name);
-			// biome-ignore lint/suspicious/noConsole: fallo real del test (convención del proyecto)
 			console.log(`✗ ${name} ${extra}`.trim());
 		}
 	}
 	// Cierra el test con el balance y el exit code (0 verde / 1 rojo).
 	done() {
-		// biome-ignore lint/suspicious/noConsole: reporte del test (convención del proyecto)
 		console.log(`${this.ok} OK, ${this.fail} FAIL`);
 		process.exit(this.fail ? 1 : 0);
 	}

@@ -10,14 +10,13 @@
 // ============================================================
 import { send } from "./connection.js";
 import { dropAction } from "./draglogic.js";
-import { itemVisual } from "./hud.js";
 
 const DRAG_THRESHOLD = 5; // px de movimiento para entrar en modo arrastre
 
 // Identifica un slot y su contexto. Devuelve { kind, index } o null.
 // kind: "inv" | "grid" | "chest" | "fuel" | "input" | "output" | "armor"
 function slotInfo(el) {
-	if (!el || !el.classList || !el.classList.contains("slot")) return null;
+	if (!el?.classList?.contains("slot")) return null;
 	let kind = null;
 	if (el.id === "furnace-fuel") kind = "fuel";
 	else if (el.id === "furnace-input") kind = "input";
@@ -73,7 +72,7 @@ function moveDrag(el, x, y) {
 	drag.ghost.style.top = `${y + 8}px`;
 }
 
-function endDrag(el, x, y) {
+function endDrag(_el, x, y) {
 	if (!drag) return;
 	if (drag.ghost) drag.ghost.remove();
 	const src = drag.src;

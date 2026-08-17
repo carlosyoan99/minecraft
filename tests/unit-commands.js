@@ -560,7 +560,7 @@ check(
 	check(
 		"SV-5: /give 999 troncos → stack de 64 (tope)",
 		!!stack && stack.count === 64,
-		`count=${stack && stack.count}`
+		`count=${stack?.count}`
 	);
 }
 

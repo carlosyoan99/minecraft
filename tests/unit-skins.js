@@ -231,7 +231,6 @@ function connect(url) {
 
 	r.done();
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar, convención del proyecto)
 	console.error("unit-skins:", e.message);
 	process.exit(1);
 });

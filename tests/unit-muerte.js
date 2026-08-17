@@ -27,7 +27,6 @@ process.on("exit", () => {
 		);
 });
 const check = (name, ok, extra = "") => {
-	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(`${ok ? "OK " : "✗  "}${name}${extra ? ` — ${extra}` : ""}`);
 	if (!ok) {
 		fails++;
@@ -78,12 +77,12 @@ function lastDie() {
 function fresh(player) {
 	player.health = 1;
 	player.spawnGraceUntil = 0;
-	wsSent = 0;
+	_wsSent = 0;
 	broadcasts.length = 0;
 }
-let wsSent = 0;
+let _wsSent = 0;
 const countSent = (ws) => {
-	wsSent = ws.sent.length;
+	_wsSent = ws.sent.length;
 };
 
 // ============================================================

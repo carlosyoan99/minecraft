@@ -13,7 +13,7 @@
 // ============================================================
 const fs = require("node:fs");
 const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
-const path = require("node:path");
+const _path = require("node:path");
 const constants = require("./constants.js");
 const state = require("./state.js");
 const world = require("./world.js");

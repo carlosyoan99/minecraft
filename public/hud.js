@@ -87,7 +87,7 @@ const slotEls = Array.from({ length: 9 }, (_, i) => {
 	hotbarEl.appendChild(s);
 	return s;
 });
-let hoveredSlot = -1; // para no reescribir el tooltip si ya está mostrando este slot
+let _hoveredSlot = -1; // para no reescribir el tooltip si ya está mostrando este slot
 
 // Fase 16 (B4, CL-1): durabilidad máxima real de un ítem. El fallback global
 // BOW_DURABILITY hacía que TODO ítem sin durabilidad (adoquín, comida, ...)
@@ -116,10 +116,10 @@ const slotHtml = (i) => {
 
 export function updateHotbarUI() {
 	tooltipEl.classList.add("hidden");
-	hoveredSlot = -1;
+	_hoveredSlot = -1;
 	for (let i = 0; i < 9; i++) {
 		const slot = slotEls[i];
-		const item = inventory[i];
+		const _item = inventory[i];
 		// Solo tocar el DOM si cambió el contenido o la selección.
 		const nextHtml = slotHtml(i);
 		if (slot.innerHTML !== nextHtml) slot.innerHTML = nextHtml;
@@ -172,13 +172,13 @@ hotbarEl.addEventListener("mouseover", (ev) => {
 	if (i < 0) return;
 	const item = inventory[i];
 	if (!item) return;
-	hoveredSlot = i;
+	_hoveredSlot = i;
 	showTooltip(slotTooltipHtml(item));
 });
 hotbarEl.addEventListener("mouseout", (ev) => {
 	const slot = ev.target.closest(".hotbar-slot");
 	if (!slot || slot.contains(ev.relatedTarget)) return;
-	hoveredSlot = -1;
+	_hoveredSlot = -1;
 	hideTooltip();
 });
 function updateHealthUI() {

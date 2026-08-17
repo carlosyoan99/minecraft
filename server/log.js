@@ -24,20 +24,17 @@ function ts() {
 const LEVELS = { error: 0, warn: 1, info: 2 };
 const THRESHOLD = LEVELS[(process.env.LOG_LEVEL || "info").toLowerCase()] ?? 2;
 
-// biome-ignore lint/suspicious/noConsole: el wrapper ES la excepción
 // central de la convención (los consumidores usan log.*, no console.*).
 function info(...args) {
 	if (THRESHOLD < LEVELS.info) return;
 	console.log(`[info] [${ts()}]`, ...args);
 }
 
-// biome-ignore lint/suspicious/noConsole: idem (warn)
 function warn(...args) {
 	if (THRESHOLD < LEVELS.warn) return;
 	console.warn(`[warn] [${ts()}]`, ...args);
 }
 
-// biome-ignore lint/suspicious/noConsole: idem (error)
 function error(...args) {
 	if (THRESHOLD < LEVELS.error) return;
 	console.error(`[error] [${ts()}]`, ...args);

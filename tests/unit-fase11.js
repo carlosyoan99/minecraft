@@ -41,7 +41,6 @@ const check = (_name, ok, _extra = "") => {
 	if (!ok) {
 		failed++;
 		failedChecks.push(_name);
-		// biome-ignore lint/suspicious/noConsole: resumen del test (convención del repo)
 		console.log(`FAIL: ${_name} | ${_extra}`);
 	}
 };

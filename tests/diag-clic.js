@@ -152,7 +152,6 @@ function findChrome() {
 (async () => {
 	const chrome = findChrome();
 	if (!chrome) {
-		// biome-ignore lint/suspicious/noConsole: salida del diagnóstico
 		console.log("⚠️  CDP omitido: no se encontró Chrome/Chromium");
 		process.exit(0);
 	}
@@ -167,7 +166,6 @@ function findChrome() {
 	let cdp = null;
 	let auditFailed = 0;
 	const auditCheck = (name, ok, extra = "") => {
-		// biome-ignore lint/suspicious/noConsole: resumen de la auditoría
 		console.log(`${ok ? "✔" : "✘"} ${name}${extra ? ` | ${extra}` : ""}`);
 		if (!ok) auditFailed++;
 	};
@@ -180,7 +178,6 @@ function findChrome() {
 			250
 		);
 		if (!up) {
-			// biome-ignore lint/suspicious/noConsole: salida del diagnóstico
 			console.log("❌ servidor desechable no arrancó");
 			process.exit(1);
 		}
@@ -332,7 +329,7 @@ function findChrome() {
 		}
 
 		// 4) Clic izquierdo (mantenido ~1.2s) en el centro de la pantalla
-		for (const [cx, cy, label] of [
+		for (const [cx, cy, _label] of [
 			[240, 180, "centro"],
 			[200, 150, "izq-arriba"],
 			[280, 220, "der-abajo"]
@@ -385,7 +382,6 @@ function findChrome() {
 			)
 			.slice(0, 8);
 
-		// biome-ignore lint/suspicious/noConsole: salida del diagnóstico
 		console.log("\n===== TELEMETRÍA =====");
 		console.log("TRACE:", JSON.stringify(trace, null, 1));
 		console.log("STATS:", JSON.stringify(stats));

@@ -18,7 +18,6 @@ const ws = new WebSocket(`${URL}/?name=${encodeURIComponent(NAME)}`);
 const damages = [];
 let healthNow = null;
 
-// biome-ignore lint/suspicious/noConsole: salida de diagnóstico
 const log = (...a) => console.log(...a);
 
 ws.on("message", (raw) => {

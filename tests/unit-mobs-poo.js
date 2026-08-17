@@ -26,7 +26,7 @@ const check = (name, ok, extra = "") => {
 		fails++;
 		failedChecks.push(name);
 	}
-	console.log(`${ok ? "🟢" : "🔴"} ${name}${extra ? " — " + extra : ""}`);
+	console.log(`${ok ? "🟢" : "🔴"} ${name}${extra ? ` — ${extra}` : ""}`);
 };
 
 // --- 1. La fábrica devuelve la subclase correcta por tipo -------------

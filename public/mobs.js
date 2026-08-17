@@ -36,7 +36,7 @@ function disposeMesh(mesh) {
 		if (o.material && !o.userData?.sharedMaterial) o.material.dispose();
 	});
 	const shared = mesh.userData?.material;
-	if (shared && shared.dispose) shared.dispose();
+	if (shared?.dispose) shared.dispose();
 	const nt = mesh.userData?.nameTag;
 	if (nt?.tag?.material) {
 		if (nt.tag.material.map?.dispose) nt.tag.material.map.dispose();

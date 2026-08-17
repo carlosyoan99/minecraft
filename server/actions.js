@@ -18,7 +18,6 @@ const {
 	B,
 	I,
 	FUEL_ITEMS,
-	isSolidBlock,
 	isTool,
 	isArmor,
 	ARMOR_SLOTS,
@@ -47,12 +46,12 @@ function setWorldTimeFn(fn) {
 
 // Broadcasts definidos en net.js (a todos / a los que ven el bloque).
 let broadcast = () => {};
-let broadcastNear = () => {};
+let _broadcastNear = () => {};
 function setBroadcastFn(fn) {
 	broadcast = fn;
 }
 function setBroadcastNearFn(fn) {
-	broadcastNear = fn;
+	_broadcastNear = fn;
 }
 
 // ============================================================
@@ -65,7 +64,7 @@ function setBroadcastNearFn(fn) {
 // del wire directamente: un cliente podía reenviar la grid de cualquier
 // receta cada frame y craftear ítems infinitos sin coste (duplicación de
 // recursos en survival).
-function handleCraft(p, ws, data) {
+function handleCraft(p, ws, _data) {
 	const recipe = crafting.matchRecipe(p.craftingGrid);
 	if (recipe) {
 		for (let i = 0; i < 9; i++) {
@@ -156,7 +155,7 @@ function handleGridReturn(p, ws, data) {
 // inventario→inventario). Validación de índices enteros 0-35 y from !== to
 // (patrón F16 C2); sin validación extra: el servidor es la fuente de verdad
 // y el swap no crea ni destruye ítems.
-function handleInventorySwap(p, ws, data) {
+function handleInventorySwap(p, _ws, data) {
 	const { from, to } = data;
 	if (!Number.isInteger(from) || !Number.isInteger(to)) return;
 	if (from < 0 || from > 35 || to < 0 || to > 35 || from === to) return;

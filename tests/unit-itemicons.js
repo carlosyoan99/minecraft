@@ -99,7 +99,7 @@ const check = (_name, okVal, _extra = "") => {
 	// (recorte nunca fuera de rango). El atlas tiene una fila con tantas
 	// teselas como ids; el recorte usa col = posición del id en itemIconIds().
 	const ids = itemicons.itemIconIds();
-	const outOfRange = ids.filter((id, i) => i >= ids.length);
+	const outOfRange = ids.filter((_id, i) => i >= ids.length);
 	check(
 		"toda tesela del atlas tiene columna en rango (recorte CSS válido)",
 		outOfRange.length === 0 && ids.length > 0
@@ -147,10 +147,9 @@ const check = (_name, okVal, _extra = "") => {
 		`${pixels(itemicons.itemIconGrid(217))} px`
 	);
 
-	console.log(ok + " OK, " + fail + " FAIL");
+	console.log(`${ok} OK, ${fail} FAIL`);
 	process.exit(fail ? 1 : 0);
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar, convención del proyecto)
 	console.error("unit-itemicons:", e.message);
 	process.exit(1);
 });

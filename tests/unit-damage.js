@@ -36,7 +36,6 @@ const check = (name, cond, extra = "") => {
 	else {
 		fail++;
 		failedChecks.push(name);
-		// biome-ignore lint/suspicious/noConsole: fallo real del test (convención del proyecto)
 		console.log(`✗ ${name} ${extra}`.trim());
 	}
 };
@@ -285,6 +284,5 @@ function fallDamageExpect(blocks) {
 }
 
 world.setDiskLoader(null);
-// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 console.log(`${ok} OK, ${fail} FAIL (telemetría de daño)`);
 process.exit(fail ? 1 : 0);

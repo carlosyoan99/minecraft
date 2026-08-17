@@ -293,7 +293,6 @@ const { Reporter, loaderESM } = require("./helpers.js");
 
 	r.done();
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar, convención del proyecto)
 	console.error("error en el test:", e);
 	process.exit(1);
 });

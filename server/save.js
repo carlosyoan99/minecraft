@@ -37,10 +37,11 @@ const { saveWorldAsync } = require("./save-chunks.js");
 const {
 	playerSnapshot,
 	savePlayer,
+	savePlayersAsync,
 	restorePlayer
 } = require("./save-players.js");
 
-const { chunks, players, furnaces, chests, dirtyChunks } = state;
+const { chunks, players, dirtyChunks } = state;
 // Atajos a las rutas del mundo ACTIVO (holder mutable de constants.js: la
 // semilla puede cambiar en runtime con switchWorld, y los tests redirigen el
 // I/O a un directorio temporal mutando constants.worldPaths).
@@ -367,6 +368,7 @@ module.exports = {
 	renameWorld,
 	setWorldMode,
 	playerSnapshot, // save-players (F17 B1)
-	savePlayer,
+	savePlayer, // síncrono: desconexión, switchWorld, SIGINT/SIGTERM
+	savePlayersAsync, // REN-1 (v20.2): autosave por la cola asíncrona
 	restorePlayer
 };

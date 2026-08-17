@@ -14,12 +14,7 @@
 // ============================================================
 const world = require("../server/world.js");
 const state = require("../server/state.js");
-const {
-	CHUNK_SIZE,
-	WORLD_MIN_Y,
-	B,
-	isSolidBlock
-} = require("../server/constants.js");
+const { CHUNK_SIZE, WORLD_MIN_Y, B } = require("../server/constants.js");
 
 world.setDiskLoader(() => null);
 

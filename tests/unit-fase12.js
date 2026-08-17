@@ -49,7 +49,6 @@ const check = (_name, ok, _extra = "") => {
 	if (!ok) {
 		failed++;
 		failedChecks.push(_name);
-		// biome-ignore lint/suspicious/noConsole: resumen del test (convención del repo)
 		console.log(`FAIL: ${_name} | ${_extra}`);
 	}
 };
@@ -1078,6 +1077,5 @@ const mkPlayer = (over = {}) => ({
 // ============================================================
 // RESUMEN
 // ============================================================
-// biome-ignore lint/suspicious/noConsole: resumen del test (convención del repo)
 console.log(`${total} OK, ${failed} FAIL`);
 process.exit(failed ? 1 : 0);

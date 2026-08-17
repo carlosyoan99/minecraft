@@ -13,7 +13,7 @@ const WebSocket = require("ws");
 const path = require("node:path");
 const URL = process.env.WS_URL || "ws://localhost:3998";
 
-const CHEST = 22;
+const _CHEST = 22;
 const results = [];
 let finished = false;
 const t0 = Date.now();

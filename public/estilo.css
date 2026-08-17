@@ -1001,6 +1001,26 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 }
 /* Fase 19 (F): los slots de los paneles no inician scroll táctil — el dedo
    puede arrastrar ítems (el tap sigue siendo el movimiento por click). */
+.slot {
+	width: 40px;
+	height: 40px;
+	background: var(--mc-bg-dark);
+	background-image: linear-gradient(
+		rgba(255, 255, 255, 0.16),
+		rgba(0, 0, 0, 0.16)
+	);
+	border: 2px solid;
+	border-color: var(--mc-border-light) var(--mc-border-dark)
+		var(--mc-border-dark) var(--mc-border-light);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 9px;
+	color: #fff;
+	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+	cursor: pointer;
+	position: relative;
+}
 .panel .slot {
 	touch-action: none;
 }
@@ -1159,39 +1179,19 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 /* F19.5 (B1): foco visible de la navegación por teclado en paneles —
    contorno dorado tipo Minecraft sobre el slot activo (no solo color: el
    anillo es la señal, el color refuerza). */
-.slot.a11y-focus {
-	outline: 3px solid var(--mc-focus);
-	outline-offset: -3px;
-	box-shadow: 0 0 6px rgba(255, 212, 84, 0.8);
-	z-index: 2;
-}
 
-.slot {
-	width: 40px;
-	height: 40px;
-	background: var(--mc-bg-dark);
-	background-image: linear-gradient(
-		rgba(255, 255, 255, 0.16),
-		rgba(0, 0, 0, 0.16)
-	);
-	border: 2px solid;
-	border-color: var(--mc-border-light) var(--mc-border-dark)
-		var(--mc-border-dark) var(--mc-border-light);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 9px;
-	color: #fff;
-	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
-	cursor: pointer;
-	position: relative;
-}
 .grid3 .slot {
 	width: 48px;
 	height: 48px;
 }
 .slot.result {
 	border-color: #9f9 #3a3a3a #3a3a3a #9f9;
+}
+.slot.a11y-focus {
+	outline: 3px solid var(--mc-focus);
+	outline-offset: -3px;
+	box-shadow: 0 0 6px rgba(255, 212, 84, 0.8);
+	z-index: 2;
 }
 .slot .count {
 	position: absolute;

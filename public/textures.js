@@ -586,7 +586,7 @@ function drawDoorOak(ctx, rng) {
 	px(ctx, 10, 7, "#c9a46b");
 	px(ctx, 10, 8, "#c9a46b");
 }
-function drawDoorIron(ctx, rng) {
+function drawDoorIron(ctx, _rng) {
 	for (let y = 0; y < 16; y++)
 		for (let x = 0; x < 16; x++) px(ctx, x, y, "#8a8a90");
 	// Panel central empotrado

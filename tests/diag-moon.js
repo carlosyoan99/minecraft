@@ -8,7 +8,7 @@
 const WebSocket = require("ws");
 
 const url = process.env.WS_URL || "ws://localhost:3000";
-const name = "DiagLuna-" + Math.random().toString(36).slice(2, 6);
+const name = `DiagLuna-${Math.random().toString(36).slice(2, 6)}`;
 const ws = new WebSocket(`${url}/?name=${encodeURIComponent(name)}`);
 
 let ok = 0;
@@ -16,11 +16,9 @@ let fail = 0;
 const check = (label, cond, extra = "") => {
 	if (cond) {
 		ok++;
-		// biome-ignore lint/suspicious/noConsole: diagnóstico (convención del proyecto)
 		console.log(`OK  ${label}${extra ? ` — ${extra}` : ""}`);
 	} else {
 		fail++;
-		// biome-ignore lint/suspicious/noConsole: diagnóstico (convención del proyecto)
 		console.log(`✗   ${label}${extra ? ` — ${extra}` : ""}`);
 	}
 };
@@ -65,12 +63,10 @@ ws.on("message", (raw) => {
 	}
 });
 ws.on("close", () => {
-	// biome-ignore lint/suspicious/noConsole: diagnóstico (convención del proyecto)
 	console.log(fail ? `\n${fail} FALLARON` : `\nTODO OK (${ok} checks)`);
 	process.exit(fail ? 1 : 0);
 });
 ws.on("error", (e) => {
-	// biome-ignore lint/suspicious/noConsole: diagnóstico (convención del proyecto)
 	console.error("WS error:", e.message);
 	process.exit(1);
 });

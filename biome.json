@@ -7,7 +7,14 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!public/vendor"]
+		"includes": [
+			"**",
+			"!public/vendor",
+			"!verify-menu-bg.tmp.js",
+			"!verify-burst.tmp.js",
+			"!verify-v202.tmp.js",
+			"!probe-input.tmp.js"
+		]
 	},
 	"formatter": {
 		"enabled": true,
@@ -22,6 +29,18 @@
 			}
 		}
 	},
+	"overrides": [
+		{
+			"includes": ["tests/**", "scripts/**", "server/log.js"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off"
+					}
+				}
+			}
+		}
+	],
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double",

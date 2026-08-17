@@ -85,7 +85,6 @@ const check = (_name, okVal, _extra = "") => {
 	console.log(`${ok} OK, ${fail} FAIL`);
 	process.exit(fail ? 1 : 0);
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar, convención del proyecto)
 	console.error("unit-recipecats:", e.message);
 	process.exit(1);
 });

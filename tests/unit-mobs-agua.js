@@ -20,14 +20,12 @@ const check = (n, c, x) => {
 	else {
 		fail++;
 		failedChecks.push(n);
-		// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 		console.log(`FAIL: ${n} ${x || ""}`);
 	}
 };
 
 // Mock de world.getBlock controlable por el test: recibe (wx, wy, wz).
 let blockAt = null;
-// biome-ignore lint/correctness/noUnusedFunctionParameters: mock con firma fija
 require("../server/world.js").getBlock = (_wx, wy, _wz) => blockAt(wy);
 
 // Repetir settleOnGround hasta estabilizar (máx. 2000 pasos de 0.04 bloques).
@@ -51,7 +49,7 @@ const surfY = settleUntilStable(surf);
 check(
 	"mob sobre la superficie del agua se hunde al fondo (y≈3, no se queda en y=5)",
 	surfY < 3.5,
-	"y=" + surfY
+	`y=${surfY}`
 );
 
 // 1b. Mob ya en el fondo (y≈3.05, cabeza en agua): no debe subir a la superficie.
@@ -60,7 +58,7 @@ const fondoY = settleUntilStable(fondo);
 check(
 	"mob en el fondo del lago reposa (no sube con agua en la cabeza)",
 	fondoY < 3.5,
-	"y=" + fondoY
+	`y=${fondoY}`
 );
 
 // 1c. Mob cayendo desde el aire sobre un lago: aterriza en el fondo, no en la superficie.
@@ -69,7 +67,7 @@ const cayendoY = settleUntilStable(cayendo);
 check(
 	"mob que cae en un lago aterriza en el fondo (no flota en la superficie)",
 	cayendoY < 3.5 && cayendoY > 2.5,
-	"y=" + cayendoY
+	`y=${cayendoY}`
 );
 
 // --- Caso 2: tierra firme (suelo sólido en y<=4, aire encima) ---
@@ -81,7 +79,7 @@ const tierraY = settleUntilStable(tierra);
 check(
 	"mob sobre tierra firme se queda donde está (sin regresión)",
 	tierraY === 5,
-	"y=" + tierraY
+	`y=${tierraY}`
 );
 
 // 2b. Mob cayendo sobre tierra: aterriza sobre el suelo (y≈5).
@@ -90,7 +88,7 @@ const caidaTierraY = settleUntilStable(caidaTierra);
 check(
 	"mob que cae sobre tierra aterriza en el suelo",
 	caidaTierraY < 6 && caidaTierraY >= 5,
-	"y=" + caidaTierraY
+	`y=${caidaTierraY}`
 );
 
 // --- Caso 3: atascado en un bloque sólido (head sólido) sube ---
@@ -100,7 +98,7 @@ const atascadoY = settleUntilStable(atascado);
 check(
 	"mob atascado en bloque sólido sube hasta liberarse",
 	atascadoY > 5,
-	"y=" + atascadoY
+	`y=${atascadoY}`
 );
 
 // --- Sanidad: el agua no es sólida (base del fix) ---
@@ -111,6 +109,5 @@ check(
 check("isSolidBlock(AIR) === false", isSolidBlock(B.AIR) === false);
 check("isSolidBlock(3=roca) === true", isSolidBlock(3) === true);
 
-// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 console.log(`${ok} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

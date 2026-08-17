@@ -82,7 +82,7 @@ function clearColumn(px, pz) {
 // 1) maxPayload del WebSocket
 // ============================================================
 {
-	const netSrc = fs.readFileSync(
+	const _netSrc = fs.readFileSync(
 		path.join(__dirname, "..", "server", "net.js"),
 		"utf8"
 	);

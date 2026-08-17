@@ -19,8 +19,7 @@
 // directamente (ninguno de ellos requiere mobs.js ni este módulo).
 // ============================================================
 const constants = require("./constants.js");
-const { B, I, isSolidBlock, HOSTILE, TICK_MS, WORLD_MAX_Y, BREED_FOOD } =
-	constants;
+const { I, isSolidBlock, HOSTILE, TICK_MS, BREED_FOOD } = constants;
 const state = require("./state.js");
 const world = require("./world.js");
 const projectiles = require("./projectiles.js");
@@ -486,7 +485,7 @@ function petsJoinAttack(target, player) {
 const LOVE_WINDOW_MS = 30000; // el modo amor dura 30s buscando pareja
 const BREED_COOLDOWN_MS = 60000; // cooldown de cría tras criar (60s)
 const BREED_RANGE = 8; // distancia máxima entre la pareja (bloques)
-const GROWUP_MS = 60000; // un bebé tarda 60s en hacerse adulto
+const _GROWUP_MS = 60000; // un bebé tarda 60s en hacerse adulto
 
 // ¿Se puede alimentar a este mob con el ítem? 'ok' o el motivo del rechazo.
 function canFeed(mob, itemId) {

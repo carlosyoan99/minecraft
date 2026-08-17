@@ -27,7 +27,6 @@ process.on("exit", () => {
 		);
 });
 const check = (name, ok, extra = "") => {
-	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(`${ok ? "OK " : "✗  "}${name}${extra ? ` — ${extra}` : ""}`);
 	if (!ok) {
 		failed++;
@@ -138,7 +137,6 @@ function mobRootData(hit) {
 	const hits3 = raycaster.intersectObjects([emptyGroup], true);
 	check("3. un grupo sin partes no intercepta el rayo", hits3.length === 0);
 
-	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(failed ? `\n${failed} check(s) FALLARON` : "\nTODO OK");
 	process.exit(failed ? 1 : 0);
 })();

@@ -31,7 +31,6 @@ const check = (name, cond, extra = "") => {
 	else {
 		fail++;
 		failedChecks.push(name);
-		// biome-ignore lint/suspicious/noConsole: fallo real del test (convención del proyecto)
 		console.log(`✗ ${name} ${extra}`.trim());
 	}
 };
@@ -220,6 +219,5 @@ check("A ya no está conectado", !state.players.has(A.player.id));
 
 state.players.clear();
 world.setDiskLoader(null);
-// biome-ignore lint/suspicious/noConsole: resultado del test (convención del proyecto)
 console.log(`${ok} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

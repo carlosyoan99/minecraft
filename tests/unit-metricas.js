@@ -11,7 +11,7 @@
 //
 // Igual que unit-red.js, usa ws fake — sin levantar el servidor real.
 // ============================================================
-const path = require("node:path");
+const _path = require("node:path");
 const net = require("../server/net.js");
 const state = require("../server/state.js");
 const world = require("../server/world.js");
@@ -31,7 +31,6 @@ const check = (name, cond, extra = "") => {
 	else {
 		fail++;
 		failedChecks.push(name);
-		// biome-ignore lint/suspicious/noConsole: fallo real del test (convención del proyecto)
 		console.log(`✗ ${name} ${extra}`.trim());
 	}
 };
@@ -107,7 +106,7 @@ world.setDiskLoader(() => null);
 
 	// La media se calcula cuando pasa la ventana de 1s desde el último envío.
 	// Como el test es instantáneo, forzar el corte ajustando el reloj interno.
-	const metrics = net.getServerMetrics(); // Si la ventana no se cerró aún, tickMs queda en 0; el test de broadcast
+	const _metrics = net.getServerMetrics(); // Si la ventana no se cerró aún, tickMs queda en 0; el test de broadcast
 	// con reloj forzado está abajo. Aquí comprobamos que el bucle no rompió
 	// el estado compartido (mobs sigue siendo un array tras los filtros del
 	// tick y el jugador de prueba sigue conectado).
@@ -155,7 +154,6 @@ world.setDiskLoader(() => null);
 	console.log(`${ok} OK, ${fail} FAIL`);
 	process.exit(fail ? 1 : 0);
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar, convención del proyecto)
 	console.error("unit-metricas:", e.message);
 	process.exit(1);
 });

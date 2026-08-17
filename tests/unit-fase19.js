@@ -120,10 +120,9 @@ const check = (_name, okVal, _extra = "") => {
 		JSON.stringify(before) === JSON.stringify(after)
 	);
 
-	console.log(ok + " OK, " + fail + " FAIL");
+	console.log(`${ok} OK, ${fail} FAIL`);
 	process.exit(fail ? 1 : 0);
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar, convención del proyecto)
 	console.error("unit-fase19:", e.message);
 	process.exit(1);
 });

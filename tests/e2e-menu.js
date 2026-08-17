@@ -117,7 +117,7 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
 	if (!(await serverUp(PORT))) {
-		console.error("el servidor de menú no arrancó:\n" + serverLog);
+		console.error(`el servidor de menú no arrancó:\n${serverLog}`);
 		server.kill();
 		return finish(1);
 	}
@@ -133,7 +133,7 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 	);
 	check(
 		"A1: no hay init en modo menú",
-		!ws._listeners || !ws.listenerCount ? true : true
+		(await waitEvent(ws, "init", 2500)) === null
 	);
 
 	// 2) join_world → init con la semilla pedida.

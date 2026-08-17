@@ -34,7 +34,6 @@ process.on("exit", () => {
 		);
 });
 const check = (name, ok, extra = "") => {
-	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(`${ok ? "OK " : "✗  "}${name}${extra ? ` — ${extra}` : ""}`);
 	if (!ok) {
 		failed++;
@@ -163,7 +162,6 @@ const check = (name, ok, extra = "") => {
 		!/rotation\.x\s*=\s*PITCH_LIMIT/.test(sceneSrc)
 	);
 
-	// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 	console.log(failed ? `\n${failed} check(s) FALLARON` : "\nTODO OK");
 	process.exit(failed ? 1 : 0);
 })();

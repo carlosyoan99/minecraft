@@ -1318,7 +1318,7 @@ function drawShears(g) {
 }
 
 // Carne podrida (Fase 16, D2): trozo de carne grisácea con vetas y moho.
-function drawFlesh(g, rng) {
+function drawFlesh(g, _rng) {
 	const base = "#b06a5a",
 		dark = "#7a4a40",
 		light = "#d88a74";
@@ -1341,7 +1341,7 @@ function drawFlesh(g, rng) {
 }
 
 // Pólvora (Fase 16, D2): montículo de granos gris oscuro.
-function drawGunpowder(g, rng) {
+function drawGunpowder(g, _rng) {
 	const dark = "#3a3a3a",
 		mid = "#555555",
 		light = "#7a7a7a";

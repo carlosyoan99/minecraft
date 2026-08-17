@@ -161,7 +161,7 @@ function reset() {
 	state.players.set(encima.id, encima);
 	mobs.tickXpOrbs();
 	const restante = state.mobs.find((m) => m.id === orb.id);
-	check("al pisarlo se recoge (alive=false)", !restante || !restante.alive);
+	check("al pisarlo se recoge (alive=false)", !restante?.alive);
 	check(
 		"la XP recogida se re-añade al jugador",
 		encima.xp === 25,

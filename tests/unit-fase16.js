@@ -31,7 +31,6 @@ const check = (name, cond, extra = "") => {
 	else {
 		fail++;
 		failedChecks.push(name);
-		// biome-ignore lint/suspicious/noConsole: fallo real del test (convención del proyecto)
 		console.log(`✗ ${name} ${extra}`.trim());
 	}
 };
@@ -277,7 +276,6 @@ const mkPlayer = (over = {}) => ({
 	console.log(`${ok} OK, ${fail} FAIL`);
 	process.exit(fail ? 1 : 0);
 })().catch((e) => {
-	// biome-ignore lint/suspicious/noConsole: error real del test (no silenciar)
 	console.error("unit-fase16:", e.message);
 	process.exit(1);
 });

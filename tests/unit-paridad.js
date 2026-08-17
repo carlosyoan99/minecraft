@@ -47,7 +47,6 @@ const check = (name, cond, extra = "") => {
 	else {
 		fail++;
 		failedChecks.push(name);
-		// biome-ignore lint/suspicious/noConsole: fallo real del test (convención del proyecto)
 		console.log(`✗ ${name} ${extra}`.trim());
 	}
 };
@@ -69,7 +68,7 @@ check(
 	"daño a mano = 1 (TOOL_DAMAGE[tool] || SWORD_DAMAGE[tool] || 1)",
 	// Fase 18 (D-1): el handler attack_mob vive en server/actions.js.
 	/TOOL_DAMAGE\[tool\] \|\| SWORD_DAMAGE\[tool\] \|\| 1/.test(
-		require("fs").readFileSync("server/actions.js", "utf8")
+		require("node:fs").readFileSync("server/actions.js", "utf8")
 	)
 );
 
@@ -361,6 +360,5 @@ check("xpToNext(31) = 121", xpToNext(31) === 121);
 	);
 }
 
-// biome-ignore lint/suspicious/noConsole: resumen del test (convención del proyecto)
 console.log(`${ok} OK, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);
