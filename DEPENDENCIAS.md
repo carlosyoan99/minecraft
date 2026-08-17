@@ -43,9 +43,9 @@ graph LR
     classDef done fill:#2d6a4f,stroke:#1b4332,color:#fff;
     classDef active fill:#e9c46a,stroke:#b98a00,color:#222;
     classDef planned fill:#6a6a6a,stroke:#444,color:#fff;
-    class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5 done;
-    class F19_6 active;
-    class F20,F21_5,F21,F22,F23,F24,F25 planned;
+    class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5,F19_6,F20,F21 done;
+    class F21_5 active;
+    class F22,F23,F24,F25 planned;
 ```
 
 ## Tabla de prerrequisitos
@@ -74,10 +74,10 @@ graph LR
 | 18 | [`fase18-spec.md`](docs/spec/fase18-spec.md) | F17 | ✅ Completada y auditada |
 | 19 | [`fase19-spec.md`](docs/spec/fase19-spec.md) | **F18 cerrada** | ✅ Completada y auditada (`acca3c9`) |
 | 19.5 | [`fase19.5-spec.md`](docs/spec/fase19.5-spec.md) | F18 **y** F19 cerradas | ✅ Completada y auditada |
-| 19.6 | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | F19.5 cerrada | 📝 Prospectiva |
-| 20 | [`fase20-spec.md`](docs/spec/fase20-spec.md) | F18 cerrada | 📝 Prospectiva |
-| 21 | [`fase21-spec.md`](docs/spec/fase21-spec.md) | F20 cerrada | 📝 Prospectiva |
-| 21.5 | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada | 📝 Prospectiva |
+| 19.6 | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | F19.5 cerrada | ✅ Completada (2026-08-16) |
+| 20 | [`fase20-spec.md`](docs/spec/fase20-spec.md) | F18 cerrada | ✅ **Cerrada (v20.2, etiqueta `v20.2`)** |
+| 21 | [`fase21-spec.md`](docs/spec/fase21-spec.md) | F20 cerrada | ✅ **Cerrada y auditada (v21.2)** |
+| 21.5 | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada | 🟠 **En curso** |
 | 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | F21.5 cerrada | 📝 Prospectiva |
 | 23 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada | 📝 Prospectiva |
 | 24 | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada | 📝 Prospectiva |

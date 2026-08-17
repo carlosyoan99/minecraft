@@ -1,6 +1,8 @@
 # Fase 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers (Spec)
 
-> **Estado:** `[PROSPECTIVA]`
+> **Estado:** `[EN CURSO]` (abierta 2026-08-17 — Fase 21 cerrada; es la
+> fase activa del proyecto). Hereda los **diferidos de generación D2/D3 de
+> la F21** (océanos profundos/cálidos con coral y montañas altas — §4.5).
 
 > Documento creado a partir de: la lista de mejoras del usuario "Alta
 > prioridad / Bajo esfuerzo", "Prioridad media / Esfuerzo medio", "1.21
@@ -105,8 +107,24 @@ nieve — valorar tras F21), endermite/pilar del End (→ F25).
     losas/puertas de cobre).
   - Cada bloque nuevo: B/I sincronizados (AMBOS `constants`) + receta +
     icono + tesela (`unit-sync`/`unit-recetas`/`unit-itemicons` en verde).
-  - La fase cierra con suite + E2E + auditorías en verde y tests propios
-    (`unit-fase21.5.js`) en verde.
+- La fase cierra con suite + E2E + auditorías en verde y tests propios
+     (`unit-fase21.5.js`) en verde.
+
+### 1.4 Iteración de generación D2/D3 (heredada de la F21, 2026-08-17)
+
+Al cerrar la Fase 21 el usuario decidió **diferir a esta fase los dos bugs
+de generación que quedaron abiertos de la v21.2** (spec F21 §5.4). Tocan
+`server/biomes.js`/`server/generation.js` y `tests/audit-altura.js`/
+`unit-biomas.js` (misma receta que el D1 que sí cerró la F21):
+
+| # | Bug (Notas) | Qué hacer | Criterio de aceptación |
+|---|---|---|---|
+| **D2** | **Océanos poco profundos** — sin variantes cálidas/profundas | **Aumentar la profundidad** del fondo oceánico (más lejos de la costa); **océano cálido** con **corales** (bloques/ítems nuevos sincronizados B/I + receta + icono — coral está en la tabla §9) y **océano profundo** (fondo más hondo); **no aumentar la probabilidad** de océano (`OCEAN_FREQ`/`OCEAN_GATE` intactos) | Test determinista: la profundidad media del fondo crece vs v21.1; existen regiones de océano cálido (con coral en su paleta) y profundo; `unit-biomas`/`unit-mundo` en verde |
+| **D3** | **Montañas bajas** — sin montañas altas ni nevadas | **Elevar las montañas base** (amplitud de la rampa/crest en `biomes.js`) manteniendo el rango v6 (Y ≤ +63) y los sub-biomas; los **picos nevados** (F21 A2) quedan sobre montañas realmente altas | Test determinista: la cima media/máxima de montaña crece vs v21.1 (dentro del presupuesto de `audit-altura`), la línea de nieve cubre más cumbres y `unit-biomas` (montaña máx ≥ 7) se recalibra sin romperse |
+
+**Orden:** D2 (océanos) → D3 (montañas), con su test y su verificación
+(`--audit` sin regresiones). **Sin cambios de protocolo WS, IDs B/I (salvo
+los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
 
 ---
 
@@ -564,3 +582,10 @@ Resumen de lo nuevo (regla `AGENTS.md`: añadir bloque/ítem → AMBOS
   comandos) y la entrevista 2026-08-15 (fase nueva entre F21 y F22, reusando
   lo planificado en F21-23 y lo ya implementado: zanahoria/patata F18 C-3,
   miel F9 y huecos).
+
+**Cambios en esta spec (v2):**
+- 2026-08-17: **apertura de la Fase 21.5** (prerrequisito F21 cumplido) —
+  estado `[EN CURSO]`; nueva sección §1.4 con los **diferidos de generación
+  D2/D3 de la F21** (océanos profundos/cálidos con coral y montañas
+  altas/nevadas), su orden y criterios de aceptación; cabecera y
+  `TODO.md`/`STATUS.md`/`DEPENDENCIAS.md` actualizados (fase activa).

@@ -197,11 +197,17 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   bloques 1.8-1.15, combate y Trial Chambers, insertada entre 21 y 22) son
   prospectivas** (`fase21-spec.md`,
   `fase21.5-spec.md`, `fase22-spec.md`, `fase23-spec.md`, `fase24-spec.md`,
-  `fase25-spec.md`): la 19.6 exige la 19.5; la **Fase 20 está EN CURSO
-  (iteración v20.1 cerrada — ciclo rolling activo; ver `docs/v20.1.md`) y
-  exige la 18**; la 21 exige
-  la 20; la 21.5
-  exige la 21; la 22 exige la 21.5; la 23 exige la 22; la 24 exige la 23;
+  `fase25-spec.md`): la 19.6 exige la 19.5; la **Fase 20 está cerrada
+  (v20.2 con etiqueta `v20.2`, ver `docs/v20.2.md`) y exigía la 18**; la
+  **Fase 21 está cerrada y auditada (2026-08-17, etiqueta `v21.2`, spec
+  `fase21-spec.md`)**: A1 biomas más grandes, A2 sub-biomas (abedul, taiga
+  gigante 2×2, picos nevados), B1 pozo del desierto, B2 pirámide del
+  desierto (trampa TNT + cofres), C1 vaca/gallina (MILK/EGG), C2 enderman
+  neutral, C3 IA (zombi convoca, esqueleto strafe, araña día/noche, creeper
+  huye de gatos) y D1 ríos al nivel del mar (v21.2); suite 61/61,
+  `--audit` 8/8; **D2/D3 (océanos/montañas) diferidos a la 21.5**; la
+  **Fase 21.5 está EN CURSO (fase activa)** y exige la 21; la 22 exige la
+  21.5; la 23 exige la 22; la 24 exige la 23;
   la 25 exige la 24. La
   19.5 adelantó a la 19.6 el motor 3D y a la F21 el audio por bioma; la F22
   aporta los bloques de amatista que la geoda de la F21 reusa y confirma

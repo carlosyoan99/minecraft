@@ -6,7 +6,7 @@
 > Este archivo se actualiza al **abrir**, **cerrar** o **cambiar de rumbo**
 > una fase (no es un log histórico: es un panel de control).
 
-**Última actualización:** 2026-08-16
+**Última actualización:** 2026-08-17
 
 ---
 
@@ -14,11 +14,11 @@
 
 | | |
 | --- | --- |
-| **Fase** | **21 — Biomas ampliados, estructuras y más mobs (abierta 2026-08-17)** [`[EN CURSO]`](docs/spec/fase21-spec.md) |
-| **Prerrequisito cumplido** | Fase 20 cerrada (v20.2 con etiqueta `v20.2`, suite 60/60, E2E 7/7, `--audit` 7/7, biome 0) ✅ |
-| **Trabajo en curso** | **Fase 21 en curso — iteración v21.1** (primera tanda P0 acotada en la entrevista 2026-08-17, ver spec F21 §5). **Código terminado (sin commitear):** A1 biomas más grandes (`BIOME_FREQ` 0.003, testeado en `unit-fase21.js`), A2 sub-biomas (bosque de abedules, taiga gigante 2×2, picos nevados), B1 pozo del desierto, C1 vaca ordeñable (`I.MILK` 260, `handleMilkCow`) y gallina ponedora (`I.EGG` 261, `tickChicken`) sincronizados en ambos `constants.js` + iconos. Tests dedicados quedan **para el final** (decisión del usuario): `unit-recetas` esperado en rojo (MILK/EGG huérfanos hasta añadirlos a `DROPS_JUSTIFICADOS`); suite actual 60/61 ✅ |
+| **Fase** | **21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers (abierta 2026-08-17)** [`[EN CURSO]`](docs/spec/fase21.5-spec.md) |
+| **Prerrequisito cumplido** | Fase 21 cerrada (v21.2 con D1, suite 61/61, E2E 7/7, `--audit` 8/8, biome 0) ✅ |
+| **Trabajo en curso** | **Fase 21.5 en curso** (abierta al cierre de la F21). Primera subfase por decidir (entrevista del planificador / `TODO.md`); hereda los **diferidos de generación D2/D3 de la F21** (océanos profundos/cálidos con coral y montañas altas — spec F21.5 §1.4). Nada implementado aún. |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Commitear el código de la v21.1 (A1/A2/B1/C1) y luego la **fase de tests dedicada**: `DROPS_JUSTIFICADOS` con MILK/EGG (260/261) para dejar `unit-recetas` en verde, ampliar `unit-fase21.js` (estructuras/mobs), `unit-mobs-ia.js`, `unit-paridad.js`, recalibrar `audit-fase4.js`; cierre de la F21 (B2 pirámide y C2 enderman quedan diferidos a P1) |
+| **Próximo paso** | Planificar el primer bloque de la F21.5 (pesca A1/A8 es el de mayor prioridad de la lista del usuario — 🔴) y los diferidos de generación D2/D3; actualizar `TODO.md` con los ítems de la subfase elegida y arrancar la implementación |
 
 ## Implementado (fases cerradas y auditadas)
 
@@ -48,24 +48,23 @@
 | 19.5 — Skills del proyecto: audio por bioma, accesibilidad y refinamientos | [`fase19.5-spec.md`](docs/spec/fase19.5-spec.md) | ✅ Completada y auditada (2026-08-15, `82b288b`) |
 | 19.6 — Motor 3D: iluminación, materiales, shaders, instancing y animación | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | ✅ Completada (2026-08-16) |
 | 20 — Rolling release (ciclo de estabilización y paridad) | [`fase20-spec.md`](docs/spec/fase20-spec.md) | ✅ **Cerrada (v20.2, etiqueta `v20.2`)** — v20.1 + v20.2 (D1/D2, backlog B6, `audit-fase20`, `--audit` 7/7) |
+| 21 — Biomas ampliados, estructuras y más mobs | [`fase21-spec.md`](docs/spec/fase21-spec.md) | ✅ **Cerrada y auditada (2026-08-17, etiqueta `v21.2`)** — A1/A2/B1/B2/C1/C2/C3 + D1 (ríos al nivel del mar); suite 61/61, `--audit` 8/8 (nueva `audit-fase21.js`); D2/D3 diferidos a la F21.5 |
 
-**Línea base de la fase activa (F21):** suite **60/60 unitarios** (v20.2
-añade checks de SV-5 y REN-1), **E2E 7/7**, `biome` 0 errores, `node
---check` limpio, `npm run audit` 0 vulnerabilidades. Auditorías `--audit`
-verdes: fase3 (umbrales ampliados, CI 19), fase4/5/6 + altura + **fase20
-(nueva)**; `audit-fase7`
+**Línea base de la fase activa (F21.5):** suite **61/61 unitarios**, **E2E
+7/7**, `biome` 0 errores, `node --check` limpio, `npm run audit` 0
+vulnerabilidades. Auditorías `--audit` verdes: fase3 (umbrales ampliados, CI
+19), fase4/5/6 + altura + fase20 + **fase21 (nueva)**; `audit-fase7`
 (render CDP) depende de CPU baja (SwiftShader; ventanas ampliadas en CI 19
 — ver `docs/tests.md`).
 
 ## En revisión
 
-- Sin fases en revisión (Fase 20 cerrada; **Fase 21 en curso**).
+- Sin fases en revisión (Fase 21 cerrada 2026-08-17; **Fase 21.5 en curso**).
 
 ## Prospectiva (planificadas, sin implementar)
 
 | Fase | Spec | Prerrequisito |
 | --- | --- | --- |
-| 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate, Trial Chambers | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada |
 | 22 — Profundidad, minerales y fauna 1.17-1.21 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | F21.5 cerrada |
 | 23 — Diferidos de la F22 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada |
 | 24 — Nether Update | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada |

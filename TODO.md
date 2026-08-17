@@ -1009,18 +1009,15 @@
 
 ---
 
-## Fase 21 — Biomas ampliados, estructuras y más mobs (EN CURSO)
+## Fase 21 — Biomas ampliados, estructuras y más mobs (CERRADA)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase21-spec.md`](docs/spec/fase21-spec.md)
-> **En curso — abierta 2026-08-17** (Fase 20 cerrada: v20.2 con etiqueta
-> `v20.2`, suite 60/60, E2E 7/7, `--audit` 7/7, biome 0). **P0 completada
-> (2026-08-17)**: primera tanda por valor percibido definida en la spec F21
-> §5 (A1 + sub-biomas A2 baratos + pozo B1 + vaca/gallina C1); pirámide B2
-> y enderman C2 quedan **diferidos a P1** (§5.2 de la spec).
-> **v21.1 cerrada (2026-08-17, `426efbf`)**: A1+A2+B1+C1 implementados y
-> testeado (`unit-fase21.js` A1/A2/B1); **v21.2 definida (2026-08-17,
-> spec §5.4)**: los 3 bugs de generación de las Notas (ríos, océanos,
-> montañas).
+> **Cerrada 2026-08-17 (etiqueta `v21.2`)** — ver bloque de cierre §8 en la
+> spec. Suite **61/61**, E2E 7/7, `--audit` **8/8** (`audit-fase21.js`
+> nueva con 25 checks), biome 0. Iteraciones: **v21.1** (A1+A2+B1+C1,
+> `426efbf` + `5ffe226`), **v21.2** (D1 ríos al nivel del mar, `f9eca90`);
+> **D2/D3 de la v21.2 diferidos a la Fase 21.5** (decisión del usuario al
+> cierre).
 > **Exclusiones de la entrevista 2026-08-15: el selector de skins NO entra
 > (ya en F17 C3) y el audio por bioma se adelantó a la F19.5 (A1) — no se
 > duplican aquí.**
@@ -1042,10 +1039,12 @@
       el árbol (`server/structures.js` `WELL_CELL` 40×40, gate 7 %, solo
       desierto firme); iglú y geoda de amatista → P1 (geoda reusa bloques
       de la F22)
-- [ ] B2 Estructuras activas — **diferido a P1** (pirámide del desierto,
-      trampa TNT + cofres); cabaña, puesto, fortaleza, ruinas/monumento →
-      P1; mansión y monumento fuera de la fase si el presupuesto no da
-      (decisión de cierre)
+- [x] B2 Estructuras activas — **pirámide del desierto** implementada en el
+      árbol (`server/structures.js` `PYRAMID_CELL`/`pyramidAt`/
+      `pyramidBlockAt`, trampa TNT posicional `pyramidTrapAt` + 4 cofres de
+      loot, `placePyramidColumn` en `generation.js`); cabaña, puesto,
+      fortaleza, ruinas/monumento → P1; mansión y monumento fuera de la
+      fase si el presupuesto no da (decisión de cierre)
 - [x] C1 Mobs pasivos nuevos — **P0: vaca (ordeñable) y gallina (pone
       huevos)** implementadas en el árbol (`I.MILK` 260 y `I.EGG` 261
       sincronizados en ambos `constants.js` y `CREATIVE_ITEMS`, `tickChicken`
@@ -1053,46 +1052,58 @@
       `net.js`, click derecho con cubo en `game-input.js`, iconos en
       `itemicons.js`); pulpo, refinamiento de oveja y huevo lanzable 1/8
       pollito → P1
-- [ ] C2 Mobs neutrales nuevos — **diferido a P1** (enderman: neutralidad +
+- [x] C2 Mobs neutrales nuevos — **enderman neutral** implementado
+      (`server/mob-species.js` `isPlayerLookingAt` en radianes +
+      `isEndermanWatched` + `tickEnderman` con aggro de 20 s al ser mirado y
       teletransporte); zombified piglin y abeja → P1
-- [ ] C3 Mejoras de IA de mobs existentes (creeper huye de gatos, esqueleto
-      strafe, araña día/noche, zombi convoca) con tests — **P1**
-- [ ] D1 Cierre y auditoría de Fase 21: suite + E2E + auditorías en verde,
-      verificación manual (explorar biomas/estructuras con semilla
-      conocida), `SCHEMA_VERSION` 7 solo si cambia el formato (migración +
-      test), docs y tracker al día; Won't íntegro
+- [x] C3 Mejoras de IA de mobs existentes — creeper huye de gatos,
+      esqueleto strafe lateral (6-12, alterna sentido), araña neutral de
+      día (hostil de noche/aggro) y zombi convoca a vecinos ≤16 al ser
+      golpeado (todo en `server/mob-species.js`/`mobs.js`, cubierto por
+      `audit-fase21.js`)
+- [x] D1 Cierre y auditoría de Fase 21: suite + E2E + auditorías en verde,
+      `tests/audit-fase21.js` (25 checks end-to-end), `SCHEMA_VERSION` 6
+      intacto (no cambió el formato), docs y tracker al día; Won't íntegro
 - [ ] D2 (preparación) los bloques/ítems de amatista (`AMETHYST_BLOCK`,
       `AMETHYST_CLUSTER`, `AMETHYST_SHARD`) los aporta la **Fase 22**
       (B1); la geoda de la F21 los reusa y suelta shards — no añadir IDs
       duplicados cuando se implemente
 
-#### Iteración v21.2 — bugs de generación (spec F21 §5.4, definida 2026-08-17)
+#### Iteración v21.2 — bugs de generación (spec F21 §5.4)
 
-- [ ] D1 Ríos al nivel del mar: bajar el lecho adaptando las orillas
-      (sin acantilados), menos ríos (densidad), variedad de anchos y más
-      profundidad — test determinista (todo río con agua en el cauce,
-      orillas contiguas, `unit-mundo` en verde)
-- [ ] D2 Océanos profundos/cálidos: más profundidad del fondo, océano
-      cálido con corales (B/I + receta + icono si aplica) y océano
-      profundo; sin subir la probabilidad de océano — test determinista
-- [ ] D3 Montañas altas y nevadas: elevar la rampa/crest dentro del rango
-      v6 (Y ≤ +63), picos nevados sobre cumbres reales, `audit-altura`
-      dentro de presupuesto — test determinista recalibrado
-- [ ] Cierre v21.2: suite + E2E + `--audit` en verde, biome 0, verificación
-      manual en navegador (semilla conocida) y `docs/v21.2.md` (formato
-      `docs/v20.2.md`)
+- [x] D1 Ríos al nivel del mar — completado (`f9eca90`): riverBandW
+      (ancho variable 2..4), riverDepth 3..6, riverFloorY (lecho ≤
+      RIVER_FLOOR_CAP 2 < SEA_LEVEL → siempre ≥2 bloques de agua) y
+      riverCarvedHeight (orillas inclinadas sin acantilados); createChunk
+      usa riverCarvedHeight/FloorY sobre baseDesign; `audit-altura` y
+      `unit-biomas` recalibrados (las columnas de agua no cuentan como
+      terreno de montaña); auditado en `audit-fase21.js`
+- [x] Cierre v21.2 (D1): suite 61/61 + `--audit` 8/8 en verde, biome 0,
+      docs/tracker al día — **D2/D3 diferidos a la Fase 21.5** (ver su
+      sección, iteración de generación)
 
 ---
 
-## Fase 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers
+## Fase 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers (EN CURSO)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase21.5-spec.md`](docs/spec/fase21.5-spec.md)
-> **Prospectiva (sin implementar)** — prerrequisito: Fase 21 cerrada.
-> NUEVA desde la lista de mejoras del usuario (2026-08-15): alta/media
-> prioridad + 1.21 Tricky Trials + 1.21.5 Spring to Life + 1.22/26.1 +
-> comandos. Se inserta **entre F21 y F22** (no renumerar F21-25). No
-> planificar lo ya hecho (zanahoria/patata F18 C-3, miel F9) ni lo ya
-> planificado (abeja F21 C2, amatista F22 B1, Breeze F23 A2, Tuff F23 A4).
+> **En curso — abierta 2026-08-17** (Fase 21 cerrada). NUEVA desde la lista
+> de mejoras del usuario (2026-08-15): alta/media prioridad + 1.21 Tricky
+> Trials + 1.21.5 Spring to Life + 1.22/26.1 + comandos. Se inserta **entre
+> F21 y F22** (no renumerar F21-25). **Hereda los diferidos de generación
+> D2/D3 de la F21** (océanos profundos/cálidos con coral y montañas altas —
+> spec F21.5 §1.4). No planificar lo ya hecho (zanahoria/patata F18 C-3,
+> miel F9) ni lo ya planificado (abeja F21 C2, amatista F22 B1, Breeze F23
+> A2, Tuff F23 A4).
+
+- [ ] D2 Océanos profundos/cálidos (heredado de F21, spec F21.5 §1.4): más
+      profundidad del fondo, océano cálido con corales (B/I + receta +
+      icono) y océano profundo; sin subir la probabilidad de océano —
+      test determinista
+- [ ] D3 Montañas altas y nevadas (heredado de F21, spec F21.5 §1.4):
+      elevar la rampa/crest dentro del rango v6 (Y ≤ +63), picos nevados
+      sobre cumbres reales, `audit-altura` dentro de presupuesto — test
+      determinista recalibrado
 
 - [ ] A1 Pesca (1.7/1.13): ítem `FISHING_ROD` (durabilidad 64) + entidad
       línea = proyectil con bobber (punto 3D); al impactar en agua pica

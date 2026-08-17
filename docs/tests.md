@@ -159,29 +159,28 @@ Three/DOM para forzarlos.
 | `unit-fase19.5.js` | F19.5: paleta de audio por bioma (`musicpalette.js`) + toggle reduceMotion |
 | `unit-fase19.6.js` | F19.6: shaders de agua/plantas, toon, instancing (decisión) + **F20 B4/P7** índice espacial de antorchas (`getTorchesNear`, vecindario 3×3) |
 | `unit-fase20.js` | Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — `showMenuBg()` visible solo en el menú principal, oculto al entrar al mundo y en la pausa |
-| `unit-fase21.js` | Fase 21 (A1+A2+B1): biomas más grandes — coherencia de rachas (`BIOME_FREQ` 0.003, media ≥ 11, mediana ≥ 5) + determinismo/presencia de los 8 biomas base; sub-biomas — bandas coherentes (0 violaciones), abedul 100 % en `birch_forest` (vs ~1/3 en `forest`), abeto 2×2 en `giant_taiga`, nieve en las cumbres emergidas de `snowy_peaks`; pozo del desierto — solo en desierto firme (nunca agua), determinista y con el layout MC (piso arena, brocal 2 capas, fuente central) |
+| `unit-fase21.js` | Fase 21 (A1+A2+B1): biomas más grandes — coherencia de rachas (`BIOME_FREQ` 0.003, media ≥ 11, mediana ≥ 5) + determinismo/presencia de los 8 biomas base; sub-biomas — bandas coherentes (0 violaciones), abedul 100 % en `birch_forest` (vs ~1/3 en `forest`), abeto 2×2 en `giant_taiga`, nieve en las cumbres emergidas de `snowy_peaks`; pozo del desierto — solo en desierto firme (nunca agua), determinista y con el layout MC (piso arena, brocal 2 capas, fuente central). Ampliado 2026-08-17 (+282 lín.): **B2 pirámide** (determinismo de `pyramidCenterAt`, footprint/`pyramidAt`, trampa posicional `pyramidTrapAt`, 4 cofres en las esquinas de la bandeja, TNT bajo la celda central, pozo de aire, loot en `state.chests`), **C1** vaca ordeñable (`handleMilkCow` consume cubo → MILK) y gallina ponedora (`tickChicken` → EGG al jugador cercano), **C2** enderman neutral (`isPlayerLookingAt` en radianes, `isEndermanWatched`, aggro de 20 s, neutral sin mirada) |
 
-## Fase 21 (EN CURSO) — matriz de tests prevista
+## Fase 21 (CERRADA 2026-08-17) — matriz completada
 
-> La F21 (biomas ampliados, estructuras y más mobs) está **abierta** (spec
-> [`fase21-spec.md`](spec/fase21-spec.md)); la **v21.1** en curso acota
-> A1+A2+B1+C1 y el resto queda diferido a P1 (spec §5.2). Los tests nuevos
-> se crean al implementar cada bloque (cada uno con `// Fase 21, Bloque X`
-> al inicio) y los existentes se **amplían/recalibran** sin romper su
-> contrato. `unit-fase21.js` ya existe (A1/A2/B1, 2026-08-17);
-> `audit-fase21.js` se crea al cierre — `check-specs` lo reporta como aviso
-> (spec `[EN CURSO]`), no error.
+> La F21 (biomas ampliados, estructuras y más mobs) **cerró 2026-08-17**
+> (spec [`fase21-spec.md`](spec/fase21-spec.md), etiqueta `v21.2`): todos
+> los bloques A1/A2/B1/B2/C1/C2/C3 + el D1 de la iteración v21.2 (ríos al
+> nivel del mar) implementados y testeados; **D2/D3 diferidos a la F21.5**
+> (espec F21.5 §1.4). Suite **61/61**, `--audit` **8/8** (nueva
+> `audit-fase21.js` con 25 checks end-to-end).
 
-| Bloque F21 | Tests nuevos previstos | Tests existentes a ampliar/recalibrar |
+| Bloque F21 | Tests | Notas |
 | --- | --- | --- |
-| **A1** Biomas más grandes (extensión) | ✅ `unit-fase21.js` (2026-08-17: coherencia de rachas vs `BIOME_FREQ`, determinismo de etiquetas, presencia de los 8 biomas base) | `unit-biomas.js` (ampliado por el agente: sub-biomas A2), `unit-mundo.js`, `audit-fase4.js` (recalibrar ms/chunk sin romper determinismo) |
-| **A2** Biomas de superficie nuevos | ✅ `unit-fase21.js` (2026-08-17: bandas coherentes, abedul puro vs bosque común, abeto 2×2, nieve en picos) | `unit-biomas.js` (ampliado por el agente: presencia de sub-biomas y su vegetación), `unit-sync.js`/`unit-recetas.js`/`unit-itemicons.js` (bloques nuevos B/I si aplica) |
-| **B1** Estructuras pasivas (pozo, iglú, geoda) | ✅ `unit-fase21.js` (2026-08-17: pozo — determinismo hash 2D, solo en desierto firme, layout de bloques MC) | `unit-terreno.js` (patrón de estructuras deterministas); iglú y geoda → P1 (geoda reusa bloques de la F22) |
-| **B2** Estructuras activas (pirámide, cabaña, puesto, mansión, fortaleza, ruinas/monumento) | `unit-fase21.js` — **asserts previstos de la pirámide** (bloque diferido a P1, no implementado aún): determinismo de `pyramidAt`/centro (hash 2D, patrón `wellAt`), solo en desierto firme, trampa de TNT que dispara con la cadena `explode()` existente (patrón `unit-fase11`), cofres con loot coherente (patrón `unit-terreno`/`unit-fase12`) | `unit-fase11.js` (explosión/TNT), `unit-terreno.js` (loot de cofres) |
-| **C1** Mobs pasivos nuevos (vaca, gallina, pulpo) | `unit-fase21.js` (mecánica: ordeñar, poner huevos, tinta) | `unit-paridad.js` (drops/XP en `MOB_XP`), `unit-mobs-poo.js` (subclases por especie), `unit-cria.js` (cría) |
-| **C2** Mobs neutrales nuevos (enderman, zombified piglin, abeja) | `unit-fase21.js` + ampliar `unit-mobs-ia.js` (neutralidad: solo agreden si se les provoca) | `unit-mobs-ia.js` (máquina de estados), `unit-fase12.js` (patrón de doma/mascota) |
-| **C3** Mejoras de IA (creeper huye de gatos, esqueleto strafe, araña día/noche, zombi convoca) | — | `unit-mobs-ia.js` (comportamiento por especie documentado y testeado) |
-| **Cierre D1** (suite/E2E/auditorías) | `audit-fase21.js` (auditoría de la fase) | `audit-fase4.js` (generación de biomas/estructuras dentro de presupuesto), E2E clásicos + menú |
+| **A1** Biomas más grandes (extensión) | ✅ `unit-fase21.js` (coherencia de rachas / determinismo / 8 biomas base) | `unit-biomas.js` y `unit-mundo.js` recalibrados; `audit-fase4` sin regresión |
+| **A2** Biomas de superficie nuevos | ✅ `unit-fase21.js` (bandas coherentes, abedul puro, abeto 2×2, nieve en picos) | `unit-biomas.js` ampliado (sub-biomas A2 + recalibración D1) |
+| **B1** Estructuras pasivas (pozo) | ✅ `unit-fase21.js` (pozo determinista solo en desierto firme, layout MC) | iglú y geoda → P1 (geoda reusa bloques de la F22) |
+| **B2** Estructuras activas (pirámide) | ✅ `unit-fase21.js` (asserts B2: centro/footprint/trampa/cofres/TNT/pozo) + `audit-fase21.js` (chunks reales) | cabaña/puesto/fortaleza/ruinas → P1; mansión/monumento fuera |
+| **C1** Mobs pasivos (vaca, gallina) | ✅ `unit-fase21.js` (ordeñar MILK 260, huevo EGG 261) + `unit-recetas.js` (`DROPS_JUSTIFICADOS`) | pulpo y huevo lanzable → P1 |
+| **C2** Mobs neutrales (enderman) | ✅ `unit-fase21.js` + `audit-fase21.js` (radianes, menú/creativo ignorados) | zombified piglin y abeja → P1 |
+| **C3** Mejoras de IA | ✅ `audit-fase21.js` (zombi convoca ≤16, araña día/noche, creeper huye de gatos) | esqueleto strafe cubierto también en `unit-mobs-ia` |
+| **Iteración v21.2 D1** ríos | ✅ `audit-fase21.js` (lecho ≤ SEA_LEVEL, cauce ≤ terreno) + `unit-biomas.js`/`audit-altura.js` recalibrados | D2/D3 diferidos a la F21.5 |
+| **Cierre D1** | ✅ `audit-fase21.js` (25 checks) | `--audit` 8/8, E2E 7/7, biome 0 |
 
 ## Auditorías standalone
 
@@ -196,6 +195,7 @@ Three/DOM para forzarlos.
 | `audit-fase7.js` | Métricas de tick + FPS en Chrome headless vía CDP + integridad del guardado |
 | `audit-altura.js` | Mundo de 128 bloques (−64..+63): layout, superficie, cuevas, biomas, minerales, agua, estructuras, costuras, migración v5→v6, geometría (72 checks) |
 | `audit-fase20.js` | Fase 20 (rolling release, 17 checks): ratelimit 2-ventanas (D2), MAX_STACK 64 en `addToInventory` (SV-5), `savePlayersAsync` por cola (REN-1), generación determinista por chunk (P4), índice espacial de antorchas (P7) |
+| `audit-fase21.js` | Fase 21 (25 checks): pirámide end-to-end sobre chunks reales (B2: cuerpo piedra, pozo aire, placa, TNT, 4 cofres, trampa posicional, determinismo), ríos D1 (lecho ≤ `SEA_LEVEL`, cauce ≤ terreno), enderman en radianes (C2, ignora menú/creativo), IA C3 (zombi convoca ≤16, araña día/noche, creeper huye de gatos) |
 
 ## E2E (7, necesitan servidor en `WS_URL` / `ws://localhost:3998` salvo e2e-menu)
 

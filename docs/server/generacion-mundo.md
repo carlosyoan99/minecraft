@@ -65,11 +65,17 @@
    recalibración de minerales por percentil y de `audit-altura`.
 2. **Más biomas de superficie** (F21 A2, P1): sabana con acacias, badlands,
    bosque oscuro, isla de champiñones — solo si reusan bloques existentes;
-   lush/dripstone requieren bloques nuevos sincronizados B/I.
-3. **Estructuras activas** (F21 B2, P1): pirámide del desierto (trampa TNT),
-   cabaña del pantano, fortaleza, ruinas/monumento oceánico.
+   lush/dripstone requieren bloques nuevos sincronizados B/I. (Los
+   sub-biomas baratos — abedul, taiga 2×2, picos nevados — ya están
+   implementados.)
+3. **Estructuras activas** (F21 B2, P1): cabaña del pantano, fortaleza,
+   ruinas/monumento oceánico. (La pirámide del desierto con su trampa TNT
+   ya está implementada; mansión fuera hasta decisión de presupuesto.)
 4. **Geoda de amatista** (F21 B1, P1): reusa los bloques de amatista que
    aporta la Fase 22 (B1) — no duplicar IDs.
+5. **Iteración de generación de la F21.5** (diferidos D2/D3 de la F21):
+   océanos más profundos/cálidos con corales y montañas altas dentro del
+   rango v6 — spec F21.5 §1.4.
 
 ## Constantes, funciones, cambios y resultados
 
