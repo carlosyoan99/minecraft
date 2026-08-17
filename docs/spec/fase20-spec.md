@@ -288,9 +288,10 @@ Cada iteración (v20.x) sigue el flujo del borrador, ahora con reglas fijas:
   `package.json` + paso documentado en `docs/tests.md` (0 vulnerabilidades).
 - **Pendiente para cerrar v20.2:** commitear el código del backlog B6
   (SV-5/REN-1/CI 19/CI 20, en el árbol de trabajo), auditoría de la
-  iteración (C1: suite + E2E + `--audit` + biome + `node --check`),
-  verificación manual en navegador (knockback, mena cruda → horno) y
-  documento `docs/v20.2.md`.
+  iteración (C1: suite + E2E + `--audit` + biome + `node --check`) y
+  verificación manual en navegador (knockback, mena cruda → horno). El
+  documento `docs/v20.2.md` ya existe (2026-08-17, con unit 60/60, biome
+  0 y `npm audit` 0 verificados).
 
 ---
 
