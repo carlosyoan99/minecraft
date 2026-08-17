@@ -64,6 +64,19 @@
   vértice, pool de geometrías y LOD con histéresis. Ver la tabla de
   rendimiento en [`public/mecanicas.md`](./public/mecanicas.md).
 
+### Decisiones del backlog 2026-08-15 (P1-P7), medidas en la v20.1
+
+| Ítem | Veredicto | Métrica / decisión |
+|---|---|---|
+| **P4 — generación determinista** | ✅ implementado | La generación usa un PRNG mulberry32 sembrado por (semilla, cx, cz) y **ya no marca dirty**: explorar no escribe cientos de archivos sin cambios (antes cada chunk generado se re-persistía). `setChunkRng` lo inyecta en tests (`unit-arboles.js`) |
+| **P7 — índice espacial de antorchas** | ✅ implementado | `bakeChunkLight`/`hasTorchNear` pasaron de O(torchSet completo) a O(torchSet del vecindario 3×3 de chunks) vía `getTorchesNear` (`chunkstore.js`) — el radio de luz 7 < chunk 16, así que el vecindario cubre todo. Test en `unit-fase19.6.js` §P7 |
+| **P2 — gzip del guardado en worker** | ⚪ **evaluado y rechazado con métrica** | `gzipSync` medido: **1.36 ms/chunk** → ~8 ms por lote de 6 (ya repartido con `setImmediate` en la cola asíncrona). Un worker no justifica su complejidad: el coste ya no bloquea el bucle. Veredicto en la auditoría 2026-08-15 §6 y `docs/v20.1.md` |
+
+> Deuda consciente documentada en el mismo backlog: el reenvío de `settings`
+> (r=10) genera 441 chunks síncronos (P1) y `saveWorld` síncrono persiste en
+> `switchWorld`/SIGINT (P3) — acotados y sin plan de cambio salvo que el
+> perfilado en vivo (acciones de la auditoría 2026-08-15 §perfilado) lo pida.
+
 ---
 
 ## Qué NO es una limitación (aclaraciones)
