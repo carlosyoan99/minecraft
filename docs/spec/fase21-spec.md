@@ -211,6 +211,9 @@ fuera de alcance por ahora).
 
 - **A2**: cuevas de lush/dripstone (requieren bloques nuevos: bayas
   luminosas, dripstone) → P1, con sincronización B/I + receta + icono.
+- **B1**: iglú (solo edificio) y **geoda de amatista** → P1: la geoda
+  depende de los bloques de amatista de la **Fase 22 (B1)** (la F21 los
+  reusa, no los crea — `TODO.md` D2).
 - **B2**: **pirámide del desierto** (trampa TNT + cofres; diferida de la
   P0 en la entrevista), cabaña del pantano, puesto de saqueadores (sin
   saqueadores: se decide dejarlo vacío o con mobs existentes), fortaleza y
@@ -220,7 +223,8 @@ fuera de alcance por ahora).
 - **C1**: pulpo (tinta → tinte negro, requiere ítem nuevo sincronizado o
   reuso documentado), refinamiento de la oveja (comer pasto) y **huevo
   lanzable 1/8 pollito** → P1.
-- **C2**: zombified piglin (efecto dominó) y abeja (requiere colmena/
+- **C2**: **enderman** (diferido de la P0 en la entrevista), zombified
+  piglin (efecto dominó) y abeja (requiere colmena/
   miel como bloques nuevos) → P1.
 - **C3**: mejoras de IA de mobs existentes (creeper huye de gatos,
   esqueleto strafe, araña día/noche, zombi convoca) → P1, con tests por
@@ -236,8 +240,11 @@ fuera de alcance por ahora).
 2. **B1 (pozo)**: solo en desierto firme (nunca sobre agua), determinista
    por hash-2D, fuente de agua central con lecho de arena; los tests de
    mundo ("charco válido") no se rompen.
-3. **B2 (pirámide)**: determinista en desierto, trampa de TNT funcional
-   (test F11 reusado), loot de cofres coherente.
+3. **B2 (pirámide, diferida a P1)**: determinista en desierto (hash 2D,
+   patrón `wellAt`), trampa de TNT funcional (cadena `explode()` reusada,
+   test F11 como patrón), loot de cofres coherente — asserts previstos en
+   `unit-fase21.js` (bloque aún no implementado en la v21.1; ver la fila
+   B2 de `docs/tests.md`).
 4. **C1/C2 (vaca, gallina, enderman)**: mecánica característica con test
    por mecánica (ordeñar, poner huevos, neutralidad/teletransporte);
    drops/XP en `unit-paridad`; texturas nuevas; sin regresión en los mobs
@@ -319,3 +326,11 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
   C1 + enderman C2), los diferidos a P1 (§5.2) y los criterios de aceptación
   por bloque (§5.3); cabecera y §1 actualizadas; cierre y criterios
   renumerados a §6/§7.
+
+**Cambios en esta spec (v5):**
+- 2026-08-17: **v21.1 acotada en la entrevista a A1+A2+B1+C1** — pirámide
+  B2 y enderman C2 pasan a §5.2 (diferidos a P1); estado de la tabla §5.1
+  actualizado: A2 y B1 implementados en el árbol, **C1 implementado**
+  (`I.MILK` 260/`I.EGG` 261 sincronizados, `tickChicken`, `handleMilkCow`),
+  huevo lanzable 1/8 pollito diferido a P1; los tests de la tanda quedan
+  para el final (decisión del usuario).

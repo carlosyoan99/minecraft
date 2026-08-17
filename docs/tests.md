@@ -164,19 +164,20 @@ Three/DOM para forzarlos.
 ## Fase 21 (EN CURSO) — matriz de tests prevista
 
 > La F21 (biomas ampliados, estructuras y más mobs) está **abierta** (spec
-> [`fase21-spec.md`](spec/fase21-spec.md)); su planificación P0 (entrevista
-> del planificador) está pendiente en `TODO.md`. Los tests nuevos se crean al
-> implementar cada bloque (cada uno con `// Fase 21, Bloque X` al inicio) y
-> los existentes se **amplían/recalibran** sin romper su contrato. `unit-fase21.js`
-> ya existe (A1, 2026-08-17); `audit-fase21.js` se crea al cierre —
-> `check-specs` lo reporta como aviso (spec `[EN CURSO]`), no error.
+> [`fase21-spec.md`](spec/fase21-spec.md)); la **v21.1** en curso acota
+> A1+A2+B1+C1 y el resto queda diferido a P1 (spec §5.2). Los tests nuevos
+> se crean al implementar cada bloque (cada uno con `// Fase 21, Bloque X`
+> al inicio) y los existentes se **amplían/recalibran** sin romper su
+> contrato. `unit-fase21.js` ya existe (A1/A2/B1, 2026-08-17);
+> `audit-fase21.js` se crea al cierre — `check-specs` lo reporta como aviso
+> (spec `[EN CURSO]`), no error.
 
 | Bloque F21 | Tests nuevos previstos | Tests existentes a ampliar/recalibrar |
 | --- | --- | --- |
 | **A1** Biomas más grandes (extensión) | ✅ `unit-fase21.js` (2026-08-17: coherencia de rachas vs `BIOME_FREQ`, determinismo de etiquetas, presencia de los 8 biomas base) | `unit-biomas.js` (ampliado por el agente: sub-biomas A2), `unit-mundo.js`, `audit-fase4.js` (recalibrar ms/chunk sin romper determinismo) |
 | **A2** Biomas de superficie nuevos | ✅ `unit-fase21.js` (2026-08-17: bandas coherentes, abedul puro vs bosque común, abeto 2×2, nieve en picos) | `unit-biomas.js` (ampliado por el agente: presencia de sub-biomas y su vegetación), `unit-sync.js`/`unit-recetas.js`/`unit-itemicons.js` (bloques nuevos B/I si aplica) |
 | **B1** Estructuras pasivas (pozo, iglú, geoda) | ✅ `unit-fase21.js` (2026-08-17: pozo — determinismo hash 2D, solo en desierto firme, layout de bloques MC) | `unit-terreno.js` (patrón de estructuras deterministas); iglú y geoda → P1 (geoda reusa bloques de la F22) |
-| **B2** Estructuras activas (pirámide, cabaña, puesto, mansión, fortaleza, ruinas/monumento) | `unit-fase21.js` (trampa TNT reusada + loot + determinismo) | `unit-fase11.js` (explosión/TNT), `unit-terreno.js` (loot de cofres) |
+| **B2** Estructuras activas (pirámide, cabaña, puesto, mansión, fortaleza, ruinas/monumento) | `unit-fase21.js` — **asserts previstos de la pirámide** (bloque diferido a P1, no implementado aún): determinismo de `pyramidAt`/centro (hash 2D, patrón `wellAt`), solo en desierto firme, trampa de TNT que dispara con la cadena `explode()` existente (patrón `unit-fase11`), cofres con loot coherente (patrón `unit-terreno`/`unit-fase12`) | `unit-fase11.js` (explosión/TNT), `unit-terreno.js` (loot de cofres) |
 | **C1** Mobs pasivos nuevos (vaca, gallina, pulpo) | `unit-fase21.js` (mecánica: ordeñar, poner huevos, tinta) | `unit-paridad.js` (drops/XP en `MOB_XP`), `unit-mobs-poo.js` (subclases por especie), `unit-cria.js` (cría) |
 | **C2** Mobs neutrales nuevos (enderman, zombified piglin, abeja) | `unit-fase21.js` + ampliar `unit-mobs-ia.js` (neutralidad: solo agreden si se les provoca) | `unit-mobs-ia.js` (máquina de estados), `unit-fase12.js` (patrón de doma/mascota) |
 | **C3** Mejoras de IA (creeper huye de gatos, esqueleto strafe, araña día/noche, zombi convoca) | — | `unit-mobs-ia.js` (comportamiento por especie documentado y testeado) |
