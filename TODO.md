@@ -866,11 +866,11 @@
 ## Fase 20 — Rolling release (ciclo de estabilización y paridad)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase20-spec.md`](docs/spec/fase20-spec.md)
-> **En curso — v20.1 cerrada (ciclo rolling activo)** — prerrequisito:
-> Fase 18 cerrada (y con ella F16/F17). Ciclo largo con iteraciones v20.x;
-> cada iteración con auditoría obligatoria; no se avanza hasta que todo
-> esté en verde. Integrado el backlog del borrador `fase20-spec.md`
-> (Descargas) en B3/B4. Documento de la iteración:
+> **En curso — v20.1 cerrada, v20.2 iniciada (ciclo rolling activo)** —
+> prerrequisito: Fase 18 cerrada (y con ella F16/F17). Ciclo largo con
+> iteraciones v20.x; cada iteración con auditoría obligatoria; no se avanza
+> hasta que todo esté en verde. Integrado el backlog del borrador
+> `fase20-spec.md` (Descargas) en B3/B4. Documento de la iteración:
 > [`docs/v20.1.md`](docs/v20.1.md).
 
 - [x] A1 Metodología del ciclo (planificar → implementar → probar → revisar
@@ -909,6 +909,57 @@
       `docs/tests.md` — **unit 59/59, E2E 7/7, `--audit` 6/6, biome 0,
       `node --check` limpio; verificación manual en navegador pendiente de
       la sesión real del usuario (queda como primer punto de la v20.2)**
+
+### Iteración v20.2 — en curso
+
+> Primer ítem cerrado: el bug de `#menu-bg` de `Notas del usuario.md`. El
+> resto de candidatos son el backlog de la auditoría Copilot (SV-5, REN-1
+> residual, timeouts de los CDP y `npm audit` en el flujo) — ver abajo.
+
+- [x] D1 Bug «#menu-bg no se oculta al iniciar partida» (Notas del
+      usuario): el fondo del menú (cielo con nubes, z-index 1 sobre el
+      canvas) nunca se ocultaba — solo `#blocker`; fix `showMenuBg()` en
+      `scene.js` (visible SOLO en el menú principal) cableado en `menus.js`
+      (showMenu → true, onWorldLoaded → false, onSeedRejected → true; la
+      pausa NO lo muestra). Regresión `tests/unit-fase20.js` (patrón
+      unit-camara); verificación navegador CDP 3/3 (visible en el menú →
+      oculto tras join_world → visible tras leave_world); unit 60/60,
+      biome 0, `node --check` limpio. Commit `875f8e1`
+
+### Auditoría 2026-08-16 (GitHub Copilot) — integración
+
+> Reconciliación completa (hallazgo → estado → plan):
+> [`docs/audits/auditoria-2026-08-16-copilot.md`](docs/audits/auditoria-2026-08-16-copilot.md).
+> El informe de Copilot (árbol `161721c`) reedita la auditoría 2026-08-15
+> ya integrada: los críticos (H1, F16-01, B1) y casi todos los medios
+> (M1-M5, B2, B3, REN-2/3/5) **ya estarán corregidos en `161721c`**; quedan
+> 2 pendientes reales y 2 sugerencias de proceso (plan en la spec F20 B6,
+> candidata a iteración v20.2).
+
+- [x] Verificación (2026-08-16): hallazgos críticos/altos del informe —
+      **H1** (cofres, `unit-cofre.js`), **F16-01** (`chunk-fill.js:37,54`),
+      **B1** (`grid_set`) — ya corregidos en el árbol auditado, con test
+- [x] Verificación: medios **M1** (`timers.js` verifyClient), **M2** (tope
+      cría `mob-species.js:545`), **M3** (nombre duplicado `net.js:398`),
+      **M4** (OP por lista OPS), **M5** (TLS documentado), **B2**
+      (rate-limit por acción), **B3** (log de comandos OP `commands.js:199`)
+      — ya corregidos; **REN-2/3/5** y la modularización F18 igual
+- [x] **SV-5** tope de stack 64 en `addToInventory` (`server/inventory.js:
+      44-49`; `/give` ya clampea 64): respetar `MAX_STACK` al apilar/crear
+      (server-side, fuente de verdad) con test en `unit-*`; el cliente
+      pinta el contador crudo — economía/paridad MC, prioridad baja.
+      Implementado 2026-08-16: `MAX_STACK = 64` compartida (unit-sync),
+      apilado por split de slots + rechazo atómico, `/give` con
+      `MAX_STACK`; checks en `unit-poo-entities.js`
+- [ ] **REN-1 residual** `savePlayer` síncrono en el autosave
+      (`server.js:115`): mover a la cola asíncrona o confiar en el guardado
+      por eventos (mitigación F1 ya en 10-15 s); prioridad baja-media
+- [ ] Sugerencia de proceso: subir timeouts de `audit-fase3`/`audit-fase7`
+      (causa ambiental SwiftShader/CPU) y documentar el umbral en
+      `docs/tests.md`
+- [ ] Sugerencia de proceso: `npm audit --audit-level=moderate` como paso
+      del flujo de verificación (sin CI en el repo; script o instrucción en
+      la metodología del ciclo)
 
 ---
 

@@ -1,6 +1,6 @@
 # Fase 20 — Rolling release (ciclo de estabilización y paridad) (Spec)
 
-> **Estado:** `[EN CURSO]` (iteración v20.1 cerrada; ciclo rolling activo)
+> **Estado:** `[EN CURSO]` (iteración v20.1 cerrada; **v20.2 iniciada** — ciclo rolling activo)
 
 > Documento creado a partir de: `docs/Notas del usuario.md` (\"Próximas Fases\":
 > la 20 es el \"rolling release del proyecto, fase larga donde solo se
@@ -188,6 +188,43 @@ Cada iteración (v20.x) sigue el flujo del borrador, ahora con reglas fijas:
 - **Criterio:** `git tag v20.1` (o convención equivalente del proyecto);
   documento de la iteración con bugs cerrados, paridad y métricas.
 
+### B6 — Integración de la auditoría Copilot 2026-08-16 (backlog v20.x)
+
+> La auditoría de GitHub Copilot (`docs/audits/auditoria-2026-08-16-copilot.md`)
+> fue verificada contra el árbol actual: sus hallazgos críticos/altos
+> (H1, F16-01, B1) y casi todos los medios (M1-M5, B2, B3, REN-2/3/5) ya
+> estaban corregidos en el commit que el propio Copilot audita (`161721c`,
+> cierre de la F19.6). Quedan **2 pendientes reales** y **2 sugerencias de
+> proceso** que se planifican aquí para una iteración `v20.x` (candidata:
+> v20.2):
+
+- **SV-5 — tope de stack en `addToInventory` (paridad MC, economía).**
+  `/give` ya clampea a 64 (`server/commands.js:355`) pero
+  `server/inventory.js` apila sin tope (`:44-49`) y el cliente pinta el
+  contador crudo. Corrección server-side (fuente de verdad): respetar
+  `MAX_STACK` (candidato a constante compartida por `unit-sync`) al
+  apilar/crear slot; test en `unit-*`; sin cambios de protocolo WS ni de
+  `SCHEMA_VERSION`. Prioridad **baja**. **[IMPLEMENTADO 2026-08-16, v20.2]**
+  — `MAX_STACK = 64` nueva constante compartida (servidor + cliente,
+  sincronizada por `unit-sync`); `addToInventory` rellena slots existentes
+  hasta el tope y crea slot nuevo solo para el excedente (rechazo atómico
+  `false` si no cabe todo); `commands.js:/give` usa `MAX_STACK` como fuente
+  única; checks en `unit-poo-entities.js` (split 64+36, tope por slot,
+  excedente a slot vacío, limpieza).
+- **REN-1 (residual) — `savePlayer` síncrono en el autosave.**
+  Los chunks ya van por la cola asíncrona (F16 C1); `server.js:115`
+  persiste jugadores de forma síncrona en el `setInterval`. Alternativa:
+  mover ese guardado a la cola (o confiar en el guardado por eventos ya
+  mitigado, F1). Prioridad **baja-media**; solo si la medición muestra
+  bloqueos reales del tick con el intervalo reducido a 10-15 s.
+- **CI 19 — timeouts de `audit-fase3`/`audit-fase7`.** Subir la tolerancia
+  (Causa ambiental: SwiftShader + CPU bajo carga; no regresión). Acción:
+  aumentar ventanas/timeouts y documentar el umbral en `docs/tests.md`.
+- **CI 20 — `npm audit` en el flujo de verificación.** Añadir
+  `npm audit --audit-level=moderate` como paso documentado (sin CI en el
+  repo actualmente; script en `package.json` o instrucción en la
+  metodología del ciclo).
+
 ---
 
 ## 4. Bloque C — Criterios de aceptación de cada iteración
@@ -263,3 +300,35 @@ La F20 se considera cerrada cuando, en una auditoría de iteración:
 - Verificación manual en navegador de las mecánicas nuevas (knockback,
   mena cruda → horno): pendiente de la sesión real del usuario (próximo
   paso de la v20.2 si confirma algo).
+
+**Cambios en esta spec (v3, 2026-08-16 — integración de la auditoría Copilot):**
+- Añadido **B6** con el backlog de la auditoría de GitHub Copilot
+  (reconciliada en `docs/audits/auditoria-2026-08-16-copilot.md`): SV-5
+  (stack 64), REN-1 residual (`savePlayer` async), timeouts de
+  `audit-fase3/7` y `npm audit` en el flujo de verificación — para una
+  iteración `v20.x` (candidata: v20.2). Sin cambios de alcance ni
+  prerrequisitos: la F20 sigue cerrada solo con cada iteración en verde.
+- **SV-5 implementado (v20.2, 2026-08-16)**: `MAX_STACK` compartida +
+  `addToInventory` con tope (split en slots) + `/give` con `MAX_STACK`;
+  checks en `unit-poo-entities.js` y sincronía en `unit-sync.js`. Restan
+  REN-1, CI 19 y CI 20.
+
+**Cambios en esta spec (v4, 2026-08-16 — inicio de la v20.2):**
+- **D1** primer ítem de la v20.2 cerrado: bug de `Notas del usuario.md`
+  «#menu-bg no se oculta al iniciar partida». Causa raíz: el fondo del
+  menú (cielo con nubes, `#menu-bg`, z-index 1 sobre el canvas) nunca se
+  ocultaba en JS — solo se ocultaba `#blocker` (z-index 300), así que al
+  terminar la carga el degradado tapaba el mundo. Fix: `showMenuBg()` en
+  `public/scene.js` que controla el fondo aparte del bloqueador (la pausa
+  usa un bloqueador translúcido y debe dejar ver el juego congelado
+  detrás), cableado en `public/menus.js` en los tres puntos del flujo:
+  `showMenu` → visible, `onWorldLoaded` → oculto, `onSeedRejected` →
+  visible. Regresión a nivel de fuente en `tests/unit-fase20.js` (patrón
+  `unit-camara`), registrado en `run.js`; verificación en navegador
+  (CDP + Chrome headless, 2/2 ejecuciones): `#menu-bg` visible en el menú,
+  oculto (`inline= none`) tras `join_world` → `init` → `onWorldLoaded`, y
+  visible de nuevo tras `leave_world` → `menu_state`. Suite: **unit 60/60**
+  (era 59 + el nuevo), biome 0, `node --check` limpio. Commit `875f8e1`.
+  El resto de la v20.2 = backlog B6 (SV-5, REN-1 residual, timeouts CDP,
+  `npm audit`) + el segundo bug de las notas (desconexión al cargar el
+  mundo).
