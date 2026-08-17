@@ -285,10 +285,12 @@ Al implementarse (tras la entrevista del planificador), esta fase cierra con:
    de la fase.
 
 > **Tests que cubren esta fase (previstos):** `tests/unit-fase21.js` (creado
-> 2026-08-17 con los asserts de A1 — coherencia de rachas, determinismo y
-> presencia de los 8 biomas base) y `tests/audit-fase21.js` (pendiente, al
-> cierre); el primero se ampliará con los asserts de biomas/estructuras/mobs
-> de los bloques A2-C; **ampliar**
+> 2026-08-17 con los asserts de **A1** — coherencia de rachas, determinismo
+> y presencia de los 8 biomas base — y **A2** — bandas coherentes de los
+> sub-biomas, abedul 100 % en `birch_forest`, abeto 2×2 en `giant_taiga`,
+> nieve en las cumbres de `snowy_peaks`) y `tests/audit-fase21.js`
+> (pendiente, al cierre); el primero se ampliará con los asserts de
+> estructuras/mobs de los bloques B-C; **ampliar**
 > `unit-biomas.js` (A1 escala + A2 biomas nuevos), `unit-mundo.js` (A1),
 > `unit-mobs-ia.js` (C2 neutralidad + C3 IA), `unit-paridad.js` (C1
 > drops/XP), `unit-sync.js`/`unit-recetas.js`/`unit-itemicons.js` (bloques
