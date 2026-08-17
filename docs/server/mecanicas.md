@@ -23,6 +23,7 @@
 | Persistencia (guardado asíncrono, migraciones) | [`persistencia.md`](./persistencia.md) | `save.js`, `save-chunks.js`, `save-meta.js`, `save-players.js` |
 | Seguridad y robustez (validación, rate-limit, anti-DoS) | [`seguridad.md`](./seguridad.md) | `net.js`, `actions.js`, `anticheat.js`, `ratelimit.js` |
 | Pesca (**planificada** — F21.5 A1/A8) | [`pesca.md`](./pesca.md) | `fishing.js` (nuevo), `projectiles.js`, `chests.js`, `recetas.json` |
+| Dimensiones / Nether (**planificada** — F24 A-E, End en F25) | [`dimensiones.md`](./dimensiones.md) | `world-session.js`, `save-*.js`, `nether-gen.js` (nuevo), `mob-species.js` |
 
 ## El bucle principal (20 ticks/s)
 
