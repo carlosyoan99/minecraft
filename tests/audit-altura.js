@@ -617,7 +617,11 @@ let temples = 0,
 const STRUCT_SEARCH_CELLS = 32; // ±32 celdas ≈ ±1024 bloques
 const centers = [];
 for (let cellX = -STRUCT_SEARCH_CELLS; cellX <= STRUCT_SEARCH_CELLS; cellX++) {
-	for (let cellZ = -STRUCT_SEARCH_CELLS; cellZ <= STRUCT_SEARCH_CELLS; cellZ++) {
+	for (
+		let cellZ = -STRUCT_SEARCH_CELLS;
+		cellZ <= STRUCT_SEARCH_CELLS;
+		cellZ++
+	) {
 		const s = world.structCenterAt(cellX, cellZ);
 		if (s) centers.push(s);
 	}
@@ -657,9 +661,7 @@ for (const struct of centers) {
 		)
 			templeOk++;
 		else if (!tower)
-			info(
-				`templo en (${wx},${wz}): torre se sale del mundo (baseY ${baseY})`
-			);
+			info(`templo en (${wx},${wz}): torre se sale del mundo (baseY ${baseY})`);
 	} else if (struct.type === "shipwreck") {
 		shipwrecks++;
 		const baseY = world.oceanFloorY(wx, wz) - world.DESIGN_OFFSET + 1;

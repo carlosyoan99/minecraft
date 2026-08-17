@@ -213,7 +213,10 @@ function generateChunk(cx, cz) {
 			// bajo el agua. Ruidos compartidos por columna (getHeight/getBiome son
 			// ruido puro: recalcularlos daría valores idénticos, pero se evita el
 			// triple muestreo en el bucle de generación).
-			const temp = noise.noise2D(wx * biomes.BIOME_FREQ, wz * biomes.BIOME_FREQ);
+			const temp = noise.noise2D(
+				wx * biomes.BIOME_FREQ,
+				wz * biomes.BIOME_FREQ
+			);
 			const mnt = noise.noise2D_mountain(wx * 0.008, wz * 0.008);
 			// Fase 21 (v21.2, D1): altura base en ESPACIO DE DISEÑO; el río la
 			// hunde después (riverCarvedHeight: orillas inclinadas hacia el
@@ -251,7 +254,10 @@ function generateChunk(cx, cz) {
 			const height = waterCol ? floorY : baseHeight; // Y de MUNDO de la superficie
 			// Fase 11 (Bloque B): el bioma ahora conoce la puerta de pantano
 			// (el ruido de pantano, muestreado a baja frecuencia).
-			const swampNoise = noise.noise2D_swamp(wx * biomes.BIOME_FREQ, wz * biomes.BIOME_FREQ);
+			const swampNoise = noise.noise2D_swamp(
+				wx * biomes.BIOME_FREQ,
+				wz * biomes.BIOME_FREQ
+			);
 			const biome = biomes.biomeFrom(temp, mnt, swampNoise, wx, wz);
 			const surfaceBlock = waterCol
 				? B.AIR
@@ -514,8 +520,7 @@ function generateChunk(cx, cz) {
 				// claro). En el pantano (Fase 11, B) los robles llevan lianas
 				// colgando del borde, como en Minecraft.
 				const birch =
-					biome === "birch_forest" ||
-					(biome === "forest" && rand() < 0.33);
+					biome === "birch_forest" || (biome === "forest" && rand() < 0.33);
 				const log = birch ? B.BIRCH_LOG : B.OAK_LOG;
 				const leaves = birch ? B.BIRCH_LEAVES : B.OAK_LEAVES;
 				const treeHeight = 4 + Math.floor(rand() * 3);
@@ -576,8 +581,7 @@ function generateChunk(cx, cz) {
 						for (let i = 0; i < treeHeight; i++) {
 							const y = height + i;
 							if (y <= WORLD_MAX_Y)
-								data[core.idx(x + dx, core.toLocal(y), z + dz)] =
-									B.SPRUCE_LOG;
+								data[core.idx(x + dx, core.toLocal(y), z + dz)] = B.SPRUCE_LOG;
 						}
 					}
 				}
@@ -596,12 +600,7 @@ function generateChunk(cx, cz) {
 								continue;
 							const lx = x + dx,
 								lz = z + dz;
-							if (
-								lx < 0 ||
-								lx >= CHUNK_SIZE ||
-								lz < 0 ||
-								lz >= CHUNK_SIZE
-							)
+							if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE)
 								continue;
 							const leafWx = cx * CHUNK_SIZE + lx,
 								leafWz = cz * CHUNK_SIZE + lz;
@@ -720,15 +719,7 @@ function generateChunk(cx, cz) {
 			// Fase 21 (B2): pirámide del desierto — pisa el terreno después del
 			// resto (escribe el sótano y el cuerpo escalonado completo).
 			if (pyramid)
-				structures.placePyramidColumn(
-					data,
-					x,
-					z,
-					wx,
-					wz,
-					pyramid,
-					height
-				);
+				structures.placePyramidColumn(data, x, z, wx, wz, pyramid, height);
 		}
 	}
 

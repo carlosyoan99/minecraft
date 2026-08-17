@@ -172,9 +172,8 @@ function tickSkeleton(mob, isNight, nearest, dist) {
 			const len = Math.hypot(dx, dz) || 1;
 			// Perpendicular (+90°): (−dz, dx). El sentido alterna cada pocos
 			// segundos (por-mob) para no quedar pegado girando en círculos.
-			const dir = (mob.strafeFlip = !mob.strafeFlip)
-				? 1
-				: -1;
+			mob.strafeFlip = !mob.strafeFlip;
+			const dir = mob.strafeFlip ? 1 : -1;
 			mob.chase(
 				{
 					x: mob.x + (-dz / len) * dir,

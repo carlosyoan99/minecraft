@@ -296,13 +296,20 @@ const SUBBIOME_GATE = 0.25;
 const PEAK_GATE = 0.1;
 function biomeFrom(temp, mnt, swamp, wx, wz) {
 	if (mnt > MOUNTAIN_THRESHOLD) {
-		if (wx !== undefined && noise.noise2D_mountain(wx * 0.05, wz * 0.05) > PEAK_GATE)
+		if (
+			wx !== undefined &&
+			noise.noise2D_mountain(wx * 0.05, wz * 0.05) > PEAK_GATE
+		)
 			return "snowy_peaks";
 		return "mountain";
 	}
 	if (temp < SNOW_TEMP) return "snow";
 	if (temp < -0.2) {
-		if (wx !== undefined && noise.noise2D_detail(wx * SUBBIOME_FREQ, wz * SUBBIOME_FREQ) > SUBBIOME_GATE)
+		if (
+			wx !== undefined &&
+			noise.noise2D_detail(wx * SUBBIOME_FREQ, wz * SUBBIOME_FREQ) >
+				SUBBIOME_GATE
+		)
 			return "giant_taiga";
 		return "taiga";
 	}
@@ -310,7 +317,11 @@ function biomeFrom(temp, mnt, swamp, wx, wz) {
 	if (swamp !== undefined && swamp > SWAMP_GATE && temp < 0.2) return "swamp";
 	if (temp > 0.38) return "jungle";
 	if (temp > 0.2) {
-		if (wx !== undefined && noise.noise2D_detail(wx * SUBBIOME_FREQ, wz * SUBBIOME_FREQ) > SUBBIOME_GATE)
+		if (
+			wx !== undefined &&
+			noise.noise2D_detail(wx * SUBBIOME_FREQ, wz * SUBBIOME_FREQ) >
+				SUBBIOME_GATE
+		)
 			return "birch_forest";
 		return "forest";
 	}

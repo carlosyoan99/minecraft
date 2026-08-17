@@ -13,9 +13,15 @@
 // ============================================================
 const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
-const { B, isSolidBlock, NON_SOLID_PLANTS, CHUNK_SIZE, WORLD_HEIGHT } = require(
-	path.join(ROOT, "server", "constants.js")
-);
+const {
+	B,
+	isSolidBlock,
+	NON_SOLID_PLANTS,
+	CHUNK_SIZE,
+	WORLD_HEIGHT,
+	WORLD_MIN_Y,
+	WORLD_MAX_Y
+} = require(path.join(ROOT, "server", "constants.js"));
 const world = require(path.join(ROOT, "server", "world.js"));
 const state = require(path.join(ROOT, "server", "state.js"));
 
@@ -206,6 +212,12 @@ for (let i = 0; i < c00.length; i++) if (c00[i] !== B.AIR) _blocks++;
 // 4) El lecho del lago se ve: los sólidos bajo el agua dibujan su cara (contra agua).
 //    Los lagos son escasos (~5% columnas) y no hay ninguno en el 3×3 del origen:
 //    se busca una zona con agua en un radio amplio (8x8 = 64 chunks) y se valida ahí.
+//    Fase 21 (v21.2, D1): el check se migra de verdad a Y de MUNDO (v6) — antes
+//    usaba la fila local SEA_LEVEL−1 como si fuera Y de mundo (resto del bug v5)
+//    y solo pasaba por casualidad (encontraba una cueva acuática y contaba un
+//    charco decorativo 64 bloques más arriba). Ahora busca el agua en la línea
+//    del mar real (WORLD_SEA_LEVEL − 1 = −4) y recorre el chunk en coordenadas
+//    de mundo (local = mundo − WORLD_MIN_Y), como el resto de la auditoría.
 {
 	state.chunks.clear();
 	let bedFaces = 0,
@@ -215,12 +227,15 @@ for (let i = 0; i < c00.length; i++) if (c00[i] !== B.AIR) _blocks++;
 	outer: for (let cx = -4; cx <= 4 && !lakeFound; cx++) {
 		for (let cz = -4; cz <= 4; cz++) {
 			world.generateChunk(cx, cz);
-			const chunk = state.chunks.get(`${cx},${cz}`);
-			// El agua llena LAKE_FLOOR < y < SEA_LEVEL (y=3 y 4): buscar en y = SEA_LEVEL-1.
-			const wy = world.SEA_LEVEL - 1;
+			// El agua de lago/río/océano llena hasta WORLD_SEA_LEVEL − 1 (−4 en
+			// Y de MUNDO): buscar la línea del mar real, no una fila local (v5).
+			const wy = world.WORLD_SEA_LEVEL - 1;
 			for (let x = 0; x < CHUNK_SIZE; x++)
 				for (let z = 0; z < CHUNK_SIZE; z++) {
-					if (chunk[(wy * CHUNK_SIZE + z) * CHUNK_SIZE + x] === B.WATER) {
+					if (
+						world.getBlock(cx * CHUNK_SIZE + x, wy, cz * CHUNK_SIZE + z) ===
+						B.WATER
+					) {
 						lakeFound = true;
 						cx0 = cx;
 						cz0 = cz;
@@ -245,12 +260,12 @@ for (let i = 0; i < c00.length; i++) if (c00[i] !== B.AIR) _blocks++;
 				const baseX = cx * CHUNK_SIZE,
 					baseZ = cz * CHUNK_SIZE;
 				for (let x = 0; x < CHUNK_SIZE; x++)
-					for (let y = 0; y < WORLD_HEIGHT; y++)
+					for (let wy = WORLD_MIN_Y; wy <= WORLD_MAX_Y; wy++)
 						for (let z = 0; z < CHUNK_SIZE; z++) {
-							const block = chunk[(y * CHUNK_SIZE + z) * CHUNK_SIZE + x];
+							const block =
+								chunk[((wy - WORLD_MIN_Y) * CHUNK_SIZE + z) * CHUNK_SIZE + x];
 							if (block === B.AIR || block === B.WATER) continue;
 							const wx = baseX + x,
-								wy = y,
 								wz = baseZ + z;
 							for (const [dx, dy, dz] of DIRS) {
 								if (world.getBlock(wx + dx, wy + dy, wz + dz) === B.WATER)

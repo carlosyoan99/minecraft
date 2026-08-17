@@ -34,12 +34,7 @@ const world = require("../server/world.js");
 const biomes = require("../server/biomes.js");
 const state = require("../server/state.js");
 const noise = require("../server/noise.js");
-const {
-	CHUNK_SIZE,
-	WORLD_MIN_Y,
-	B,
-	I
-} = require("../server/constants.js");
+const { CHUNK_SIZE, WORLD_MIN_Y, B, I } = require("../server/constants.js");
 
 function idx(x, y, z) {
 	return ((y - WORLD_MIN_Y) * CHUNK_SIZE + z) * CHUNK_SIZE + x;
@@ -142,7 +137,16 @@ check("getBiome es determinista (2 llamadas, misma etiqueta)", detOk);
 // rango de tests: si la nueva escala las barriera fuera, la generación
 // habría perdido variedad (regresión de A1). Los sub-biomas de A2 se
 // verifican en unit-biomas.js (§1).
-for (const b of ["plains", "forest", "mountain", "snow", "taiga", "desert", "swamp", "jungle"]) {
+for (const b of [
+	"plains",
+	"forest",
+	"mountain",
+	"snow",
+	"taiga",
+	"desert",
+	"swamp",
+	"jungle"
+]) {
 	check(
 		`bioma base '${b}' sigue presente en la semilla`,
 		(counts[b] || 0) > 0,
@@ -173,7 +177,7 @@ const SUB_BAND = {
 	snowy_peaks: "mountain"
 };
 let bandViolations = 0;
-let subCounts = { birch_forest: 0, giant_taiga: 0, snowy_peaks: 0 };
+const subCounts = { birch_forest: 0, giant_taiga: 0, snowy_peaks: 0 };
 for (let wx = -200; wx <= 200; wx += 2) {
 	for (let wz = -200; wz <= 200; wz += 2) {
 		const g = world.getBiome(wx, wz);
@@ -255,7 +259,7 @@ check(
 check(
 	"el bosque de abedules supera la proporción de abedul del bosque común",
 	forestTotal > 0 && birchF.birch / birchFTotal > forest.birch / forestTotal,
-	`${(birchF.birch / birchFTotal * 100).toFixed(0)}% vs ${(forest.birch / forestTotal * 100).toFixed(0)}% en forest`
+	`${((birchF.birch / birchFTotal) * 100).toFixed(0)}% vs ${((forest.birch / forestTotal) * 100).toFixed(0)}% en forest`
 );
 // Huella 2×2: un tronco con su vecino +x y su vecino +z a la misma altura
 // (y el diagonal +x+z) → base de abeto gigante.
@@ -376,8 +380,8 @@ if (firstWell) {
 	const again = world.wellCenterAt(cellX, cellZ);
 	check(
 		"wellCenterAt es determinista (misma celda → mismo centro)",
-		again !== null && again.cx === firstWell.cx && again.cz === firstWell.cz,
-		`(${firstWell.cx},${firstWell.cz}) vs (${again && again.cx},${again && again.cz})`
+		again?.cx === firstWell.cx && again?.cz === firstWell.cz,
+		`(${firstWell.cx},${firstWell.cz}) vs (${again?.cx},${again?.cz})`
 	);
 	const w1 = world.wellAt(firstWell.cx, firstWell.cz);
 	// El footprint es 5×5 (dx,dz ∈ [−2,2]): +3 cae FUERA (el +1 del check
@@ -394,8 +398,16 @@ if (firstWell) {
 	// central se leen como en el resto de asserts de estructura).
 	const { cx: wx0, cz: wz0 } = firstWell;
 	const R = 3;
-	for (let cgx = Math.floor((wx0 - R) / 16); cgx <= Math.floor((wx0 + R) / 16); cgx++) {
-		for (let cgz = Math.floor((wz0 - R) / 16); cgz <= Math.floor((wz0 + R) / 16); cgz++) {
+	for (
+		let cgx = Math.floor((wx0 - R) / 16);
+		cgx <= Math.floor((wx0 + R) / 16);
+		cgx++
+	) {
+		for (
+			let cgz = Math.floor((wz0 - R) / 16);
+			cgz <= Math.floor((wz0 + R) / 16);
+			cgz++
+		) {
 			world.generateChunk(cgx, cgz);
 		}
 	}
@@ -452,10 +464,7 @@ if (firstWell) {
 		interiorAir === interiorCells && interiorCells === 8,
 		`${interiorAir}/${interiorCells} celdas interiores`
 	);
-	check(
-		"el pozo tiene la fuente de agua en el centro",
-		centerWater
-	);
+	check("el pozo tiene la fuente de agua en el centro", centerWater);
 }
 
 // ============================================================
@@ -500,7 +509,9 @@ if (firstPyramid) {
 	const again = world.pyramidCenterAt(cellX, cellZ);
 	check(
 		"pyramidCenterAt es determinista (misma celda → mismo centro)",
-		again !== null && again.cx === firstPyramid.cx && again.cz === firstPyramid.cz,
+		again !== null &&
+			again.cx === firstPyramid.cx &&
+			again.cz === firstPyramid.cz,
 		`(${firstPyramid.cx},${firstPyramid.cz}) vs (${again && again.cx},${again && again.cz})`
 	);
 	const p1 = world.pyramidAt(firstPyramid.cx, firstPyramid.cz);
@@ -520,8 +531,16 @@ if (firstPyramid) {
 	// sótano (la bandeja) y comprobar cofres, TNT y pozo de bajada.
 	const { cx: wx0, cz: wz0 } = firstPyramid;
 	const R = 10;
-	for (let cgx = Math.floor((wx0 - R) / 16); cgx <= Math.floor((wx0 + R) / 16); cgx++) {
-		for (let cgz = Math.floor((wz0 - R) / 16); cgz <= Math.floor((wz0 + R) / 16); cgz++) {
+	for (
+		let cgx = Math.floor((wx0 - R) / 16);
+		cgx <= Math.floor((wx0 + R) / 16);
+		cgx++
+	) {
+		for (
+			let cgz = Math.floor((wz0 - R) / 16);
+			cgz <= Math.floor((wz0 + R) / 16);
+			cgz++
+		) {
 			world.generateChunk(cgx, cgz);
 		}
 	}
@@ -561,10 +580,7 @@ if (firstPyramid) {
 		chestsInPyramid === 4,
 		`${chestsInPyramid}/4 cofres`
 	);
-	check(
-		"la pirámide tiene TNT bajo la celda central (trampa)",
-		tntUnderCenter
-	);
+	check("la pirámide tiene TNT bajo la celda central (trampa)", tntUnderCenter);
 	check(
 		"el pozo de bajada central es AIR de la cima al piso (está abierto)",
 		shaftOpen
@@ -736,6 +752,122 @@ if (firstPyramid) {
 	state.players.clear();
 	state.mobs.length = 0;
 }
+
+// ============================================================
+// FASE 21, Bloque D1 (v21.2) — ríos al nivel del mar
+// ============================================================
+// Bug de las Notas: "el agua no llega al nivel del mar, parecen un bug de
+// generación". La iteración v21.2 (spec F21 §5.4, D1) rediseña el río:
+//   - el cauce se clava SIEMPRE bajo el nivel del mar (RIVER_FLOOR_CAP = 2
+//     en diseño → lecho en −7..−6 de mundo) y el agua lo cubre con ≥ 2
+//     bloques (antes el lecho podía quedar en SEA_LEVEL−1 y la columna NO
+//     generaba agua en terreno alto),
+//   - las orillas se hunden gradualmente hacia el cauce (riverCarvedHeight)
+//     → el salto orilla→cauce y el salto global del terreno quedan ≤ 4
+//     (patrón unit-biomas §5; antes había acantilados de 8-10 bloques),
+//   - menos densidad (RIVER_WIDTH 0.14 → 0.08: ~17 % → ~9 % de columnas)
+//     y ancho VARIABLE (RIVER_WIDTH_VAR: tramos estrechos y amplios),
+//   - más profundidad (riverDepth 3..6 vs 2..4).
+// Verifica las invariantes con la semilla fija (los umbrales se calibraron
+// midiendo la implementación D1: 9.18 % de columnas, salto máx 4, anchos
+// 1..32).
+const R = 4; // área 9×9 chunks (misma que la vegetación, reusada abajo)
+let riverCols = 0;
+let totalCols = 0;
+let minRiverWater = Infinity;
+let riverNoWater = 0;
+let bankJumpsMax = 0;
+const runLens = [];
+for (let cx = -R; cx <= R; cx++) {
+	for (let cz = -R; cz <= R; cz++) {
+		const d = state.chunks.get(`${cx},${cz}`);
+		for (let x = 0; x < CHUNK_SIZE; x++) {
+			for (let z = 0; z < CHUNK_SIZE; z++) {
+				const wx = cx * CHUNK_SIZE + x;
+				const wz = cz * CHUNK_SIZE + z;
+				totalCols++;
+				if (!world.isRiver(wx, wz)) continue;
+				riverCols++;
+				// Agua del cauce: celdas entre el lecho y el nivel del mar.
+				const floorW = world.columnFloorY(wx, wz) - world.DESIGN_OFFSET;
+				let wc = 0;
+				for (let y = world.WORLD_SEA_LEVEL - 1; y > floorW; y--) {
+					if (d[idx(x, y, z)] === B.WATER) wc++;
+				}
+				if (wc < minRiverWater) minRiverWater = wc;
+				if (wc === 0) riverNoWater++;
+				// Salto de orilla: vecinos ortogonales que NO son río.
+				for (const [dx, dz] of [
+					[1, 0],
+					[-1, 0],
+					[0, 1],
+					[0, -1]
+				]) {
+					if (world.isRiver(wx + dx, wz + dz)) continue;
+					const j = Math.abs(world.getHeight(wx + dx, wz + dz) - floorW);
+					if (j > bankJumpsMax) bankJumpsMax = j;
+				}
+			}
+		}
+	}
+}
+check(
+	"D1: la densidad de ríos baja (fracción < 12 % vs ~17 % en v21.1)",
+	riverCols / totalCols < 0.12 && riverCols / totalCols > 0.005,
+	`${((riverCols / totalCols) * 100).toFixed(2)}% (${riverCols} de ${totalCols})`
+);
+check(
+	"D1: todo río tiene agua en su cauce (lecho bajo el nivel del mar)",
+	riverCols > 0 && riverNoWater === 0 && minRiverWater >= 2,
+	`mín ${minRiverWater} celdas, ${riverNoWater} ríos sin agua`
+);
+check(
+	"D1: orillas sin acantilados (salto orilla→cauce <= 4)",
+	bankJumpsMax <= 4,
+	`salto máx ${bankJumpsMax}`
+);
+// Racha de columnas de río en transectos X: anchos estrechos y amplios.
+for (let wz = -R * CHUNK_SIZE; wz <= R * CHUNK_SIZE; wz++) {
+	let run = 0;
+	for (let wx = -R * CHUNK_SIZE; wx <= R * CHUNK_SIZE; wx++) {
+		if (world.isRiver(wx, wz)) {
+			run++;
+		} else if (run > 0) {
+			runLens.push(run);
+			run = 0;
+		}
+	}
+	if (run > 0) runLens.push(run);
+}
+runLens.sort((a, b) => a - b);
+const minRun = runLens.length ? runLens[0] : 0;
+const maxRun = runLens.length ? runLens[runLens.length - 1] : 0;
+check(
+	"D1: anchos variados (tramos estrechos <= 3 y amplios >= 8)",
+	runLens.length > 0 && minRun <= 3 && maxRun >= 8,
+	`${runLens.length} tramos, min ${minRun}, max ${maxRun}`
+);
+// Constantes calibradas (patrón A1/BIOME_FREQ): si alguien toca los
+// valores, el test lo detecta antes de medir.
+check(
+	"D1: RIVER_WIDTH calibrado (0.08) y RIVER_FLOOR_CAP (2) exportados",
+	biomes.RIVER_WIDTH === 0.08 && biomes.RIVER_FLOOR_CAP === 2,
+	`width ${biomes.RIVER_WIDTH}, cap ${biomes.RIVER_FLOOR_CAP}`
+);
+// Salto GLOBAL del terreno con el valle del río (patrón unit-biomas §5):
+// el carving de las orillas no puede crear acantilados en ningún transecto.
+let d1MaxJump = 0;
+for (let wz = -60; wz <= 60; wz += 2) {
+	for (let wx = -300; wx < 300; wx++) {
+		const j = Math.abs(world.getHeight(wx + 1, wz) - world.getHeight(wx, wz));
+		if (j > d1MaxJump) d1MaxJump = j;
+	}
+}
+check(
+	"D1: el terreno con valles de río sigue continuo (salto máx <= 4)",
+	d1MaxJump <= 4,
+	`salto máx ${d1MaxJump}`
+);
 
 world.setDiskLoader(null);
 process.exit(failed ? 1 : 0);

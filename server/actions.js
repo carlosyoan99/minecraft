@@ -605,7 +605,7 @@ function handleShearMob(p, data) {
 // leche no es comida ni se craftea; aquí solo se obtiene ordeñando.
 function handleMilkCow(p, data) {
 	const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
-	if (!mob || mob.type !== "cow") return;
+	if (mob?.type !== "cow") return;
 	if (Math.hypot(mob.x - p.x, mob.y - p.y, mob.z - p.z) > 4) return;
 	const held = p.inventory[p.selectedSlot];
 	if (!held || held.id !== I.BUCKET) return;

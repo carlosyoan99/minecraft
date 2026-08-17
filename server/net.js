@@ -566,7 +566,9 @@ function handleConnection(ws, req) {
 		// el descarte es silencioso para el emisor (misma política que la
 		// guardia de forma) y no muta estado ni inventario.
 		if (raw.length > MAX_MSG_BYTES) {
-			log.warn(`[net] mensaje de ${raw.length} B descartado (tope ${MAX_MSG_BYTES})`);
+			log.warn(
+				`[net] mensaje de ${raw.length} B descartado (tope ${MAX_MSG_BYTES})`
+			);
 			return;
 		}
 		let msg;

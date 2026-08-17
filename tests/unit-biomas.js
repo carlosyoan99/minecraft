@@ -194,8 +194,7 @@ check(
 // Los árboles usan Math.random global: fijarlo durante la generación NO da
 // un patrón de árboles exacto, así que los checks son de PRESENCIA (≥1
 // bloque del tronco esperado por bioma) en el área -4..4 ya generada.
-let birchLogs = 0,
-	giantSpruceLogs = 0,
+let giantSpruceLogs = 0,
 	spruceLogs = 0;
 let birchLogInBirch = 0,
 	giantLogInGiant = 0;
@@ -205,7 +204,10 @@ for (let cx = -4; cx <= 4; cx++) {
 		for (let x = 0; x < CHUNK_SIZE; x++) {
 			for (let z = 0; z < CHUNK_SIZE; z++) {
 				const biome = world.getBiome(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
-				const height = world.getHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+				const height = world.getHeight(
+					cx * CHUNK_SIZE + x,
+					cz * CHUNK_SIZE + z
+				);
 				// Ciclo de 1 a 6 bloques por encima del suelo: el tronco (o la
 				// base de un abeto gigante) está ahí si hubo árbol en la columna.
 				for (let dy = 0; dy < 6; dy++) {
@@ -236,7 +238,7 @@ check(
 check(
 	"la taiga gigante tiene abetos gigantes",
 	giantLogInGiant > 0,
-	`${giantLogInGiant} troncos (de ${spruceLogs} de pino total)` 
+	`${giantLogInGiant} troncos (de ${spruceLogs} de pino total)`
 );
 
 // --- 4) La nieve es sólida y rompible ---

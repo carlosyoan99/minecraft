@@ -588,6 +588,7 @@ const api = {
 	mineshaftDepth: structures.mineshaftDepth,
 	msLootSpot: structures.msLootSpot,
 	structureAt: structures.structureAt,
+	structCenterAt: structures.structCenterAt, // Fase 21 (v21.2): por celda (tests)
 	templeTrapAt: structures.templeTrapAt,
 	placeTempleColumn: structures.placeTempleColumn,
 	placeShipwreckColumn: structures.placeShipwreckColumn,

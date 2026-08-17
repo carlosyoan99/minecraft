@@ -57,7 +57,6 @@ let tickCreeper = () => {};
 let tickSkeleton = () => {};
 let tickEnderman = () => {};
 let tickPassive = () => {};
-let tickChicken = () => {}; // Fase 21 (C1): gallina — pone huevos al jugador cercano
 let isPlayerLookingAt = () => false; // Fase 21 (C2): neutralidad del enderman
 let isEndermanWatched = () => null; // ¿alguien mira a este enderman?
 let tickOcelot = () => {};
@@ -641,7 +640,6 @@ class Mob {
 	tickSkeleton,
 	tickEnderman,
 	tickPassive,
-	tickChicken, // Fase 21 (C1): gallina — pone huevos además de deambular
 	tickOcelot,
 	tickCat,
 	_tickPet,

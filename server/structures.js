@@ -320,7 +320,10 @@ function wellCenterAt(cellX, cellZ) {
 
 // ¿La columna (wx, wz) es parte de un pozo? Devuelve { cx, cz } o null.
 function wellAt(wx, wz) {
-	const w = wellCenterAt(Math.floor(wx / WELL_CELL), Math.floor(wz / WELL_CELL));
+	const w = wellCenterAt(
+		Math.floor(wx / WELL_CELL),
+		Math.floor(wz / WELL_CELL)
+	);
 	if (!w) return null;
 	if (Math.abs(wx - w.cx) > WELL_HALF || Math.abs(wz - w.cz) > WELL_HALF)
 		return null;
@@ -344,7 +347,10 @@ function placeWellColumn(data, x, z, wx, wz, well, height) {
 	}
 	// Capa 0: piso de arena en todo el footprint (incluida la fuente).
 	const floor = baseY;
-	if ((dx === 0 && dz === 0) || (Math.abs(dx) <= WELL_HALF && Math.abs(dz) <= WELL_HALF)) {
+	if (
+		(dx === 0 && dz === 0) ||
+		(Math.abs(dx) <= WELL_HALF && Math.abs(dz) <= WELL_HALF)
+	) {
 		if (floor <= WORLD_MAX_Y && floor >= WORLD_MIN_Y)
 			data[core.idx(x, core.toLocal(floor), z)] = B.SAND;
 	}
@@ -358,7 +364,10 @@ function placeWellColumn(data, x, z, wx, wz, well, height) {
 	}
 	// Capa 2 (baseY+2): segunda altura del brocal en el borde.
 	const y2 = baseY + 2;
-	if (y2 <= WORLD_MAX_Y && (Math.abs(dx) === WELL_HALF || Math.abs(dz) === WELL_HALF))
+	if (
+		y2 <= WORLD_MAX_Y &&
+		(Math.abs(dx) === WELL_HALF || Math.abs(dz) === WELL_HALF)
+	)
 		data[core.idx(x, core.toLocal(y2), z)] = B.STONE;
 }
 
@@ -388,12 +397,8 @@ function pyramidCenterAt(cellX, cellZ) {
 	if (gate >= PYRAMID_GATE) return null;
 	// Centro dentro de la celda, nunca a < 8 del borde (cabe el footprint
 	// 15×15 y la bandeja).
-	const jx = Math.floor(
-		structCellHash(cellX, cellZ, 32) * (PYRAMID_CELL - 16)
-	);
-	const jz = Math.floor(
-		structCellHash(cellX, cellZ, 33) * (PYRAMID_CELL - 16)
-	);
+	const jx = Math.floor(structCellHash(cellX, cellZ, 32) * (PYRAMID_CELL - 16));
+	const jz = Math.floor(structCellHash(cellX, cellZ, 33) * (PYRAMID_CELL - 16));
 	const cx = cellX * PYRAMID_CELL + 8 + jx;
 	const cz = cellZ * PYRAMID_CELL + 8 + jz;
 	// Solo en desierto firme (sin agua): la bandeja es un sótano seco.
@@ -426,10 +431,7 @@ function pyramidBlockAt(dx, dz, dy) {
 	if (Math.abs(dx) <= PAN_HALF && Math.abs(dz) <= PAN_HALF) {
 		if (dy === -1) return B.AIR; // caja de la bandeja (2 de alto)
 		if (dy === -2)
-			if (
-				(dx === -1 || dx === 1) &&
-				(dz === -1 || dz === 1)
-			)
+			if ((dx === -1 || dx === 1) && (dz === -1 || dz === 1))
 				return B.CHEST; // cofres de loot en las 4 esquinas interiores
 			else return B.STONE; // piso (incluye el centro = celda de trampa)
 	}
@@ -478,8 +480,7 @@ function placePyramidColumn(data, x, z, wx, wz, pyramid, height) {
 	// Relleno de soporte como el templo: si el terreno natural queda por
 	// debajo del piso exterior (baseY), se rellena de piedra.
 	for (let y = Math.max(WORLD_MIN_Y + 1, height); y < baseY; y++)
-		if (y <= WORLD_MAX_Y)
-			data[core.idx(x, core.toLocal(y), z)] = B.STONE;
+		if (y <= WORLD_MAX_Y) data[core.idx(x, core.toLocal(y), z)] = B.STONE;
 	// Sótano + cuerpo: la columna completa de la estructura (baseY-3..+7).
 	for (let y = baseY - 3; y <= baseY + PYRAMID_LEVELS - 1; y++) {
 		if (y < WORLD_MIN_Y || y > WORLD_MAX_Y) continue;
@@ -504,6 +505,7 @@ module.exports = {
 	placeShipwreckColumn,
 	shipwreckChestCount,
 	isShipwreckChest,
+	structCenterAt, // Fase 21 (v21.2): búsqueda por celda para los tests (pura y cacheada)
 	templeTrapAt,
 	wellAt,
 	wellCenterAt,
