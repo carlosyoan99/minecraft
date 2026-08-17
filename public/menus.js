@@ -12,7 +12,7 @@ import {
 } from "./connection.js";
 import { flashMessage } from "./hud.js"; // Fase 18 (D-6): mensajes del menú
 import { finishLoading, showLoading } from "./loading.js";
-import { controls, showBlocker } from "./scene.js";
+import { controls, showBlocker, showMenuBg } from "./scene.js";
 import {
 	getSettings,
 	setSetting,
@@ -88,7 +88,7 @@ const reduceMotionToggle = document.getElementById("reduce-motion-toggle");
 const toonToggle = document.getElementById("toon-toggle");
 const torchLightToggle = document.getElementById("torch-light-toggle");
 const mipmapsToggle = document.getElementById("mipmaps-toggle");
-let currentSeed = null; // semilla activa (la trae el init del servidor)
+let _currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 // Fase 17 (A5): el cliente empieza EN EL MENÚ hasta recibir el init de un
 // mundo (join_world). Con SEED (modo clásico) el init llega al conectar y
@@ -123,6 +123,7 @@ export function showMenu(worlds) {
 	if (worlds) renderWorldsList(worlds);
 	showMenuScreen(menuMain);
 	showBlocker(true);
+	showMenuBg(true); // fondo del menú: visible solo en el menú principal
 	finishLoading();
 }
 
@@ -595,9 +596,10 @@ function setTouchVisible(show) {
 // confirma antes de cerrar (evita destapar el mundo anterior durante el
 // cambio).
 export function onWorldLoaded(seed) {
-	currentSeed = seed;
+	_currentSeed = seed;
 	inMenu = false;
 	setTouchVisible(true);
+	showMenuBg(false); // bug del usuario: el fondo del menú tapa el mundo
 	if (seedPending) {
 		if (seed === seedPending) {
 			seedPending = null;
@@ -615,6 +617,7 @@ export function onSeedRejected(reason) {
 	inMenu = true;
 	finishLoading(); // ocultar la carga (fade) antes de mostrar el menú
 	showBlocker(true);
+	showMenuBg(true);
 	controls.unlock(); // el handler de unlock vuelve a mostrar el menú
 	const msgs = {
 		rechazo: "🌱 No se pudo abrir el mundo de esa semilla (formato más nuevo).",

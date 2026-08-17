@@ -110,6 +110,13 @@ export const controls = new PointerLockControls(camera, renderer.domElement);
 // al mirar (bug reportado en Fase 10). El control nativo es suficiente.
 
 const blocker = document.getElementById("blocker");
+// Fondo del menú (cielo con nubes, z-index 1 sobre el canvas). Es un hermano
+// del bloqueador: ocultarlo SOLO con el bloqueador no basta, porque en la
+// pausa el bloqueador es translúcido y el juego debe seguir viéndose detrás.
+// Por eso se controla aparte: visible SOLO en el menú principal (menus.js
+// llama a showMenuBg desde showMenu/onWorldLoaded/onSeedRejected). Bug del
+// usuario: "#menu-bg no se oculta al iniciar una partida" (Notas del usuario).
+const menuBg = document.getElementById("menu-bg");
 const craftingUI = document.getElementById("crafting-ui");
 const furnaceUI = document.getElementById("furnace-ui");
 const chestUI = document.getElementById("chest-ui");
@@ -134,6 +141,12 @@ controls.addEventListener("unlock", () => {
 // (sin depender de que el evento 'unlock' llegue, p. ej. si el lock falla).
 export function showBlocker(show) {
 	blocker.style.display = show ? "flex" : "none";
+}
+// Fondo del menú: SOLO en el menú principal (main menu). No se liga a
+// showBlocker porque la pausa usa el bloqueador translúcido y ahí el fondo
+// no debe tapar el juego congelado detrás.
+export function showMenuBg(show) {
+	if (menuBg) menuBg.style.display = show ? "block" : "none";
 }
 
 window.addEventListener("resize", () => {

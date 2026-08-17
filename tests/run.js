@@ -72,7 +72,8 @@ const UNIT = [
 	"unit-fase18.js", // Fase 18 (C-8): orbes de XP al morir — suelte en survival, recogida, creative conserva y no se persisten
 	"unit-fase19.js", // Fase 19 (D): drag & drop — lógica pura de transporte (draglogic.js) + hot-reload de iconos
 	"unit-fase19.5.js", // Fase 19.5 (A1): paleta musical por bioma (musicpalette.js) — lógica pura
-	"unit-fase19.6.js" // Fase 19.6: motor 3D — toon (materialstyle), viento por celda (chunkGeometry), ants-pool (geopool) y luz de antorcha (torchlogic)
+	"unit-fase19.6.js", // Fase 19.6: motor 3D — toon (materialstyle), viento por celda (chunkGeometry), ants-pool (geopool) y luz de antorcha (torchlogic)
+	"unit-fase20.js" // Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — showMenuBg solo en el menú principal
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
@@ -133,7 +134,7 @@ function run(file) {
 		`${ok ? "✅" : "❌"} ${file}${ok ? "" : ` (exit ${r.status})`} — ${elapsedMs.toFixed(0)} ms`
 	);
 	try {
-		fs.writeFileSync(path.join(LAST_RUN_DIR, file + ".log"), out);
+		fs.writeFileSync(path.join(LAST_RUN_DIR, `${file}.log`), out);
 	} catch {
 		// no bloquea el runner
 	}
