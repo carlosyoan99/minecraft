@@ -58,6 +58,9 @@
    reducción de daño frontal.
 4. **Knockback de armas** (ver `fisica-movimiento.md`): `attack_mob` debería
    emitir `knockback` al mob golpeado.
+5. **F21.5 B4 (HECHO)**: la botella de miel (264) es comida 6/1.2
+   (`FOOD_VALUES`) y aterrizar sobre un `HONEY_BLOCK` anula el daño de caída
+   (`applyFallDamage` con `softLanding`).
 
 ## Constantes, funciones, cambios y resultados
 

@@ -12,7 +12,7 @@ import {
 	setMusicBiome
 } from "./audio.js"; // F10 (F1): música por contexto; F19.5 (A1): bioma real
 import { setStoredName, socket } from "./connection.js";
-import { TORCH } from "./constants.js";
+import { TORCH, LANTERN } from "./constants.js";
 import { initDayNight } from "./daynight.js";
 // Fase 17 (B7): minar con el clic presionado — al romperse el bloque en
 // mina, input.js reinicia la mina sobre el siguiente bloque apuntado.
@@ -184,6 +184,9 @@ socket.addEventListener("message", (e) => {
 				if (
 					prev === TORCH ||
 					data.block === TORCH ||
+					// Fase 21.5 (B2): la linterna es otra fuente de luz puntual.
+					prev === LANTERN ||
+					data.block === LANTERN ||
 					hasTorchNear(data.x, data.y, data.z)
 				)
 					rebuildAround(data.x, data.z);

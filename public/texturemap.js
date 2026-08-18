@@ -79,7 +79,24 @@ const BLOCK_TEX = {
 	61: { all: 60 }, // losa de piedra
 	70: { all: 61 }, // valla de roble
 	71: { all: 62 }, // portón de roble
-	72: { all: 63 } // coral (Fase 21.5, D2): arrecife de océano cálido
+	72: { all: 63 }, // coral (Fase 21.5, D2): arrecife de océano cálido
+	// Fase 21.5 (B1): piedra pulida — granito, diorita, andesita y pulidas
+	// (teselas 64-69: las pulidas comparten mota pero con borde regular).
+	73: { all: 64 },
+	74: { all: 65 },
+	75: { all: 66 },
+	76: { all: 67 },
+	77: { all: 68 },
+	78: { all: 69 },
+	79: { all: 70 }, // linterna (Fase 21.5, B2)
+	// Fase 21.5 (B3): bambú (planta alta, cross), tablones y andamio.
+	80: { all: 71 },
+	81: { all: 72 },
+	82: { all: 73 },
+	// Fase 21.5 (B4): nido de abeja, colmena y bloque de miel.
+	83: { all: 74 },
+	84: { all: 75 },
+	85: { all: 76 }
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

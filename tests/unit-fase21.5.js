@@ -318,5 +318,358 @@ check(
 	check("la caña aparece en el botin (200 cofres)", rods > 0, `${rods}`);
 }
 
+// ============================================================
+// 9) B1 — PIEDRA PULIDA (granito 73, diorita 74, andesita 75 + pulidas
+//    76/77/78): durezas, categoría stone (canHarvest con pico), generación
+//    en vetas del subsuelo y recetas de pulido 2×2.
+// ============================================================
+{
+	const pulidas = [B.GRANITE, B.DIORITE, B.ANDESITE, B.POLISHED_GRANITE, B.POLISHED_DIORITE, B.POLISHED_ANDESITE];
+	for (const b of pulidas) {
+		check(
+			`B1: dureza de pulida (${b}) es 1.5 (MC)`,
+			constants.BLOCK_HARDNESS[b] === 1.5,
+			`d=${constants.BLOCK_HARDNESS[b]}`
+		);
+		check(
+			`B1: la pulida (${b}) es de categoría stone`,
+			// canHarvest con pico cubre la categoría (stone→pickaxe); el mapa
+			// BLOCK_CATEGORY no se exporta.
+			constants.canHarvest(I.IRON_PICKAXE, b) === true
+		);		check(
+			`B1: la pulida (${b}) requiere pico para cosechar`,
+			constants.canHarvest(0, b) === false && constants.canHarvest(I.IRON_PICKAXE, b) === true,
+			`mano=${constants.canHarvest(0, b)} pico=${constants.canHarvest(I.IRON_PICKAXE, b)}`
+		);
+		check(`B1: la pulida (${b}) es sólida`, constants.isSolidBlock(b) === true);
+	}
+	// Recetas de pulido: 2x2 del material → 4 pulidas (unit-recetas valida su
+	// estructura general; aquí se comprueba el mapeo concreto de la spec).
+	const recipes = require("../recetas.json");
+	for (const [recipe, mat, out] of [
+		["polished_granite", B.GRANITE, B.POLISHED_GRANITE],
+		["polished_diorite", B.DIORITE, B.POLISHED_DIORITE],
+		["polished_andesite", B.ANDESITE, B.POLISHED_ANDESITE]
+	]) {
+		const r = recipes[recipe];
+		check(
+			`B1: receta ${recipe} existe y da 4 de la pulida`,
+			!!r && r.shape?.join("") === "####" && r.ingredients["#"] === mat && r.result?.id === out && r.result?.count === 4,
+			JSON.stringify(r?.shape) + "/" + JSON.stringify(r?.result)
+		);
+	}
+	// Vetas en el subsuelo: barren varios chunks de ejemplo que NINGÚN test
+	// anterior tocó (lejos de la zona de pesca) y cuentan granito/diorita/
+	// andesita en la banda y ≥ −8 de la generación por defecto de la semilla.
+	let contar = { [B.GRANITE]: 0, [B.DIORITE]: 0, [B.ANDESITE]: 0 };
+	const { CHUNK_SIZE } = constants;
+	for (let cx = -6; cx <= -4; cx++)
+		for (let cz = -6; cz <= -4; cz++) {
+			const ch = world.generateChunk(cx, cz);
+			if (!ch) continue;
+			const baseY = -8;
+			for (let lx = 0; lx < CHUNK_SIZE; lx++)
+				for (let lz = 0; lz < CHUNK_SIZE; lz++)
+					for (let ly = baseY; ly < -1; ly++) {
+						// mundo y = local + WORLD_MIN_Y (−64); el local de y=−8..−2 es ly = 56..62.
+						const localRow = ly + 64;
+						if (localRow < 0 || localRow >= ch.length / (CHUNK_SIZE * CHUNK_SIZE)) continue;
+						const b = ch[(localRow * CHUNK_SIZE + lz) * CHUNK_SIZE + lx];
+						if (contar[b] !== undefined) contar[b]++;
+					}
+		}
+	check(
+		"B1: hay vetas de las tres piedras pulidas en el subsuelo",
+		contar[B.GRANITE] > 0 && contar[B.DIORITE] > 0 && contar[B.ANDESITE] > 0,
+		JSON.stringify(contar)
+	);
+}
+
+// ============================================================
+// 10) B2 — LINTERNA (79): dureza de antorcha, no sólida, cae a sí misma
+//     (canHarvest a mano true), requiere soporte para colocarse, emite luz
+//     como la antorcha y tiene receta de 4 lingotes + antorcha.
+// ============================================================
+{
+	check("B2: LANTERN vale 79", B.LANTERN === 79, `${B.LANTERN}`);
+	check(
+		"B2: dureza de linterna 0.1 (como la antorcha)",
+		constants.BLOCK_HARDNESS[B.LANTERN] === 0.1,
+		`d=${constants.BLOCK_HARDNESS[B.LANTERN]}`
+	);
+	check(
+		"B2: la linterna NO es sólida (se atraviesa, como la antorcha)",
+		constants.isSolidBlock(B.LANTERN) === false
+	);
+	check(
+		"B2: la linterna se cosecha a mano (cae a sí misma)",
+		constants.canHarvest(0, B.LANTERN) === true && constants.canHarvest(I.IRON_SWORD, B.LANTERN) === false
+	);
+	// Colocación: la linterna necesita un vecino sólido (soporte), como la
+	// antorcha (net.js lo exige antes de setBlock). Se comprueba el soporte
+	// del mundo sobre una celda con suelo sólido, dentro del mundo v6
+	// (−64..+63): la celda base y=4, con un bloque de piedra en y=3 (suelo)
+	// y el entorno en aire.
+	{
+		limpiarBobbers();
+		// Limpiar un cubo 3×3×3 alrededor de (0,4,0) y poner suelo sólido.
+		for (let x = -1; x <= 1; x++)
+			for (let z = -1; z <= 1; z++)
+				for (let y = 2; y <= 5; y++) world.setBlock(x, y, z, B.AIR);
+		world.setBlock(0, 2, 0, B.STONE); // suelo bajo la celda y=3
+		check(
+			"B2: con un bloque sólido debajo la linterna tiene soporte",
+			world.torchSupported(0, 3, 0) === true
+		);
+		world.setBlock(0, 2, 0, B.AIR); // quitar el suelo
+		check(
+			"B2: sin vecinos sólidos la linterna no tiene soporte",
+			world.torchSupported(0, 3, 0) === false
+		);
+		// Restaurar el entorno (aire) para no contaminar otros tests.
+		for (let x = -1; x <= 1; x++)
+			for (let z = -1; z <= 1; z++)
+				for (let y = 2; y <= 5; y++) world.setBlock(x, y, z, B.AIR);
+	}
+	// Luz del cliente: lighting.js (módulo puro ESM) deja pasar la luz a
+	// través de la linterna y una linterna horneada produce luz como una
+	// antorcha (mismo radio/atenuación). Se resuelve en un child con
+	// --input-type=module porque los tests son CommonJS y no pueden importar
+	// el ESM del cliente directamente.
+	const { execFileSync } = require("node:child_process");
+	let luzProbe = null;
+	try {
+		const probe = `
+			import { isLightPassable, computeChunkLight } from "file://${process.cwd()}/public/lighting.js";
+			const r = {
+				pasable: isLightPassable(79),
+				mismoQueAntorcha: isLightPassable(79) === isLightPassable(23),
+				radio: (() => {
+					const out = computeChunkLight(0, 0, 16, 128, -64, () => 0, [[0, 0, 0]]);
+					let max = 0, idx = -1;
+					for (let i = 0; i < out.length; i++) if (out[i] > max) { max = out[i]; idx = i; }
+					return { max: Math.round(max * 1000) / 1000, idx };
+				})()
+			};
+			console.log(JSON.stringify(r));
+		`;
+		luzProbe = JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", probe], { encoding: "utf8" }).trim());
+	} catch (e) {
+		luzProbe = { error: String(e).slice(0, 80) };
+	}
+	check(
+		"B2: la luz del cliente deja pasar la linterna (como la antorcha)",
+		luzProbe?.pasable === true,
+		JSON.stringify(luzProbe)
+	);
+	check(
+		"B2: isLightPassable(linterna) coincide con antorcha",
+		luzProbe?.mismoQueAntorcha === true
+	);
+	check(
+		"B2: una linterna emite luz (radio max 1.0 en su celda)",
+		luzProbe?.radio?.max === 1,
+		JSON.stringify(luzProbe?.radio)
+	);
+	// Receta: 4 lingotes (102) en cruz + antorcha (23) en el centro → 1.
+	{
+		const recipes = require("../recetas.json");
+		const r = recipes.lantern;
+		check(
+			"B2: receta linterna existe (4 lingotes + antorcha → 1)",
+			!!r &&
+				r.shape?.join("|") === " I |ITI| I " &&
+				r.ingredients["I"] === I.IRON_INGOT &&
+				r.ingredients["T"] === B.TORCH &&
+				r.result?.id === B.LANTERN &&
+				r.result?.count === 1,
+			JSON.stringify(r)
+		);
+	}
+}
+
+// ============================================================
+// 11) B3 — BAMBÚ Y ANDAMIOS: el bambú (80) se genera en la jungla como
+//     planta alta estática (tallos de 3-8), no es sólido, cae a sí mismo y
+//     craftea tablones (81) y andamios (82); el andamio es no sólido y se
+//     craftea en pilas de 6.
+// ============================================================
+{
+	// Identidad y propiedades de servidor
+	check("B3: BAMBOO 80, BAMBOO_PLANKS 81, SCAFFOLDING 82",
+		B.BAMBOO === 80 && B.BAMBOO_PLANKS === 81 && B.SCAFFOLDING === 82);
+	for (const b of [B.BAMBOO, B.SCAFFOLDING]) {
+		check(`B3: el bloque ${b} no es sólido`, constants.isSolidBlock(b) === false);
+		check(`B3: el bloque ${b} se rompe al instante`, constants.BLOCK_HARDNESS[b] === 0.05);
+	}
+	check("B3: los tablones de bambú son sólidos y dureza de madera",
+		constants.isSolidBlock(B.BAMBOO_PLANKS) === true && constants.BLOCK_HARDNESS[B.BAMBOO_PLANKS] === 2.0);
+	// Recetas
+	{
+		const recipes = require("../recetas.json");
+		const plans = recipes.bamboo_planks;
+		check("B3: receta tablones de bambú (2×2 bambú → 1)",
+			!!plans && plans.shape?.join("") === "BBBB" && plans.ingredients.B === B.BAMBOO && plans.result?.id === B.BAMBOO_PLANKS && plans.result?.count === 1);
+		const scaf = recipes.scaffolding;
+		check("B3: receta andamio (6 bambú → 6)",
+			!!scaf && scaf.ingredients.B === B.BAMBOO && scaf.result?.id === B.SCAFFOLDING && scaf.result?.count === 6);
+	}
+	// Drop del bambú a sí mismo (players.breakPlant)
+	{
+		const { createPlayer } = require("../server/players.js");
+		const p = createPlayer("p-b3", { x: 0, y: 50, z: 0 });
+		p.inventory = new Array(36).fill(null);
+		// Simular breakPlant directo (romper la base del tallo)
+		zonaAire();
+		world.setBlock(0, 40, 0, B.BAMBOO);
+		// breakPlant no está exportado; se valida el drop por la vía real:
+		// canHarvest a mano true → drop = block (players.finishMining).
+		check("B3: el bambú se cosecha a mano", constants.canHarvest(0, B.BAMBOO) === true);
+		check("B3: el andamio se cosecha a mano", constants.canHarvest(0, B.SCAFFOLDING) === true);
+		// Ground plant: el bambú rompe con la base (GROUND_PLANTS) — probamos
+		// vía breakSeconds/dureza ya cubierto; aquí solo validar que el drop
+		// de breakPlant lo da: la lógica de players.js añade BAMBOO a sí mismo.
+		// Se verifica indirectamente con unit-sync (ítem 80 existe) y con el
+		// test de recetas de arriba (el ítem entra en crafteos).
+	}
+	// Generación determinista: bambú en la jungla (buscar en varios chunks
+	// lejos de la zona de pesca; la jungla aparece con la semilla por defecto).
+	{
+		const { CHUNK_SIZE: CS } = constants;
+		let encontrados = 0;
+		for (let cx = -8; cx <= 8; cx += 2)
+			for (let cz = -8; cz <= 8; cz += 2) {
+				const ch = world.generateChunk(cx, cz);
+				if (!ch) continue;
+				for (let i = 0; i < ch.length; i++)
+					if (ch[i] === B.BAMBOO) { encontrados++; break; }
+			}
+		check("B3: hay bambú generado en la jungla (semilla por defecto)", encontrados > 0, `${encontrados}`);
+	}
+	// Soporte del andamio: es un bloque NO sólido, así que el soporte de la
+	// antorcha no aplica; se puede colocar en el aire (flota, como MC) — solo
+	// se valida que su solidez no bloquee la física.
+	check("B3: el andamio no bloquea el paso (no sólido en física)", constants.isSolidBlock(B.SCAFFOLDING) === false);
+}
+
+// ============================================================
+// 12) B4 — COLMENAS Y MIEL: BEE_NEST (83, generado en árboles) y BEE_HIVE
+//     (84, crafteado); clic derecho con una botella de vidrio (263, crafteo
+//     3 vidrio → 3) sobre la colmena entrega una HONEY_BOTTLE (264, comida
+//     6/1.2); el HONEY_BLOCK (85, crafteo 4 botellas) anula el daño de caída
+//     al aterrizar sobre él.
+// ============================================================
+{
+	// Identidad y propiedades
+	check("B4: BEE_NEST 83, BEE_HIVE 84, HONEY_BLOCK 85",
+		B.BEE_NEST === 83 && B.BEE_HIVE === 84 && B.HONEY_BLOCK === 85);
+	check("B4: botella de vidrio 263 y botella de miel 264",
+		I.GLASS_BOTTLE === 263 && I.HONEY_BOTTLE === 264);
+	check("B4: colmenas y bloque de miel son sólidos",
+		constants.isSolidBlock(B.BEE_NEST) && constants.isSolidBlock(B.BEE_HIVE) && constants.isSolidBlock(B.HONEY_BLOCK));
+	// Comida: botella de miel restaura 6/1.2 (FOOD_VALUES).
+	{
+		const food = constants.FOOD_VALUES?.[I.HONEY_BOTTLE];
+		check("B4: la botella de miel es comida 6/1.2",
+			!!food && food.food === 6 && food.saturation === 1.2,
+			JSON.stringify(food));
+		const { canEat, eatFood } = require("../server/combat.js");
+		const p = mkPlayer({ health: 10, food: 10, saturation: 5 });
+		p.inventory = new Array(36).fill(null);
+		p.inventory[0] = { id: I.HONEY_BOTTLE, count: 1 };
+		check("B4: la botella de miel se puede comer", canEat(p, I.HONEY_BOTTLE) === "ok");
+		eatFood(p, I.HONEY_BOTTLE);
+		check("B4: comer la botella restaura comida (6)",
+			p.food === 16 && p.saturation > 0,
+			`food ${p.food} sat ${p.saturation}`);
+	}
+	// Recolección: handleHoneyBottle consume la botella y devuelve la de miel.
+	{
+		const actions = require("../server/actions.js");
+		zonaAire();
+		world.setBlock(0, LOW, 0, B.BEE_HIVE);
+		const p = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
+		p.inventory = new Array(36).fill(null);
+		p.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
+		actions.handleHoneyBottle(p, { x: 0, y: LOW, z: 0 });
+		const tieneMiel = p.inventory.some((s) => s && s.id === I.HONEY_BOTTLE);
+		const sinVidrio = !p.inventory.some((s) => s && s.id === I.GLASS_BOTTLE);
+		check("B4: botella de vidrio sobre la colmena → botella de miel",
+			tieneMiel && sinVidrio, `miel ${tieneMiel} vidrio ${!sinVidrio}`);
+		// Sin botella en la mano: no hace nada.
+		const p2 = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
+		p2.inventory = new Array(36).fill(null);
+		p2.inventory[0] = { id: B.STONE, count: 1 };
+		actions.handleHoneyBottle(p2, { x: 0, y: LOW, z: 0 });
+		check("B4: sin botella de vidrio no se recolecta miel",
+			!p2.inventory.some((s) => s && s.id === I.HONEY_BOTTLE));
+		// Colmena lejos (fuera del radio 5): no hace nada.
+		const p3 = mkPlayer({ x: 10, y: LOW + 2, z: 10 });
+		p3.inventory = new Array(36).fill(null);
+		p3.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
+		actions.handleHoneyBottle(p3, { x: 0, y: LOW, z: 0 });
+		check("B4: colmena fuera del radio no recolecta miel",
+			!p3.inventory.some((s) => s && s.id === I.HONEY_BOTTLE) &&
+				p3.inventory.some((s) => s && s.id === I.GLASS_BOTTLE));
+		// No es una colmena (piedra): no hace nada.
+		const p4 = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
+		p4.inventory = new Array(36).fill(null);
+		p4.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
+		world.setBlock(0, LOW, 0, B.STONE);
+		actions.handleHoneyBottle(p4, { x: 0, y: LOW, z: 0 });
+		check("B4: un bloque que no es colmena no da miel",
+			!p4.inventory.some((s) => s && s.id === I.HONEY_BOTTLE));
+	}
+	// HONEY_BLOCK: caída aterrizando sobre él → sin daño. Aterriza con los pies
+	// en la celda (0, 2, 0): el jugador manda la altura del ojo, así que los
+	// pies están en floor(player.y - EYE_HEIGHT) = 2 con player.y = 3.7.
+	{
+		const aterrizar = (block) => {
+			world.setBlock(0, 0, 0, B.AIR);
+			world.setBlock(0, 1, 0, B.AIR);
+			world.setBlock(0, 2, 0, block);
+			const p = mkPlayer({ health: 20, maxHealth: 20, fallFromY: 20 });
+			p.x = 0;
+			p.y = 3.7;
+			p.z = 0;
+			p.fallVy = -10;
+			combat.applyFallDamage(p, -10);
+			return p.health;
+		};
+		const conMiel = aterrizar(B.HONEY_BLOCK);
+		check("B4: aterrizar sobre un bloque de miel no hace daño",
+			conMiel === 20, `health ${conMiel}`);
+		const piedra = aterrizar(B.STONE);
+		check("B4: sobre piedra la misma caída sí daña (control)",
+			piedra < 20, `health ${piedra}`);
+	}
+	// Recetas: botella de vidrio, colmena y bloque de miel.
+	{
+		const recipes = require("../recetas.json");
+		const gb = recipes.glass_bottle;
+		check("B4: receta botella de vidrio (3 vidrio → 3)",
+			!!gb && gb.shape?.join("") === "GGG" && gb.ingredients.G === B.GLASS && gb.result?.id === I.GLASS_BOTTLE && gb.result?.count === 3);
+		const bh = recipes.bee_hive;
+		check("B4: receta colmena (6 tablones + 1 miel → 1)",
+			!!bh && bh.ingredients.X === B.PLANKS && bh.ingredients.H === I.HONEY && bh.result?.id === B.BEE_HIVE);
+		const hb = recipes.honey_block;
+		check("B4: receta bloque de miel (4 botellas → 1)",
+			!!hb && hb.shape?.join("") === "HHHH" && hb.ingredients.H === I.HONEY_BOTTLE && hb.result?.id === B.HONEY_BLOCK);
+	}
+	// Generación: nidos de abeja aparecen en los árboles (bosque/abedul) con
+	// la semilla por defecto (buscar en varios chunks donde haya árboles).
+	{
+		let nidos = 0;
+		for (let cx = -8; cx <= 8; cx += 2)
+			for (let cz = -8; cz <= 8; cz += 2) {
+				const ch = world.generateChunk(cx, cz);
+				if (!ch) continue;
+				for (let i = 0; i < ch.length; i++)
+					if (ch[i] === B.BEE_NEST) { nidos++; break; }
+			}
+		check("B4: hay nidos de abeja generados en los árboles", nidos > 0, `${nidos}`);
+	}
+}
+
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);

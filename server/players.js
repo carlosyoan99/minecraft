@@ -86,13 +86,19 @@ function breakPlant(player, x, y, z, block) {
 		if (block === B.DANDELION) addToInventory(player, I.YELLOW_DYE, 1);
 		if (block === B.TALL_GRASS && Math.random() < 0.3)
 			addToInventory(player, I.SEEDS, 1);
+		// Fase 21.5 (B3): el bambú cae a sí mismo (es el material de los
+		// tablones y andamios). El andamio también se recicla al romperlo.
+		if (block === B.BAMBOO) addToInventory(player, B.BAMBOO, 1);
+		if (block === B.SCAFFOLDING) addToInventory(player, B.SCAFFOLDING, 1);
 	}
 	return false;
 }
 
 // Plantas que viven SOBRE un bloque de soporte y se destruyen si se rompe
 // (Fase 17, B4). Las lianas cuelgan del techo y no aplican.
-const GROUND_PLANTS = new Set([B.TALL_GRASS, B.POPPY, B.DANDELION, B.WHEAT]);
+// Fase 21.5 (B3): el bambú es una planta alta con base en el suelo — al
+// romper el bloque de debajo se destruye el tallo (breakPlant lo dropea).
+const GROUND_PLANTS = new Set([B.TALL_GRASS, B.POPPY, B.DANDELION, B.WHEAT, B.BAMBOO]);
 
 function finishMining(player, x, y, z, block, opts = {}) {
 	world.setBlock(x, y, z, B.AIR);

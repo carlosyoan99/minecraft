@@ -58,8 +58,11 @@
 3. **Recetas por categoría visual** — el libro de recetas ya agrupa por
   categorías (`unit-recipecats`); faltaría desbloqueo progresivo (MC los
   desbloquea al obtener el material).
-4. **Piedra pulida, linternas, bambú/andamios, colmenas** (F21.5 B, plan):
-  bloques nuevos con sus recetas.
+4. **Piedra pulida (B1), linternas (B2), bambú/andamios (B3), colmenas (B4)**
+  — **HECHO en F21.5**: `polished_granite/diorite/andesite` (2×2 → 4),
+  `lantern`, `bamboo_planks` (2×2 → 1), `scaffolding` (3×3 hueco → 6),
+  `glass_bottle` (3 vidrio → 3), `bee_hive` (6 tablones + 1 miel),
+  `honey_block` (4 botellas de miel → 1).
 
 ## Constantes, funciones, cambios y resultados
 

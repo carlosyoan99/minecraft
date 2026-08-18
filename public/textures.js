@@ -667,6 +667,149 @@ function drawFenceGate(ctx, rng) {
 	for (let y = 0; y < 16; y++) px(ctx, 8, y, "#c9a46b");
 }
 
+// Fase 21.5 (B1): piedra pulida — granito (rosa con motas claras), diorita
+// (sal y pimienta blanca) y andesita (gris apagado con grano fino). Las
+// versiones PULIDAS comparten la mota base pero con los bordes regulares
+// (rejilla 4×4 sutil), distinguiéndose del material natural.
+function drawGranite(ctx, rng) {
+	fill(ctx, "#c9917f");
+	speckle(ctx, rng, "#a86a58", 0.18);
+	speckle(ctx, rng, "#f0d8c8", 0.12);
+}
+function drawDiorite(ctx, rng) {
+	fill(ctx, "#cfcfcf");
+	speckle(ctx, rng, "#e8e8e8", 0.25);
+	speckle(ctx, rng, "#8f8f8f", 0.15);
+}
+function drawAndesite(ctx, rng) {
+	fill(ctx, "#8f8f8f");
+	speckle(ctx, rng, "#6f6f6f", 0.15);
+	speckle(ctx, rng, "#a8a8a8", 0.1);
+}
+function drawPolished(ctx, rng, draw) {
+	draw(ctx, rng);
+	for (let y = 4; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "rgba(0,0,0,0.28)");
+	for (let x = 4; x < 16; x += 4) rect(ctx, x, 0, 1, 16, "rgba(0,0,0,0.28)");
+}
+function drawPolishedGranite(ctx, rng) {
+	drawPolished(ctx, rng, drawGranite);
+}
+function drawPolishedDiorite(ctx, rng) {
+	drawPolished(ctx, rng, drawDiorite);
+}
+function drawPolishedAndesite(ctx, rng) {
+	drawPolished(ctx, rng, drawAndesite);
+}
+
+// Fase 21.5 (B2): linterna — marco de hierro (rectángulo oscuro con los
+// postes de las esquinas), paneles de vidrio (fondo cálido) y la llama
+// (centro brillante). Estilo MC: bobina con cruz de hierro y luz dentro.
+function drawLantern(ctx, rng) {
+	fill(ctx, "#6b5a4a"); // fondo cálido del interior (vidrio)
+	// Brillo de la llama en el centro
+	rect(ctx, 5, 5, 6, 6, "#f5c14a");
+	rect(ctx, 6, 6, 4, 4, "#ffe9a8");
+	px(ctx, 7, 7, "#ffffff");
+	// Postes de hierro de las esquinas (marco)
+	for (const [x, y] of [
+		[0, 0],
+		[15, 0],
+		[0, 15],
+		[15, 15]
+	]) {
+		rect(ctx, x, y, 2, 2, "#3a342e");
+	}
+	// Marco: travesaños superior e inferior + montantes laterales
+	rect(ctx, 0, 0, 16, 2, "#554a3e");
+	rect(ctx, 0, 14, 16, 2, "#554a3e");
+	rect(ctx, 0, 0, 2, 16, "#554a3e");
+	rect(ctx, 14, 0, 2, 16, "#554a3e");
+	// Asa/cruz superior (donde cuelga de la cadena)
+	rect(ctx, 5, 1, 6, 2, "#6f645a");
+	rect(ctx, 7, 0, 2, 2, "#6f645a");
+	// Reflejos del vidrio (rayas verticales claras)
+	for (const x of [4, 11]) {
+		px(ctx, x, 3, "#ffe9a8");
+		px(ctx, x, 12, "#ffe9a8");
+	}
+}
+
+// Fase 21.5 (B3): bambú — tallo verde con nudos (líneas horizontales cada
+// 4 px) y borde iluminado a la izquierda (cross-quad de planta alta).
+function drawBamboo(ctx, rng) {
+	fill(ctx, "#3a8c2f");
+	for (let y = 0; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "#2e6e24");
+	for (let x = 0; x < 16; x += 3) rect(ctx, x, 0, 1, 16, "#4aa83c");
+	px(ctx, 2, 1, "#6cc85a");
+	px(ctx, 2, 5, "#6cc85a");
+	px(ctx, 2, 9, "#6cc85a");
+	px(ctx, 2, 13, "#6cc85a");
+}
+// Tablones de bambú: amarillo pajizo con vetas horizontales finas (estilo
+// tablón pero más claro, como los tablones de bambú de MC).
+function drawBambooPlanks(ctx, rng) {
+	fill(ctx, "#d8c74e");
+	for (let y = 0; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "#b8a63a");
+	for (let y = 0; y < 16; y += 4) {
+		const x = Math.floor(rng() * 8);
+		rect(ctx, x, y + 1, 3, 1, "#efe29a");
+	}
+	speckle(ctx, rng, "#a08a2a", 0.04);
+}
+// Andamio: marco naranja con cruz diagonal (estructura ligera de bambú).
+function drawScaffolding(ctx, rng) {
+	fill(ctx, "#d89a4e");
+	rect(ctx, 0, 0, 16, 2, "#b8742e");
+	rect(ctx, 0, 14, 16, 2, "#b8742e");
+	rect(ctx, 0, 0, 2, 16, "#c07a34");
+	rect(ctx, 14, 0, 2, 16, "#c07a34");
+	for (let i = 0; i < 8; i++) {
+		const x = 2 + i * 1.5;
+		px(ctx, Math.floor(x), 2, "#b8742e");
+		px(ctx, Math.floor(x), 13, "#b8742e");
+	}
+	rect(ctx, 4, 7, 8, 2, "#b8742e");
+}
+
+// Fase 21.5 (B4): nido de abeja — madera clara con panal dorado central y
+// agujero oscuro (como MC: un tronco con miel).
+function drawBeeNest(ctx, rng) {
+	fill(ctx, "#9a7a52"); // corteza clara
+	for (let y = 0; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "#7a5f3c");
+	// Entrada oscura del nido
+	rect(ctx, 6, 6, 4, 6, "#4a3418");
+	rect(ctx, 4, 8, 8, 4, "#6b4c22");
+	// Panal dorado alrededor de la entrada
+	for (const [x, y] of [
+		[3, 3], [12, 3], [3, 12], [12, 12], [2, 7], [13, 7]
+	]) {
+		rect(ctx, x, y, 2, 2, "#e8a520");
+	}
+	speckle(ctx, rng, "#6b5226", 0.06);
+}
+// Colmena crafteada: mismo panel pero más regular y con el panal más marcado
+// (cubos de miel en la entradas, "goteo" abajo).
+function drawBeeHive(ctx, rng) {
+	fill(ctx, "#a85a22"); // madera de colmena
+	for (let y = 0; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "#8a4518");
+	rect(ctx, 4, 4, 8, 8, "#d8b040"); // panal central
+	rect(ctx, 3, 3, 10, 2, "#e8c860"); // panal superior
+	rect(ctx, 3, 11, 10, 2, "#e8c860"); // panal inferior
+	// Agujeros de la entrada
+	rect(ctx, 6, 6, 4, 4, "#8a4518");
+	// Goteo de miel por abajo
+	for (const x of [4, 8, 12]) px(ctx, x, 15, "#e8a520");
+	speckle(ctx, rng, "#7a3a10", 0.05);
+}
+// Bloque de miel: ámbar claro uniforme con ondas de miel más oscuras.
+function drawHoneyBlock(ctx, rng) {
+	fill(ctx, "#f5a623");
+	for (let y = 4; y < 16; y += 8) rect(ctx, 0, y, 16, 2, "#e08a10");
+	rect(ctx, 2, 2, 12, 2, "#ffc04a");
+	rect(ctx, 2, 12, 12, 2, "#d9820a");
+	speckle(ctx, rng, "#d9820a", 0.08);
+}
+
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
 	drawDirt, // 0  tierra
@@ -733,7 +876,23 @@ const TILES = [
 	drawSlabStone, // 60 losa de piedra
 	drawFenceOak, // 61 valla de roble
 	drawFenceGate, // 62 portón de roble
-	drawCoral // 63 coral (Fase 21.5, D2)
+	drawCoral, // 63 coral (Fase 21.5, D2)
+	drawGranite, // 64 granito (Fase 21.5, B1)
+	drawDiorite, // 65 diorita
+	drawAndesite, // 66 andesita
+	drawPolishedGranite, // 67 granito pulido
+	drawPolishedDiorite, // 68 diorita pulida
+	drawPolishedAndesite, // 69 andesita pulida
+	drawLantern // 70 linterna (Fase 21.5, B2)
+	,
+	// Fase 21.5 (B3): bambú, tablones de bambú y andamio
+	drawBamboo, // 71
+	drawBambooPlanks, // 72
+	drawScaffolding, // 73
+	// Fase 21.5 (B4): nido de abeja, colmena y bloque de miel
+	drawBeeNest, // 74
+	drawBeeHive, // 75
+	drawHoneyBlock // 76
 ];
 
 // El mapa de teselas por bloque/cara (BLOCK_TEX) y los rectángulos UV viven en

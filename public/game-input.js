@@ -11,11 +11,14 @@ import { send } from "./connection.js";
 import {
 	ARMOR_ITEMS,
 	BED,
+	BEE_HIVE,
+	BEE_NEST,
 	BREED_FOOD,
 	BUCKET,
 	FARMLAND,
 	FISHING_ROD,
 	FOOD_ITEMS,
+	GLASS_BOTTLE,
 	HOES,
 	PLACEABLE_BLOCKS,
 	TNT,
@@ -500,6 +503,17 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 			playPlace(TNT);
 			send("block_action", { action: "ignite", x, y, z });
 			return;
+		}
+		// Fase 21.5 (B4): clic derecho con una botella de vidrio sobre una
+		// colmena/nido la llena de miel (el servidor consume la botella y
+		// entrega la HONEY_BOTTLE).
+		{
+			const hiveBlock = getClientBlock(x, y, z);
+			if ((hiveBlock === BEE_HIVE || hiveBlock === BEE_NEST) && getHeldItem()?.id === GLASS_BOTTLE) {
+				playDrink();
+				send("honey_bottle", { x, y, z });
+				return;
+			}
 		}
 		// Fase 13 (L2): clic derecho sobre una puerta/portón → abrir/cerrar
 		// (el servidor alterna el estado y hace broadcast door_state).

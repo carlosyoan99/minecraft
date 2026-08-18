@@ -8,6 +8,7 @@
 import {
 	CHUNK_SIZE,
 	TORCH,
+	LANTERN,
 	WORLD_HEIGHT,
 	WORLD_MAX_Y,
 	WORLD_MIN_Y
@@ -15,7 +16,8 @@ import {
 
 const chunkStore = new Map(); // "cx,cz" -> Uint8Array
 
-// torchSet: posiciones de antorchas conocidas ("wx,wy,wz" -> [wx,wy,wz]).
+// torchSet: posiciones de fuentes de luz puntual conocidas (antorchas y,
+// Fase 21.5 B2, linternas: "wx,wy,wz" -> [wx,wy,wz]).
 // Lo alimenta setClientBlock y el swap de chunks_add; lo consumen la luz
 // horneada (lightclient.js) y la limpieza de chunks_unload.
 const torchSet = new Map();
@@ -115,11 +117,11 @@ export function setClientBlock(wx, wy, wz, block) {
 	const prev = chunk[cIdx(x, wyL, z)];
 	chunk[cIdx(x, wyL, z)] = block;
 	const torchKey = `${wx},${wy},${wz}`;
-	if (prev === TORCH) {
+	if (prev === TORCH || prev === LANTERN) {
 		torchSet.delete(torchKey);
 		removeTorch(wx, wy, wz); // Fase 20 B4 (P7): índice espacial
 	}
-	if (block === TORCH) {
+	if (block === TORCH || block === LANTERN) {
 		torchSet.set(torchKey, [wx, wy, wz]);
 		addTorch(wx, wy, wz);
 	}
@@ -141,9 +143,9 @@ export function storeChunkData(key, arr) {
 		return null;
 	const data = Uint8Array.from(arr);
 	chunkStore.set(key, data);
-	const [cx, cz] = key.split(",").map(Number); // Registrar las antorchas del chunk (puede venir con un mundo guardado).
+	const [cx, cz] = key.split(",").map(Number); // Registrar las antorchas/linternas del chunk (puede venir con un mundo guardado).
 	for (let i = 0; i < data.length; i++) {
-		if (data[i] === TORCH) {
+		if (data[i] === TORCH || data[i] === LANTERN) {
 			const lx = i % CHUNK_SIZE;
 			const lz = Math.floor(i / CHUNK_SIZE) % CHUNK_SIZE;
 			const ly = Math.floor(i / (CHUNK_SIZE * CHUNK_SIZE));

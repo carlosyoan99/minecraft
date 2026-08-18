@@ -1090,36 +1090,37 @@
 > **En curso — abierta 2026-08-17** (Fase 21 cerrada). NUEVA desde la lista
 > de mejoras del usuario (2026-08-15): alta/media prioridad + 1.21 Tricky
 > Trials + 1.21.5 Spring to Life + 1.22/26.1 + comandos. Se inserta **entre
-> F21 y F22** (no renumerar F21-25). **Hereda los diferidos de generación
-> D2/D3 de la F21** (océanos profundos/cálidos con coral y montañas altas —
-> spec F21.5 §1.4). No planificar lo ya hecho (zanahoria/patata F18 C-3,
-> miel F9) ni lo ya planificado (abeja F21 C2, amatista F22 B1, Breeze F23
-> A2, Tuff F23 A4).
+> F21 y F22** (no renumerar F21-25). **CERRADOS Y AUDITADOS:** los diferidos
+> de generación **D2/D3** de la F21 (océanos profundos/cálidos con corales y
+> montañas altas — spec F21.5 §1.4), **A1/A8** (pesca) y **B1/B2/B3/B4**
+> (piedra pulida, linternas, bambú/andamios, colmenas/miel). No planificar lo
+> ya hecho (zanahoria/patata F18 C-3, miel F9) ni lo ya planificado (abeja
+> F21 C2, amatista F22 B1, Breeze F23 A2, Tuff F23 A4).
 
-- [ ] D2 Océanos profundos/cálidos (heredado de F21, spec F21.5 §1.4): más
+- [x] D2 Océanos profundos/cálidos (heredado de F21, spec F21.5 §1.4): más
       profundidad del fondo, océano cálido con corales (B/I + receta +
       icono) y océano profundo; sin subir la probabilidad de océano —
       test determinista
-- [ ] D3 Montañas altas y nevadas (heredado de F21, spec F21.5 §1.4):
+- [x] D3 Montañas altas y nevadas (heredado de F21, spec F21.5 §1.4):
       elevar la rampa/crest dentro del rango v6 (Y ≤ +63), picos nevados
       sobre cumbres reales, `audit-altura` dentro de presupuesto — test
       determinista recalibrado
 
-- [ ] A1 Pesca (1.7/1.13): ítem `FISHING_ROD` (durabilidad 64) + entidad
+- [x] A1 Pesca (1.7/1.13): ítem `FISHING_ROD` (durabilidad 64) + entidad
       línea = proyectil con bobber (punto 3D); al impactar en agua pica
       tras tiempo aleatorio y entrega ítem de la tabla de loot (pescado/
       tesoro/basura); fuera del agua no pica; durabilidad solo al recoger;
       receta (3 palos + 2 hilo)
-- [ ] A8 Pesca en cofres: cañas rotas (durabilidad 1-20) en las tablas de
+- [x] A8 Pesca en cofres: cañas rotas (durabilidad 1-20) en las tablas de
       loot de cofres (`server/chests.js`)
-- [ ] B1 Piedra pulida (1.8): `GRANITE`/`DIORITE`/`ANDESITE` + pulidas en
+- [x] B1 Piedra pulida (1.8): `GRANITE`/`DIORITE`/`ANDESITE` + pulidas en
       vetas subterráneas (hash 2D) — B/I + tesela + receta + icono
-- [ ] B2 Linternas (1.14): `LANTERN` en suelo/techo, emisor de luz (pipe de
+- [x] B2 Linternas (1.14): `LANTERN` en suelo/techo, emisor de luz (pipe de
       la antorcha); receta (4 lingotes + antorcha)
-- [ ] B3 Bambú y andamios (1.14): `BAMBOO` (planta alta estática, hasta 12
+- [x] B3 Bambú y andamios (1.14): `BAMBOO` (planta alta estática, hasta 12
       bloques), `BAMBOO_PLANKS`, `SCAFFOLDING` (no sólido, escalable hacia
       arriba; sin crecimiento ni colapso)
-- [ ] B4 Colmenas y miel (1.15): `BEE_NEST` (árboles) + `BEE_HIVE`
+- [x] B4 Colmenas y miel (1.15): `BEE_NEST` (árboles) + `BEE_HIVE`
       (crafteado); botella de vidrio + clic derecho → `HONEY_BOTTLE`
       (comida 6/1.2); `HONEY_BLOCK` (reduce caída); abejas del F21 C2
       vuelan alrededor; sin polinización de cultivos

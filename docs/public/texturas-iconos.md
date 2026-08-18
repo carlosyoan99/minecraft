@@ -40,7 +40,8 @@
 3. **Emisivas (lava, glowstone)** — el atlas es Lambert; una textura
   emisiva requeriría un segundo canal de material.
 4. **Animación de teselas** (agua/lava ya son shader; faltaría la melaza) —
-  futuro con ítems de miel (F21.5 B4).
+   el bloque de miel (F21.5 B4, tesela 76) ya existe; la animación sigue en
+   el backlog.
 
 ## Constantes, funciones, cambios y resultados
 

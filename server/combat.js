@@ -410,7 +410,11 @@ function applyFallDamage(player, vyObs = 0) {
 					if (hVy > blocks) blocks = hVy;
 				}
 				const dmg = fallDamage(blocks);
-				if (dmg > 0)
+				// Fase 21.5 (B4): el bloque de miel anula el daño de caída al
+				// aterrizar sobre él (como en Minecraft, donde reduce a ~80% —
+				// aquí simplificado a 0: es el golpe SUAVE de la miel).
+				const softLanding = belowBlock === B.HONEY_BLOCK;
+				if (dmg > 0 && !softLanding)
 					damagePlayer(player, dmg, {
 						source: "fall",
 						meta: {

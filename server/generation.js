@@ -177,6 +177,26 @@ function hangVines(data, lx, y, lz, height) {
 	}
 }
 
+// Fase 21.5 (B1): vetas de piedra pulida — granito, diorita y andesita se
+// generan en el subsuelo con un patrón por hash 2D (misma receta que los
+// minerales de Fase 18 C-2: umbral de ruido + franja de profundidad). MC
+// 1.8: granito/diorita/andesita aparecen en vetas de ~30 bloques entre la
+// superficie y Y≈80; aquí, mapeado al mundo v6 (−64..+63), van en la banda
+// media (y ≥ −8) con puertas independientes. Cada celda de piedra lanza un
+// `roll` [0,1): > 0.94 → granito, > 0.91 → diorita, > 0.88 → andesita
+// (~6 % de la piedra en total, en parches orgánicos por la octava de
+// detalle; los umbrales se calibraron contra la distribución real del ruido
+// — unos pocos miles de bloques por chunk de 16×16 en la franja).
+function polishedStoneAt(wx, y, wz) {
+	if (y < -8) return null;
+	const roll =
+		(noise.noise2D_ore(wx * 0.22 + y * 5.3, wz * 0.22) + 1) / 2;
+	if (roll > 0.94) return B.GRANITE;
+	if (roll > 0.91) return B.DIORITE;
+	if (roll > 0.88) return B.ANDESITE;
+	return null;
+}
+
 function generateChunk(cx, cz) {
 	const key = `${cx},${cz}`;
 	if (chunks.has(key)) return chunks.get(key);
@@ -334,6 +354,12 @@ function generateChunk(cx, cz) {
 					} else {
 						block = B.STONE;
 						if (y > WORLD_MIN_Y + 4) {
+							// Fase 21.5 (B1): veta de piedra pulida — la piedra base se
+							// sustituye ANTES de evaluar los minerales (las menas tienen
+							// prioridad por estar más arriba en la cadena; si el roll de
+							// veta coincide con el de mineral, manda el mineral, como en
+							// MC donde las vetas de piedra y las menas son independientes).
+							block = polishedStoneAt(wx, y, wz) ?? B.STONE;
 							// Fase 18 (C-2): minerales por PROFUNDIDAD mapeados al mundo
 							// v6 (−64..+63, 128 bloques). Distribución MC 1.18 (mundo
 							// −64..+320, 384 bloques) mapeada POR PERCENTIL de columna:
@@ -551,6 +577,19 @@ function generateChunk(cx, cz) {
 					const y = height + i;
 					if (y <= WORLD_MAX_Y) data[core.idx(x, core.toLocal(y), z)] = log;
 				}
+				// Fase 21.5 (B4): nido de abeja en el tronco (bosque/bosque de
+				// abedules/llanura) — colgado de la cara +x del tronco a media
+				// altura, ~6% de los árboles (estático, no hay abejas alrededor;
+				// la especificación simplifica la polinización).
+				if (
+					(leaves === B.OAK_LEAVES || leaves === B.BIRCH_LEAVES) &&
+					x + 1 < CHUNK_SIZE &&
+					rand() < 0.06
+				) {
+					const ny = height + 1 + Math.floor(rand() * treeHeight);
+					if (ny <= WORLD_MAX_Y)
+						data[core.idx(x + 1, core.toLocal(ny), z)] = B.BEE_NEST;
+				}
 				for (let dx = -2; dx <= 2; dx++) {
 					for (let dz = -2; dz <= 2; dz++) {
 						for (let dy = treeHeight - 2; dy <= treeHeight; dy++) {
@@ -703,6 +742,34 @@ function generateChunk(cx, cz) {
 			// hierba alta, flores (amapola/diente de león) y, raramente, un pilar
 			// de piedra con piedra de musgo (estructura decorativa).
 			if (canGrowTree && data[core.idx(x, core.toLocal(height), z)] === B.AIR) {
+				// Fase 21.5 (B3): bambú en la jungla — planta alta que nace
+				// estáticamente con 3-12 tallos de 3-8 bloques (parche orgánico;
+				// sin crecimiento con el tiempo). Se coloca la base en esta celda
+				// y los tallos se escriben directamente (la jungla es densa, el
+				// borde del chunk lo recorta el vecino como en los árboles).
+				if (biome === "jungle" && rand() < 0.18) {
+					const stalks = 3 + Math.floor(rand() * 10);
+					for (let s = 0; s < stalks; s++) {
+						const bx = x + Math.floor(rand() * 5) - 2;
+						const bz = z + Math.floor(rand() * 5) - 2;
+						if (bx < 0 || bx >= CHUNK_SIZE || bz < 0 || bz >= CHUNK_SIZE)
+							continue;
+						const stalk = 3 + Math.floor(rand() * 6); // 3-8 de alto
+						const baseWx = cx * CHUNK_SIZE + bx,
+							baseWz = cz * CHUNK_SIZE + bz;
+						if (
+							data[core.idx(bx, core.toLocal(height), bz)] !== B.AIR ||
+							isPondAt(baseWx, baseWz) ||
+							isLavaPondAt(baseWx, baseWz)
+						)
+							continue;
+						for (let i = 0; i < stalk; i++) {
+							const y = height + i;
+							if (y <= WORLD_MAX_Y)
+								data[core.idx(bx, core.toLocal(y), bz)] = B.BAMBOO;
+						}
+					}
+				}
 				const veg = rand();
 				if (veg < 0.1)
 					data[core.idx(x, core.toLocal(height), z)] = B.TALL_GRASS;

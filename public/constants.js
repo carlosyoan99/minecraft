@@ -93,7 +93,27 @@ export const BLOCK_COLORS = {
 	61: 0x7a7a7a,
 	70: 0x8a6a3a,
 	71: 0x8a6a3a,
-	72: 0xe86a5e // coral (Fase 21.5, D2): rosa coral del arrecife cálido
+	72: 0xe86a5e, // coral (Fase 21.5, D2): rosa coral del arrecife cálido
+	// Fase 21.5 (B1): piedra pulida — granito rosa, diorita gris/blanca,
+	// andesita gris apagado y sus pulidas (tonos más regulares).
+	73: 0xc9917f,
+	74: 0xc9c9c9,
+	75: 0x8f8f8f,
+	76: 0xc9917f,
+	77: 0xc9c9c9,
+	78: 0x8f8f8f,
+	// Fase 21.5 (B2): linterna — marco de hierro con vidrio y llama cálida.
+	79: 0xa87a2f,
+	// Fase 21.5 (B3): bambú (verde caña), tablones (amarillo pálido) y
+	// andamio (estructura naranja).
+	80: 0x4a9c2f,
+	81: 0xc9b33a,
+	82: 0xc97a2f,
+	// Fase 21.5 (B4): nido de abeja (marrón), colmena (amarillo oscuro) y
+	// bloque de miel (ámbar).
+	83: 0x8a5a2a,
+	84: 0xc97a20,
+	85: 0xefa83a
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -149,13 +169,41 @@ export const BLOCK_NAMES = {
 	61: "Losa de piedra",
 	70: "Valla de roble",
 	71: "Portón de roble",
-	72: "Coral" // Fase 21.5 (D2): arrecife de océano cálido
+	72: "Coral", // Fase 21.5 (D2): arrecife de océano cálido
+	// Fase 21.5 (B1): piedra pulida
+	73: "Granito",
+	74: "Diorita",
+	75: "Andesita",
+	76: "Granito pulido",
+	77: "Diorita pulida",
+	78: "Andesita pulida",
+	// Fase 21.5 (B2): linterna
+	79: "Linterna",
+	// Fase 21.5 (B3): bambú y andamios
+	80: "Bambú",
+	81: "Tablones de bambú",
+	82: "Andamio",
+	// Fase 21.5 (B4): colmenas y miel
+	83: "Nido de abeja",
+	84: "Colmena",
+	85: "Bloque de miel"
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
 export const SNOW = 21;
 export const CHEST = 22;
 export const TORCH = 23;
+// Fase 21.5 (B2): linterna — emisora de luz como la antorcha (cuelga del
+// techo o se apoya en el suelo; no sólida).
+export const LANTERN = 79;
+// Fase 21.5 (B3): bambú (planta alta), tablones y andamio (no sólido).
+export const BAMBOO = 80;
+export const BAMBOO_PLANKS = 81;
+export const SCAFFOLDING = 82;
+// Fase 21.5 (B4): colmenas y miel.
+export const BEE_NEST = 83;
+export const BEE_HIVE = 84;
+export const HONEY_BLOCK = 85;
 export const BED = 24; // Fase 7: dormir de noche fija el punto de reaparición
 export const LAVA = 25; // Fase 7: pozos decorativos en superficie (no minable)
 export const FARMLAND = 26; // Fase 9 (C): tierra arada
@@ -322,7 +370,10 @@ export const ITEM_NAMES = {
 	260: "Leche",
 	261: "Huevo",
 	// Fase 21.5 (A1): caña de pescar (clic derecho lanza/recoge, durabilidad 64)
-	262: "Caña de pescar"
+	262: "Caña de pescar",
+	// Fase 21.5 (B4): botella de vidrio y botella de miel
+	263: "Botella de vidrio",
+	264: "Botella de miel"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -339,10 +390,18 @@ export const PLACEABLE_BLOCKS = new Set([
 	// Fase 13 (L2/L3): puertas, escaleras, losas, vallas y portones
 	48, 49, 50, 51, 60, 61, 70, 71,
 	// Fase 21.5 (D2): coral del arrecife cálido
-	72
+	72,
+	// Fase 21.5 (B1/B2): piedra pulida (73-78), linterna (79)
+	73, 74, 75, 76, 77, 78, 79,
+	// Fase 21.5 (B3): bambú (80, planta alta cross-quad), tablones (81) y
+	// andamio (82).
+	80, 81, 82,
+	// Fase 21.5 (B4): nidos, colmenas y bloque de miel.
+	83, 84, 85
 ]);
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
-export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43]); // 43 = lianas (Fase 11, B)
+// Fase 21.5 (B3): bambú (planta alta) y andamio (no sólido, escalable).
+export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43, 80, 82]); // 43 = lianas (Fase 11, B)
 // Armadura equipable (Fase 7): clic derecho con la pieza en mano la equipa.
 // No se apilan (cada pieza con su durabilidad, como las herramientas).
 export const ARMOR_ITEMS = new Set([
@@ -389,6 +448,9 @@ export const EGG = 261;
 // apila). Mantener en sincronía con FISHING_ROD_DURABILITY del servidor
 // (unit-sync lo verifica).
 export const FISHING_ROD = 262;
+// Fase 21.5 (B4): botella de vidrio y botella de miel.
+export const GLASS_BOTTLE = 263;
+export const HONEY_BOTTLE = 264;
 // Durabilidad máxima por pieza (Fase 7). Mantener en sincronía con
 // ARMOR_DURABILITY de constants.js (servidor) — lo verifica unit-sync.js.
 export const ARMOR_DURABILITY = {
@@ -426,9 +488,10 @@ export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)
 // Fase 9 (F): pan y pescado (crudo/cocinado).
 // Fase 18 (C-3): zanahoria (116) y patata (121/122) ahora son comida.
+// Fase 21.5 (B4): botella de miel (264).
 // OJO: este Set se parsea con regex en unit-sync — sin comentarios dentro.
 export const FOOD_ITEMS = new Set([
-	107, 108, 109, 110, 111, 112, 113, 114, 118, 119, 133, 134, 135, 116, 121, 122
+	107, 108, 109, 110, 111, 112, 113, 114, 118, 119, 133, 134, 135, 116, 121, 122, 264
 ]);
 // Azadas (Fase 9, C): convierten tierra/césped en tierra arada (clic derecho).
 export const HOES = new Set([240, 241, 242, 243, 244]);

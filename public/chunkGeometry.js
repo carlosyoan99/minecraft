@@ -29,6 +29,7 @@
 // ============================================================
 import {
 	CHUNK_SIZE,
+	LANTERN,
 	LAVA,
 	NON_SOLID_PLANTS,
 	TORCH,
@@ -228,6 +229,8 @@ export function buildChunkGeometryData({
 			b !== WATER &&
 			b !== LAVA &&
 			b !== TORCH &&
+			// Fase 21.5 (B2): la linterna no ocluye la AO (no es sólida).
+			b !== LANTERN &&
 			!NON_SOLID_PLANTS.has(b)
 		);
 	};
@@ -388,6 +391,92 @@ export function buildChunkGeometryData({
 			uv
 		);
 	};
+	// Fase 21.5 (B2): linterna — caja compacta (bobina) con la tesela de la
+	// linterna en las 6 caras y un vástago hacia el techo (si cuelga) o hacia
+	// el suelo (si se apoya). La orientación se deduce del contexto: si hay
+	// un bloque sólido ENCIMA cuelga (como en MC); si no, se apoya en el
+	// suelo. Emite las 6 caras con pushCrossQuad (normales por eje) en el
+	// buffer de antorchas (fullbright: la linterna emite luz).
+	const pushLantern = (wx, wy, wz) => {
+		const uv = tileRectFn(tileForFaceFn(LANTERN, 0));
+		const W = 0.225; // medio ancho de la bobina
+		const hang = isOccluder(wx, wy + 1, wz);
+		const y0 = hang ? 0.28 : 0.62; // caja baja (cuelga) o alta (apoya)
+		const y1 = y0 + 0.45;
+		const x0 = wx + 0.5 - W,
+			x1 = wx + 0.5 + W,
+			z0 = wz + 0.5 - W,
+			z1 = wz + 0.5 + W;
+		const faces = [
+			// [+X] [-X] [+Y] [-Y] [+Z] [-Z] con sus 4 esquinas y normal
+			[x1, y0, z0, x1, y0, z1, x1, y1, z1, x1, y1, z0, 1, 0, 0],
+			[x0, y0, z1, x0, y0, z0, x0, y1, z0, x0, y1, z1, -1, 0, 0],
+			[x0, y1, z0, x1, y1, z0, x1, y1, z1, x0, y1, z1, 0, 1, 0],
+			[x1, y0, z0, x0, y0, z0, x0, y0, z1, x1, y0, z1, 0, -1, 0],
+			[x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1, 0, 0, 1],
+			[x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0, 0, 0, -1]
+		];
+		for (const f of faces) {
+			pushCrossQuad(
+				f[0],
+				f[1],
+				f[2],
+				f[3],
+				f[4],
+				f[5],
+				f[6],
+				f[7],
+				f[8],
+				f[9],
+				f[10],
+				f[11],
+				f[12],
+				f[13],
+				f[14],
+				uv
+			);
+		}
+		// Vástago: quad cruzado delgado desde la bobina hasta el techo/suelo.
+		const SW = 0.06;
+		const sy0 = hang ? y1 : 0;
+		const sy1 = hang ? 1 : y0;
+		pushCrossQuad(
+			wx + 0.5 - SW,
+			wy + sy0,
+			wz + 0.5 - SW,
+			wx + 0.5 + SW,
+			wy + sy0,
+			wz + 0.5 + SW,
+			wx + 0.5 + SW,
+			wy + sy1,
+			wz + 0.5 + SW,
+			wx + 0.5 - SW,
+			wy + sy1,
+			wz + 0.5 - SW,
+			-Math.SQRT1_2,
+			0,
+			Math.SQRT1_2,
+			uv
+		);
+		pushCrossQuad(
+			wx + 0.5 + SW,
+			wy + sy0,
+			wz + 0.5 - SW,
+			wx + 0.5 - SW,
+			wy + sy0,
+			wz + 0.5 + SW,
+			wx + 0.5 - SW,
+			wy + sy1,
+			wz + 0.5 + SW,
+			wx + 0.5 + SW,
+			wy + sy1,
+			wz + 0.5 - SW,
+			-Math.SQRT1_2,
+			0,
+			-Math.SQRT1_2,
+			uv
+		);
+	};
 	// Fase 19.6 (C2): hash determinista por celda para la fase del vaivén
 	// (definido a nivel de módulo — exportado — para compartirlo con el worker
 	// y los tests).
@@ -468,6 +557,10 @@ export function buildChunkGeometryData({
 				if (block === TORCH) {
 					// Fase 15 (D5): posiciones de MUNDO (local + WORLD_MIN_Y).
 					pushTorch(baseX + x, y + WORLD_MIN_Y, baseZ + z);
+					continue;
+				}
+				if (block === LANTERN) {
+					pushLantern(baseX + x, y + WORLD_MIN_Y, baseZ + z);
 					continue;
 				}
 				if (NON_SOLID_PLANTS.has(block)) {
@@ -588,7 +681,12 @@ export function buildChunkGeometryData({
 					const ly = nAxis === 1 ? s : uAxis === 1 ? u : v;
 					const lz = nAxis === 2 ? s : uAxis === 2 ? u : v;
 					const block = chunk[cIdx(lx, ly, lz)];
-					if (block === 0 || block === TORCH || NON_SOLID_PLANTS.has(block))
+					if (
+						block === 0 ||
+						block === TORCH ||
+						block === LANTERN ||
+						NON_SOLID_PLANTS.has(block)
+					)
 						continue;
 					const isWater = block === WATER;
 					const isLava = block === LAVA;

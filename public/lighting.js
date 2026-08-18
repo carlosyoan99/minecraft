@@ -21,11 +21,15 @@ export const LIGHT_ATTEN = 0.8; // atenuación por paso (como el light engine de
 export const LIGHT_MIN = 0.03; // por debajo de esto se deja de propagar
 const AIR = 0,
 	WATER = 20,
-	TORCH = 23;
+	TORCH = 23,
+	// Fase 21.5 (B2): la linterna emite luz como la antorcha y también la
+	// deja pasar (no bloquea la propagación de su propia luz ni la ajena).
+	LANTERN = 79;
 
-// ¿El bloque deja pasar la luz de antorcha? (aire, agua y antorcha sí).
+// ¿El bloque deja pasar la luz de antorcha? (aire, agua, antorcha y
+// linterna sí).
 export function isLightPassable(block) {
-	return block === AIR || block === WATER || block === TORCH;
+	return block === AIR || block === WATER || block === TORCH || block === LANTERN;
 }
 
 // Empuja luz desde una antorcha al array del chunk (BFS 6-direccional con

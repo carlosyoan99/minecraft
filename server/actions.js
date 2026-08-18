@@ -667,6 +667,20 @@ function handleShootBow(p, ws) {
 	}
 }
 
+// Fase 21.5 (B4): recoger miel — clic derecho con una botella de vidrio sobre
+// una colmena/nido (a 4 bloques) la consume y devuelve una botella de miel
+// (comida 6/1.2, como en Minecraft). Simplificación: la colmena no se agota.
+function handleHoneyBottle(p, data) {
+	const block = world.getBlock(data.x, data.y, data.z);
+	if (block !== B.BEE_NEST && block !== B.BEE_HIVE) return;
+	if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 5) return;
+	const held = p.inventory[p.selectedSlot];
+	if (!held || held.id !== I.GLASS_BOTTLE) return;
+	if (!playerHelpers.removeFromInventory(p, I.GLASS_BOTTLE, 1)) return;
+	playerHelpers.addToInventory(p, I.HONEY_BOTTLE, 1);
+	playerHelpers.sendInventory(p);
+}
+
 // Fase 21.5 (A1): pesca (clic derecho con la caña en mano). Si NO hay línea
 // lanzada, la lanza; si ya hay una, la recoge — con picoteo entrega un ítem
 // de la tabla de loot de pesca (y desgasta la caña SOLO entonces), sin
@@ -917,6 +931,7 @@ module.exports = {
 	handleThrowTrident,
 	handleShootBow,
 	handleFishing, // Fase 21.5 (A1): pesca
+	handleHoneyBottle, // Fase 21.5 (B4): botella de vidrio → botella de miel
 	handleAttackMob,
 	handleTill,
 	handlePlant,

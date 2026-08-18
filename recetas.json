@@ -448,6 +448,68 @@
 			"count": 4
 		}
 	},
+	"lantern": {
+		"shape": [" I ", "ITI", " I "],
+		"ingredients": {
+			"I": 102,
+			"T": 23
+		},
+		"result": {
+			"id": 79,
+			"count": 1
+		}
+	},
+	"bamboo_planks": {
+		"shape": ["BB", "BB"],
+		"ingredients": {
+			"B": 80
+		},
+		"result": {
+			"id": 81,
+			"count": 1
+		}
+	},
+	"scaffolding": {
+		"shape": ["B B", "B B", "B B"],
+		"ingredients": {
+			"B": 80
+		},
+		"result": {
+			"id": 82,
+			"count": 6
+		}
+	},
+	"glass_bottle": {
+		"shape": ["G", "G", "G"],
+		"ingredients": {
+			"G": 17
+		},
+		"result": {
+			"id": 263,
+			"count": 3
+		}
+	},
+	"bee_hive": {
+		"shape": ["XXX", "XHX", "XXX"],
+		"ingredients": {
+			"X": 7,
+			"H": 140
+		},
+		"result": {
+			"id": 84,
+			"count": 1
+		}
+	},
+	"honey_block": {
+		"shape": ["HH", "HH"],
+		"ingredients": {
+			"H": 264
+		},
+		"result": {
+			"id": 85,
+			"count": 1
+		}
+	},
 	"bed": {
 		"shape": ["###", "XXX"],
 		"ingredients": {
@@ -775,6 +837,36 @@
 		"result": {
 			"id": 254,
 			"count": 1
+		}
+	},
+	"polished_granite": {
+		"shape": ["##", "##"],
+		"ingredients": {
+			"#": 73
+		},
+		"result": {
+			"id": 76,
+			"count": 4
+		}
+	},
+	"polished_diorite": {
+		"shape": ["##", "##"],
+		"ingredients": {
+			"#": 74
+		},
+		"result": {
+			"id": 77,
+			"count": 4
+		}
+	},
+	"polished_andesite": {
+		"shape": ["##", "##"],
+		"ingredients": {
+			"#": 75
+		},
+		"result": {
+			"id": 78,
+			"count": 4
 		}
 	}
 }

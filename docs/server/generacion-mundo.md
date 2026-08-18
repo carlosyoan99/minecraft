@@ -74,8 +74,11 @@
 4. **Geoda de amatista** (F21 B1, P1): reusa los bloques de amatista que
    aporta la Fase 22 (B1) — no duplicar IDs.
 5. **Iteración de generación de la F21.5** (diferidos D2/D3 de la F21):
-   océanos más profundos/cálidos con corales y montañas altas dentro del
-   rango v6 — spec F21.5 §1.4.
+   océanos más profundos/cálidos con corales (HECHO, E2/D2) y montañas altas
+   dentro del rango v6 — spec F21.5 §1.4.
+6. **Estructuras/bosques de la F21.5 restantes**: bambú en la jungla (B3) y
+   nidos de abeja en los troncos (B4) YA generados; las vetas de granito/
+   diorita/andesita (B1) YA generadas vía `graniteAt`/`polishedStoneAt`.
 
 ## Constantes, funciones, cambios y resultados
 

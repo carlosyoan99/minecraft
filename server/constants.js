@@ -327,7 +327,34 @@ const B = {
 	// generado en el lecho del océano cálido; se mina a mano y se dropea a sí
 	// mismo). B5 añadirá el abanico de coral (CORAL_FAN), el kelp y el pasto
 	// marino — este ID queda reservado para el bloque base del arrecife.
-	CORAL_BLOCK: 72
+	CORAL_BLOCK: 72,
+	// Fase 21.5 (B1): piedra pulida (1.8) — granito, diorita y andesita con
+	// sus variantes pulidas. Se generan en VETAS subterráneas (hash 2D, como
+	// los minerales) y sueltan el bloque a sí mismos al minar con pico.
+	GRANITE: 73, // granito: motas claras sobre rosa (vetas amplias)
+	DIORITE: 74, // diorita: sal y pimienta gris/blanca (vetas amplias)
+	ANDESITE: 75, // andesita: gris apagado (vetas amplias)
+	POLISHED_GRANITE: 76, // pulido: granito con bordes regulares (crafteo 2×2)
+	POLISHED_DIORITE: 77, // pulido de diorita
+	POLISHED_ANDESITE: 78, // pulido de andesita
+	// Fase 21.5 (B2): linterna (1.14) — emisora de luz como la antorcha;
+	// cuelga del techo o se apoya en el suelo (soporte = vecino sólido, como
+	// la antorcha). Sin cadena (simplificado). Crafteo: 4 lingotes + antorcha.
+	LANTERN: 79,
+	// Fase 21.5 (B3): bambú (1.14) — planta alta que crece estáticamente
+	// hasta 12 bloques en la jungla; el ítem y el bloque comparten este ID
+	// (se coloca como un tallo, se dropea a sí mismo). Con él se craftean
+	// tablones y andamios.
+	BAMBOO: 80,
+	BAMBOO_PLANKS: 81, // tablones de bambú (crafteo 2×2 de bambú)
+	SCAFFOLDING: 82, // andamio — no sólido, escalable por encima
+	// Fase 21.5 (B4): colmenas y miel — BEE_NEST se genera en los troncos de
+	// los árboles (abedul/bosque) de forma estática; BEE_HIVE se craftea.
+	// Clic derecho con una botella de vidrio llena una HONEY_BOTTLE (comida
+	// 6/1.2); el HONEY_BLOCK (crafteo 4 botellas) reduce el daño de caída.
+	BEE_NEST: 83,
+	BEE_HIVE: 84,
+	HONEY_BLOCK: 85
 };
 
 // Bloques con gravedad (Fase 10, D1): caen si el bloque de debajo no es
@@ -480,7 +507,11 @@ const I = {
 	// no se desgasta al minar/atacar (solo al recoger un pez). No está en
 	// TOOL_DURABILITY a propósito (misma convención que el arco): su desgaste
 	// lo gestiona applyFishingWear (combat.js) al recoger la captura.
-	FISHING_ROD: 262
+	FISHING_ROD: 262,
+	// Fase 21.5 (B4): botella de vidrio (crafteo 3 vidrio → 3) y botella de
+	// miel (clic derecho con la botella sobre una colmena; comida 6/1.2).
+	GLASS_BOTTLE: 263,
+	HONEY_BOTTLE: 264
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -524,7 +555,11 @@ const NON_SOLID_PLANTS = new Set([
 	B.TALL_GRASS,
 	B.POPPY,
 	B.DANDELION,
-	B.VINES // Fase 11 (Bloque B): las lianas cuelgan y se atraviesan (como las plantas)
+	B.VINES, // Fase 11 (Bloque B): las lianas cuelgan y se atraviesan (como las plantas)
+	// Fase 21.5 (B3): el bambú es una planta alta (se atraviesa) y el andamio
+	// un bloque no sólido (se sube por dentro, como en MC simplificado).
+	B.BAMBOO,
+	B.SCAFFOLDING
 ]);
 // Sólido para física/validación: el agua no es sólida (se nada en ella), la
 // antorcha/cama tampoco (se atraviesan) y las plantas (Fase 9) tampoco.
@@ -547,6 +582,8 @@ const isSolidBlock = (id) =>
 	id !== B.WATER &&
 	id !== B.LAVA &&
 	id !== B.TORCH &&
+	// Fase 21.5 (B2): la linterna no es sólida (se atraviesa, como la antorcha).
+	id !== B.LANTERN &&
 	id !== B.BED &&
 	!NON_SOLID_PLANTS.has(id);
 // Fase 13 (L2/L3): puertas y portones (el estado de apertura decide la
@@ -602,7 +639,9 @@ const FOOD_VALUES = {
 	// horno 5/6 (paridad tabla #8).
 	[I.CARROT]: { food: 3, saturation: 3.6 },
 	[I.POTATO]: { food: 1, saturation: 0.6 },
-	[I.BAKED_POTATO]: { food: 5, saturation: 6 }
+	[I.BAKED_POTATO]: { food: 5, saturation: 6 },
+	// Fase 21.5 (B4): botella de miel 6/1.2 (paridad MC Java).
+	[I.HONEY_BOTTLE]: { food: 6, saturation: 1.2 }
 };
 const isFood = (id) => !!FOOD_VALUES[id];
 const isPickaxe = (id) => id >= 200 && id <= 204;
@@ -628,12 +667,19 @@ const BLOCK_HARDNESS = {
 	[B.POPPY]: 0.05,
 	[B.DANDELION]: 0.05,
 	[B.TORCH]: 0.1,
+	// Fase 21.5 (B2): la linterna se rompe al instante como la antorcha.
+	[B.LANTERN]: 0.1,
 	[B.BED]: 0.2,
 	[B.OAK_LEAVES]: 0.2,
 	[B.BIRCH_LEAVES]: 0.2,
 	[B.SPRUCE_LEAVES]: 0.2,
 	[B.JUNGLE_LEAVES]: 0.2, // Fase 11 (Bloque B)
 	[B.VINES]: 0.05, // Fase 11 (Bloque B): las lianas se rompen al instante
+	// Fase 21.5 (B3): el bambú se rompe al instante (planta); los tablones de
+	// bambú dureza de madera; el andamio es ligero y se rompe al instante.
+	[B.BAMBOO]: 0.05,
+	[B.BAMBOO_PLANKS]: 2.0,
+	[B.SCAFFOLDING]: 0.05,
 	[B.GLASS]: 0.3,
 	[B.SNOW]: 0.2,
 	[B.SAND]: 0.5,
@@ -657,6 +703,14 @@ const BLOCK_HARDNESS = {
 	[B.STONE]: 1.5,
 	[B.COBBLESTONE]: 2.0,
 	[B.MOSSY_COBBLESTONE]: 2.0,
+	// Fase 21.5 (B1): granito/diorita/andesita y pulidas — dureza de piedra
+	// (1.5) como MC; sueltan el bloque a sí mismos con pico.
+	[B.GRANITE]: 1.5,
+	[B.DIORITE]: 1.5,
+	[B.ANDESITE]: 1.5,
+	[B.POLISHED_GRANITE]: 1.5,
+	[B.POLISHED_DIORITE]: 1.5,
+	[B.POLISHED_ANDESITE]: 1.5,
 	[B.COAL_ORE]: 3.0,
 	[B.IRON_ORE]: 3.0,
 	[B.GOLD_ORE]: 3.0,
@@ -672,7 +726,17 @@ const BLOCK_HARDNESS = {
 	[B.OAK_SLAB]: 2.0,
 	[B.STONE_SLAB]: 2.0,
 	[B.OAK_FENCE]: 2.0,
-	[B.OAK_FENCE_GATE]: 2.0
+	[B.OAK_FENCE_GATE]: 2.0,
+	// Fase 21.5 (B3): bambú 0.05 (instante), tablones de bambú 2.0 (madera),
+	// andamio 0.05 (instante).
+	[B.BAMBOO]: 0.05,
+	[B.BAMBOO_PLANKS]: 2.0,
+	[B.SCAFFOLDING]: 0.05,
+	// Fase 21.5 (B4): colmenas y bloque de miel — dureza 1.5 (madera en MC;
+	// simplificación): 
+	[B.BEE_NEST]: 1.5,
+	[B.BEE_HIVE]: 1.5,
+	[B.HONEY_BLOCK]: 1.5
 };
 // Velocidad por material (multiplicador sobre la dureza): madera 2x,
 // piedra 4x, hierro 6x, oro 12x (rápida pero frágil), diamante 8x.
@@ -708,6 +772,13 @@ const BLOCK_CATEGORY = {
 	[B.STONE]: "stone",
 	[B.COBBLESTONE]: "stone",
 	[B.MOSSY_COBBLESTONE]: "stone",
+	// Fase 21.5 (B1): las piedras pulidas se minan con pico (categoría stone)
+	[B.GRANITE]: "stone",
+	[B.DIORITE]: "stone",
+	[B.ANDESITE]: "stone",
+	[B.POLISHED_GRANITE]: "stone",
+	[B.POLISHED_DIORITE]: "stone",
+	[B.POLISHED_ANDESITE]: "stone",
 	[B.COAL_ORE]: "ore",
 	[B.IRON_ORE]: "ore",
 	[B.GOLD_ORE]: "ore",
@@ -732,7 +803,11 @@ const BLOCK_CATEGORY = {
 	[B.OAK_SLAB]: "wood",
 	[B.STONE_SLAB]: "stone",
 	[B.OAK_FENCE]: "wood",
-	[B.OAK_FENCE_GATE]: "wood"
+	[B.OAK_FENCE_GATE]: "wood",
+	// Fase 21.5 (B3): tablones de bambú se minan con hacha (categoría wood).
+	// El bambú y el andamio no tienen categoría (se rompen a mano, como las
+	// plantas → la espada no cosecha, el resto sí).
+	[B.BAMBOO_PLANKS]: "wood"
 };
 const toolCategoryOf = (id) =>
 	isPickaxe(id)
@@ -765,7 +840,17 @@ function canHarvest(tool, block) {
 	if (
 		block === B.STONE ||
 		block === B.COBBLESTONE ||
-		block === B.MOSSY_COBBLESTONE
+		block === B.MOSSY_COBBLESTONE ||
+		// Fase 21.5 (B1): granito/diorita/andesita y pulidas se minan con pico
+		// (como la piedra; sueltan el bloque a sí mismos en players.js).
+		block === B.GRANITE ||
+		block === B.DIORITE ||
+		block === B.ANDESITE ||
+		block === B.POLISHED_GRANITE ||
+		block === B.POLISHED_DIORITE ||
+		block === B.POLISHED_ANDESITE ||
+		// Fase 21.5 (B4): el bloque de miel se mina con pico (como la piedra).
+		block === B.HONEY_BLOCK
 	)
 		return isPickaxe(tool);
 	if (ORE_TIER[block] !== undefined) {
@@ -1126,6 +1211,23 @@ const CREATIVE_ITEMS = [
 	B.STONE_SLAB,
 	B.OAK_FENCE,
 	B.OAK_FENCE_GATE,
+	// Fase 21.5 (B1): piedra pulida (granito, diorita, andesita y pulidas)
+	B.GRANITE,
+	B.DIORITE,
+	B.ANDESITE,
+	B.POLISHED_GRANITE,
+	B.POLISHED_DIORITE,
+	B.POLISHED_ANDESITE,
+	// Fase 21.5 (B2): linterna
+	B.LANTERN,
+	// Fase 21.5 (B3): bambú, tablones de bambú y andamio
+	B.BAMBOO,
+	B.BAMBOO_PLANKS,
+	B.SCAFFOLDING,
+	// Fase 21.5 (B4): colmenas y bloque de miel
+	B.BEE_NEST,
+	B.BEE_HIVE,
+	B.HONEY_BLOCK,
 	// Minerales y materiales
 	B.COAL_ORE,
 	B.IRON_ORE,
@@ -1175,7 +1277,10 @@ const CREATIVE_ITEMS = [
 	// Fase 21 (C1): leche (ordeñar la vaca) y huevo (pone la gallina)
 	I.MILK,
 	I.EGG,
-	I.LAVA_BUCKET
+	I.LAVA_BUCKET,
+	// Fase 21.5 (B4): botellas (vidrio y miel)
+	I.GLASS_BOTTLE,
+	I.HONEY_BOTTLE
 ];
 // Todos los ítems/armas/herramientas del juego (para el picker creativo).
 const ALL_TOOLS_AND_ARMOR = [

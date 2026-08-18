@@ -395,7 +395,10 @@ check(
 		// Fase 21 (C1): no craftean — leche (ordeñar vaca con cubo) y huevo
 		// (pullo ponedora entregado al jugador cercano).
 		I.MILK,
-		I.EGG
+		I.EGG,
+		// Fase 21.5 (B4): botella de miel — no craftea: se recolecta con la
+		// botella de vidrio (263) sobre una colmena/nido (acciones.js).
+		I.HONEY_BOTTLE
 	]);
 	const huérfanos = Object.values(I)
 		.filter((id) => typeof id === "number")

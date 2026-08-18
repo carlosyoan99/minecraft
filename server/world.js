@@ -364,15 +364,19 @@ function torchSupported(wx, wy, wz) {
 	return false;
 }
 
-// Tras romper el bloque (wx, wy, wz), se rompen también las antorchas de su
-// entorno que se quedaron sin soporte (el setBlock de cada una hace broadcast
-// de block_update al cliente, que las quita de su luz).
+// Tras romper el bloque (wx, wy, wz), se rompen también las antorchas y
+// linternas de su entorno que se quedaron sin soporte (el setBlock de cada
+// una hace broadcast de block_update al cliente, que las quita de su luz).
 function cleanUnsupportedTorches(wx, wy, wz) {
 	for (const [dx, dy, dz] of NEIGHBORS) {
 		const nx = wx + dx,
 			ny = wy + dy,
 			nz = wz + dz;
-		if (getBlock(nx, ny, nz) === B.TORCH && !torchSupported(nx, ny, nz)) {
+		const b = getBlock(nx, ny, nz);
+		if (
+			(b === B.TORCH || b === B.LANTERN) &&
+			!torchSupported(nx, ny, nz)
+		) {
 			setBlock(nx, ny, nz, B.AIR);
 		}
 	}
