@@ -37,6 +37,7 @@ const crafting = require("./crafting.js");
 const mobs = require("./mobs.js");
 const mining = require("./mining.js");
 const tnt = require("./tnt.js"); // Fase 10 (D2)
+const fishing = require("./fishing.js"); // Fase 21.5 (A1): pesca
 const chunkFill = require("./chunk-fill.js"); // Fase 18 (D-1): relleno progresivo
 
 // ============================================================
@@ -243,9 +244,13 @@ function mainLoop() {
 	}
 
 	// Fase 9 (Bloque D): proyectiles del esqueleto — avanzar física y enviar.
+	// Fase 21.5 (A1): los bobbers de pesca comparten el mismo canal (kind
+	// "bobber") para que el cliente los dibuje con la misma maquinaria.
 	const arrows = mobs.tickArrows(TICK_MS);
-	if (arrows.length)
-		netBroadcast("arrows_update", arrows.map(mobs.arrowSnapshot));
+	const bobbers = fishing.tickBobbers(TICK_MS);
+	const projectileData = [...arrows.map(mobs.arrowSnapshot), ...bobbers.map(fishing.bobberSnapshot)];
+	if (projectileData.length)
+		netBroadcast("arrows_update", projectileData);
 
 	// Fase 12 (Bloque B): trampa de los templos de jungla — al pisar el
 	// pasadizo se disparan flechas (con cooldown por templo).

@@ -869,5 +869,123 @@ check(
 	`salto máx ${d1MaxJump}`
 );
 
+// ============================================================
+// FASE 21.5, heredado D2 — océanos profundos/cálidos (spec F21.5 §1.4)
+// ============================================================
+// Bug de las Notas: "océanos poco profundos, sin variantes". La iteración
+// D2 (diferida de F21 v21.2) subdivide el océano SIN tocar la probabilidad
+// (OCEAN_FREQ/OCEAN_GATE intactos):
+//   - "warm" (temp alta, banda de jungla → ~33% del océano) lleva arrecifes
+//     de CORAL_BLOCK sobre el lecho (primera celda de agua, arena debajo),
+//   - "deep" (cuenca honda, ~14%) baja el fondo a diseño 0..2 (agua 3..5;
+//     antes el fondo era 1..3 en TODO el océano),
+//   - "normal" (el resto) conserva la profundidad de v21.1.
+// Verifica las invariantes con la semilla fija (umbrales calibrados
+// midiendo la implementación D2: 32.9% warm, 14.3% deep, coral en 26.2% de
+// las columnas cálidas, fondo deep hasta −8 de mundo).
+const D2R = 8; // área 17×17 chunks
+for (let cx = -D2R; cx <= D2R; cx++) {
+	for (let cz = -D2R; cz <= D2R; cz++) {
+		world.generateChunk(cx, cz);
+	}
+}
+let d2OceanCols = 0,
+	d2Warm = 0,
+	d2Deep = 0;
+let d2CoralCols = 0,
+	d2BadCoral = 0;
+let d2DeepFloorMin = Infinity;
+for (let cx = -D2R; cx <= D2R; cx++) {
+	for (let cz = -D2R; cz <= D2R; cz++) {
+		const d = state.chunks.get(`${cx},${cz}`);
+		for (let x = 0; x < CHUNK_SIZE; x++) {
+			for (let z = 0; z < CHUNK_SIZE; z++) {
+				const wx = cx * CHUNK_SIZE + x,
+					wz = cz * CHUNK_SIZE + z;
+				if (!world.isOcean(wx, wz)) continue;
+				d2OceanCols++;
+				const v = world.oceanVariant(wx, wz);
+				const floorW = world.columnFloorY(wx, wz) - world.DESIGN_OFFSET;
+				if (v === "warm") {
+					d2Warm++;
+					// Coral sobre el lecho: primera celda de agua = CORAL_BLOCK,
+					// arena debajo y agua encima (invariante de arrecife).
+					const b = d[idx(x, floorW + 1, z)];
+					if (b === B.CORAL_BLOCK) {
+						d2CoralCols++;
+						if (d[idx(x, floorW, z)] !== B.SAND) d2BadCoral++;
+						if (d[idx(x, floorW + 2, z)] !== B.WATER) d2BadCoral++;
+					} else if (b !== B.WATER) d2BadCoral++;
+				} else if (v === "deep") {
+					d2Deep++;
+					d2DeepFloorMin = Math.min(d2DeepFloorMin, floorW);
+				}
+			}
+		}
+	}
+}
+check(
+	"D2: OCEAN_FREQ/OCEAN_GATE intactos (no se sube la probabilidad de océano)",
+	biomes.OCEAN_FREQ === 0.0025 && biomes.OCEAN_GATE === 0.5,
+	`freq ${biomes.OCEAN_FREQ}, gate ${biomes.OCEAN_GATE}`
+);
+check(
+	"D2: existen regiones de océano cálido (minoría) y profundo",
+	d2OceanCols > 0 && d2Warm > 0 && d2Deep > 0 && d2Warm / d2OceanCols < 0.5,
+	`warm ${((d2Warm / d2OceanCols) * 100).toFixed(1)}%, deep ${((d2Deep / d2OceanCols) * 100).toFixed(1)}%`
+);
+check(
+	"D2: el océano profundo baja el fondo (min ≤ −7 mundo, antes −6)",
+	d2DeepFloorMin <= -7,
+	`min ${d2DeepFloorMin}`
+);
+check(
+	"D2: el océano cálido lleva arrecifes de coral válidos (arena + agua)",
+	d2CoralCols > 0 && d2BadCoral === 0,
+	`${d2CoralCols} columnas con coral, ${d2BadCoral} inválidas`
+);
+
+// ============================================================
+// FASE 21.5, heredado D3 — montañas altas y nevadas (spec F21.5 §1.4)
+// ============================================================
+// Bug de las Notas: "las montañas son bajas; no hay montañas nevadas
+// reales". D3 eleva la base de la cordillera (12 → 16 en heightFrom) y
+// widen la rampa (MOUNTAIN_RAMP [0.4,0.65] → [0.35,0.7]) para repartir el
+// desnivel extra sin romper el salto ≤ 4 (D1/audit-altura). v21.1: cima
+// mundo 12, media 6.5, 14% de cumbres sobre la línea de nieve. Con D3:
+// cima 16-17, media ~9.5, ~50-57% de cumbres nevadas (calibrado: 375 de
+// 743 en la semilla). El techo queda en diseño ~31 (mundo ~23), bajo el
+// presupuesto de audit-altura (máx ≤ 24).
+let d3Samples = 0,
+	d3Max = -Infinity,
+	d3Sum = 0,
+	d3Snow = 0;
+for (let wx = -100; wx <= 100; wx += 2) {
+	for (let wz = -100; wz <= 100; wz += 2) {
+		if (world.columnFloorY(wx, wz) !== null) continue; // agua: no terreno
+		if (world.getBiome(wx, wz) !== "mountain") continue;
+		const h = world.getHeight(wx, wz);
+		d3Samples++;
+		d3Sum += h;
+		d3Max = Math.max(d3Max, h);
+		if (h >= world.MOUNTAIN_SNOW_LINE - world.DESIGN_OFFSET) d3Snow++;
+	}
+}
+check(
+	"D3: la cima de montaña crece vs v21.1 (max mundo >= 15, antes 12)",
+	d3Max >= 15,
+	`máx ${d3Max}`
+);
+check(
+	"D3: la cima media crece vs v21.1 (media >= 8, antes ~6.5)",
+	d3Samples > 0 && d3Sum / d3Samples >= 8,
+	`media ${(d3Sum / d3Samples).toFixed(2)}`
+);
+check(
+	"D3: la línea de nieve cubre más cumbres (>= 40%, antes ~14%)",
+	d3Samples > 0 && d3Snow / d3Samples >= 0.4,
+	`${((d3Snow / d3Samples) * 100).toFixed(1)}% (${d3Snow}/${d3Samples})`
+);
+
 world.setDiskLoader(null);
 process.exit(failed ? 1 : 0);

@@ -160,9 +160,13 @@ for (let wx = -R8 * CHUNK_SIZE; wx < R8 * CHUNK_SIZE; wx++) {
 		if (data[idx(x, h - 1, z)] === B.AIR) missingSurface++;
 	}
 }
+// Fase 21.5 (D2/D3): presupuesto actualizado — el océano profundo baja el
+// lecho a diseño 0 (mundo −8, antes −7 con v21.1) y las montañas altas
+// suben el techo a mundo ~21 (diseño 29; el presupuesto se mide sobre la
+// región R8 y el techo real de D3 está en ~23, bajo el ≤ 24 de cielo).
 check(
-	"rango de superficie sano (mín ≥ −7, máx ≤ 24)",
-	minH >= -7 && maxH <= 24,
+	"rango de superficie sano (mín ≥ −8, máx ≤ 24)",
+	minH >= -8 && maxH <= 24,
 	`rango [${minH}, ${maxH}]`
 );
 check(
@@ -559,7 +563,12 @@ for (let cx = -R8; cx <= R8; cx++) {
 					if (
 						floor != null &&
 						y === floor - world.DESIGN_OFFSET + 1 &&
-						data[idx(x, y - 1, z)] !== B.SAND
+						data[idx(x, y - 1, z)] !== B.SAND &&
+						// Fase 21.5 (D2): coral sobre la arena en el océano cálido.
+						!(
+							world.oceanVariant(wx, wz) === "warm" &&
+							data[idx(x, y - 1, z)] === B.CORAL_BLOCK
+						)
 					)
 						badWaterFloor++;
 				}

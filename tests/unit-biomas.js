@@ -194,7 +194,8 @@ check(
 // Los árboles usan Math.random global: fijarlo durante la generación NO da
 // un patrón de árboles exacto, así que los checks son de PRESENCIA (≥1
 // bloque del tronco esperado por bioma) en el área -4..4 ya generada.
-let giantSpruceLogs = 0,
+let birchLogs = 0,
+	giantSpruceLogs = 0,
 	spruceLogs = 0;
 let birchLogInBirch = 0,
 	giantLogInGiant = 0;

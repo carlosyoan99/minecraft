@@ -623,6 +623,7 @@ const api = {
 	lakeFloorY: biomes.lakeFloorY,
 	isOcean: biomes.isOcean,
 	oceanFloorY: biomes.oceanFloorY,
+	oceanVariant: biomes.oceanVariant, // Fase 21.5 (D2): "warm"/"deep"/"normal"
 	columnFloorY: biomes.columnFloorY,
 	torchSupported,
 	cleanUnsupportedTorches,

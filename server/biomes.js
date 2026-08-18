@@ -170,11 +170,41 @@ const OCEAN_GATE = 0.5; // ruido en [-1,1]: > 0.5 ≈ 25% del mapa es océano
 function isOcean(wx, wz) {
 	return noise.noise2D_ocean(wx * OCEAN_FREQ, wz * OCEAN_FREQ) > OCEAN_GATE;
 }
-// Profundidad del océano (1..4): el fondo varía con el mismo ruido de
+// Fase 21.5 (D2): variantes del océano SIN cambiar la probabilidad de
+// océano (OCEAN_FREQ/OCEAN_GATE intactos) — solo se subdivide lo que ya es
+// océano, como los sub-biomas de F21 (A2). Un océano es:
+//   "warm"  — temperatura alta (banda cálida, junto a jungla/desierto):
+//             plataforma de arrecife, lleva CORAL_BLOCK en su paleta,
+//   "deep"  — cuenca honda por el ruido de profundidad a baja frecuencia:
+//             fondo más profundo (el bug de las Notas: océanos poco
+//             profundos, sin variantes),
+//   "normal" — el resto (como v21.1).
+// Calibrado por transecto en la semilla: la temperatura del océano abarca
+// −0.25..0.68; el gate 0.55 deja ~33% de las columnas cálidas (minoría, la
+// banda de jungla — el resto del océano queda templado, como MC). La
+// profundidad a 0.008 tiene p25 ≈ 0.35: el gate 0.35 deja ~13% como cuencas
+// profundas (minoría, el resto normal).
+const OCEAN_WARM_TEMP = 0.55; // temp > umbral → cálido (arrecife de coral)
+const OCEAN_DEEP_GATE = 0.35; // profundidad < gate → cuenca honda
+function oceanVariant(wx, wz) {
+	if (!isOcean(wx, wz)) return null;
+	const temp = noise.noise2D(wx * BIOME_FREQ, wz * BIOME_FREQ);
+	if (temp > OCEAN_WARM_TEMP) return "warm";
+	const d = (noise.noise2D_lakeDepth(wx * 0.008, wz * 0.008) + 1) / 2; // 0..1
+	if (d < OCEAN_DEEP_GATE) return "deep";
+	return "normal";
+}
+// Profundidad del océano (diseño): el fondo varía con el mismo ruido de
 // profundidad de los lagos, muestreado a otra frecuencia (desc correlate).
+// Fase 21.5 (D2): la profundidad media del fondo CRECE (más hondo) — el
+// océano profundo baja a 0..2 (agua 3..5) y el cálido queda en plataforma
+// somera (1..2) para el arrecife. v21.1: 1..3 fijo para todo el océano.
 function oceanFloorY(wx, wz) {
+	const variant = oceanVariant(wx, wz);
 	const d = (noise.noise2D_lakeDepth(wx * 0.04, wz * 0.04) + 1) / 2; // 0..1
-	return Math.max(1, Math.floor(d * (LAKE_FLOOR + 2))); // 1..4
+	if (variant === "deep") return Math.max(0, Math.floor(d * 2)); // 0..2 → agua 3..5
+	if (variant === "warm") return Math.max(1, Math.floor(d * 2)); // 1..2 → plataforma
+	return Math.max(1, Math.floor(d * (LAKE_FLOOR + 1))); // 1..3 (como v21.1)
 }
 
 // Fondo real de una columna de agua (lago, río u océano): Y del lecho (el
@@ -254,7 +284,12 @@ const FLAT_AFFINITY = [
 // Rampa del ruido de montaña: 0 en llanuras, 1 dentro de la cordillera.
 // Arranca tarde (0.40) para que las columnas con etiqueta de llanura
 // (ruido ≤ 0.45) apenas se eleven: estribaciones suaves, no muros.
-const MOUNTAIN_RAMP = [0.4, 0.65];
+// Fase 21.5 (D3): el final se WIDEN a 0.70 — con la base de la montaña más
+// alta (16 vs 12) el desnivel llanura→cima es mayor, y si la rampa
+// terminara en 0.65 la pendiente por bloque subiría a 5 (rompe el
+// presupuesto de salto ≤ 4 de audit-altura/D1). El desnivel se reparte en
+// más columnas: salto máx 4 con base 16, cumbres ~5 bloques más altas.
+const MOUNTAIN_RAMP = [0.35, 0.7];
 
 function flatBaseHeight(temp) {
 	let num = 0,
@@ -351,7 +386,14 @@ function heightFrom(temp, wMnt, wx, wz) {
 	const flat = flatBaseHeight(temp) + h * 8 + detail;
 	// Crestas: octava adicional de mayor amplitud para picos pronunciados.
 	const crest = noise.noise2D_mountain(wx * 0.05, wz * 0.05) * 0.5 + 0.5;
-	const mountainH = 12 + crest * 14 + detail;
+	// Fase 21.5 (D3): montañas ALTAS — la base sube de 12 a 16 (el bug de
+	// las Notas: "las montañas son bajas"; v21.1 máx diseño 20, cumbres 12).
+	// Se mantiene la amplitud del crest (14) para no aumentar la pendiente
+	// por bloque (el salto global del terreno queda ≤ 4, presupuesto de
+	// audit-altura/D1) y el techo real queda en diseño ~31 (mundo ~23, bajo
+	// el presupuesto de audit-altura máx ≤ 24). Más cumbres pasan la línea
+	// de nieve (MOUNTAIN_SNOW_LINE 18 diseño): ~14 % → ~55-65 % de columnas.
+	const mountainH = 16 + crest * 14 + detail;
 	// Interpolación lineal entre la altura plana y la de cordillera según la
 	// rampa: los pies de montaña crecen gradualmente en vez de saltar.
 	return Math.max(3, Math.floor(flat * (1 - wMnt) + mountainH * wMnt));
@@ -416,11 +458,14 @@ module.exports = {
 	flatSurfaceBlock,
 	columnFloorY,
 	oceanFloorY,
+	oceanVariant,
 	lakeFloorY,
 	nearLake,
 	isLake,
 	isRiver,
 	isOcean,
+	OCEAN_FREQ,
+	OCEAN_GATE,
 	SEA_LEVEL,
 	WORLD_SEA_LEVEL,
 	DESIGN_OFFSET,

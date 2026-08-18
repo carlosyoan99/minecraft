@@ -92,7 +92,8 @@ export const BLOCK_COLORS = {
 	60: 0x8a6a3a,
 	61: 0x7a7a7a,
 	70: 0x8a6a3a,
-	71: 0x8a6a3a
+	71: 0x8a6a3a,
+	72: 0xe86a5e // coral (Fase 21.5, D2): rosa coral del arrecife cálido
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -147,7 +148,8 @@ export const BLOCK_NAMES = {
 	60: "Losa de roble",
 	61: "Losa de piedra",
 	70: "Valla de roble",
-	71: "Portón de roble"
+	71: "Portón de roble",
+	72: "Coral" // Fase 21.5 (D2): arrecife de océano cálido
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
@@ -318,7 +320,9 @@ export const ITEM_NAMES = {
 	259: "Oro crudo",
 	// Fase 21 (C1): leche (ordeñar la vaca) y huevo (pone la gallina)
 	260: "Leche",
-	261: "Huevo"
+	261: "Huevo",
+	// Fase 21.5 (A1): caña de pescar (clic derecho lanza/recoge, durabilidad 64)
+	262: "Caña de pescar"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -333,7 +337,9 @@ export const PLACEABLE_BLOCKS = new Set([
 	// Fase 11 (Bloque B): jungla y lianas
 	41, 42, 43,
 	// Fase 13 (L2/L3): puertas, escaleras, losas, vallas y portones
-	48, 49, 50, 51, 60, 61, 70, 71
+	48, 49, 50, 51, 60, 61, 70, 71,
+	// Fase 21.5 (D2): coral del arrecife cálido
+	72
 ]);
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
 export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43]); // 43 = lianas (Fase 11, B)
@@ -379,6 +385,10 @@ export const RAW_GOLD = 259; // Fase 20 B3
 // Fase 21 (C1): leche (ordeñar la vaca) y huevo (pone la gallina)
 export const MILK = 260;
 export const EGG = 261;
+// Fase 21.5 (A1): caña de pescar (herramienta con durabilidad propia, no se
+// apila). Mantener en sincronía con FISHING_ROD_DURABILITY del servidor
+// (unit-sync lo verifica).
+export const FISHING_ROD = 262;
 // Durabilidad máxima por pieza (Fase 7). Mantener en sincronía con
 // ARMOR_DURABILITY de constants.js (servidor) — lo verifica unit-sync.js.
 export const ARMOR_DURABILITY = {
@@ -407,6 +417,10 @@ export const ARMOR_DURABILITY = {
 // (BOW_DURABILITY, 384). El arco no está en DURABILITY (no se desgasta al
 // minar — solo al disparar); el HUD usa BOW_DURABILITY para su barra.
 export const BOW_DURABILITY = 384;
+// Fase 21.5 (A1): durabilidad de la caña de pescar (paridad MC, 64). Al
+// igual que el arco, NO está en DURABILITY: no se desgasta al minar/atacar
+// (solo al recoger un pez); el HUD usa FISHING_ROD_DURABILITY para su barra.
+export const FISHING_ROD_DURABILITY = 64;
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)

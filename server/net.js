@@ -31,6 +31,7 @@ const mobs = require("./mobs.js");
 const commands = require("./commands.js");
 const mining = require("./mining.js");
 const tnt = require("./tnt.js"); // Fase 10 (D2)
+const fishing = require("./fishing.js"); // Fase 21.5 (A1): pesca
 // Fase 18 (D-1): validación del move extraída — coords, void, bordes,
 // sólidos, parábola del salto/hover y ventana de velocidad (anticheat.js).
 const anticheat = require("./anticheat.js");
@@ -183,7 +184,11 @@ function sendInit(p) {
 				mobs: state.mobs.filter((m) => m.alive).map(mobs.mobSnapshot),
 				// Fase 9 (Bloque D): flechas vivas del esqueleto (para que el cliente
 				// las dibuje desde el primer frame, no solo tras el primer broadcast).
-				arrows: state.arrows.map(mobs.arrowSnapshot),
+				// Fase 21.5 (A1): también los bobbers de pesca (kind "bobber").
+				arrows: [
+					...state.arrows.map(mobs.arrowSnapshot),
+					...state.bobbers.map(fishing.bobberSnapshot)
+				],
 				inventory: p.inventory,
 				armor: p.armor, // Fase 7: 4 slots (casco, pechera, pantalones, botas)
 				health: p.health,
@@ -1106,6 +1111,12 @@ function handleConnection(ws, req) {
 					break;
 				}
 
+				case "fishing": {
+					// Fase 21.5 (A1): clic derecho con la caña → lanzar/recoger.
+					actions.handleFishing(p, ws);
+					break;
+				}
+
 				case "attack_mob": {
 					actions.handleAttackMob(p, ws, data);
 					break;
@@ -1141,6 +1152,9 @@ function handleConnection(ws, req) {
 					state.openFurnaceWatchers.delete(leaver.openFurnace);
 			}
 		}
+		// Fase 21.5 (A1): al desconectar se retira su línea de pesca activa
+		// (el bobber no debe quedar flotando sin dueño).
+		if (leaver) fishing.removePlayerBobbers(playerId);
 		state.players.delete(playerId);
 		log.info(
 			`🔴 Jugador desconectado: ${leaver ? leaver.name : playerId} (${state.players.size} en línea)`

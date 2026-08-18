@@ -589,6 +589,17 @@
 			"count": 1
 		}
 	},
+	"fishing_rod": {
+		"shape": ["#I ", " #I", "  #"],
+		"ingredients": {
+			"#": 100,
+			"I": 120
+		},
+		"result": {
+			"id": 262,
+			"count": 1
+		}
+	},
 	"bow": {
 		"shape": [" #I", "# I", " #I"],
 		"ingredients": {

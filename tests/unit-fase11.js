@@ -190,8 +190,17 @@ for (let cx = -12; cx <= 12; cx++) {
 					if (floorY <= 2) oceanDeep++; // profundo (≥3 de agua)
 					const floorW = floorY - world.DESIGN_OFFSET;
 					if (data[idx(x, floorW, z)] !== B.SAND) badOcean++;
+					// Fase 21.5 (D2): el arrecife de coral del océano cálido pone
+					// CORAL_BLOCK en la primera celda de agua sobre el lecho (como
+					// Minecraft); el resto de la columna sigue siendo agua.
+					const warm = world.oceanVariant(wx, wz) === "warm";
 					for (let y = floorW + 1; y < world.WORLD_SEA_LEVEL; y++) {
-						if (data[idx(x, y, z)] !== B.WATER) badOcean++;
+						const b = data[idx(x, y, z)];
+						if (
+							b !== B.WATER &&
+							!(warm && y === floorW + 1 && b === B.CORAL_BLOCK)
+						)
+							badOcean++;
 					}
 				}
 			}

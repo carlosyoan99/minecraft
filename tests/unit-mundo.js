@@ -147,10 +147,15 @@ for (let cx = -RADIUS; cx <= RADIUS; cx++) {
 						if (below === B.AIR) airUnderWater++;
 						// Lecho del lago/río: el bloque del fondo real (columnFloorY en
 						// mundo) es arena. El agua en y = floorYMundo + 1 descansa sobre él.
+						// Fase 21.5 (D2): en el océano cálido el coral (CORAL_BLOCK) puede
+						// sentarse sobre la arena (primera celda de agua), como MC.
 						if (
 							floorY != null &&
 							y === floorY - world.DESIGN_OFFSET + 1 &&
-							below !== B.SAND
+							below !== B.SAND &&
+							!(
+								world.oceanVariant(wx, wz) === "warm" && below === B.CORAL_BLOCK
+							)
 						)
 							badWaterFloor++;
 					}

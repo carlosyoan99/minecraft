@@ -78,7 +78,8 @@ const BLOCK_TEX = {
 	60: { all: 59 }, // losa de roble
 	61: { all: 60 }, // losa de piedra
 	70: { all: 61 }, // valla de roble
-	71: { all: 62 } // portón de roble
+	71: { all: 62 }, // portón de roble
+	72: { all: 63 } // coral (Fase 21.5, D2): arrecife de océano cálido
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

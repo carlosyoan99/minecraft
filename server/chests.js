@@ -36,7 +36,9 @@ const LOOT_TABLE = [
 	[I.DIAMOND, 1, 1],
 	[I.BREAD, 1, 2],
 	[I.COD, 1, 2],
-	[I.HONEY, 1, 1]
+	[I.HONEY, 1, 1],
+	// Fase 21.5 (A8): c-añas de pescar rotas (durabilidad 1-20) como botín.
+	[I.FISHING_ROD, 1, 1, [1, 20]]
 ];
 
 // Fase 12 (Bloque B): tablas de loot de las estructuras nuevas.
@@ -48,28 +50,38 @@ const TEMPLE_LOOT_TABLE = [
 	[I.EMERALD, 1, 2],
 	[I.IRON_INGOT, 1, 4],
 	[I.BONE, 2, 5],
-	[I.TRIDENT, 1, 1]
+	[I.TRIDENT, 1, 1],
+	// Fase 21.5 (A8): caña rota en el tesoro de la selva.
+	[I.FISHING_ROD, 1, 1, [1, 20]]
 ];
 const SHIPWRECK_LOOT_TABLE = [
 	[I.IRON_INGOT, 1, 3],
 	[I.GOLD_INGOT, 1, 2],
 	[I.COD, 1, 2],
 	[I.BREAD, 1, 2],
-	[I.TRIDENT, 1, 1]
+	[I.TRIDENT, 1, 1],
+	// Fase 21.5 (A8): caña rota en el botín marino.
+	[I.FISHING_ROD, 1, 1, [1, 20]]
 ];
 
-// Genera slots de loot (1-3 stacks) desde una tabla [id, min, max].
+// Genera slots de loot (1-3 stacks) desde una tabla. Cambia el formato a
+// [id, min, max] o, si el ítem lleva durabilidad (herramientas), el 4º
+// elemento opcional: [id, min, max, [durMin, durMax]] — la caña de pescar
+// rota del botín (Fase 21.5, A8) entra con durabilidad 1-20.
 function lootSlotsFrom(table) {
 	const slots = new Array(CHEST_SLOTS).fill(null);
 	const n = 1 + Math.floor(Math.random() * 3); // 1..3 stacks
 	for (let i = 0; i < n; i++) {
-		const [id, min, max] = table[Math.floor(Math.random() * table.length)];
+		const entry = table[Math.floor(Math.random() * table.length)];
+		const [id, min, max, durRange] = entry;
+		const count = min + Math.floor(Math.random() * (max - min + 1));
 		// Fase 13 (C3): los slots de loot son ItemStack (misma forma al
 		// serializar que los literales anteriores).
-		slots[i] = new ItemStack(
-			id,
-			min + Math.floor(Math.random() * (max - min + 1))
-		);
+		let durability;
+		if (durRange) {
+			durability = durRange[0] + Math.floor(Math.random() * (durRange[1] - durRange[0] + 1));
+		}
+		slots[i] = new ItemStack(id, count, durability);
 	}
 	return slots;
 }
@@ -98,7 +110,9 @@ const PYRAMID_LOOT_TABLE = [
 	[I.IRON_INGOT, 1, 4],
 	[I.BONE, 2, 5],
 	[I.GUNPOWDER, 1, 2],
-	[I.TRIDENT, 1, 1]
+	[I.TRIDENT, 1, 1],
+	// Fase 21.5 (A8): caña rota en el tesoro del desierto.
+	[I.FISHING_ROD, 1, 1, [1, 20]]
 ];
 
 // Loot de los cofres de la pirámide del desierto (Fase 21, B2).
@@ -133,6 +147,12 @@ function restoreChests(entries) {
 
 module.exports = {
 	CHEST_SLOTS,
+	// Fase 21.5 (A5): las tablas se exportan para que los tests auditen su
+	// contenido (cañas del botín, universo de ítems válidos) sin duplicarlas.
+	LOOT_TABLE,
+	TEMPLE_LOOT_TABLE,
+	SHIPWRECK_LOOT_TABLE,
+	PYRAMID_LOOT_TABLE,
 	getOrCreateChest,
 	chestSnapshot,
 	restoreChests,

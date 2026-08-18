@@ -156,6 +156,18 @@ function isSwampPoolAt(wx, wz) {
 	return noise.noise2D_swamp(wx * 0.06, wz * 0.06) > 0.4;
 }
 
+// Fase 21.5 (D2): parche de arrecife de coral en el océano cálido — gate
+// de ruido de detalle a frecuencia de arrecife (~35% de las columnas
+// cálidas llevan coral, en parches continuos como en Minecraft). Lo usa
+// generateChunk para poner CORAL_BLOCK sobre el lecho (la primera celda de
+// agua encima de la arena) — el lecho sigue siendo arena y el agua llena
+// el resto de la columna (invariantes de unit-mundo/unit-fase11 intactas).
+const REEF_FREQ = 0.08;
+const REEF_GATE = 0.3;
+function isCoralReefAt(wx, wz) {
+	return noise.noise2D_detail(wx * REEF_FREQ, wz * REEF_FREQ) > REEF_GATE;
+}
+
 function hangVines(data, lx, y, lz, height) {
 	const maxV = Math.max(height, y - 3);
 	for (let v = y - 1; v >= maxV; v--) {
@@ -207,6 +219,14 @@ function generateChunk(cx, cz) {
 			// (más profundas que los lagos). Las tres fuentes son excluyentes.
 			const ocean = !lake && !river && biomes.isOcean(wx, wz);
 			const waterCol = lake || river || ocean; // columna de agua (lago/río/océano)
+			// Fase 21.5 (D2): arrecife de coral — solo en el océano CÁLIDO (la
+			// variante por temperatura de oceanVariant; ~1/3 del océano), en
+			// parches deterministas. El coral se coloca sobre el lecho (primera
+			// celda de agua encima de la arena), como en Minecraft.
+			const coralReef =
+				ocean &&
+				biomes.oceanVariant(wx, wz) === "warm" &&
+				isCoralReefAt(wx, wz);
 			// En un lago el terreno se hunde hasta su fondo (profundidad variable,
 			// Fase 10 A4) y el agua llena la depresión hasta biomes.SEA_LEVEL; los ríos
 			// cortan un canal bajo el terreno natural. No hay árboles ni minerales
@@ -298,6 +318,9 @@ function generateChunk(cx, cz) {
 							block = B.WATER;
 						else block = B.STONE;
 					} else if (y === floorY) block = B.SAND;
+					// Fase 21.5 (D2): coral del arrecife sobre el lecho (la primera
+					// celda de agua) — el resto de la columna sigue siendo agua.
+					else if (y === floorY + 1 && coralReef) block = B.CORAL_BLOCK;
 					else if (y < biomes.WORLD_SEA_LEVEL) block = B.WATER;
 				} else if (y < height - 1) {
 					// Cuevas (Fase 4): el ruido 3D excava la piedra sin tocar el

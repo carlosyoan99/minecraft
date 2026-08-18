@@ -639,6 +639,27 @@ function drawFenceOak(ctx, rng) {
 		px(ctx, 13, y, "#4a3018");
 	}
 }
+// Fase 21.5 (D2): coral de arrecife — rosa coral con poros (puntos) y
+// ramitas claras, estilo esqueleto de coral (como el bloque de MC).
+function drawCoral(ctx, rng) {
+	fill(ctx, "#d95a50");
+	// Poros: puntos más oscuros repartidos por toda la tesela
+	for (let y = 1; y < 15; y += 2) {
+		for (let x = 1; x < 15; x += 2) {
+			const shade = rng();
+			if (shade < 0.35) px(ctx, x, y, "#a83a34");
+			else if (shade < 0.7) px(ctx, x, y, "#e86a5e");
+		}
+	}
+	// Ramitas/puntas claras (borde iluminado superior y pequeñas protuberancias)
+	for (let x = 2; x < 14; x += 3) {
+		px(ctx, x, 3, "#f08a7e");
+		px(ctx, x + 1, 7, "#f08a7e");
+	}
+	// Borde inferior oscuro (volumen)
+	for (let x = 0; x < 16; x++) px(ctx, x, 15, "#8f2f2a");
+	for (let x = 0; x < 16; x++) px(ctx, x, 14, "#a83a34");
+}
 function drawFenceGate(ctx, rng) {
 	drawFenceOak(ctx, rng);
 	// Barra central del portón
@@ -711,7 +732,8 @@ const TILES = [
 	drawSlabOak, // 59 losa de roble
 	drawSlabStone, // 60 losa de piedra
 	drawFenceOak, // 61 valla de roble
-	drawFenceGate // 62 portón de roble
+	drawFenceGate, // 62 portón de roble
+	drawCoral // 63 coral (Fase 21.5, D2)
 ];
 
 // El mapa de teselas por bloque/cara (BLOCK_TEX) y los rectángulos UV viven en

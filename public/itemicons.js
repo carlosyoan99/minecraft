@@ -1012,6 +1012,31 @@ function drawBucket(g, liquid) {
 	}
 }
 
+// Caña de pescar (Fase 21.5, A1): astil diagonal de madera con bobinado, el
+// hilo que cae y el anzuelo en la punta.
+function drawFishingRod(g) {
+	const wood = "#8a5a2b",
+		woodDark = "#6b4226",
+		string = "#e8e0d0",
+		hook = "#9aa0aa";
+	// Astil: trazos diagonales que suben de la esquina baja izquierda.
+	line(g, 3, 13, 7, 11, woodDark);
+	line(g, 7, 11, 11, 8, woodDark);
+	line(g, 11, 8, 14, 4, wood);
+	line(g, 4, 13, 8, 11, wood);
+	line(g, 8, 11, 12, 8, wood);
+	line(g, 12, 8, 14, 5, wood);
+	// Carrete (anillo sobre el astil)
+	set(g, 6, 11, woodDark);
+	// Hilo: de la punta del astil baja hasta el anzuelo.
+	line(g, 13, 4, 10, 10, string);
+	line(g, 10, 10, 10, 14, string);
+	// Anzuelo en la punta del hilo
+	set(g, 9, 13, hook);
+	set(g, 10, 14, hook);
+	set(g, 11, 13, hook);
+}
+
 // Flecha: astil diagonal con punta y plumas.
 function drawArrow(g) {
 	const shaft = "#cfc4a8",
@@ -1408,6 +1433,9 @@ for (let id = 1; id <= 43; id++)
 // (70) y portón (71) — caen al default de drawBlockIcon (cubo con su color).
 for (const id of [48, 49, 50, 51, 60, 61, 70, 71])
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (D2): coral (72) — icono de cubo con su color (como el resto
+// de bloques).
+ICONS[72] = (g, rng) => drawBlockIcon(72, g, rng);
 // Ítems
 ICONS[100] = drawStick;
 ICONS[101] = drawCoal;
@@ -1469,6 +1497,8 @@ ICONS[256] = drawGunpowder;
 // Fase 21 (C1): leche (ordeñar la vaca) y huevo (pone la gallina).
 ICONS[260] = drawMilk;
 ICONS[261] = drawEgg;
+// Fase 21.5 (A1): caña de pescar.
+ICONS[262] = drawFishingRod;
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);

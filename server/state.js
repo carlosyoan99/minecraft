@@ -22,6 +22,11 @@ const mobs = [];
 // Fase 9 (Bloque D): proyectiles del esqueleto — { x,y,z, vx,vy,vz, life, from }
 // (entidad ligera con física simple de gravedad; se envía en arrows_update).
 const arrows = [];
+// Fase 21.5 (A1): bobbers de pesca — { x,y,z, vx,vy,vz, playerId, inWater,
+// biting, life }. El anzuelo es una entidad ligera (misma física que los
+// proyectiles): vuela con la línea y, al impactar en agua, espera un tiempo
+// aleatorio y "pica". Se replican en arrows_update con kind "bobber".
+const bobbers = [];
 const dirtyChunks = new Set(); // claves "cx,cz" modificadas, pendientes de escribir
 const timeOffset = 0; // Fase 6: desplazamiento del reloj del mundo (ms) para /time set.
 // Fase 10 (nota del usuario): AHORA SÍ se persiste en world.json (save.js
@@ -54,6 +59,7 @@ module.exports = {
 	crops,
 	mobs,
 	arrows,
+	bobbers,
 	doors,
 	dirtyChunks,
 	timeOffset,

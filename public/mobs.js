@@ -597,32 +597,74 @@ function makeArrowMesh(id) {
 	return group;
 }
 
+// Fase 21.5 (A1): el bobber de pesca es un punto 3D simple (como especifica
+// A1: "el bobber no se modela") — esfera pequeña roja que se hunde en el
+// agua, con puntas blancas arriba/abajo para distinguir la forma clave del
+// anzuelo de MC. `bobber: true` en el registro permite que updateArrows no
+// lo oriente por velocidad (el anzuelo asentado va a 0,0,0).
+const bobberMaterial = new THREE.MeshLambertMaterial({ color: 0xe03c2e });
+const bobberTipMaterial = new THREE.MeshLambertMaterial({ color: 0xe8e8e8 });
+function makeBobberMesh(id) {
+	const group = new THREE.Group();
+	const body = new THREE.Mesh(
+		new THREE.SphereGeometry(0.08, 8, 6),
+		bobberMaterial
+	);
+	group.add(body);
+	const topTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 6), bobberTipMaterial);
+	topTip.position.y = 0.09;
+	group.add(topTip);
+	const bottomTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 6), bobberTipMaterial);
+	bottomTip.position.y = -0.09;
+	bottomTip.rotation.x = Math.PI;
+	group.add(bottomTip);
+	scene.add(group);
+	arrowMeshes.set(id, { shaft: null, tip: null, group, bobber: true });
+	return group;
+}
+
 // Reemplaza el conjunto de flechas vivas por las del broadcast. Las nuevas
 // se orientan por su velocidad (apuntando a donde viajan).
 export function updateArrows(arrows) {
 	const now = performance.now();
 	const seen = new Set();
 	for (const a of arrows) {
-		const id = arrowId(a);
+		// Fase 21.5 (A1): el bobber usa un id ESTABLE (playerId) — el de
+		// posición temblaría con cada broadcast mientras el anzuelo vuela, y
+		// el mesh se reconstruiría por frame.
+		const isBobber = a.kind === "bobber";
+		const id = isBobber ? `bobber:${a.playerId}` : arrowId(a);
 		seen.add(id);
 		let mesh = arrowMeshes.get(id);
 		// Fase 12 (A4): kind distingue tridente de flecha — si el proyectil
 		// cambia de tipo (no debería), se reconstruye con la forma correcta.
 		const isTrident = a.kind === "trident";
-		if (mesh && isTrident !== !!mesh.trident) {
+		if (mesh && (isTrident !== !!mesh.trident || isBobber !== !!mesh.bobber)) {
 			scene.remove(mesh.group);
 			arrowMeshes.delete(id);
 			mesh = null;
 		}
-		if (!mesh) mesh = isTrident ? makeTridentMesh(id) : makeArrowMesh(id);
+		if (!mesh)
+			mesh = isTrident
+				? makeTridentMesh(id)
+				: isBobber
+					? makeBobberMesh(id)
+					: makeArrowMesh(id);
 		mesh.group.position.set(a.x, a.y, a.z);
-		// Orientar por velocidad: forward = v, up = Y (normalizar, defensivo).
-		const speed = Math.hypot(a.vx, a.vy, a.vz) || 1;
-		mesh.group.lookAt(
-			a.x + a.vx / speed,
-			a.y + a.vy / speed,
-			a.z + a.vz / speed
-		);
+		// Fase 21.5 (A1): al picar, el anzuelo "baila" en el agua (salto en Y
+		// rápido) para avisar al jugador de que puede recoger.
+		if (isBobber && a.biting) {
+			mesh.group.position.y += Math.sin(now / 60) * 0.06;
+		}
+		if (!isBobber) {
+			// Orientar por velocidad: forward = v, up = Y (normalizar, defensivo).
+			const speed = Math.hypot(a.vx, a.vy, a.vz) || 1;
+			mesh.group.lookAt(
+				a.x + a.vx / speed,
+				a.y + a.vy / speed,
+				a.z + a.vz / speed
+			);
+		}
 		arrowLastSeen.set(id, now);
 	}
 	// Limpiar flechas que ya no están en el broadcast (impactaron o expiraron).

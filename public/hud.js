@@ -10,6 +10,8 @@ import {
 	ARMOR_SLOT_NAMES,
 	BOW,
 	BOW_DURABILITY,
+	FISHING_ROD,
+	FISHING_ROD_DURABILITY,
 	DURABILITY,
 	itemLabel
 } from "./constants.js";
@@ -96,7 +98,10 @@ function maxDurability(item) {
 	return (
 		DURABILITY[item.id] ||
 		ARMOR_DURABILITY[item.id] ||
-		(item.id === BOW ? BOW_DURABILITY : 0)
+		// Fase 21.5 (A1): la caña de pescar usa su propia durabilidad (igual
+		// que el arco: no desgasta al minar/atacar, su barra se descuenta al
+		// recoger un pez).
+		(item.id === BOW ? BOW_DURABILITY : item.id === FISHING_ROD ? FISHING_ROD_DURABILITY : 0)
 	);
 }
 

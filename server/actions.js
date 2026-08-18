@@ -35,6 +35,7 @@ const crafting = require("./crafting.js");
 const chests = require("./chests.js");
 const mobs = require("./mobs.js");
 const commands = require("./commands.js");
+const fishing = require("./fishing.js"); // Fase 21.5 (A1): pesca
 const { validCoords } = require("./anticheat.js");
 
 // Reloj del mundo ajustable (/time set): mismo que net.js (commands.worldTime
@@ -666,6 +667,27 @@ function handleShootBow(p, ws) {
 	}
 }
 
+// Fase 21.5 (A1): pesca (clic derecho con la caña en mano). Si NO hay línea
+// lanzada, la lanza; si ya hay una, la recoge — con picoteo entrega un ítem
+// de la tabla de loot de pesca (y desgasta la caña SOLO entonces), sin
+// picoteo la devuelve sin gastar durabilidad. El bobber se replica por
+// arrows_update (kind "bobber", ver timers.js).
+function handleFishing(p, ws) {
+	const held = p.inventory[p.selectedSlot];
+	if (!held || held.id !== constants.I.FISHING_ROD) return;
+	if (fishing.getPlayerBobber(p.id)) {
+		const { caught, broke } = fishing.reelBobber(p);
+		if (caught) {
+			// El cliente suena/notifica la captura (sonido de pop).
+			ws.send(JSON.stringify({ event: "fishing_catch", data: { id: caught.id, category: caught.category } }));
+			if (broke) ws.send(JSON.stringify({ event: "tool_broke", data: {} }));
+		}
+		playerHelpers.sendInventory(p);
+	} else {
+		fishing.castFishingLine(p);
+	}
+}
+
 function handleAttackMob(p, ws, data) {
 	const mob = state.mobs.find((m) => m.id === data.mobId && m.alive);
 	if (!mob) return;
@@ -831,7 +853,8 @@ function handleCreativePick(p, data) {
 		isToolOrArmor
 			? (constants.TOOL_DURABILITY[id] ??
 					constants.ARMOR_DURABILITY[id] ??
-					constants.HOE_DURABILITY[id])
+					constants.HOE_DURABILITY[id] ??
+					(constants.isFishingRod(id) ? constants.FISHING_ROD_DURABILITY : undefined))
 			: undefined
 	);
 	playerHelpers.sendInventory(p);
@@ -893,6 +916,7 @@ module.exports = {
 	handleSitPet,
 	handleThrowTrident,
 	handleShootBow,
+	handleFishing, // Fase 21.5 (A1): pesca
 	handleAttackMob,
 	handleTill,
 	handlePlant,

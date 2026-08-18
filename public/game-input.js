@@ -14,6 +14,7 @@ import {
 	BREED_FOOD,
 	BUCKET,
 	FARMLAND,
+	FISHING_ROD,
 	FOOD_ITEMS,
 	HOES,
 	PLACEABLE_BLOCKS,
@@ -400,6 +401,14 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	// consume 1, desgasta el arco y la flecha vuelve al impactar/expirar.
 	if (e.button === 2 && held && held.id === 247) {
 		send("shoot_bow", {});
+		return;
+	}
+
+	// Fase 21.5 (A1): pescar con clic derecho (la caña en mano). El servidor
+	// decide si lanzar la línea o recogerla: al picar entrega un ítem y
+	// desgasta la caña; al recoger antes de picar la devuelve sin gastarla.
+	if (e.button === 2 && held && held.id === FISHING_ROD) {
+		send("fishing", {});
 		return;
 	}
 

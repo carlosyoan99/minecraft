@@ -29,6 +29,8 @@ const {
 	HOE_DURABILITY,
 	BOW_DURABILITY,
 	isBow,
+	FISHING_ROD_DURABILITY,
+	isFishingRod,
 	levelFromXp,
 	xpToNext,
 	xpIntoLevel
@@ -129,6 +131,10 @@ function sendFireState(player, on) {
 function applyToolWear(player, onlySwords = false) {
 	const slot = player.inventory[player.selectedSlot];
 	if (!slot || !isTool(slot.id)) return false;
+	// Fase 21.5 (A1): la caña es isTool (no se apila y lleva durabilidad en
+	// inventario), pero NO se desgasta al minar/atacar con ella — solo al
+	// recoger una captura (applyFishingWear). Misma convención que el arco.
+	if (isFishingRod(slot.id)) return false;
 	if (onlySwords && !SWORD_DAMAGE[slot.id]) return false;
 	const cur =
 		typeof slot.durability === "number"
@@ -156,6 +162,27 @@ function applyBowWear(player) {
 	if (!slot || !isBow(slot.id)) return false;
 	const cur =
 		typeof slot.durability === "number" ? slot.durability : BOW_DURABILITY;
+	const next = Math.max(0, cur - 1);
+	if (next <= 0) {
+		player.inventory[player.selectedSlot] = null;
+		return true;
+	}
+	slot.durability = next;
+	return false;
+}
+
+// ============================================================
+// CAÑA DE PESCAR (Fase 21.5, A1): desgaste al RECOGER una captura. La caña
+// no se desgasta al minar, atacar ni lanzar el anzuelo: su durabilidad se
+// descuenta solo cuando el jugador recoge un pez/tesoro/basura (como en
+// Minecraft). Devuelve true si la caña se rompió (para que el llamador envíe
+// tool_broke). FISHING_ROD_DURABILITY 64 (valor oficial MC Java).
+// ============================================================
+function applyFishingWear(player) {
+	const slot = player.inventory[player.selectedSlot];
+	if (!slot || !isFishingRod(slot.id)) return false;
+	const cur =
+		typeof slot.durability === "number" ? slot.durability : FISHING_ROD_DURABILITY;
 	const next = Math.max(0, cur - 1);
 	if (next <= 0) {
 		player.inventory[player.selectedSlot] = null;
@@ -587,6 +614,7 @@ module.exports = {
 	// desgaste
 	applyToolWear,
 	applyBowWear,
+	applyFishingWear, // Fase 21.5 (A1): caña de pescar
 	// XP / niveles
 	addXp,
 	// muerte / respawn

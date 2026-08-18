@@ -322,7 +322,12 @@ const B = {
 	OAK_SLAB: 60, // losa de madera (media caja: se puede estar encima y pasar por debajo no)
 	STONE_SLAB: 61, // losa de piedra
 	OAK_FENCE: 70, // valla de madera (colisión central + laterales, se ve a través)
-	OAK_FENCE_GATE: 71 // portón de valla (se abre/cierra como una puerta)
+	OAK_FENCE_GATE: 71, // portón de valla (se abre/cierra como una puerta)
+	// Fase 21.5 (D2): coral de los arrecifes de océano cálido (bloque sólido
+	// generado en el lecho del océano cálido; se mina a mano y se dropea a sí
+	// mismo). B5 añadirá el abanico de coral (CORAL_FAN), el kelp y el pasto
+	// marino — este ID queda reservado para el bloque base del arrecife.
+	CORAL_BLOCK: 72
 };
 
 // Bloques con gravedad (Fase 10, D1): caen si el bloque de debajo no es
@@ -470,7 +475,12 @@ const I = {
 	// y el huevo es botín de la gallina. El huevo lanzable (1/8 pollito) y
 	// beberse la leche quedan para tandas posteriores de la Fase 21.
 	MILK: 260,
-	EGG: 261
+	EGG: 261,
+	// Fase 21.5 (A1): caña de pescar — herramienta con durabilidad propia que
+	// no se desgasta al minar/atacar (solo al recoger un pez). No está en
+	// TOOL_DURABILITY a propósito (misma convención que el arco): su desgaste
+	// lo gestiona applyFishingWear (combat.js) al recoger la captura.
+	FISHING_ROD: 262
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -811,7 +821,7 @@ const HOE_DURABILITY = TOOL_DURABILITY;
 // apila y lleva su durabilidad BOW_DURABILITY), pero su desgaste NO va por
 // applyToolWear al minar/atacar: lo gestiona applyBowWear al disparar
 // (players.js). Por eso no está en TOOL_DURABILITY.
-const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id) || id === I.BOW;
+const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id) || id === I.BOW || id === I.FISHING_ROD;
 
 // ============================================================
 // ARMADURA (Fase 7): reducción de daño por pieza y material.
@@ -886,6 +896,13 @@ const BOW_DURABILITY = 384;
 const BOW_DAMAGE = 9;
 const isBow = (id) => id === I.BOW;
 const isArrow = (id) => id === I.ARROW;
+// Fase 21.5 (A1): caña de pescar. Igual convención que el arco: es isTool a
+// efectos de inventario (no se apila, lleva durabilidad), pero no está en
+// TOOL_DURABILITY — su desgaste lo aplica applyFishingWear (combat.js) solo
+// al recoger una captura. FISHING_ROD_DURABILITY 64 es el valor oficial de
+// Minecraft Java.
+const FISHING_ROD_DURABILITY = 64;
+const isFishingRod = (id) => id === I.FISHING_ROD;
 
 // Reduce el daño según la armadura del jugador: desgasta las piezas (-1 por
 // cada 4 de daño bruto, mínimo 1) y devuelve el daño real. Las piezas que
@@ -1163,7 +1180,8 @@ const CREATIVE_ITEMS = [
 // Todos los ítems/armas/herramientas del juego (para el picker creativo).
 const ALL_TOOLS_AND_ARMOR = [
 	...Object.values(I).filter((v) => v >= 200 && v <= 239), // herramientas + armadura (incl. oro/malla, Fase 13 L5)
-	...Object.values(I).filter((v) => v >= 240 && v <= 244) // azadas (Fase 9, Bloque C)
+	...Object.values(I).filter((v) => v >= 240 && v <= 244), // azadas (Fase 9, Bloque C)
+	I.FISHING_ROD // Fase 21.5 (A1): caña de pescar en el picker creativo
 ];
 
 // ============================================================
@@ -1312,6 +1330,9 @@ module.exports = {
 	BOW_DAMAGE,
 	isBow,
 	isArrow,
+	// Fase 21.5 (A1): caña de pescar
+	FISHING_ROD_DURABILITY,
+	isFishingRod,
 	isBucket: (id) =>
 		id === I.BUCKET || id === I.WATER_BUCKET || id === I.LAVA_BUCKET,
 	WORLD_SIZES,

@@ -18,6 +18,8 @@ const {
 	HOE_DURABILITY,
 	isBow,
 	BOW_DURABILITY,
+	isFishingRod,
+	FISHING_ROD_DURABILITY,
 	MAX_STACK
 } = require("./constants.js");
 const { ItemStack } = require("./items.js"); // Fase 13 (C3): slots como clase
@@ -38,7 +40,8 @@ function addToInventory(player, itemId, count = 1, durability) {
 				TOOL_DURABILITY[itemId] ??
 				ARMOR_DURABILITY[itemId] ??
 				HOE_DURABILITY[itemId] ??
-				(isBow(itemId) ? BOW_DURABILITY : undefined)
+				(isBow(itemId) ? BOW_DURABILITY : undefined) ??
+				(isFishingRod(itemId) ? FISHING_ROD_DURABILITY : undefined)
 		);
 		return true;
 	}

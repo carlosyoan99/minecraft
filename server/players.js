@@ -34,6 +34,7 @@ const {
 	damagePlayer,
 	applyToolWear,
 	applyBowWear,
+	applyFishingWear, // Fase 21.5 (A1): caña de pescar
 	addXp,
 	sendXp,
 	sendHealth,
@@ -314,6 +315,7 @@ module.exports = {
 	canEat,
 	applyToolWear,
 	applyBowWear,
+	applyFishingWear, // Fase 21.5 (A1): caña de pescar
 	addXp,
 	setBroadcastHandler,
 	setXpDropHandler, // Fase 18 (C-8): orbe de XP al morir

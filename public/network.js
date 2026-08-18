@@ -6,6 +6,7 @@ import {
 	playCrack,
 	playHit,
 	playMobDeath,
+	playSplash,
 	playTntExplode,
 	playTntFuse,
 	setMusicBiome
@@ -230,7 +231,14 @@ socket.addEventListener("message", (e) => {
 			case "arrows_update":
 				// Fase 9 (Bloque D): flechas del esqueleto — el servidor hace broadcast
 				// de las flechas vivas; el cliente reemplaza las suyas por las nuevas.
+				// Fase 21.5 (A1): también viajan aquí los bobbers de pesca (kind
+				// "bobber").
 				updateArrows(data || []);
+				break;
+			case "fishing_catch":
+				// Fase 21.5 (A1): el servidor confirmó una captura al recoger la
+				// línea (ítem + categoría) — el pop del anzuelo al salir del agua.
+				playSplash();
 				break;
 			case "biome_update":
 				// Fase 19.5 (A1): bioma real del jugador (el servidor lo calcula
