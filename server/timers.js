@@ -432,6 +432,7 @@ function start(handleConnection, app) {
 	const heartbeat = setInterval(() => {
 		for (const ws of wss.clients) {
 			if (ws.isAlive === false) {
+				ws.killedByHeartbeat = true;
 				ws.terminate();
 				continue;
 			}
@@ -439,6 +440,7 @@ function start(handleConnection, app) {
 			try {
 				ws.ping();
 			} catch {
+				ws.killedByHeartbeat = true;
 				ws.terminate();
 			}
 		}

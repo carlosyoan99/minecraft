@@ -59,6 +59,7 @@ export {
 } from "./hud.js";
 // menus.js — pantallas y flujo de menú/pausa
 export {
+	inMenu,
 	isPauseOpen,
 	isTouchDevice,
 	onSeedRejected,

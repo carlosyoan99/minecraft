@@ -7,6 +7,7 @@
 import { controls } from "./scene.js";
 import {
 	closePanels,
+	inMenu,
 	isPauseOpen,
 	isTyping,
 	resumeGame,
@@ -24,4 +25,24 @@ document.addEventListener("keydown", (e) => {
 	} else {
 		closePanels();
 	}
+});
+
+// Fase 21.5 (bug usuario #4): al perder el foco de la pestaña del
+// navegador, el browser libera el pointer lock automáticamente — esto
+// dispara pointerlockchange con document.pointerLockElement === null.
+// Si estamos en juego (no en el menú principal) y no hay panel/ pausa
+// abierta, mostrar la pausa en vez de dejar el bloqueador sin menú.
+document.addEventListener("pointerlockchange", () => {
+	if (document.pointerLockElement) return; // se bloqueó, nada que hacer
+	if (inMenu) return; // estamos en el menú principal, no en juego
+	if (isPauseOpen()) return; // la pausa ya está visible
+	// Verificar que no haya un panel abierto (inventario, cofre, horno, chat):
+	// si hay panel, el bloqueador se queda oculto (patrón de scene.js).
+	const panelOpen =
+		!document.getElementById("crafting-ui").classList.contains("hidden") ||
+		!document.getElementById("furnace-ui").classList.contains("hidden") ||
+		!document.getElementById("chest-ui").classList.contains("hidden") ||
+		document.getElementById("chat-input").classList.contains("active");
+	if (panelOpen) return;
+	showPause();
 });

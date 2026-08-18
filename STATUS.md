@@ -6,7 +6,7 @@
 > Este archivo se actualiza al **abrir**, **cerrar** o **cambiar de rumbo**
 > una fase (no es un log histórico: es un panel de control).
 
-**Última actualización:** 2026-08-17
+**Última actualización:** 2026-08-18
 
 ---
 
@@ -17,6 +17,7 @@
 | **Fase** | **21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers (abierta 2026-08-17)** [`[EN CURSO]`](docs/spec/fase21.5-spec.md) |
 | **Prerrequisito cumplido** | Fase 21 cerrada (v21.2 con D1, suite 61/61, E2E 7/7, `--audit` 8/8, biome 0) ✅ |
 | **Trabajo en curso** | **Fase 21.5 en curso** (abierta al cierre de la F21). Primera subfase por decidir (entrevista del planificador / `TODO.md`); hereda los **diferidos de generación D2/D3 de la F21** (océanos profundos/cálidos con coral y montañas altas — spec F21.5 §1.4). Nada implementado aún. |
+| **Diferidos de F21 (P1)** | Los siguientes ítems de la F21 quedaron **diferidos deliberadamente** al cierre (spec F21 §1.4, confirmado en TODO.md): **pulpo** (tinta al morir → tinte negro, requiere ítem sincronizado), **refinamiento de oveja** (comer pasto para regenerar lana) y **huevo lanzable** (1/8 pollito al lanzar). No están en la F21.5; se planificarán en una fase posterior según prioridad. |
 | **Bloqueantes** | Ninguno |
 | **Próximo paso** | Planificar el primer bloque de la F21.5 (pesca A1/A8 es el de mayor prioridad de la lista del usuario — 🔴) y los diferidos de generación D2/D3; actualizar `TODO.md` con los ítems de la subfase elegida y arrancar la implementación |
 

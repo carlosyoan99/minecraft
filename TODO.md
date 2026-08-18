@@ -1227,11 +1227,24 @@
       `tickSpecies`/`onDeath` + cría con `SLIME_BALL` + spawn por bioma:
       pantano, y manglar cuando la F21 lo añada); salta y come slimes
       pequeños; sin renacuajos por ahora (documentado)
+- [ ] A6 Altura configurable del mundo: permitir al jugador elegir entre
+      mundos de 128 bloques (Y −64..+63, defecto) y 255 bloques (Y −64..+191)
+      al crear el mundo; selector en la pantalla de creación; el servidor
+      valida y aplica la altura elegida; `SCHEMA_VERSION` 7 si coexisten
+      mundos de ambas alturas (migración v6→v7 retrocompatible);
+      `audit-altura` recalibrado para ambos rangos; documentado en
+      `Notas del usuario.md` §Mejoras
+- [ ] G1 Rate limit por usuario (WebSocket): revisar que el tope de
+      solicitudes (`MAX_ACTION_RATE`, `MAX_MSG_RATE`) se maneja por
+      **usuario individual** y no por el conjunto de usuarios; evaluar si
+      el límite actual (20 acciones/s, 30 mensajes/s) necesita ajuste para
+      la carga inicial de chunks (el cliente pide muchos chunks de golpe al
+      entrar); documentado en `Notas del usuario.md` §Servidor WebSocket
 - [ ] E1 Tests específicos de la fase: `unit-fase22.js` cubriendo deepslate
       bajo Y=0, raw ores (drop + horno), cobre (generación/receta/bloque),
       amatista (IDs + shard), catalejo (receta + zoom), sculk (generación +
-      propagación), rana (salto/come slime/cría/spawn) y veredicto de altura
-      A1
+      propagación), rana (salto/come slime/cría/spawn), altura configurable
+      A6 y veredicto de altura A1
 - [ ] F1 Cierre y auditoría de Fase 22: suite completa en verde + E2E + `--audit`
       + unit-fase22 en verde + `node --check` + biome 0 + verificación
       manual (minar deepslate, fundir raw, catalejo zoom, sculk, rana);

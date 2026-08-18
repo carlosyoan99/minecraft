@@ -908,6 +908,34 @@ function drawHoney(g) {
 	set(g, 8, 8, honey);
 	set(g, 7, 9, honey);
 }
+// Botella de vidrio (Fase 21.5, B4): recipiente transparente con corcho.
+function drawGlassBottle(g) {
+	const gl = "rgba(200,235,242,0.8)",
+		glDark = "rgba(140,175,185,0.8)",
+		cork = "#b8925a";
+	rect(g, 6, 3, 4, 6, gl); // cuerpo
+	rect(g, 7, 1, 2, 3, gl); // cuello
+	rect(g, 7, 0, 2, 1, cork); // corcho
+	rect(g, 6, 3, 4, 1, "rgba(255,255,255,0.85)");
+	hline(g, 6, 4, 3, "rgba(255,255,255,0.85)");
+	rect(g, 9, 3, 1, 6, glDark);
+	rect(g, 6, 8, 4, 1, glDark);
+}
+// Botella de miel (Fase 21.5, B4): botella llena de miel ámbar.
+function drawHoneyBottle(g) {
+	const honey = "#e8a520",
+		honeyLight = "#f0c060",
+		dark = "#b87a10";
+	rect(g, 6, 3, 4, 6, honey); // cuerpo
+	rect(g, 7, 1, 2, 3, honey); // cuello
+	rect(g, 7, 0, 2, 1, "#8a5a2a"); // corcho oscuro
+	rect(g, 6, 3, 4, 1, honeyLight);
+	rect(g, 6, 3, 1, 6, honeyLight);
+	rect(g, 9, 3, 1, 6, dark);
+	rect(g, 6, 8, 4, 1, dark);
+	set(g, 8, 5, honeyLight);
+	set(g, 8, 8, honeyLight);
+}
 
 // ============================================================
 // ÍTEMS DE LA FASE 12 (Bloque A): tridente y bola de slime
@@ -1436,6 +1464,15 @@ for (const id of [48, 49, 50, 51, 60, 61, 70, 71])
 // Fase 21.5 (D2): coral (72) — icono de cubo con su color (como el resto
 // de bloques).
 ICONS[72] = (g, rng) => drawBlockIcon(72, g, rng);
+// Fase 21.5 (B1): piedra pulida (73-78) — granito/diorita/andesita y
+// pulidas, icono de cubo con su color del atlas.
+for (let id = 73; id <= 78; id++)
+	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (B2): linterna (79) — icono de cubo con su color (como los
+// demás bloques).
+ICONS[79] = (g, rng) => drawBlockIcon(79, g, rng);
+// Fase 21.5 (B3): bambú, tablones de bambú y andamio (80-82).
+for (const id of [80, 81, 82]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Ítems
 ICONS[100] = drawStick;
 ICONS[101] = drawCoal;
@@ -1499,6 +1536,11 @@ ICONS[260] = drawMilk;
 ICONS[261] = drawEgg;
 // Fase 21.5 (A1): caña de pescar.
 ICONS[262] = drawFishingRod;
+// Fase 21.5 (B4): botella de vidrio y botella de miel.
+ICONS[263] = drawGlassBottle;
+ICONS[264] = drawHoneyBottle;
+// Fase 21.5 (B4): bloques de colmenas y bloque de miel (cubo con su color).
+for (const id of [83, 84, 85]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);
@@ -1535,6 +1577,7 @@ export function itemIconIds() {
 // CSS `background` del icono recortado del atlas. `scale` agranda la tesela
 // (hotbar 1.5x, paneles 1x). null si el ítem no tiene icono.
 let atlasUrl = null;
+let atlasVersion = 0;
 const tileIndex = new Map();
 export function itemIconCss(id, scale = 1) {
 	if (!ICONS[id]) return null;
@@ -1555,6 +1598,7 @@ export function itemIconCss(id, scale = 1) {
 // El repintado de los slots visibles lo hace ui.js (repaintIcons).
 export function reloadItemIcons() {
 	atlasUrl = null;
+	atlasVersion++;
 	tileIndex.clear();
 }
 
@@ -1577,6 +1621,10 @@ function getAtlasUrl() {
 			}
 		}
 	});
-	atlasUrl = canvas.toDataURL();
+	// Cache-busting: el sufijo ?v=N fuerza al navegador a tratar cada
+	// regeneración del atlas como una imagen distinta (data:image URLs
+	// pueden ser cacheadas por el browser o por service workers). La
+	// versión se incrementa en reloadItemIcons() (hot-reload del atlas).
+	atlasUrl = canvas.toDataURL() + `?v=${atlasVersion}`;
 	return atlasUrl;
 }

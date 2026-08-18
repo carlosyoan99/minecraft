@@ -23,6 +23,8 @@
 | B1-B2 | Plan §4 + notas "Estructuras" (geoda) | **Catalejo con zoom real**; los bloques/ítems de amatista los aporta la F22 y la **geoda se mantiene en la F21** (D2, reusa los IDs) | F22 B1-B2 | 🟠 |
 | C1 | Plan §5 | **Sculk simplificado: Deep Dark en Y < −40 + propagación al morir un mob (radio 2)**; sin Warden/shriekers/ciudad/crecimiento | F22 C1 | 🟠 |
 | D1 | Plan §6 | **Rana** (salta, come slimes pequeños, cría con `SLIME_BALL`); sin renacuajos; biomas manglar/cerezo/bambú quedan en la F21 | F22 D1 | 🟠 |
+| A6 | `Notas del usuario.md` §Mejoras (2026-08-18) | **Altura configurable del mundo**: permitir elegir entre 128 bloques (Y −64..+63, defecto) y 255 bloques (Y −64..+191) al crear el mundo; selector en la pantalla de creación; `SCHEMA_VERSION` 7 si coexisten mundos de ambas alturas (migración v6→v7) | F22 A6 | 🟠 |
+| G1 | `Notas del usuario.md` §Servidor WebSocket (2026-08-18) | **Rate limit por usuario**: revisar que `MAX_ACTION_RATE`/`MAX_MSG_RATE` se manejan por **usuario individual** (no global); evaluar si el límite actual necesita ajuste para la carga inicial de chunks | F22 G1 | 🟠 |
 | E1-F1 | Plan + proceso | Tests específicos de la fase (`unit-fase22.js`) + cierre/auditoría; documentar restricciones | F22 E1/F1 | 🟢 |
 
 **Won't confirmado por el usuario en esta fase (2026-08-15):** Redstone y
@@ -149,6 +151,24 @@ sin spec propia aún).
   la semilla fija; crafteo `COPPER_BLOCK` y fundición `RAW_COPPER` →
   `COPPER_INGOT`; `unit-recetas`/`unit-sync` en verde.
 
+### A6 — Altura configurable del mundo (128 vs 255)
+
+- **Qué hacer:** permitir al jugador elegir la altura del mundo al crearlo:
+  128 bloques (Y −64..+63, defecto actual) o 255 bloques (Y −64..+191,
+  estilo MC 1.18). Selector en la pantalla de creación de mundo (junto a
+  semilla, nombre, modo y tamaño). El servidor valida la altura elegida y
+  la propaga en el `init`; `SCHEMA_VERSION` sube a 7 si coexisten mundos
+  de ambas alturas (migración v6→v7 retrocompatible: los mundos viejos
+  heredan la altura 128). `audit-altura` se recalibra para cubrir ambos
+  rangos. Generación y minerales adaptados a la altura seleccionada.
+- **Origen:** `Notas del usuario.md` §Mejoras (2026-08-18): "Permitir
+  también la altura del mundo, una vez que se testee los 255 cubos de
+  altura, si es viable".
+- **Criterio:** crear un mundo de 128 y otro de 255 con la misma semilla;
+  ambos pasan `audit-altura`; `SCHEMA_VERSION` 7 con migración v6→v7;
+  generación de cuevas/montañas/minerales recalibrada a 255; tests de
+  rendimiento sin degradación > 15% vs 128.
+
 ---
 
 ## 3. Bloque B — Amatista y catalejo (subfase B: 1.17 + zoom)
@@ -246,6 +266,26 @@ sin spec propia aún).
 
 ---
 
+## 6.1. Bloque G — Rate limit por usuario (subfase G)
+
+- **Qué hacer:** revisar el rate limiting del servidor WebSocket
+  (`MAX_ACTION_RATE` 20/s y `MAX_MSG_RATE` 30/s en `server/constants.js`)
+  para confirmar que se aplica **por usuario individual** (cada `ws` tiene
+  su propio contador) y no al conjunto de conexiones. Evaluar si el límite
+  actual es suficiente para la carga inicial de chunks (el cliente pide
+  muchos chunks de golpe al entrar al mundo) y ajustar si es necesario
+  (por ejemplo, un tope temporal más alto durante los primeros 5s de
+  conexión). Documentar el veredicto en `docs/server/seguridad.md`.
+- **Origen:** `Notas del usuario.md` §Servidor WebSocket (2026-08-18):
+  "Revisar que las solicitudes se manejan de forma independiente por
+  usuario y no el conjunto de usuarios en total".
+- **Criterio:** verificación de que cada `ws` tiene su propio contador de
+  rate (inspección de código + test unitario que simula 2 clientes con
+  límites independientes); si se ajusta el límite, justificarlo con datos
+  de rendimiento; `unit-red` en verde.
+
+---
+
 ## 7. Bloque F — Cierre y auditoría de la Fase 22 (tarea obligatoria)
 
 Al implementarse (tras la entrevista del planificador al abrirla), esta fase
@@ -271,10 +311,11 @@ cierra con:
 
 Cada bloque A-F es una **subfase** cerrable por separado (su propio test +
 verificación), en este orden recomendado por dependencias:
-**A1 (veredicto de altura, desbloquea el resto) → A (terreno+minería) → B
-(amatista+catalejo) → C (sculk) → D (rana) → E (tests de fase) → F
-(cierre)**. Ninguna subfase se da por cerrada sin su test en verde; la fase
-solo se cierra con todo en verde + la auditoría F.
+**A1 (veredicto de altura, desbloquea el resto) → A (terreno+minería) →
+A6 (altura configurable) → B (amatista+catalejo) → C (sculk) → D (rana) →
+G (rate limit por usuario) → E (tests de fase) → F (cierre)**. Ninguna
+subfase se da por cerrada sin su test en verde; la fase solo se cierra con
+todo en verde + la auditoría F.
 
 ---
 

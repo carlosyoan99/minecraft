@@ -645,6 +645,17 @@ function handleConnection(ws, req) {
 			}
 		}
 
+	// Fase 21.5 (B3): ¿el andamio colocado en (x,y,z) queda bajo los pies del
+	// jugador (la celda que ocupa)? Si es la misma celda donde se colocó, al
+	// colocarlo "desde dentro" el jugador se sube encima (escalar el andamio).
+	function placeLifts(p, x, y, z) {
+		return (
+			Math.floor(p.x) === x &&
+			Math.floor(p.y) === y &&
+			Math.floor(p.z) === z
+		);
+	}
+
 		try {
 			switch (event) {
 				case "move": {
@@ -844,7 +855,13 @@ function handleConnection(ws, req) {
 						// Antorchas: necesitan un bloque sólido adyacente (soporte), como en
 						// Minecraft — no se pueden colocar flotando en el aire. El agua y
 						// otra antorcha no dan soporte (isSolidBlock las excluye).
-						if (itemId === B.TORCH && !world.torchSupported(x, y, z)) return;
+						// Fase 21.5 (B2): la linterna usa el mismo soporte (cuelga del techo
+						// o se apoya en el suelo/una pared; sin cadena).
+						if (
+							(itemId === B.TORCH || itemId === B.LANTERN) &&
+							!world.torchSupported(x, y, z)
+						)
+							return;
 						// Fase 13 (L2): puertas y portones ocupan 2 celdas de alto — se
 						// colocan solo si hay hueco arriba (y + 1 libre) y necesitan un
 						// bloque de apoyo debajo (no flotar).
@@ -873,6 +890,26 @@ function handleConnection(ws, req) {
 						if (world.setBlock(x, y, z, itemId)) {
 							playerHelpers.removeFromInventory(p, itemId, 1);
 							playerHelpers.sendInventory(p);
+							// Fase 21.5 (B3): al colocar un andamio donde está el
+							// jugador (bajo sus pies), se le sube un bloque — única
+							// forma de escalar el andamio (es un bloque no sólido; el
+							// cliente lo predice igual). Como en Minecraft simplificado.
+							if (itemId === B.SCAFFOLDING && placeLifts(p, x, y, z)) {
+								p.y += 1;
+								broadcast(
+									"player_move",
+									{
+										id: playerId,
+										name: p.name,
+										x: p.x,
+										y: p.y,
+										z: p.z,
+										yaw: p.yaw,
+										pitch: p.pitch
+									},
+									playerId
+								);
+							}
 						}
 					}
 					break;
@@ -1117,6 +1154,12 @@ function handleConnection(ws, req) {
 					break;
 				}
 
+				case "honey_bottle": {
+					// Fase 21.5 (B4): botella de vidrio sobre la colmena → miel.
+					actions.handleHoneyBottle(p, data);
+					break;
+				}
+
 				case "attack_mob": {
 					actions.handleAttackMob(p, ws, data);
 					break;
@@ -1130,8 +1173,18 @@ function handleConnection(ws, req) {
 		}
 	});
 
-	ws.on("close", () => {
+	ws.on("close", (code, reason) => {
 		const leaver = state.players.get(playerId);
+		// Diagnóstico de desconexión (bug usuario #2): heartbeat, cierre
+		// limpio del cliente, error de socket, etc. Código 1006 = abnormal
+		// closure (típico de terminate() del heartbeat sin close frame).
+		const reasonStr = reason?.toString() || "";
+		const killSource = ws.killedByHeartbeat ? "heartbeat" : (code === 1000 ? "cliente" : code === 1006 ? "anómalo" : "otro");
+		log.info(
+			`🔴 Jugador desconectado: ${leaver ? leaver.name : playerId} ` +
+			`(${state.players.size} en línea) ` +
+			`code=${code} reason=${reasonStr || "(vacío)"} causa=${killSource}`
+		);
 		// Si se desconecta a mitad de una mina, el bloque NO cambia (no llega
 		// block_update), así que los demás jugadores que veían las grietas se
 		// quedarían con el crack colgado: enviar stage -1 a los del radio.
@@ -1156,9 +1209,6 @@ function handleConnection(ws, req) {
 		// (el bobber no debe quedar flotando sin dueño).
 		if (leaver) fishing.removePlayerBobbers(playerId);
 		state.players.delete(playerId);
-		log.info(
-			`🔴 Jugador desconectado: ${leaver ? leaver.name : playerId} (${state.players.size} en línea)`
-		);
 		broadcast("player_leave", { id: playerId });
 		// Fase 17 (A1/C1): en modo menú, al quedarse el servidor sin jugadores
 		// se libera el mundo activo y se vuelve al menú (el próximo jugador

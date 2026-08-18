@@ -93,7 +93,7 @@ let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 // Fase 17 (A5): el cliente empieza EN EL MENÚ hasta recibir el init de un
 // mundo (join_world). Con SEED (modo clásico) el init llega al conectar y
 // pasa a false de inmediato; tras leave_world vuelve a true.
-let inMenu = true;
+export let inMenu = true;
 
 function showMenuScreen(which) {
 	for (const el of [
@@ -417,8 +417,9 @@ worldNameInput.addEventListener("keydown", (e) => {
 });
 
 // Semilla aleatoria (🎲): dos palabras + número — legible y con formato de
-// semilla de Minecraft. Rellena el campo y CREA el mundo directamente (un
-// solo gesto, como el "Random" de Minecraft al crear mundo).
+// semilla de Minecraft. Solo rellena el campo de semilla; el jugador crea
+// el mundo con el botón "Crear mundo" (UX del usuario: el botón 🎲 no
+// debe iniciar la partida, solo generar la semilla).
 const RANDOM_WORDS = [
 	"bosque",
 	"montaña",
@@ -441,7 +442,6 @@ function randomSeed() {
 }
 randomSeedBtn.addEventListener("click", () => {
 	seedInput.value = randomSeed();
-	joinWorld(seedInput.value, worldNameInput.value, gamemodeSelect.value);
 });
 
 // Botón pequeño de acción por mundo (Fase 17, A3): clonar, renombrar,
