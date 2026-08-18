@@ -193,12 +193,21 @@ for (let cx = -12; cx <= 12; cx++) {
 					// Fase 21.5 (D2): el arrecife de coral del océano cálido pone
 					// CORAL_BLOCK en la primera celda de agua sobre el lecho (como
 					// Minecraft); el resto de la columna sigue siendo agua.
+					// Fase 21.5 (B5): el abanico de coral (sobre el arrecife), el
+					// pasto marino (lecho del océano) y el kelp (columna de algas)
+					// ocupan celdas de agua — son plantas NO sólidas, no huecos.
 					const warm = world.oceanVariant(wx, wz) === "warm";
+					const aquatic = new Set([
+						B.CORAL_FAN,
+						B.KELP,
+						B.SEAGRASS
+					]);
 					for (let y = floorW + 1; y < world.WORLD_SEA_LEVEL; y++) {
 						const b = data[idx(x, y, z)];
 						if (
 							b !== B.WATER &&
-							!(warm && y === floorW + 1 && b === B.CORAL_BLOCK)
+							!(warm && y === floorW + 1 && b === B.CORAL_BLOCK) &&
+							!aquatic.has(b)
 						)
 							badOcean++;
 					}

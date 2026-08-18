@@ -168,6 +168,20 @@ function isCoralReefAt(wx, wz) {
 	return noise.noise2D_detail(wx * REEF_FREQ, wz * REEF_FREQ) > REEF_GATE;
 }
 
+// Fase 21.5 (B5): kelp — plantas altas en el océano (fuera del arrecife):
+// gate de ruido (~40% del océano) y altura 2-6 bloques, ambas deterministas
+// por columna (misma frecuencia de detalle que el broad stroke de abajo).
+function kelpTallAt(wx, wz) {
+	return noise.noise2D_detail(wx * REEF_FREQ + 5.3, wz * REEF_FREQ - 2.7) > 0.1;
+}
+function kelpHeightAt(wx, wz) {
+	// 2-6 bloques, determinista (hash de la columna).
+	const h = Math.abs(
+		Math.floor(noise.noise2D_detail(wx * 0.37, wz * 0.37) * 457) % 5
+	);
+	return 2 + h;
+}
+
 function hangVines(data, lx, y, lz, height) {
 	const maxV = Math.max(height, y - 3);
 	for (let v = y - 1; v >= maxV; v--) {
@@ -325,6 +339,11 @@ function generateChunk(cx, cz) {
 			// las iteraciones sin trabajo útil). Las estructuras/árboles se
 			// escriben después del bucle y no dependen de este límite.
 			const yEnd = waterCol ? biomes.WORLD_SEA_LEVEL - 1 : height - 1;
+			// Fase 21.5 (B5): kelp — planta alta que sube desde el lecho del
+			// océano (2-6 bloques, como en MC; determinista por columna). La
+			// base es SEAGRASS (floorY+1) y el tallo KELP hasta kelpTop.
+			const kelp = waterCol && ocean && !coralReef && kelpTallAt(wx, wz);
+			const kelpTop = kelp ? Math.max(floorY + 2, floorY + 1 + kelpHeightAt(wx, wz)) : floorY + 1;
 			for (let y = WORLD_MIN_Y; y <= yEnd; y++) {
 				let block = B.AIR;
 				if (y === WORLD_MIN_Y) block = B.BEDROCK;
@@ -340,7 +359,15 @@ function generateChunk(cx, cz) {
 					} else if (y === floorY) block = B.SAND;
 					// Fase 21.5 (D2): coral del arrecife sobre el lecho (la primera
 					// celda de agua) — el resto de la columna sigue siendo agua.
+					// Fase 21.5 (B5): solo en el OCÉANO (no lagos/ríos, que tenían
+					// invariantes de agua puras): el arrecife (y+1) es CORAL_BLOCK
+					// sólido con un abanico CORAL_FAN encima (y+2); en el resto del
+					// lecho, pasto marino (y+1) y, en columnas de kelp, el tallo
+					// sube hasta kelpTop sin tocar el arrecife.
 					else if (y === floorY + 1 && coralReef) block = B.CORAL_BLOCK;
+					else if (y === floorY + 2 && coralReef) block = B.CORAL_FAN;
+					else if (y === floorY + 1 && ocean) block = kelp ? B.KELP : B.SEAGRASS;
+					else if (y > floorY + 1 && y <= kelpTop) block = B.KELP;
 					else if (y < biomes.WORLD_SEA_LEVEL) block = B.WATER;
 				} else if (y < height - 1) {
 					// Cuevas (Fase 4): el ruido 3D excava la piedra sin tocar el

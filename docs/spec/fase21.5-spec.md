@@ -30,7 +30,7 @@
 | B2 | Lista usuario #4 | Linternas (1.14): `LANTERN`, cuelga o en suelo, como antorcha | F21.5 B2 | 🟢 |
 | B3 | Lista usuario #5 | Bambú y andamios (1.14): `BAMBOO` (planta alta), `BAMBOO_PLANKS`, `SCAFFOLDING` (no sólido, escalable; crecimiento estático) | F21.5 B3 | 🟢 |
 | B4 | Lista usuario #6 | Colmenas y miel (1.15): `BEE_NEST` (en árboles), `BEE_HIVE` (crafteado), `HONEY_BOTTLE` (comida 6/1.2), `HONEY_BLOCK` (reduce caída). `HONEY` (140) ya existe como botín; abejas ya en F21 C2 | F21.5 B4 | 🟢 |
-| B5 | Lista usuario #7 | Bloques de coral y algas (1.13): `CORAL_BLOCK`, `CORAL_FAN`, `KELP`, `SEAGRASS` en arrecifes de océanos cálidos (estático) | F21.5 B5 | 🟠 |
+| B5 | Lista usuario #7 | Bloques de coral y algas (1.13): `CORAL_BLOCK`, `CORAL_FAN`, `KELP`, `SEAGRASS` en arrecifes de océanos cálidos (estático) | F21.5 B5 | 🟢 |
 | C1 | Lista usuario "Media" #12 | Horno de fundición (Blast Furnace, 1.14): funde minerales ×2, UI propia | F21.5 C1 | 🟠 |
 | C2 | Lista usuario #13 | Escudo (1.9): `SHIELD`, clic derecho reduce daño (sin off-hand completo) | F21.5 C2 | 🟠 |
 | C3 | Lista usuario #14 | Tótem de inmortalidad (1.11): evita la muerte, cura y absorción; consumible; loot de la mansión | F21.5 C3 | 🟢 |
@@ -218,6 +218,12 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   océanos cálidos (decisión: un bioma/región "océano cálido" acotado por
   hash, o decoración sobre océano existente — elegir en la entrevista).
   **Estático** (sin decoloración fuera del agua).
+- **Hecho (2026-08-18):** `CORAL_BLOCK` (72) era de la D2; se añaden
+  `CORAL_FAN` (86), `KELP` (87) y `SEAGRASS` (88), plantas no sólidas que se
+  rompen al instante y caen a sí mismas. El arrecife lleva `CORAL_FAN` en la
+  segunda celda de agua; en el resto del océano (fuera de arrecife) el lecho
+  es `SEAGRASS` y columnas con `kelpTallAt` suben de 2 a 6 bloques de `KELP`
+  (determinista por columna).
 - **Criterio:** test determinista: arrecifes en la zona cálida con la
   semilla fija; `unit-sync` en verde.
 

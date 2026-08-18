@@ -96,7 +96,11 @@ const BLOCK_TEX = {
 	// Fase 21.5 (B4): nido de abeja, colmena y bloque de miel.
 	83: { all: 74 },
 	84: { all: 75 },
-	85: { all: 76 }
+	85: { all: 76 },
+	// Fase 21.5 (B5): abanico de coral, kelp y pasto marino (cross-quads).
+	86: { all: 77 },
+	87: { all: 78 },
+	88: { all: 79 }
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

@@ -1124,7 +1124,7 @@
       (crafteado); botella de vidrio + clic derecho → `HONEY_BOTTLE`
       (comida 6/1.2); `HONEY_BLOCK` (reduce caída); abejas del F21 C2
       vuelan alrededor; sin polinización de cultivos
-- [ ] B5 Coral y algas (1.13): `CORAL_BLOCK`/`CORAL_FAN`/`KELP`/`SEAGRASS`
+- [x] B5 Coral y algas (1.13): `CORAL_BLOCK`/`CORAL_FAN`/`KELP`/`SEAGRASS`
       en arrecifes de océano cálido (estático, sin decoloración)
 - [ ] C1 Horno de fundición (1.14): `BLAST_FURNACE` funde minerales ×2, UI
       propia, crafteo (5 lingotes + horno)

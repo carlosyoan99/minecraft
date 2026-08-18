@@ -354,7 +354,16 @@ const B = {
 	// 6/1.2); el HONEY_BLOCK (crafteo 4 botellas) reduce el daño de caída.
 	BEE_NEST: 83,
 	BEE_HIVE: 84,
-	HONEY_BLOCK: 85
+	HONEY_BLOCK: 85,
+	// Fase 21.5 (B5): coral y algas (1.13) — CORAL_BLOCK (72) ya existe de la
+	// D2 (arrecife); aquí el ABANICO de coral (sobre el bloque del arrecife),
+	// el KELP (planta alta que crece hacia arriba en el agua, 2-6 bloques) y
+	// el pasto marino SEAGRASS (mata baja del lecho). Los tres son plantas NO
+	// sólidas que viven bajo el agua (se rompen al instante y se dropean a sí
+	// mismas; sin decoloración fuera del agua — estático, como la D2).
+	CORAL_FAN: 86,
+	KELP: 87,
+	SEAGRASS: 88
 };
 
 // Bloques con gravedad (Fase 10, D1): caen si el bloque de debajo no es
@@ -559,7 +568,12 @@ const NON_SOLID_PLANTS = new Set([
 	// Fase 21.5 (B3): el bambú es una planta alta (se atraviesa) y el andamio
 	// un bloque no sólido (se sube por dentro, como en MC simplificado).
 	B.BAMBOO,
-	B.SCAFFOLDING
+	B.SCAFFOLDING,
+	// Fase 21.5 (B5): coral y algas — plantas subacuáticas (se atraviesan y
+	// nadan sobre ellas, como las demás plantas).
+	B.CORAL_FAN,
+	B.KELP,
+	B.SEAGRASS
 ]);
 // Sólido para física/validación: el agua no es sólida (se nada en ella), la
 // antorcha/cama tampoco (se atraviesan) y las plantas (Fase 9) tampoco.
@@ -736,7 +750,11 @@ const BLOCK_HARDNESS = {
 	// simplificación): 
 	[B.BEE_NEST]: 1.5,
 	[B.BEE_HIVE]: 1.5,
-	[B.HONEY_BLOCK]: 1.5
+	[B.HONEY_BLOCK]: 1.5,
+	// Fase 21.5 (B5): coral y algas — se rompen al instante (plantas).
+	[B.CORAL_FAN]: 0.05,
+	[B.KELP]: 0.05,
+	[B.SEAGRASS]: 0.05
 };
 // Velocidad por material (multiplicador sobre la dureza): madera 2x,
 // piedra 4x, hierro 6x, oro 12x (rápida pero frágil), diamante 8x.
@@ -1228,6 +1246,10 @@ const CREATIVE_ITEMS = [
 	B.BEE_NEST,
 	B.BEE_HIVE,
 	B.HONEY_BLOCK,
+	// Fase 21.5 (B5): coral y algas
+	B.CORAL_FAN,
+	B.KELP,
+	B.SEAGRASS,
 	// Minerales y materiales
 	B.COAL_ORE,
 	B.IRON_ORE,

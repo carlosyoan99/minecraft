@@ -671,5 +671,55 @@ check(
 	}
 }
 
+// ============================================================
+// 13) B5 — CORAL Y ALGAS (1.13): el arrecife de la D2 se enriquece con el
+//     abanico de coral (86) encima del CORAL_BLOCK (72); en el resto del
+//     océano crece kelp (87, planta alta determinista, libre de arrecife) y
+//     pasto marino (88) en el lecho. Los tres son plantas NO sólidas que se
+//     rompen al instante y caen a sí mismas.
+// ============================================================
+{
+	// Identidad y propiedades
+	check("B5: CORAL_FAN 86, KELP 87, SEAGRASS 88",
+		B.CORAL_FAN === 86 && B.KELP === 87 && B.SEAGRASS === 88);
+	check("B5: el coral y las algas no son sólidos (se atraviesan)",
+		!constants.isSolidBlock(B.CORAL_FAN) &&
+			!constants.isSolidBlock(B.KELP) &&
+			!constants.isSolidBlock(B.SEAGRASS));
+	for (const b of [B.CORAL_FAN, B.KELP, B.SEAGRASS]) {
+		check(`B5: el bloque ${b} se rompe al instante`, constants.BLOCK_HARDNESS[b] === 0.05);
+		check(`B5: el bloque ${b} se cosecha a mano`, constants.canHarvest(0, b) === true);
+	}
+	// Drop a sí mismo (breakPlant, como el bambú).
+	{
+		const { createPlayer } = require("../server/players.js");
+		const p = createPlayer("p-b5", { x: 0, y: 50, z: 0 });
+		p.inventory = new Array(36).fill(null);
+		check("B5: canHarvest a mano cubre el drop (drop por finishMining)",
+			constants.canHarvest(0, B.CORAL_FAN) === true &&
+				constants.canHarvest(0, B.KELP) === true &&
+				constants.canHarvest(0, B.SEAGRASS) === true);
+	}
+	// Generación determinista: con la semilla por defecto hay coral/alga en
+	// los océanos (buscar en chunks de océano; el arrecife se genera en la
+	// zona cálida y el kelp en el resto del océano).
+	{
+		let fans = 0, kelps = 0, gras = 0;
+		for (let cx = -10; cx <= 10; cx += 2)
+			for (let cz = -10; cz <= 10; cz += 2) {
+				const ch = world.generateChunk(cx, cz);
+				if (!ch) continue;
+				for (let i = 0; i < ch.length; i++) {
+					if (ch[i] === B.CORAL_FAN) fans++;
+					else if (ch[i] === B.KELP) kelps++;
+					else if (ch[i] === B.SEAGRASS) gras++;
+				}
+			}
+		check("B5: hay abánico de coral generado en el océano cálido", fans > 0, `${fans}`);
+		check("B5: hay kelp generado en el océano", kelps > 0, `${kelps}`);
+		check("B5: hay pasto marino generado en el lecho", gras > 0, `${gras}`);
+	}
+}
+
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);

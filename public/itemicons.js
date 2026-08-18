@@ -1541,6 +1541,9 @@ ICONS[263] = drawGlassBottle;
 ICONS[264] = drawHoneyBottle;
 // Fase 21.5 (B4): bloques de colmenas y bloque de miel (cubo con su color).
 for (const id of [83, 84, 85]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (B5): coral y algas (cross-quads → icono con su color como
+// planta; el atlas les da la silueta de cross en el inventario).
+for (const id of [86, 87, 88]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);
@@ -1578,7 +1581,16 @@ export function itemIconIds() {
 // (hotbar 1.5x, paneles 1x). null si el ítem no tiene icono.
 let atlasUrl = null;
 let atlasVersion = 0;
+let atlasFingerprint = "";
 const tileIndex = new Map();
+
+// Huella del contenido actual del atlas: longitud de ICONS + suma de IDs.
+// Si cambia (ítems añadidos/eliminados entre cargas), se regenera el atlas.
+function computeFingerprint() {
+	const ids = itemIconIds();
+	return `${ids.length}:${ids.reduce((a, b) => a + b, 0)}`;
+}
+
 export function itemIconCss(id, scale = 1) {
 	if (!ICONS[id]) return null;
 	if (!tileIndex.size) {
@@ -1599,11 +1611,17 @@ export function itemIconCss(id, scale = 1) {
 export function reloadItemIcons() {
 	atlasUrl = null;
 	atlasVersion++;
+	atlasFingerprint = "";
 	tileIndex.clear();
 }
 
 function getAtlasUrl() {
-	if (atlasUrl) return atlasUrl;
+	// Si el atlas ya existe y la huella no cambió, reusarlo.
+	const fp = computeFingerprint();
+	if (atlasUrl && atlasFingerprint === fp) return atlasUrl;
+	// Regenerar: atlas nuevo o huella cambió (ítems añadidos/eliminados).
+	atlasUrl = null;
+	atlasFingerprint = fp;
 	const ids = itemIconIds();
 	const canvas = document.createElement("canvas");
 	canvas.width = ids.length * TILE;
@@ -1627,4 +1645,17 @@ function getAtlasUrl() {
 	// versión se incrementa en reloadItemIcons() (hot-reload del atlas).
 	atlasUrl = canvas.toDataURL() + `?v=${atlasVersion}`;
 	return atlasUrl;
+}
+
+// Forzar regeneración del atlas en la primera carga del cliente:
+// calcula la huella y genera el atlas de forma eager (sin esperar a la
+// primera llamada de itemIconCss). Esto descarta cualquier atlas
+// cacheado por un service worker o por una sesión anterior.
+export function initItemIcons() {
+	atlasUrl = null;
+	atlasVersion++;
+	atlasFingerprint = "";
+	tileIndex.clear();
+	// Forzar la generación inmediata del atlas.
+	getAtlasUrl();
 }

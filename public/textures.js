@@ -771,6 +771,45 @@ function drawScaffolding(ctx, rng) {
 	rect(ctx, 4, 7, 8, 2, "#b8742e");
 }
 
+// Fase 21.5 (B5): abanico de coral — ramitas ramificadas sobre transparente
+// (se dibuja como cross-quad, como las plantas).
+function drawCoralFan(ctx, rng) {
+	rect(ctx, 7, 8, 2, 8, "#d95a50"); // tallo central
+	rect(ctx, 6, 5, 1, 5, "#e86a5e"); // rama izq
+	rect(ctx, 9, 4, 1, 6, "#e86a5e"); // rama der
+	rect(ctx, 3, 2, 3, 2, "#f08a7e"); // punta izq amplia
+	rect(ctx, 10, 1, 3, 2, "#f08a7e"); // punta der amplia
+	for (let y = 3; y < 14; y += 3) {
+		for (const x of [7, 8]) px(ctx, x, y, "#a83a34");
+	}
+	px(ctx, 8, 11, "#a83a34");
+	px(ctx, 6, 7, "#a83a34");
+	px(ctx, 9, 8, "#a83a34");
+}
+// Kelp: tallo largo ondulado con hojas laterales (cross-quad de planta alta).
+function drawKelp(ctx, rng) {
+	rect(ctx, 7, 0, 2, 16, "#2f7a30"); // tallo vertical
+	for (let y = 2; y < 16; y += 3) {
+		if (y % 2 === 0) rect(ctx, 3, y, 4, 1, "#4a9a48");
+		else rect(ctx, 9, y, 4, 1, "#4a9a48");
+	}
+	rect(ctx, 7, 0, 2, 1, "#5ab85a"); // punta clara
+	px(ctx, 6, 6, "#245e24");
+	px(ctx, 9, 9, "#245e24");
+	px(ctx, 7, 12, "#245e24");
+}
+// Pasto marino: hojas curvas bajas (cross-quad, como la hierba alta).
+function drawSeagrass(ctx, rng) {
+	rect(ctx, 5, 8, 2, 6, "#2f7a30");
+	rect(ctx, 9, 9, 2, 5, "#3a8f3a");
+	rect(ctx, 7, 6, 2, 8, "#4a9a48");
+	px(ctx, 4, 8, "#2f7a30");
+	px(ctx, 10, 9, "#3a8f3a");
+	px(ctx, 3, 10, "#2f7a30");
+	px(ctx, 11, 11, "#4a9a48");
+	px(ctx, 12, 13, "#2f7a30");
+	px(ctx, 2, 13, "#3a8f3a");
+}
 // Fase 21.5 (B4): nido de abeja — madera clara con panal dorado central y
 // agujero oscuro (como MC: un tronco con miel).
 function drawBeeNest(ctx, rng) {
@@ -892,7 +931,11 @@ const TILES = [
 	// Fase 21.5 (B4): nido de abeja, colmena y bloque de miel
 	drawBeeNest, // 74
 	drawBeeHive, // 75
-	drawHoneyBlock // 76
+	drawHoneyBlock, // 76
+	// Fase 21.5 (B5): abanico de coral, kelp y pasto marino (cross-quads)
+	drawCoralFan, // 77
+	drawKelp, // 78
+	drawSeagrass // 79
 ];
 
 // El mapa de teselas por bloque/cara (BLOCK_TEX) y los rectángulos UV viven en

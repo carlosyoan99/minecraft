@@ -90,6 +90,12 @@ function breakPlant(player, x, y, z, block) {
 		// tablones y andamios). El andamio también se recicla al romperlo.
 		if (block === B.BAMBOO) addToInventory(player, B.BAMBOO, 1);
 		if (block === B.SCAFFOLDING) addToInventory(player, B.SCAFFOLDING, 1);
+		// Fase 21.5 (B5): el coral y las algas se dropean a sí mismos al
+		// romperlas a mano (sin decoloración — estático, como el arrecife de
+		// la D2). El CORAL_BLOCK (72) es sólido y cae por el camino normal.
+		if (block === B.CORAL_FAN) addToInventory(player, B.CORAL_FAN, 1);
+		if (block === B.KELP) addToInventory(player, B.KELP, 1);
+		if (block === B.SEAGRASS) addToInventory(player, B.SEAGRASS, 1);
 	}
 	return false;
 }
@@ -98,7 +104,7 @@ function breakPlant(player, x, y, z, block) {
 // (Fase 17, B4). Las lianas cuelgan del techo y no aplican.
 // Fase 21.5 (B3): el bambú es una planta alta con base en el suelo — al
 // romper el bloque de debajo se destruye el tallo (breakPlant lo dropea).
-const GROUND_PLANTS = new Set([B.TALL_GRASS, B.POPPY, B.DANDELION, B.WHEAT, B.BAMBOO]);
+const GROUND_PLANTS = new Set([B.TALL_GRASS, B.POPPY, B.DANDELION, B.WHEAT, B.BAMBOO, B.CORAL_FAN, B.KELP, B.SEAGRASS]);
 
 function finishMining(player, x, y, z, block, opts = {}) {
 	world.setBlock(x, y, z, B.AIR);

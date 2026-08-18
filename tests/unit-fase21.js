@@ -910,12 +910,17 @@ for (let cx = -D2R; cx <= D2R; cx++) {
 					d2Warm++;
 					// Coral sobre el lecho: primera celda de agua = CORAL_BLOCK,
 					// arena debajo y agua encima (invariante de arrecife).
+					// Fase 21.5 (B5): en la segunda celda puede haber un ABANICO
+					// de coral (planta), y en el lecho sin arrecife pasto marino o
+					// kelp — nunca un hueco de aire.
 					const b = d[idx(x, floorW + 1, z)];
+					const aquatic = b === B.SEAGRASS || b === B.KELP;
 					if (b === B.CORAL_BLOCK) {
 						d2CoralCols++;
+						const above = d[idx(x, floorW + 2, z)];
 						if (d[idx(x, floorW, z)] !== B.SAND) d2BadCoral++;
-						if (d[idx(x, floorW + 2, z)] !== B.WATER) d2BadCoral++;
-					} else if (b !== B.WATER) d2BadCoral++;
+						if (above !== B.WATER && above !== B.CORAL_FAN) d2BadCoral++;
+					} else if (!aquatic && b !== B.WATER) d2BadCoral++;
 				} else if (v === "deep") {
 					d2Deep++;
 					d2DeepFloorMin = Math.min(d2DeepFloorMin, floorW);

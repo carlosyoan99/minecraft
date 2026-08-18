@@ -113,7 +113,12 @@ export const BLOCK_COLORS = {
 	// bloque de miel (ámbar).
 	83: 0x8a5a2a,
 	84: 0xc97a20,
-	85: 0xefa83a
+	85: 0xefa83a,
+	// Fase 21.5 (B5): abanico de coral (naranja), kelp (verde oscuro) y pasto
+	// marino (verde).
+	86: 0xf08040,
+	87: 0x2f7a30,
+	88: 0x3a8f3a
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -186,7 +191,11 @@ export const BLOCK_NAMES = {
 	// Fase 21.5 (B4): colmenas y miel
 	83: "Nido de abeja",
 	84: "Colmena",
-	85: "Bloque de miel"
+	85: "Bloque de miel",
+	// Fase 21.5 (B5): coral y algas
+	86: "Abanico de coral",
+	87: "Kelp",
+	88: "Pasto marino"
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
@@ -204,6 +213,10 @@ export const SCAFFOLDING = 82;
 export const BEE_NEST = 83;
 export const BEE_HIVE = 84;
 export const HONEY_BLOCK = 85;
+// Fase 21.5 (B5): coral y algas.
+export const CORAL_FAN = 86;
+export const KELP = 87;
+export const SEAGRASS = 88;
 export const BED = 24; // Fase 7: dormir de noche fija el punto de reaparición
 export const LAVA = 25; // Fase 7: pozos decorativos en superficie (no minable)
 export const FARMLAND = 26; // Fase 9 (C): tierra arada
@@ -397,11 +410,14 @@ export const PLACEABLE_BLOCKS = new Set([
 	// andamio (82).
 	80, 81, 82,
 	// Fase 21.5 (B4): nidos, colmenas y bloque de miel.
-	83, 84, 85
+	83, 84, 85,
+	// Fase 21.5 (B5): coral y algas.
+	86, 87, 88
 ]);
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
 // Fase 21.5 (B3): bambú (planta alta) y andamio (no sólido, escalable).
-export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43, 80, 82]); // 43 = lianas (Fase 11, B)
+// Fase 21.5 (B5): coral y algas bajo el agua (cross-quad).
+export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43, 80, 82, 86, 87, 88]); // 27/33/34/35/43 = flores/hierba/lianas (Fase 9/11)
 // Armadura equipable (Fase 7): clic derecho con la pieza en mano la equipa.
 // No se apilan (cada pieza con su durabilidad, como las herramientas).
 export const ARMOR_ITEMS = new Set([
