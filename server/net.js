@@ -1164,6 +1164,13 @@ function handleConnection(ws, req) {
 					actions.handleAttackMob(p, ws, data);
 					break;
 				}
+
+				case "shield_block": {
+					// Fase 21.5 (C2): escudo — el cliente mantiene el clic derecho
+					// con el escudo en la mano. Validar que de verdad lo lleva.
+					actions.handleShieldBlock(p, data);
+					break;
+				}
 			}
 		} catch (err) {
 			// Auditoría 2026-08-09 (§1.1): ningún error lógico interno de un

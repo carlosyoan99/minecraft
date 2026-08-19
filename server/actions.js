@@ -772,6 +772,19 @@ function handleAttackMob(p, ws, data) {
 	}
 }
 
+// Fase 21.5 (C2): escudo — activar/desactivar el bloqueo. El jugador debe
+// llevar el escudo en la mano activa; el servidor guarda p.blocking, que
+// damagePlayer (combat.js) consulta al reducir el daño de mobs/proyectiles.
+function handleShieldBlock(p, data = {}) {
+	const held = p.inventory[p.selectedSlot];
+	const hasShield = held && held.id === constants.I.SHIELD;
+	if (!hasShield) {
+		p.blocking = false; // sin escudo en mano no se puede bloquear
+		return;
+	}
+	p.blocking = !!data.blocking;
+}
+
 // ============================================================
 // AGRICULTURA (Fase 9, Bloque C) Y PICKER CREATIVO
 // ============================================================

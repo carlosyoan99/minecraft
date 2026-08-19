@@ -751,6 +751,24 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	}
 }
 
+/* Fase 21.5 (C2): pose del escudo — viñeta cerrada MÁS CLAVE cuando el
+   jugador bloquea (clic derecho mantenido con el escudo en mano). No es un
+   modelo 3D de brazo (fuera de alcance): la señal visual es la viñeta + la
+   retícula que cambia. */
+#shield-block {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 149;
+	background: radial-gradient(
+		ellipse at center,
+		transparent 46%,
+		rgba(40, 45, 60, 0.28) 78%,
+		rgba(20, 24, 36, 0.5) 100%
+	);
+	border: 6px solid rgba(200, 200, 215, 0.28);
+}
+
 #crosshair {
 	position: absolute;
 	top: 50%;

@@ -349,4 +349,25 @@ check(
 		"isTool(BOW) debe ser true (durabilidad propia, no apila)"
 	);
 }
+// --- 12) Fase 21.5 (C2): escudo sincronizado ---
+// El HUD usa SHIELD_DURABILITY para la barra del escudo (igual que arco/caña);
+// si el cliente diverge, la barra de durabilidad se rompe.
+{
+	const clientItems = parseObj("ITEM_NAMES");
+	check(
+		"Fase 21.5: escudo (265) con nombre y en ITEM_NAMES",
+		!!clientItems && clientItems[server.I.SHIELD]
+	);
+	const m = src.match(/export const SHIELD_DURABILITY = (\d+);/);
+	check(
+		"SHIELD_DURABILITY cliente == servidor (336)",
+		!!m && Number(m[1]) === server.SHIELD_DURABILITY,
+		m ? `cliente=${m[1]} servidor=${server.SHIELD_DURABILITY}` : "no exportado"
+	);
+	check(
+		"SHIELD como ítem no apilable (isTool) y con durabilidad propia",
+		server.isTool(server.I.SHIELD),
+		"isTool(SHIELD) debe ser true (no apila, durabilidad propia)"
+	);
+}
 process.exit(fails ? 1 : 0);

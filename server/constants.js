@@ -520,7 +520,13 @@ const I = {
 	// Fase 21.5 (B4): botella de vidrio (crafteo 3 vidrio → 3) y botella de
 	// miel (clic derecho con la botella sobre una colmena; comida 6/1.2).
 	GLASS_BOTTLE: 263,
-	HONEY_BOTTLE: 264
+	// Botella de miel (colmena, comida 6/1.2).
+	HONEY_BOTTLE: 264,
+	// Fase 21.5 (C2): escudo (1.9) — sin off-hand: se lleva en la mano activa
+	// y mantiene el clic derecho para bloquear (reduce el daño entrante de
+	// mobs y proyectiles; desgasta solo al bloquear un impacto real).
+	// Durabilidad oficial MC: 336. Crafteo: 1 lingote + 6 tablones.
+	SHIELD: 265
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -924,7 +930,7 @@ const HOE_DURABILITY = TOOL_DURABILITY;
 // apila y lleva su durabilidad BOW_DURABILITY), pero su desgaste NO va por
 // applyToolWear al minar/atacar: lo gestiona applyBowWear al disparar
 // (players.js). Por eso no está en TOOL_DURABILITY.
-const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id) || id === I.BOW || id === I.FISHING_ROD;
+const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id) || id === I.BOW || id === I.FISHING_ROD || id === I.SHIELD;
 
 // ============================================================
 // ARMADURA (Fase 7): reducción de daño por pieza y material.
@@ -1006,6 +1012,18 @@ const isArrow = (id) => id === I.ARROW;
 // Minecraft Java.
 const FISHING_ROD_DURABILITY = 64;
 const isFishingRod = (id) => id === I.FISHING_ROD;
+
+// Fase 21.5 (C2): escudo — misma convención que arco/caña: es isTool (no se
+// apila, lleva durabilidad) pero NO está en TOOL_DURABILITY (no se desgasta
+// al minar/atacar); su desgaste lo aplica applyShieldWear solo al absorber
+// un impacto bloqueado. Durabilidad oficial MC Java: 336.
+// SHIELD_BLOCK_FACTOR: fracción de daño entrante que PASA cuando el jugador
+// bloquea (0.4 → el escudo absorbe el 60 % del daño de mobs/proyectiles;
+// se aplica antes de la armadura, como en Minecraft). Diseño simplificado
+// documentado en la spec F21.5 (C2): sin ángulo/off-hand ni encantamientos.
+const SHIELD_DURABILITY = 336;
+const SHIELD_BLOCK_FACTOR = 0.4;
+const isShield = (id) => id === I.SHIELD;
 
 // Reduce el daño según la armadura del jugador: desgasta las piezas (-1 por
 // cada 4 de daño bruto, mínimo 1) y devuelve el daño real. Las piezas que
@@ -1308,7 +1326,8 @@ const CREATIVE_ITEMS = [
 const ALL_TOOLS_AND_ARMOR = [
 	...Object.values(I).filter((v) => v >= 200 && v <= 239), // herramientas + armadura (incl. oro/malla, Fase 13 L5)
 	...Object.values(I).filter((v) => v >= 240 && v <= 244), // azadas (Fase 9, Bloque C)
-	I.FISHING_ROD // Fase 21.5 (A1): caña de pescar en el picker creativo
+	I.FISHING_ROD, // Fase 21.5 (A1): caña de pescar en el picker creativo
+	I.SHIELD // Fase 21.5 (C2): escudo (no se apila, lleva durabilidad propia)
 ];
 
 // ============================================================
@@ -1459,7 +1478,10 @@ module.exports = {
 	isArrow,
 	// Fase 21.5 (A1): caña de pescar
 	FISHING_ROD_DURABILITY,
+	SHIELD_DURABILITY,
+	SHIELD_BLOCK_FACTOR,
 	isFishingRod,
+	isShield,
 	isBucket: (id) =>
 		id === I.BUCKET || id === I.WATER_BUCKET || id === I.LAVA_BUCKET,
 	WORLD_SIZES,

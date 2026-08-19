@@ -21,6 +21,7 @@ import {
 	GLASS_BOTTLE,
 	HOES,
 	PLACEABLE_BLOCKS,
+	SHIELD,
 	TNT,
 	WATER
 } from "./constants.js";
@@ -247,6 +248,22 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 // Fase 10 (D3): doble-tap W → sprint (misma técnica que el doble espacio).
 let lastWPress = 0;
 
+// Fase 21.5 (C2): escudo — estado de bloqueo (clic derecho mantenido con el
+// escudo en la mano). Al soltar se envía blocking:false.
+let shieldBlocking = false;
+// Pose visual del escudo: viñeta + retícula "protegida". Como no hay modelo
+// de brazo en primera persona (fuera de alcance), la señal es el overlay.
+let shieldOverlay = null;
+function getShieldOverlay() {
+	if (!shieldOverlay) shieldOverlay = document.getElementById("shield-block");
+	return shieldOverlay;
+}
+export function setShieldPose(blocking) {
+	const el = getShieldOverlay();
+	if (!el) return;
+	el.classList.toggle("hidden", !blocking);
+}
+
 // Doble espacio: activar/desactivar el vuelo (solo en creative). El primer
 // espacio salta (o sube si ya vuela); un segundo dentro de 260 ms alterna.
 let lastSpaceAt = 0;
@@ -280,6 +297,20 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	miningMouseDown = e.button === 0;
 
 	const held = getHeldItem();
+
+	// Fase 21.5 (C2): escudo — manteniendo el clic derecho con un escudo en
+	// la mano se bloquea (el servidor reduce el daño de mobs/proyectiles
+	// mientras player.blocking). No requiere apuntar a un bloque: el escudo
+	// se alza hacia donde mira la cámara. Al soltar (mouseup) se envía el
+	// estado desbloqueado.
+	const shieldHeld = held && held.id === SHIELD;
+	if (e.button === 2 && shieldHeld) {
+		shieldBlocking = true;
+		setShieldPose(true);
+		send("shield_block", { blocking: true });
+		return;
+	}
+
 	const hit = raycastTerrainAndMobs();
 	updateHighlight(hit); // el objetivo queda resaltado al clicar (o se oculta)
 
@@ -546,6 +577,12 @@ renderer.domElement.addEventListener("mouseup", (e) => {
 		miningMouseDown = false;
 		stopMining();
 	}
+	// Fase 21.5 (C2): soltar el clic derecho deja de bloquear con el escudo.
+	if (e.button === 2 && shieldBlocking) {
+		shieldBlocking = false;
+		setShieldPose(false);
+		send("shield_block", { blocking: false });
+	}
 });
 
 // Resaltado del bloque apuntado + retargeteo de la mina (Fase 14, M1): ANTES
@@ -581,6 +618,12 @@ document.addEventListener("pointerlockchange", () => {
 		miningMouseDown = false;
 		stopMining();
 		hideHighlight();
+		// Fase 21.5 (C2): al salir del juego (menú) también se suelta el escudo.
+		if (shieldBlocking) {
+			shieldBlocking = false;
+			setShieldPose(false);
+			send("shield_block", { blocking: false });
+		}
 	}
 });
 

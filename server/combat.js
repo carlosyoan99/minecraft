@@ -31,6 +31,9 @@ const {
 	isBow,
 	FISHING_ROD_DURABILITY,
 	isFishingRod,
+	SHIELD_DURABILITY,
+	isShield,
+	SHIELD_BLOCK_FACTOR,
 	levelFromXp,
 	xpToNext,
 	xpIntoLevel
@@ -193,6 +196,32 @@ function applyFishingWear(player) {
 }
 
 // ============================================================
+// ESCUDO (Fase 21.5, C2): desgaste al BLOQUEAR un impacto. Al igual que
+// arco/caña, el escudo es isTool (no se apila y lleva durabilidad propia)
+// pero NO está en TOOL_DURABILITY: no se desgasta al minar/atacar. Cada
+// daño de mob/proyectil que reduce (player.blocking) descuenta 1 punto de
+// SHIELD_DURABILITY (336, valor oficial MC Java); al llegar a 0 se elimina
+// de la mano y el jugador deja de bloquear (net.js envía shield_broke).
+// Devuelve true si el escudo se rompió en esta absorción.
+// ============================================================
+function applyShieldWear(player) {
+	const slot = player.inventory[player.selectedSlot];
+	if (!slot || !isShield(slot.id)) return false;
+	const cur =
+		typeof slot.durability === "number" ? slot.durability : SHIELD_DURABILITY;
+	const next = Math.max(0, cur - 1);
+	if (next <= 0) {
+		player.inventory[player.selectedSlot] = null;
+		player.blocking = false;
+		return true;
+	}
+	slot.durability = next;
+	// La durabilidad cambió: refrescar el inventario (barra del HUD).
+	sendInventory(player);
+	return false;
+}
+
+// ============================================================
 // EXPERIENCIA Y NIVELES (Fase 5 simple → Fase 9 curva MC → Fase 13 paridad)
 // XP acumulada -> nivel por la curva OFICIAL de Minecraft (xpToNext por
 // tramos: 7, 9, 11, 13... 37, 42...). La salud máxima es SIEMPRE 20
@@ -349,10 +378,35 @@ function damagePlayer(player, amount, opts = {}) {
 	if (opts.source === "mob" && Date.now() < (player.spawnGraceUntil || 0))
 		return;
 	let real = amount;
+	// Fase 21.5 (C2): escudo. Mientras player.blocking (clic derecho mantenido
+	// con el escudo en la mano), el daño de mobs y proyectiles se reduce.
+	// El daño ambiental (lava, fuego, caída, inanición) NO se bloquea, como
+	// en Minecraft. Aplicar el descuento ANTES de la armadura (paridad MC: el
+	// orden bloque→armadura es el real), y desgastar el escudo.
+	let blocked = false;
+	if (
+		player.blocking &&
+		(opts.source === "mob" || opts.source === "projectile") &&
+		real > 0
+	) {
+		real = Math.max(0, Math.ceil(real * SHIELD_BLOCK_FACTOR));
+		blocked = true;
+	}
 	const armorApplies = opts.armor !== false;
 	if (armorApplies) {
-		real = applyArmorDamageReduction(player, amount);
+		real = applyArmorDamageReduction(player, real);
 		sendInventory(player); // la durabilidad de la armadura pudo cambiar
+	}
+	// Desgaste del escudo: SOLO si hubo un impacto bloqueado que de verdad
+	// dolió (y tras la reducción). Si se rompe, se desbloquea automáticamente.
+	if (blocked && real >= 1) {
+		if (applyShieldWear(player)) {
+			if (player.ws.readyState === WebSocket.OPEN) {
+				player.ws.send(
+					JSON.stringify({ event: "shield_broke", data: {} })
+				);
+			}
+		}
 	}
 	logDamage(player, opts.source || "unknown", amount, real, opts.meta);
 	player.health = Math.max(0, player.health - real);
@@ -619,6 +673,7 @@ module.exports = {
 	applyToolWear,
 	applyBowWear,
 	applyFishingWear, // Fase 21.5 (A1): caña de pescar
+	applyShieldWear, // Fase 21.5 (C2): desgaste del escudo al bloquear
 	// XP / niveles
 	addXp,
 	// muerte / respawn

@@ -386,7 +386,9 @@ export const ITEM_NAMES = {
 	262: "Caña de pescar",
 	// Fase 21.5 (B4): botella de vidrio y botella de miel
 	263: "Botella de vidrio",
-	264: "Botella de miel"
+	264: "Botella de miel",
+	// Fase 21.5 (C2): escudo (clic derecho mantenido bloquea y reduce el daño)
+	265: "Escudo"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -467,6 +469,10 @@ export const FISHING_ROD = 262;
 // Fase 21.5 (B4): botella de vidrio y botella de miel.
 export const GLASS_BOTTLE = 263;
 export const HONEY_BOTTLE = 264;
+// Fase 21.5 (C2): escudo (1.9) — sin off-hand: en la mano activa, clic derecho
+// mantiene el bloqueo. No se apila, lleva durabilidad propia. Mantener en
+// sincronía con SHIELD_DURABILITY del servidor (unit-sync lo verifica).
+export const SHIELD = 265;
 // Durabilidad máxima por pieza (Fase 7). Mantener en sincronía con
 // ARMOR_DURABILITY de constants.js (servidor) — lo verifica unit-sync.js.
 export const ARMOR_DURABILITY = {
@@ -499,6 +505,10 @@ export const BOW_DURABILITY = 384;
 // igual que el arco, NO está en DURABILITY: no se desgasta al minar/atacar
 // (solo al recoger un pez); el HUD usa FISHING_ROD_DURABILITY para su barra.
 export const FISHING_ROD_DURABILITY = 64;
+// Fase 21.5 (C2): durabilidad del escudo (paridad MC Java, 336). Al igual
+// que arco/caña, NO está en DURABILITY: no se desgasta al minar/atacar
+// (solo al absorber un impacto bloqueado); el HUD usa SHIELD_DURABILITY.
+export const SHIELD_DURABILITY = 336;
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)

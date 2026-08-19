@@ -12,6 +12,8 @@ import {
 	BOW_DURABILITY,
 	FISHING_ROD,
 	FISHING_ROD_DURABILITY,
+	SHIELD,
+	SHIELD_DURABILITY,
 	DURABILITY,
 	itemLabel
 } from "./constants.js";
@@ -101,7 +103,12 @@ function maxDurability(item) {
 		// Fase 21.5 (A1): la caña de pescar usa su propia durabilidad (igual
 		// que el arco: no desgasta al minar/atacar, su barra se descuenta al
 		// recoger un pez).
-		(item.id === BOW ? BOW_DURABILITY : item.id === FISHING_ROD ? FISHING_ROD_DURABILITY : 0)
+		// Fase 21.5 (A1): la caña de pescar usa su propia durabilidad (igual
+		// que el arco: no desgasta al minar/atacar, su barra se descuenta al
+		// recoger un pez). Fase 21.5 (C2): el escudo usa la suya (336).
+		(item.id === BOW ? BOW_DURABILITY
+			: item.id === FISHING_ROD ? FISHING_ROD_DURABILITY
+			: item.id === SHIELD ? SHIELD_DURABILITY : 0)
 	);
 }
 

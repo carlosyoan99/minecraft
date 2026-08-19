@@ -1065,6 +1065,35 @@ function drawFishingRod(g) {
 	set(g, 11, 13, hook);
 }
 
+// Escudo (Fase 21.5, C2): cuerpo romo de madera con borde de hierro y
+// remaches. Icono 16x16 del inventario/hotbar.
+function drawShield(g) {
+	const wood = "#c8a04f",
+		woodDark = "#a67c33",
+		iron = "#cfcfd6",
+		ironDark = "#8f8f99";
+	// Cuerpo principal (hexágono achatado)
+	rect(g, 4, 3, 9, 11, wood);
+	rect(g, 4, 3, 9, 3, woodDark);
+	set(g, 3, 4, iron);
+	set(g, 12, 4, iron);
+	set(g, 3, 12, iron);
+	set(g, 12, 12, iron);
+	rect(g, 5, 2, 6, 2, woodDark);
+	rect(g, 6, 1, 4, 1, woodDark);
+	// Borde de hierro y remaches centrales
+	set(g, 3, 5, ironDark);
+	set(g, 12, 5, ironDark);
+	set(g, 3, 11, ironDark);
+	set(g, 12, 11, ironDark);
+	set(g, 7, 6, iron);
+	set(g, 8, 6, iron);
+	set(g, 7, 9, iron);
+	set(g, 8, 9, iron);
+	set(g, 7, 8, ironDark);
+	set(g, 8, 8, ironDark);
+}
+
 // Flecha: astil diagonal con punta y plumas.
 function drawArrow(g) {
 	const shaft = "#cfc4a8",
@@ -1539,6 +1568,8 @@ ICONS[262] = drawFishingRod;
 // Fase 21.5 (B4): botella de vidrio y botella de miel.
 ICONS[263] = drawGlassBottle;
 ICONS[264] = drawHoneyBottle;
+// Fase 21.5 (C2): escudo (1.9).
+ICONS[265] = drawShield;
 // Fase 21.5 (B4): bloques de colmenas y bloque de miel (cubo con su color).
 for (const id of [83, 84, 85]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Fase 21.5 (B5): coral y algas (cross-quads → icono con su color como

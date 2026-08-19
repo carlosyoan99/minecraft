@@ -27,7 +27,7 @@ const fishing = require("../server/fishing.js");
 const chests = require("../server/chests.js");
 const combat = require("../server/combat.js");
 const { ItemStack } = require("../server/items.js");
-const { B, I, FISHING_ROD_DURABILITY, isFishingRod } = constants;
+const { B, I, FISHING_ROD_DURABILITY, isFishingRod, SHIELD_DURABILITY } = constants;
 
 const LOW = 58; // y de mundo de la base de la zona de prueba (aire/agua)
 
@@ -719,6 +719,88 @@ check(
 		check("B5: hay kelp generado en el océano", kelps > 0, `${kelps}`);
 		check("B5: hay pasto marino generado en el lecho", gras > 0, `${gras}`);
 	}
+}
+
+// ============================================================
+// BLOQUE C (C2): ESCUDO (1.9) — el ítem 265 reduce el daño entrante de
+// mobs/proyectiles mientras player.blocking, desgasta su durabilidad (336)
+// al absorber un impacto real y el daño ambiental (lava/caída/fuego) NO se
+// bloquea (paridad MC). handleShieldBlock solo permite bloquear con el
+// escudo en la mano activa.
+// ============================================================
+{
+	// Mock de jugador de combate: con armadura vacía para que la reducción sea
+	// solo la del escudo y vida completa para medir el daño recibido.
+	const mkFighter = (over = {}) => ({
+		id: "p-escudo",
+		ws: { readyState: 3, send() {} },
+		health: 100,
+		maxHealth: 20,
+		spawnGraceUntil: 0,
+		gamemode: "survival",
+		x: 0,
+		y: 60,
+		z: 0,
+		selectedSlot: 0,
+		armor: { helmet: null, chestplate: null, leggings: null, boots: null },
+		inventory: new Array(36).fill(null),
+		...over
+	});
+	// Estado de bloqueo con escudo en mano vía actions.handleShieldBlock.
+	const actions = require("../server/actions.js");
+	const p1 = mkFighter();
+	p1.inventory[0] = new ItemStack(I.SHIELD);
+	actions.handleShieldBlock(p1, { blocking: true });
+	check("C2: con escudo en mano se puede activar el bloqueo", p1.blocking === true);
+	// El escudo nuevo empieza sin desgastar (durabilidad 336 en el HUD).
+	check(
+		"C2: el escudo recién crafteado no trae desgaste",
+		(p1.inventory[0].durability ?? SHIELD_DURABILITY) === SHIELD_DURABILITY
+	);
+
+	// Sin escudo en la mano, el cliente no puede bloquear.
+	const p2 = mkFighter();
+	actions.handleShieldBlock(p2, { blocking: true });
+	check("C2: sin escudo en mano no se activa el bloqueo", p2.blocking === false);
+
+	// Daño de mob con bloqueo: 20 * SHIELD_BLOCK_FACTOR (0.4) = 8 → vida 92.
+	const p3 = mkFighter();
+	p3.inventory[0] = new ItemStack(I.SHIELD);
+	actions.handleShieldBlock(p3, { blocking: true });
+	combat.damagePlayer(p3, 20, { source: "mob", meta: { mobType: "zombie" } });
+	check(
+		"C2: bloqueando, el daño de un mob se reduce (20 → 8)",
+		p3.health === 100 - 8,
+		`vida=${p3.health}`
+	);
+	// El escudo se desgastó un punto al absorber el impacto.
+	check(
+		"C2: el escudo pierde durabilidad al bloquear un impacto",
+		p3.inventory[0].durability === SHIELD_DURABILITY - 1,
+		`durabilidad=${p3.inventory[0].durability}`
+	);
+
+	// Sin bloqueo, el mismo golpe hace los 20 de daño.
+	const p4 = mkFighter();
+	p4.inventory[0] = new ItemStack(I.SHIELD);
+	combat.damagePlayer(p4, 20, { source: "mob", meta: { mobType: "zombie" } });
+	check("C2: sin bloquear no hay reducción (mismo golpe = 20)", p4.health === 80, `vida=${p4.health}`);
+
+	// El daño ambiental (lava) NO se bloquea aunque estés con el escudo alto.
+	const p5 = mkFighter();
+	p5.inventory[0] = new ItemStack(I.SHIELD);
+	actions.handleShieldBlock(p5, { blocking: true });
+	combat.damagePlayer(p5, 10, { source: "lava" });
+	check("C2: el escudo no bloquea daño ambiental (lava)", p5.health === 90, `vida=${p5.health}`);
+
+	// El escudo se rompe al agotarse: durabilidad 1 → último impacto lo rompe,
+	// se elimina de la mano y se desbloquea solo.
+	const p6 = mkFighter();
+	p6.inventory[0] = new ItemStack(I.SHIELD, 1, 1);
+	actions.handleShieldBlock(p6, { blocking: true });
+	combat.damagePlayer(p6, 20, { source: "mob", meta: { mobType: "zombie" } });
+	check("C2: al romperse el escudo se elimina de la mano", p6.inventory[0] === null);
+	check("C2: al romperse el escudo se deja de bloquear", p6.blocking === false);
 }
 
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);

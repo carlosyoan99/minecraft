@@ -673,6 +673,17 @@
 			"count": 1
 		}
 	},
+	"shield": {
+		"shape": [" I ", "###", "###"],
+		"ingredients": {
+			"#": 7,
+			"I": 120
+		},
+		"result": {
+			"id": 265,
+			"count": 1
+		}
+	},
 	"arrow": {
 		"shape": ["#", "I", "F"],
 		"ingredients": {
