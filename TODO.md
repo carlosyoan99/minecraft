@@ -1128,8 +1128,9 @@
       en arrecifes de océano cálido (estático, sin decoloración)
 - [ ] C1 Horno de fundición (1.14): `BLAST_FURNACE` funde minerales ×2, UI
       propia, crafteo (5 lingotes + horno)
-- [ ] C2 Escudo (1.9): `SHIELD` — clic derecho bloquea y reduce el daño
-      (sin off-hand completo), durabilidad, animación en cliente
+- [x] C2 Escudo (1.9): `SHIELD` — clic derecho mantiene el bloqueo y reduce el
+      daño de mobs/proyectiles (60 %, antes de armadura), durabilidad 336,
+      viñeta de pose en cliente, crafteo (1 lingote + 6 tablones)
 - [ ] C3 Tótem de inmortalidad (1.11): evita la muerte, cura + absorción, se
       consume; loot de mansión (F21) y Trial Chambers (D1)
 - [ ] C4 Camas de colores (1.12): 16 camas con los 16 tintes (dormir/respawn

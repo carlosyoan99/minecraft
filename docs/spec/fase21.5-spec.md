@@ -242,7 +242,7 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
 - **Criterio:** test: receta de mena en el blast furnace va a la mitad de
   ticks; `unit-sync`/`unit-recetas` en verde.
 
-### C2 — Escudo (1.9)
+### C2 — Escudo (1.9) — ✅ IMPLEMENTADO (2026-08-19)
 
 - **Qué hacer:** ítem `SHIELD` (sin off-hand completo): se lleva en la mano
   activa y al pulsar **clic derecho** se **bloquea y reduce el daño**
@@ -250,8 +250,18 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   animación/pose en cliente, brazo extendido). Durabilidad. Crafteo (1
   lingote + 6 tablones). Mobs del mundo y proyectiles respetan la reducción.
 - **Qué no incluir:** off-hand completo; encantamientos.
+- **Decisión documentada:** sin off-hand, el bloqueo se hace manteniendo el
+  clic derecho con el escudo en la MANO ACTIVA. No hay ángulo de bloqueo ni
+  encantamientos. `SHIELD_BLOCK_FACTOR = 0.4` (absorbe el 60 % del daño de
+  mobs/proyectiles) y se aplica ANTES de la armadura (orden bloque→armadura
+  de Minecraft); el daño ambiental (lava, fuego, caída, inanición) NO se
+  bloquea. Desgaste: 1 punto por impacto absorbido (durabilidad 336, valor
+  oficial MC); al llegar a 0 el escudo se rompe (`shield_broke`) y el
+  jugador deja de bloquear. La "pose" del cliente es una viñeta + retícula
+  (sin modelo 3D de brazo, fuera de alcance).
 - **Criterio:** test: con el escudo activo el daño se reduce (assert en
-  `unit-combat`/`unit-fase21.5`); `unit-sync`/`unit-recetas` en verde.
+  `unit-fase21.5` sección C2); `unit-sync`/`unit-recetas` en verde.
+  Resultado: suite `--unit` completa en verde en el árbol limpio del commit.
 
 ### C3 — Tótem de inmortalidad (1.11)
 
