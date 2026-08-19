@@ -952,6 +952,7 @@ module.exports = {
 	handleCreativePick,
 	handleCreativeFly,
 	handleChat,
+	handleShieldBlock,
 	setWorldTimeFn,
 	setBroadcastFn,
 	setBroadcastNearFn
