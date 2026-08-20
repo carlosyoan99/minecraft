@@ -39,13 +39,19 @@ graph LR
     F23[Fase 23 · Diferidos F22] --> F22
     F24[Fase 24 · Nether Update] --> F23
     F25[Fase 25 · End Update] --> F24
+    F26[Fase 26 · Encantamientos] --> F25
+    F26_5[Fase 26.5 · Pociones] --> F26
+    F27[Fase 27 · Mundo ampliado] --> F25
+    F27_5[Fase 27.5 · Mobs zona activa] --> F27
+    F28[Fase 28 · Multijugador] --> F25
+    F29[Fase 29 · Modos/QoL] --> F25
 
     classDef done fill:#2d6a4f,stroke:#1b4332,color:#fff;
     classDef active fill:#e9c46a,stroke:#b98a00,color:#222;
     classDef planned fill:#6a6a6a,stroke:#444,color:#fff;
     class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5,F19_6,F20,F21 done;
     class F21_5 active;
-    class F22,F23,F24,F25 planned;
+    class F22,F23,F24,F25,F26,F26_5,F27,F27_5,F28,F29 planned;
 ```
 
 ## Tabla de prerrequisitos
@@ -82,6 +88,12 @@ graph LR
 | 23 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada | 📝 Prospectiva |
 | 24 | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada | 📝 Prospectiva |
 | 25 | [`fase25-spec.md`](docs/spec/fase25-spec.md) | F24 cerrada | 📝 Prospectiva |
+| 26 | [`fase26-spec.md`](docs/spec/fase26-spec.md) | F25 cerrada | 📝 Prospectiva (orden post-F25: F29→**F26**→F27→F28) |
+| 26.5 | [`fase26.5-spec.md`](docs/spec/fase26.5-spec.md) | F26 + F24 cerradas | 📝 Prospectiva |
+| 27 | [`fase27-spec.md`](docs/spec/fase27-spec.md) | F25 cerrada | 📝 Prospectiva (orden post-F25: F29→F26→**F27**→F28) |
+| 27.5 | [`fase27.5-spec.md`](docs/spec/fase27.5-spec.md) | F27 cerrada | 📝 Prospectiva |
+| 28 | [`fase28-spec.md`](docs/spec/fase28-spec.md) | F25 cerrada | 📝 Prospectiva (orden post-F25: F29→F26→F27→**F28**) |
+| 29 | [`fase29-spec.md`](docs/spec/fase29-spec.md) | F25 cerrada | 📝 Prospectiva (orden post-F25: **F29**→F26→F27→F28) |
 
 ## Notas del grafo
 
@@ -97,6 +109,15 @@ graph LR
 - **F24/F25 desbloquean** el Won't "dimensiones" (Nether/End) al abrirse.
 - **F20** (rolling release) solo exige la **F18 cerrada** (depende de 16/17,
   pero no de la 19 en curso).
+- **Orden post-F25 (entrevista 2026-08-20):** F29→F26→F27→F28 (empezar
+  por lo más fácil: modos/QoL, luego encantamientos, luego mundo, luego
+  multijugador). F26.5 (pociones) va después de F26. F27.5 (mobs) va
+  después de F27.
+- **F27 incluye netherita condicionalmente:** solo si F24 está cerrada
+  cuando se llega al Bloque D; si no, se posterga.
+- **Branch por fase:** cada fase del post-F25 se trabaja en branch
+  separada (`fase29-qol`, `fase26-enchants`, `fase27-world`,
+  `fase27.5-mobs`, `fase28-multi`) y se fusiona a `main` al cerrar.
 - **Cualquier cambio de prerequisito** debe actualizar este grafo, la spec,
   `STATUS.md`, `TODO.md` y `docs/README.md` en el mismo cambio.
 

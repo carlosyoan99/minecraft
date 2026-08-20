@@ -1361,6 +1361,155 @@
 
 ---
 
+## Fase 29 — Modos de juego y calidad de vida (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase29-spec.md`](docs/spec/fase29-spec.md)
+> **EN CURSO** — prerrequisito: Fase 25 cerrada. Primera fase del
+> orden post-F25 (F29→F26→F27→F28). Branch: `fase29-qol`.
+
+- [ ] A1 Modo espectador: cámara libre sin física, invisible para mobs,
+      sin interacción con bloques/inventario, transición limpia
+- [ ] A2 Modo aventura: no se pueden romper bloques sin herramienta
+      válida, sí interactuar con cofres/puertas
+- [ ] A3 Modo hardcore: muerte permanente → spectator automático, checkbox
+      en creación de mundos, no revertible sin recrear
+- [ ] B1 Mapa (exploración simplificada): posición actual + spawn, celdas
+      de bioma, persistencia en ItemStack, receta
+- [ ] B2 Brújula y reloj: indicación visual en HUD, recetas, sin
+      utilidad mecánica
+- [ ] B3 Libro y pluma: panel de texto, persistencia `pages` en ItemStack,
+      50 páginas / 256 chars, receta
+- [ ] B4 Sistema de marcadores: `/mark`, `/marks`, `/tpmark`, persistencia
+      en world.json, visibles en mapa
+- [ ] C1 Tests de modos (spectador, aventura, hardcore)
+- [ ] C2 Tests de ítems (MAP, COMPASS, CLOCK, BOOK_AND_QUILL, FEATHER)
+- [ ] C3 Tests de persistencia (libro, marcadores)
+- [ ] D1 Cierre y auditoría de Fase 29: suite + E2E + `--audit` +
+      `unit-fase29` en verde + manual (spectador, aventura, hardcore,
+      mapa, libro); docs y tracker al día
+
+---
+
+## Fase 26 — Encantamientos (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase26-spec.md`](docs/spec/fase26-spec.md)
+> **EN CURSO** — prerrequisito: Fase 25 cerrada. Segunda fase del
+> orden post-F25. Branch: `fase26-enchants`.
+
+- [ ] A1 Mesa de encantamientos: bloque ENCHANTING_TABLE, UI 3 opciones,
+      consumo de XP + lapislázuli, sin estanterías
+- [ ] A2 Lapislázuli: ítem LAPIS_LAZULI + bloque LAPIS_ORE (generación
+      subterránea en bandas)
+- [ ] B1 Catálogo de 5 encantamientos: Filo I-III (daño), Protección
+      I-IV (reducción), Eficiencia I-V (minado), Fortuna I-III (drops),
+      Durabilidad I-III (desgaste)
+- [ ] B2 Integración en cálculos: Filo/Protección en combat.js,
+      Eficiencia/Fortuna/Durabilidad en players.js
+- [ ] C1 Libro encantado: ítem ENCHANTED_BOOK, resultado alternativo de
+      la mesa
+- [ ] C2 Yunque: bloque ANVIL, combinar libros+herramientas, reparar,
+      costo XP simplificado
+- [ ] D1 Persistencia: campo `enchantments` en ItemStack (retrocompatible,
+      SCHEMA_VERSION 6 intacto), tooltip en inventario
+- [ ] E1 Tests: 5 encantamientos + yunque + persistencia + consumo XP
+- [ ] F1 Cierre y auditoría de Fase 26: suite + E2E + `--audit` +
+      `unit-fase26` en verde + manual (mesa→encantar→yunque→guardar→
+      cargar); auditoría con foco en combate + durabilidad; docs y
+      tracker al día
+
+---
+
+## Fase 26.5 — Pociones y efectos de estado (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase26.5-spec.md`](docs/spec/fase26.5-spec.md)
+> **Prospectiva** — prerrequisito: Fase 26 cerrada + Fase 24 (Nether)
+> cerrada (ingredientes del Nether).
+
+- [ ] A1 Mesa de pociones (BREWING_STAND): bloque, UI 3 slots + ingrediente
+      + combustible (vara de blaze), poción base (agua + verrugas)
+- [ ] B1 Catálogo (duración fija): Curación (instantánea), Fuerza,
+      Resistencia, Caída lenta, Veneno
+- [ ] C1 Sistema de efectos de estado: estructura por jugador, sincronización
+      al cliente, integración en combate/física (sin rutas paralelas)
+- [ ] C2 HUD de efectos: iconos con tiempo restante
+- [ ] D1 Pociones arrojadizas: decidir incluir/no (evaluar alcance)
+- [ ] E1 Tests: cada poción + interacción efecto×combate + efecto×física
+- [ ] F1 Cierre y auditoría de Fase 26.5: suite + E2E + auditoría con
+      foco en que efectos no crean rutas paralelas de cálculo
+
+---
+
+## Fase 27 — Mundo y exploración ampliados (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase27-spec.md`](docs/spec/fase27-spec.md)
+> **EN CURSO** — prerrequisito: Fase 25 cerrada. Tercera fase del
+> orden post-F25. Independiente de F26/F26.5. Branch: `fase27-world`.
+
+- [ ] A1 Altura del mundo a 256 (experimental): auditar constantes,
+      extender generación detrás de toggle `experimentalHeight`,
+      SCHEMA_VERSION 7 si coexisten ambas alturas, medir rendimiento
+- [ ] A2 Mundo más allá de 8192 (experimental): extender límite detrás
+      de toggle `experimentalSize`, confirmar guardado escala
+- [ ] B1 Netherita (condicional a F24 cerrada): ANCIENT_DEBRIS (Nether),
+      NETHERITE_SCRAP (funde), NETHERITE_INGOT (craft con oro), upgrade
+      de equipo diamante (conserva encantamientos si F26 existe)
+- [ ] B2 Bloques de netherite: BLOCK, BRICKS (decorativos)
+- [ ] C1 Contenido de mundo faltante: auditar STATUS.md contra specs
+      F21-F23, completar solo lo confirmado como pendiente
+- [ ] D1 Tests de generación para nueva altura, tests de rendimiento,
+      test de Netherite (si F24 cerrada)
+- [ ] E1 Cierre y auditoría de Fase 27: suite + E2E + auditoría con
+      foco en rendimiento (comparar tick/FPS/memoria antes/después)
+
+---
+
+## Fase 27.5 — Sistema de mobs por zona activa (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase27.5-spec.md`](docs/spec/fase27.5-spec.md)
+> **EN CURSO** — prerrequisito: Fase 27 cerrada. Cuarta fase del
+> orden post-F25. Branch: `fase27.5-mobs`.
+
+- [ ] A1 Tres estados (activo/dormido/despawneado): MOB_ACTIVE_RANGE,
+      verificar distancia antes del tick, transición inmediata,
+      proyectiles exentos
+- [ ] B1 Spawn distribuido: corregir spawnMobs() para iterar todos los
+      jugadores (round-robin o ponderado)
+- [ ] C1 Cupo dos niveles: MOB_ACTIVE_CAP (15-20/por jugador) +
+      MOB_TOTAL_CAP (150-200/mundo)
+- [ ] D1 Mascotas: decisión explícita (exentas o teletransporte)
+- [ ] E1 Pulpo/calamar: confirmar si pendiente, implementar si sí
+      (SQUID: 16HP, spawn en océano, drop INK_SAC)
+- [ ] F1 Verificar persecución/pathfinding (si sigue abierto)
+- [ ] G1 Telemetría en F3: contadores activos/dormidos/total
+- [ ] H1 Tests: estados, spawn distribuido, topes, pulpo
+- [ ] I1 Cierre y auditoría de Fase 27.5: suite + E2E + auditoría con
+      foco en rendimiento real (comparar tick antes/después)
+
+---
+
+## Fase 28 — Multijugador y comunidad (Spec)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase28-spec.md`](docs/spec/fase28-spec.md)
+> **EN CURSO** — prerrequisito: Fase 25 cerrada. Quinta fase del
+> orden post-F25. Independiente de F26/F27. Branch: `fase28-multi`.
+
+- [ ] A1 Chat con 3 canales: global (actual), local (/local, radio 64),
+      privado (/msg, /tell)
+- [ ] A2 UI de chat: etiquetas de canal con colores
+- [ ] B1 Moderación: /mute (persiste sesión), /kick, /ban (persiste
+      world.json), /unban
+- [ ] B2 Logging de moderación en server/log.js
+- [ ] C1 Estadísticas: blocksBroken, mobsKilled (por tipo), deaths,
+      distanceWalked — persistencia en world.json, comando /stats
+- [ ] C2 Incremento de stats en puntos correspondientes del código
+- [ ] D1 Contraseña opcional por mundo: campo en world.json, prompt
+      al unirse, validación en join_world
+- [ ] E1 Tests: canales chat, moderación, persistencia stats, contraseña
+- [ ] F1 Cierre y auditoría de Fase 28: suite + E2E + auditoría con
+      foco en seguridad de moderación (no se salta desde cliente)
+
+---
+
 ## Fuera de alcance (Won't)
 
 - BD externa, autenticación/cuentas, redstone, aldeas generadas, clima;
