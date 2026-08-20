@@ -1267,6 +1267,20 @@
 			"count": 1
 		}
 	},
+	"mace": {
+		"shape": [
+			"C",
+			"R"
+		],
+		"ingredients": {
+			"C": 181,
+			"R": 271
+		},
+		"result": {
+			"id": 272,
+			"count": 1
+		}
+	},
 	"concrete_powder_white": {
 		"shape": [
 			"SGS",

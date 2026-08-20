@@ -726,7 +726,17 @@ function handleAttackMob(p, ws, data) {
 	// daño es 1 (mano desnuda, como Minecraft Java 1.9+). Auditoría 2026-08-09
 	// (§3.7): hachas/picos/palas también pegan (TOOL_DAMAGE); lo que no está
 	// en ninguna tabla (azada, mano) sigue en 1.
-	const dmg = TOOL_DAMAGE[tool] || SWORD_DAMAGE[tool] || 1;
+	// Fase 21.5 (D3): la MAZA suma daño por la altura de caída acumulada
+	// (fallFromY se mantiene mientras el jugador está en el aire; al aterrizar
+	// se limpia). En MC la maza golpea con bonus por cada bloque caído; aquí,
+	// al no haber cooldown de ataque, el bonus es por blow caído acumulado.
+	let dmg = TOOL_DAMAGE[tool] || SWORD_DAMAGE[tool] || 1;
+	if (tool === constants.I.MACE && p.fallFromY != null) {
+		const fallBlocks = Math.max(0, p.fallFromY - p.y);
+		if (fallBlocks >= constants.MACE_FALL_MIN_BLOCKS) {
+			dmg += Math.floor(fallBlocks) * constants.MACE_FALL_DAMAGE_PER_BLOCK;
+		}
+	}
 	mob.health -= dmg;
 	// Fase 12 (A1/E10): los lobos domados del atacante se unen al golpe (≤12
 	// bloques del objetivo, daño 3 cada uno). Se aplica ANTES de evaluar la

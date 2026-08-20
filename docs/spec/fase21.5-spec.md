@@ -337,14 +337,31 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
 - **Criterio:** test: dispara flecha de veneno; aparece en el pantano; sin
   regresión de esqueletos.
 
-### D3 — Maza (1.21) + Núcleo Pesado
+### D3 — Maza (1.21) + Núcleo Pesado — ✅ IMPLEMENTADO (2026-08-19)
 
 - **Qué hacer:** arma nueva `MACE` + `HEAVY_CORE` (se encuentra en Trial
   Chambers). Daño mejora con la **altura de caída** al golpear
-  (`attack_mob` en `server/combat.js`); receta maza = heavy core + breeze
+  (`attack_mob` en `server/actions.js`); receta maza = heavy core + breeze
   rod (D5). Durabilidad media.
+- **Decisión documentada (paridad con cooldown):** como en MC Java la maza
+  tiene daño base 6 y una "embestida" que suma más cuanta más altura de
+  caída (1-10 bloques → +5 de daño por cada bloque), y ESTE CLON no simula
+  el cooldown de ataque, el directo es: daño base 6 (en `TOOL_DAMAGE`) +
+  `MACE_FALL_DAMAGE_PER_BLOCK` (1) por cada bloque completo de caída
+  acumulada (`fallFromY`, que el servidor mantiene mientras el jugador está
+  en el aire) si la caída supera `MACE_FALL_MIN_BLOCKS` (1.5). Sin
+  embestida (de pie) pega 6, igual que la espada de hierro, pero NO se
+  desgasta con el ataque más allá de la durabilidad propia (250, sincr.
+  `DURABILITY`/`TOOL_DURABILITY`).
+- **Decisión documentada (obtención):** `HEAVY_CORE` y `BREEZE_ROD` no
+  tienen fuente de loot todavía (Trial Chambers = D1, Breeze = F23); ambos
+  entran en el catálogo creativo (con la maza) para poder probar la
+  embestida. La receta `mace` (181+271 → 272) queda definida y se activa en
+  cuanto esas fuentes existan.
 - **Criterio:** test: daño con caída > sin caída (assert numérico);
-  `unit-sync`/`unit-recetas` en verde.
+  `unit-sync`/`unit-recetas` en verde. Resultado: `unit-sync`,
+  `unit-recetas`, `unit-fase21.5` y `unit-itemicons` en verde; verificación
+  numérica de la embestida (maza base 6, caída de 10 → 16).
 
 ### D4 — Familia de cobre y Tuff expandidos (1.21)
 

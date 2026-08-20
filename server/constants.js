@@ -1306,6 +1306,19 @@ const TOOL_DAMAGE = {
 	[I.DIAMOND_SHOVEL]: 5
 };
 
+// Fase 21.5 (D3): MAZA (1.21). En Minecraft Java la maza es un martillo de
+// guerra con daño base 6 (entre espada de hierro y diamante) que en una
+// "embestida" (cuando el portador VA CAYENDO) suma +1 de daño por cada 3
+// bloques de altura caída además del daño base. ESTE CLON no simula el
+// cooldown de ataque (misma salvedad que las hachas de arriba), así que la
+// maza usa el daño base MC (6) y el bonus por caída se suma por bloque caído
+// (MACE_FALL_DAMAGE_PER_BLOCK). El criterio de la spec es "daño con caída
+// > sin caída" — se verifica en unit-fase21.5.
+const MACE_FALL_MIN_BLOCKS = 1.5; // altura mínima de caída para embestida (MC)
+const MACE_FALL_DAMAGE_PER_BLOCK = 1; // +1 HP por cada bloque completo de caída
+// La maza entra en TOOL_DAMAGE para que haga su daño base al golpear sin caer.
+TOOL_DAMAGE[I.MACE] = 6;
+
 // ============================================================
 // EXPERIENCIA Y NIVELES (Fase 5 simple + Fase 9 curva MC + Fase 13 paridad)
 // XP por matar mobs y por minar minerales. La salud máxima es SIEMPRE 20
@@ -1536,7 +1549,50 @@ const CREATIVE_ITEMS = [
 	I.LAVA_BUCKET,
 	// Fase 21.5 (B4): botellas (vidrio y miel)
 	I.GLASS_BOTTLE,
-	I.HONEY_BOTTLE
+	I.HONEY_BOTTLE,
+	// Fase 21.5 (C1/C4/C5): horno de fundición, camas de colores y concreto
+	B.BLAST_FURNACE,
+	B.BED_WHITE,
+	B.BED_ORANGE,
+	B.BED_MAGENTA,
+	B.BED_LIGHT_BLUE,
+	B.BED_YELLOW,
+	B.BED_LIME,
+	B.BED_PINK,
+	B.BED_GRAY,
+	B.BED_LIGHT_GRAY,
+	B.BED_CYAN,
+	B.BED_PURPLE,
+	B.BED_BLUE,
+	B.BED_BROWN,
+	B.BED_GREEN,
+	B.BED_RED,
+	B.BED_BLACK,
+	...Object.values(B).filter((v) => v >= B.CONCRETE_WHITE && v <= B.CONCRETE_BLACK), // 16 concreto
+	...Object.values(B).filter(
+		(v) => v >= B.CONCRETE_POWDER_WHITE && v <= B.CONCRETE_POWDER_BLACK
+	), // 16 polvo de concreto
+	// Fase 21.5 (E2/E3): lanas nuevas y bloques decorativos 1.21.5
+	B.GRAY_WOOL,
+	B.BLACK_WOOL,
+	B.BROWN_WOOL,
+	B.FIREFLY_BUSH,
+	B.LEAF_LITTER,
+	B.WILDFLOWERS,
+	B.BUSH,
+	B.SHORT_DRY_GRASS,
+	B.TALL_DRY_GRASS,
+	B.CACTUS_FLOWER,
+	// Fase 21.5 (D1/D3): Trial Chambers — bóveda decorativa y núcleo pesado
+	B.VAULT,
+	B.HEAVY_CORE,
+	// Fase 21.5 (F1/F3): Pale Garden y Corazón Crujiente
+	B.PALE_OAK_LOG,
+	B.PALE_OAK_LEAVES,
+	B.PALE_OAK_PLANKS,
+	B.PALE_MOSS_BLOCK,
+	B.PALE_MOSS,
+	B.CREAKING_HEART
 ];
 // Todos los ítems/armas/herramientas del juego (para el picker creativo).
 const ALL_TOOLS_AND_ARMOR = [
@@ -1544,7 +1600,8 @@ const ALL_TOOLS_AND_ARMOR = [
 	...Object.values(I).filter((v) => v >= 240 && v <= 244), // azadas (Fase 9, Bloque C)
 	I.FISHING_ROD, // Fase 21.5 (A1): caña de pescar en el picker creativo
 	I.SHIELD, // Fase 21.5 (C2): escudo (no se apila, lleva durabilidad propia)
-	I.TOTEM_OF_UNDYING // Fase 21.5 (C3): tótem de la inmortalidad (no se apila)
+	I.TOTEM_OF_UNDYING, // Fase 21.5 (C3): tótem de la inmortalidad (no se apila)
+	I.MACE // Fase 21.5 (D3): maza — arma de Trial Chambers, no se apila
 ];
 
 // ============================================================
@@ -1686,6 +1743,9 @@ module.exports = {
 	isTool,
 	SWORD_DAMAGE,
 	TOOL_DAMAGE,
+	// Fase 21.5 (D3): maza — ajustes del daño por altura de caída.
+	MACE_FALL_MIN_BLOCKS,
+	MACE_FALL_DAMAGE_PER_BLOCK,
 	ARMOR_SLOTS,
 	ARMOR_POINTS,
 	ARMOR_DURABILITY,

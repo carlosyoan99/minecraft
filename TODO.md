@@ -1136,7 +1136,7 @@
       jungla hasta mansión/Trial Chambers (D1)
 - [x] C4 Camas de colores (1.12): 16 camas con los 16 tintes (dormir/respawn
       igual que la roja), crafteo cama + tinte
-- [ ] C5 Concreto (1.12): 16 `CONCRETE` + 16 `CONCRETE_POWDER`; el polvo cae
+- [x] C5 Concreto (1.12): 16 `CONCRETE` + 16 `CONCRETE_POWDER`; el polvo cae
       con gravedad (física arena/grava) y al tocar agua se convierte en
       concreto sólido (o simplificado sin conversión si es costoso)
 - [ ] D1 Trial Chambers (estructura, 1.21): subterránea en deepslate,
@@ -1144,7 +1144,7 @@
       llave/una-vez); determinista por hash 2D; sin Trial Spawner/ominous
 - [ ] D2 Bogged (esqueleto de pantano, 1.21): dispara flecha con veneno,
       spawn en pantano; Breeze ya en F23 A2 (coordinación: no duplicar)
-- [ ] D3 Maza (1.21): `MACE` + `HEAVY_CORE` (de Trial Chambers); daño
+- [x] D3 Maza (1.21): `MACE` + `HEAVY_CORE` (de Trial Chambers); daño
       escala con altura de caída en `attack_mob`; receta maza = core + rod
 - [ ] D4 Familia de cobre y tuff (1.21): variantes de cobre (escaleras/
       losas/puertas, sin oxidación) + familia de tuff (pulido/ladrillo)
