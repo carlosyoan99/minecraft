@@ -321,6 +321,21 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   ominous, Vault funcional con llaves.
 - **Criterio:** test determinista de la estructura en su capa;
   botín coherente; `unit-sync` en verde.
+- **✅ IMPLEMENTADO (2026-08-20):** estructura subterránea determinista en
+  `server/structures.js` — celdas `TRIAL_CELL` 64×64, gate `TRIAL_GATE`
+  3.5 % (hash 2D, sal), footprint 9×9 (`TRIAL_HALF` 4) excavado
+  `TRIAL_DEPTH` 14 bajo el terreno del centro: piso de adoquín en todo el
+  footprint, cámara central 3×3 con **VAULT** en el centro exacto y
+  **HEAVY_CORE** (1-2, determinista por hash) adyacente ortogonal
+  (N/E primero), pasillos en cruz, corredor perimetral con 2-4 cofres de
+  **botín Trial** (`chests.trialLootSlots()`: lingotes, esmeralda, pan,
+  hueso, pólvora, flecha, y HEAVY_CORE). Solo en terreno firme (nunca
+  agua) y fuera de la capa de roca madre. **Decisión documentada:**
+  deepslate aún no existe (llega en F22 A3), el material es **piedra** en
+  la capa profunda (el v6 llega a −64, hay piedra de sobra); al abrir F22
+  no hace falta migración, el material hereda la capa. El `HEAVY_CORE`
+  ahora es minable con pico (dureza 15, categoría `stone`), activando la
+  fuente de la receta maza (D3).
 
 ### D2 — Bogged (esqueleto de pantano) — Breeze ya está en F23 A2
 
@@ -469,6 +484,16 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   las atenúa. Puramente visual (`public/particles.js`).
 - **Criterio:** verificación manual en navegador; FPS sin penalización
   relevante.
+- **✅ IMPLEMENTADO (2026-08-20):** lógica pura en
+  `public/leafparticles.js` (`LEAF_BLOCKS` roble/abedul/pino/jungla/pale,
+  `findLeafPoint` escanea la columna más alta de copa en un disco de 12 y
+  `leafParticleConfig(reduceMotion)` fija intervalos/frecuencia/vaivén), y
+  render en `public/particles.js` (geometría aplanada de hoja con caída
+  constante y balanceo sinusoidal, pool propio reutilizable, tope `MAX_ALIVE`
+  compartido). Emisor `tickFallingLeaves(dt, x, y, z, reduceMotion)`
+  muestreado por frame con acumulador en el bucle de animación de
+  `player.js`; "reducir movimiento" alarga el intervalo ~7×, recorta la
+  probabilidad y suaviza el vaivén. Visual puro: ni wire ni guardado.
 
 ### E5 — Sonidos ambientales desierto/badlands
 

@@ -1139,9 +1139,12 @@
 - [x] C5 Concreto (1.12): 16 `CONCRETE` + 16 `CONCRETE_POWDER`; el polvo cae
       con gravedad (física arena/grava) y al tocar agua se convierte en
       concreto sólido (o simplificado sin conversión si es costoso)
-- [ ] D1 Trial Chambers (estructura, 1.21): subterránea en deepslate,
+- [x] D1 Trial Chambers (estructura, 1.21): subterránea en deepslate,
       pasillos/salas con cofres de botín + `VAULT` decorativo (sin
       llave/una-vez); determinista por hash 2D; sin Trial Spawner/ominous
+      (2026-08-20: 9×9, gate 3.5 %, VAULT + 1-2 HEAVY_CORE + cofres Trial
+      en corredor perimetral, piso de adoquín; material piedra en la capa
+      profunda — deepslate llega en F22 A3, decisión documentada)
 - [x] D2 Bogged (esqueleto de pantano, 1.21): dispara flecha con veneno,
       spawn en pantano; Breeze ya en F23 A2 (coordinación: no duplicar)
 - [x] D3 Maza (1.21): `MACE` + `HEAVY_CORE` (de Trial Chambers); daño
@@ -1165,8 +1168,9 @@
       esquileo suelta esa lana
 - [x] E3 Bloques decorativos 1.21.5: `FIREFLY_BUSH`, `LEAF_LITTER`,
       `WILDFLOWERS`, `BUSH`, hierba seca corta/alta, `CACTUS_FLOWER`
-- [ ] E4 Partículas de hojas cayendo (cliente; "reducir movimiento" las
-      atenúa)
+- [x] E4 Partículas de hojas cayendo (cliente; "reducir movimiento" las
+      atenúa) (2026-08-20: `public/leafparticles.js` lógica pura +
+      física de hoja en `particles.js`)
 - [x] E5 Sonidos ambientales de desierto/badlands (con el audio por bioma
       de F19.5 A1)
 - [x] F1 Pale Garden (1.22/26.1): bioma con roble pálido y musgo claro
