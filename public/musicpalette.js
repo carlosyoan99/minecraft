@@ -36,7 +36,11 @@ const BIOME_PALETTES = {
 	// volumen medio y gaps amplios (4000ms) para transmitir soledad.
 	badlands: { pool: [0, 2, 4], vol: 0.85, gapMin: 4000 },
 	forest: { pool: [1, 2, 3, 4, 5], vol: 1.0, gapMin: 3000 },
-	plains: { pool: [1, 2, 3, 4, 5], vol: 1.0, gapMin: 3000 }
+	plains: { pool: [1, 2, 3, 4, 5], vol: 1.0, gapMin: 3000 },
+	// Fase 21.5 (F1): Pale Garden — paleta sutil y espaciada (bosque pálido,
+	// niebla ligera). Notas graves con gaps amplios para transmitir
+	// misterio/quietud, similar a taiga pero más suave.
+	pale_garden: { pool: [0, 2, 3], vol: 0.7, gapMin: 4200 }
 };
 
 // Cueva: escala grave y espaciada (manda sobre el bioma).

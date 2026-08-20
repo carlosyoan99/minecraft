@@ -657,6 +657,50 @@ function generateChunk(cx, cz) {
 			} else if (
 				canGrowTree &&
 				treeFits &&
+				biome === "pale_garden" &&
+				treeRoll < 0.04
+			) {
+				// Fase 21.5 (F1): roble pálido — tronco medio (4-6 bloques) con copa
+				// redondeada similar al roble normal pero usando PALE_OAK_LOG/LEAVES.
+				// ~1/12 de las columnas del pale garden generan un árbol.
+				const treeHeight = 4 + Math.floor(rand() * 3);
+				for (let i = 0; i < treeHeight; i++) {
+					const y = height + i;
+					if (y <= WORLD_MAX_Y)
+						data[core.idx(x, core.toLocal(y), z)] = B.PALE_OAK_LOG;
+				}
+				// 10% de probabilidad de un Creaking Heart en el tronco.
+				if (x + 1 < CHUNK_SIZE && rand() < 0.1) {
+					const hy = height + 1 + Math.floor(rand() * treeHeight);
+					if (hy <= WORLD_MAX_Y)
+						data[core.idx(x + 1, core.toLocal(hy), z)] = B.CREAKING_HEART;
+				}
+				// Copa de hojas de roble pálido.
+				for (let dx = -2; dx <= 2; dx++) {
+					for (let dz = -2; dz <= 2; dz++) {
+						for (let dy = treeHeight - 2; dy <= treeHeight; dy++) {
+							if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && dy === treeHeight)
+								continue;
+							const lx = x + dx,
+								lz = z + dz;
+							if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE)
+								continue;
+							const y = height + dy;
+							if (y <= WORLD_MAX_Y)
+								pendingLeaves.push({
+									lx,
+									y,
+									lz,
+									block: B.PALE_OAK_LEAVES,
+									vines: false,
+									height
+								});
+						}
+					}
+				}
+			} else if (
+				canGrowTree &&
+				treeFits &&
 				biome === "giant_taiga" &&
 				treeRoll < 0.02
 			) {

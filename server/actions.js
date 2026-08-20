@@ -949,6 +949,104 @@ function handleChat(p, data) {
 	});
 }
 
+// ============================================================
+// Fase 21.5 (F4): Mochila (Bundle) — inventario portátil (9 slots).
+// Patrón simplificado del cofre: clic derecho con la mochila en la mano
+// abre la UI, put/take mueven items entre el inventario y la mochila.
+// No hay distancia de bloque (es un ítem, no un bloque del mundo).
+// ============================================================
+function handleBundleOpen(p, ws) {
+	// Solo se puede tener una UI abierta a la vez.
+	if (p.openChest || p.openFurnace) return;
+	p.openBundle = true;
+	ws.send(
+		JSON.stringify({
+			event: "bundle_state",
+			data: { slots: p.bundle.map((s) => (s ? { id: s.id, count: s.count, durability: s.durability } : null)) }
+		})
+	);
+}
+
+function handleBundleAction(p, ws, data) {
+	if (!p.openBundle) return;
+	if (data.action === "close") {
+		p.openBundle = false;
+		return;
+	}
+	if (data.action === "put") {
+		const invSlot = data.invSlot;
+		if (!Number.isInteger(invSlot) || invSlot < 0 || invSlot > 35) return;
+		const item = p.inventory[invSlot];
+		if (!item) return;
+		// Slot destino explícito o primer hueco.
+		const targetSlot = Number.isInteger(data.bundleSlot) ? data.bundleSlot : -1;
+		if (targetSlot >= 0 && targetSlot < 9) {
+			const dest = p.bundle[targetSlot];
+			if (dest && (dest.id !== item.id || constants.isTool(item.id))) return;
+			if (dest) dest.count += item.count;
+			else p.bundle[targetSlot] = { id: item.id, count: item.count, durability: item.durability };
+			p.inventory[invSlot] = null;
+		} else {
+			// Buscar slot existente apilable o primer hueco.
+			let placed = false;
+			for (let i = 0; i < 9; i++) {
+				const dest = p.bundle[i];
+				if (dest && dest.id === item.id && !constants.isTool(item.id)) {
+					dest.count += item.count;
+					placed = true;
+					break;
+				}
+			}
+			if (!placed) {
+				for (let i = 0; i < 9; i++) {
+					if (!p.bundle[i]) {
+						p.bundle[i] = { id: item.id, count: item.count, durability: item.durability };
+						placed = true;
+						break;
+					}
+			}
+		}
+			if (placed) p.inventory[invSlot] = null;
+		}
+	} else if (data.action === "take") {
+		const bundleSlot = data.bundleSlot;
+		if (!Number.isInteger(bundleSlot) || bundleSlot < 0 || bundleSlot > 8) return;
+		const item = p.bundle[bundleSlot];
+		if (!item) return;
+		if (data.invSlot !== undefined) {
+			const invSlot = data.invSlot;
+			if (!Number.isInteger(invSlot) || invSlot < 0 || invSlot > 35) return;
+			const dest = p.inventory[invSlot];
+			if (dest && (dest.id !== item.id || constants.isTool(item.id))) return;
+			if (dest) dest.count += item.count;
+			else p.inventory[invSlot] = { id: item.id, count: item.count, durability: item.durability };
+		} else {
+			// Primer hueco del inventario.
+			let placed = false;
+			for (let i = 0; i < 36; i++) {
+				const dest = p.inventory[i];
+				if (dest && dest.id === item.id && !constants.isTool(item.id)) {
+					dest.count += item.count;
+					placed = true;
+					break;
+				}
+			}
+			if (!placed) {
+				for (let i = 0; i < 36; i++) {
+					if (!p.inventory[i]) {
+						p.inventory[i] = { id: item.id, count: item.count, durability: item.durability };
+						placed = true;
+						break;
+					}
+			}
+		}
+		}
+		if (placed !== false) p.bundle[bundleSlot] = null;
+	}
+	// Responder con el estado actualizado.
+	handleBundleOpen(p, ws);
+}
+
 module.exports = {
 	handleCraft,
 	handleGridSet,
@@ -984,6 +1082,8 @@ module.exports = {
 	handleCreativeFly,
 	handleChat,
 	handleShieldBlock,
+	handleBundleOpen, // Fase 21.5 (F4): mochila
+	handleBundleAction, // Fase 21.5 (F4): mochila
 	setWorldTimeFn,
 	setBroadcastFn,
 	setBroadcastNearFn

@@ -42,6 +42,10 @@ secciones de abajo.
 > código y las specs). Lo implementado se eliminó: la lista completa con el
 > estado histórico vive en las specs de cada fase.
 
+### Características experimentales
+Incluir una sección con características que deben ser probadas y testeadas con rigurosidad para darlas por completadas para añadirlas al juego base. Aparecerá en la configuración o como un menú independiente, donde se puede activar y desactivar alguna característica. Por defecto todas las características vendran marcadas como desactivadas o desabilitadas si afecta mucho al rendimiento y la estabilidad del juego, o sea necesario alguna característica de hardware par implementarle (GPU dedicada, Teléfonos).
+En este apartado se incluirán características que si o si queremos agregar, pero que no formarán parte del juego base.
+
 ### Biomas (F21 A2 — el resto de superficie queda para P1)
 
 De los 20 biomas de las notas, **ya existen**: llanura, desierto, bosque,
@@ -101,6 +105,16 @@ y **gallina (ponedora)** (F21 v21.1). Pendientes:
   Subir la altura permite mejores cuevas y montañas más grandes. →
   **Fase 22 (A1)**: subir a 256 solo si los tests lo confirman
   (`SCHEMA_VERSION` 7 + migración); si no, se mantiene 128.
+
+### Cambios recomendados ahora (no radicales)
+- **Guardado de chunks a worker_threads** — sin dependencias nuevas, mismo
+  formato de archivo, solo saca el gzip + escritura del hilo principal. Es 
+  la mejora de mayor impacto real disponible hoy.
+- **powerPreference: "high-performance"** — trivial, cero riesgo.
+- **InstancedMesh** para vegetación/partículas — moderado, aislado, no
+  toca el pipeline de terreno que ya funciona bien.
+- **Filtrar mobs_update por distancia** — solo si Fase 27/28 avanzan primero;
+  hoy no hace falta.
 
 ---
 

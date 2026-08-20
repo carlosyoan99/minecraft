@@ -1169,12 +1169,12 @@
       atenúa)
 - [x] E5 Sonidos ambientales de desierto/badlands (con el audio por bioma
       de F19.5 A1)
-- [ ] F1 Pale Garden (1.22/26.1): bioma con roble pálido y musgo claro
-- [ ] F2 Creaking (1.22): mob que solo se mueve cuando el jugador no lo mira
+- [x] F1 Pale Garden (1.22/26.1): bioma con roble pálido y musgo claro
+- [x] F2 Creaking (1.22): mob que solo se mueve cuando el jugador no lo mira
       (detección de visión en servidor), de noche en Pale Garden
-- [ ] F3 Creaking Heart (1.22): bloque vinculado al mob — destruirlo lo
+- [x] F3 Creaking Heart (1.22): bloque vinculado al mob — destruirlo lo
       mata; lógica de vínculo mob↔bloque
-- [ ] F4 Mochila/Bundle (1.22): ítem que abre un segundo inventario (cofre
+- [x] F4 Mochila/Bundle (1.22): ítem que abre un segundo inventario (cofre
       portátil), persistido con el jugador (retrocompatible si es viable)
 - [x] G1 Comandos nuevos + selectores: `/summon` (invoca mobs), `/locate`
       (estructuras well/pyramid/temple/shipwreck y biomas), `/effect` (give/

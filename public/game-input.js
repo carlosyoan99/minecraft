@@ -15,6 +15,7 @@ import {
 	BEE_NEST,
 	BREED_FOOD,
 	BUCKET,
+	BUNDLE, // Fase 21.5 (F4): mochila
 	FARMLAND,
 	FISHING_ROD,
 	FOOD_ITEMS,
@@ -45,6 +46,8 @@ import {
 	openCraftingFromBlock,
 	selectSlot,
 	toggleChestUI,
+	toggleBundleUI,
+	isBundleOpen,
 	toggleFurnaceUI,
 	toggleInventory,
 	togglePicker,
@@ -444,6 +447,13 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	// desgasta la caña; al recoger antes de picar la devuelve sin gastarla.
 	if (e.button === 2 && held && held.id === FISHING_ROD) {
 		send("fishing", {});
+		return;
+	}
+
+	// Fase 21.5 (F4): mochila (Bundle) — clic derecho abre la UI del
+	// inventario portátil (9 slots). El servidor responde con bundle_state.
+	if (e.button === 2 && held && held.id === BUNDLE) {
+		if (!isBundleOpen()) toggleBundleUI(true);
 		return;
 	}
 

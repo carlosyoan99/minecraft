@@ -296,7 +296,8 @@ const LOCATE_BIOMES = [
 	"giant_taiga",
 	"snow",
 	"snowy_peaks",
-	"mountain"
+	"mountain",
+	"pale_garden"
 ];
 const LOCATE_BIOME_RADIUS = 1024; // bloques
 

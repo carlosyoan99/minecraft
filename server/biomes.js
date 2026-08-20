@@ -335,6 +335,12 @@ const PEAK_GATE = 0.1;
 // la etiqueta (para la paleta de audio por bioma, F19.5 A1). Superficie:
 // arena (sin terracotta/red_sand aún — decisión documentada).
 const BADLANDS_GATE = 0.35;
+// Fase 21.5 (F1): Pale Garden como sub-bioma del bosque — mismo rango de
+// temperatura que forest (> 0.2) pero con un gate de ruido propio (~1/4
+// de los bosques quedan como Pale Garden). Superficie de musgo pálido,
+// árboles de roble pálido y niebla ligera (como MC 1.22).
+const PALE_GARDEN_GATE = 0.35;
+const PALE_GARDEN_FREQ = 0.015; // frecuencia propia (más amplia que SUBBIOME_FREQ)
 function biomeFrom(temp, mnt, swamp, wx, wz) {
 	if (mnt > MOUNTAIN_THRESHOLD) {
 		if (
@@ -372,6 +378,15 @@ function biomeFrom(temp, mnt, swamp, wx, wz) {
 				SUBBIOME_GATE
 		)
 			return "birch_forest";
+		// Fase 21.5 (F1): Pale Garden — sub-bioma del bosque con roble pálido
+		// y musgo claro. Gate propio (PALE_GARDEN_GATE) con frecuencia distinta
+		// para que las regiones no se solapen con birch_forest/giant_taiga.
+		if (
+			wx !== undefined &&
+			noise.noise2D_detail(wx * PALE_GARDEN_FREQ, wz * PALE_GARDEN_FREQ) >
+				PALE_GARDEN_GATE
+		)
+			return "pale_garden";
 		return "forest";
 	}
 	return "plains";
@@ -449,6 +464,13 @@ function surfaceBlockFor(wx, wz, height, temp, mnt) {
 		// se convierte restando DESIGN_OFFSET (→ cumbres a partir de y=10).
 		if (height >= MOUNTAIN_SNOW_LINE - DESIGN_OFFSET) return B.SNOW;
 		return B.STONE;
+	}
+	// Fase 21.5 (F1): Pale Garden usa musgo pálido como superficie (en vez de césped).
+	// Se consulta getBiome SOLO en la banda de temperatura del bosque (> 0.2) para
+		// no pagar el coste de la caché en biomas que no pueden ser pale_garden.
+	if (temp > 0.2 && wx !== undefined) {
+		const biome = getBiome(wx, wz);
+		if (biome === "pale_garden") return B.PALE_MOSS_BLOCK;
 	}
 	return flatSurfaceBlock(temp, noise.noise2D_detail(wx * 0.11, wz * 0.11));
 }

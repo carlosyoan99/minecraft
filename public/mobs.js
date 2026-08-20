@@ -413,6 +413,10 @@ function resetMobWalk(mesh) {
 	for (const limb of limbs) limb.rotation.x = limb.userData.baseRotX || 0;
 }
 
+const VARIANT_TINT = {
+	cold: 0xbbbbbb, // frío: tinte oscuro (más marrón/gris)
+	warm: 0xffe8cc  // cálido: tinte cálido (más claro/dorado)
+};
 export function updateMobs(list) {
 	const seen = new Set();
 	for (const m of list) {
@@ -485,6 +489,15 @@ export function updateMobs(list) {
 		if (material && burning !== mesh.userData.burning) {
 			mesh.userData.burning = burning;
 			material.color.setHex(burning ? 0xff7710 : mesh.userData.baseColor);
+		}
+		// Fase 21.5 (E1): variante de animal por bioma — aplica un tinte sutil
+		// al material (cold = oscuro, warm = cálido). Solo se aplica una vez.
+		if (m.variant && m.variant !== mesh.userData.variant) {
+			mesh.userData.variant = m.variant;
+			if (material && !burning && !mesh.userData.fusing) {
+				const tint = VARIANT_TINT[m.variant];
+				if (tint) material.color.setHex(tint);
+			}
 		}
 		// Fase 9 (Bloque D): creeper en fuse — el servidor manda `fuse: 1`
 		// mientras silba antes de explotar; el cliente agranda y aclara el mob

@@ -673,6 +673,8 @@ export const FISHING_ROD_DURABILITY = 64;
 // que arco/caña, NO está en DURABILITY: no se desgasta al minar/atacar
 // (solo al absorber un impacto bloqueado); el HUD usa SHIELD_DURABILITY.
 export const SHIELD_DURABILITY = 336;
+// Fase 21.5 (F4): mochila (Bundle, 1.22) — ítem que abre un inventario portátil.
+export const BUNDLE = 274;
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)

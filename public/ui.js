@@ -74,12 +74,15 @@ export {
 export {
 	applyArmor,
 	applyChestState,
+	applyBundleState, // Fase 21.5 (F4): mochila
 	applyCraftingGrid,
 	applyFurnaceState,
 	closePanels,
 	openCraftingFromBlock,
 	setCreativeCatalog,
 	toggleChestUI,
+	toggleBundleUI, // Fase 21.5 (F4): mochila
+	isBundleOpen,
 	toggleFurnaceUI,
 	toggleInventory,
 	togglePicker

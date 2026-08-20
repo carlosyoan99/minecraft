@@ -61,7 +61,9 @@ function playerSnapshot(player) {
 		z: player.z,
 		yaw: player.yaw,
 		pitch: player.pitch,
-		respawnPoint: player.respawnPoint
+		respawnPoint: player.respawnPoint,
+		// Fase 21.5 (F4): mochila (Bundle) — se persiste con el jugador.
+		bundle: player.bundle || null
 	};
 }
 // Escribe un snapshot en su archivo (copia previa .bak + swap atómico).
@@ -182,6 +184,9 @@ function restorePlayer(player) {
 	if (typeof data.pitch === "number") player.pitch = data.pitch;
 	if (data.respawnPoint && typeof data.respawnPoint === "object")
 		player.respawnPoint = data.respawnPoint;
+	// Fase 21.5 (F4): restaurar la mochila (Bundle) — array de 9 slots.
+	if (Array.isArray(data.bundle) && data.bundle.length === 9)
+		player.bundle = data.bundle;
 	return true;
 }
 

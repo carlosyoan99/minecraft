@@ -306,6 +306,71 @@ export function toggleChestUI(show, coords) {
 }
 
 // ============================================================
+// BUNDLE (Fase 21.5, F4): mochila — inventario portátil (9 slots).
+// ============================================================
+const bundleUI = document.getElementById("bundle-ui");
+const bundleSlotsEl = document.getElementById("bundle-slots");
+const bundleInventoryEl = document.getElementById("bundle-inventory");
+let bundleOpen = false;
+let bundleSlots = new Array(9).fill(null);
+
+function updateBundleSlotsUI() {
+	bundleSlotsEl.innerHTML = "";
+	bundleSlots.forEach((item, i) => {
+		const el = document.createElement("div");
+		el.className = "slot";
+		if (item) {
+			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
+			attachSlotTooltip(el, item);
+			el.addEventListener("click", () =>
+				send("bundle_action", { action: "take", bundleSlot: i })
+			);
+		}
+		bundleSlotsEl.appendChild(el);
+	});
+}
+
+function updateBundleInventoryUI() {
+	bundleInventoryEl.innerHTML = "";
+	inventory.forEach((item, i) => {
+		const el = document.createElement("div");
+		el.className = "slot";
+		if (item) {
+			el.innerHTML = `${itemVisual(item.id)}<span class="count">${item.count}</span>`;
+			attachSlotTooltip(el, item);
+			el.addEventListener("click", () =>
+				send("bundle_action", { action: "put", invSlot: i })
+			);
+		}
+		bundleInventoryEl.appendChild(el);
+	});
+}
+
+export function applyBundleState(data) {
+	bundleSlots = data.slots || new Array(9).fill(null);
+	updateBundleSlotsUI();
+}
+
+export function isBundleOpen() {
+	return bundleOpen;
+}
+
+export function toggleBundleUI(show) {
+	bundleUI.classList.toggle("hidden", !show);
+	bundleOpen = show;
+	if (show) {
+		updateBundleSlotsUI();
+		updateBundleInventoryUI();
+		send("bundle_open");
+		showBlocker(false);
+		controls.unlock();
+	} else if (bundleOpen) {
+		send("bundle_action", { action: "close" });
+		bundleOpen = false;
+	}
+}
+
+// ============================================================
 // PANELES: abrir/cerrar desde el input
 // ============================================================
 export function openCraftingFromBlock() {
@@ -372,10 +437,12 @@ export function closePanels() {
 		pickerOpen || // Fase 10 (D4): el picker creativo también se cierra con Escape
 		openFurnaceKey !== null ||
 		openChestKey !== null ||
+		bundleOpen ||
 		isRecipeBookOpen();
 	toggleCraftingUI(false);
 	toggleFurnaceUI(false);
 	toggleChestUI(false);
+	if (bundleOpen) toggleBundleUI(false);
 	if (pickerOpen) togglePicker();
 	inventoryOpen = false;
 	if (isRecipeBookOpen()) toggleRecipeBook();

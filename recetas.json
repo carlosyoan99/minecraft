@@ -1388,5 +1388,17 @@
 			"id": 173,
 			"count": 8
 		}
+	},
+	"pale_oak_planks": {
+		"shape": [
+			"#"
+		],
+		"ingredients": {
+			"#": 176
+		},
+		"result": {
+			"id": 178,
+			"count": 4
+		}
 	}
 }
