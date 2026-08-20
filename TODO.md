@@ -1142,7 +1142,7 @@
 - [ ] D1 Trial Chambers (estructura, 1.21): subterránea en deepslate,
       pasillos/salas con cofres de botín + `VAULT` decorativo (sin
       llave/una-vez); determinista por hash 2D; sin Trial Spawner/ominous
-- [ ] D2 Bogged (esqueleto de pantano, 1.21): dispara flecha con veneno,
+- [x] D2 Bogged (esqueleto de pantano, 1.21): dispara flecha con veneno,
       spawn en pantano; Breeze ya en F23 A2 (coordinación: no duplicar)
 - [x] D3 Maza (1.21): `MACE` + `HEAVY_CORE` (de Trial Chambers); daño
       escala con altura de caída en `attack_mob`; receta maza = core + rod
