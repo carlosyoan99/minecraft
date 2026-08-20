@@ -381,6 +381,19 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   sistema de localización lo permite). B/I sincronizados + recetas + iconos.
 - **Criterio:** test: la carga de viento empuja; `unit-sync`/`unit-recetas`
   en verde.
+- **✅ IMPLEMENTADO (2026-08-20, parcial):** la carga de viento está
+  completa — `WIND_CHARGE` (270) se lanza con clic derecho (nuevo evento WS
+  `throw_wind_charge`, handler `actions.handleThrowWindCharge`); `server/
+  projectiles.js` hostea el bloque: `throwWindCharge(player)` consume 1 del
+  inventario (un solo uso, no vuelve), el proyectil vuela con `kind: "wind"`
+  en `tickArrows` (recto, sin gravedad, `WIND_SPEED` 16, vida 1500 ms) y al
+  impactar un bloque/mob/jugador dispara `windBurst(bx,by,bz)`: ráfaga
+  radial sin daño (`WIND_BURST_RADIUS` 3, alcance vertical ±3) — jugadores
+  reciben el evento WS `knockback` + `p.kbUntil` (600 ms), mobs `m.kb`
+  (fuerza 0.8, up 0.45, ttl 10). Física del viento. Tests en `tests/unit-fase21.5.js`
+  (D5). **Pendiente:** receta/obtención de `WIND_CHARGE` (270), drops e
+  iconos de `BREEZE_ROD` (271) y `TRIAL_EXPLORER_MAP` (273) — la carga que
+  suelta el Breeze aún no libre; `BREEZE_ROD` no es crafteable todavía.
 
 ### D6 — Discos de música, pinturas y partituras
 

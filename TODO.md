@@ -1149,9 +1149,12 @@
 - [ ] D4 Familia de cobre y tuff (1.21): variantes de cobre (escaleras/
       losas/puertas, sin oxidación) + familia de tuff (pulido/ladrillo)
       sobre el bloque de F22 A5 / Tuff de F23 A4 — sin duplicar IDs
-- [ ] D5 Ítems de Trial/Breeze: `WIND_CHARGE` (proyectil que empuja),
-      `BREEZE_ROD` (drop), `TRIAL_EXPLORER_MAP` (mapa/brújula hacia la
-      estructra); B/I + receta + icono
+- [x] D5 Ítems de Trial/Breeze: `WIND_CHARGE` (proyectil kind "wind" que
+      empuja con ráfaga sin daño: `WIND_BURST_RADIUS` 3, jugadores → evento
+      `knockback`/`kbUntil`, mobs → `m.kb`; consumible de un solo uso, no
+      vuelve al inventario; clic derecho 270), `BREEZE_ROD` (drop),
+      `TRIAL_EXPLORER_MAP` (mapa/brújula hacia la estructra); B/I + receta +
+      icono (recetas e icono de BREEZE_ROD/TRIAL_EXPLORER_MAP pendientes)
 - [ ] D6 Discos de música, pinturas y partituras (visual/audio, tras F19.5)
 - [x] E1 Variantes de animales por bioma (1.21.5): cerdos/vacas/gallinas con
       `variant` frío/cálido según bioma de spawn (templados = base); la cría
