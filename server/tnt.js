@@ -79,7 +79,8 @@ function explode(x, y, z) {
 				// C5 (REN-2): horno CON contenido se protege (su inventario se
 				// perdería — no hay entidades de item); vacío se rompe y se
 				// limpia su estado (sin entradas huérfanas en world.json).
-				if (block === B.FURNACE) {
+				// Fase 21.5 (C1): horno de fundición usa la misma lógica.
+				if (block === B.FURNACE || block === B.BLAST_FURNACE) {
 					const f = state.furnaces.get(`${wx},${wy},${wz}`);
 					if (f && (f.inputItem || f.fuelItem || f.outputItem)) continue;
 					state.furnaces.delete(`${wx},${wy},${wz}`);

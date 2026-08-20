@@ -398,7 +398,26 @@ check(
 		I.EGG,
 		// Fase 21.5 (B4): botella de miel — no craftea: se recolecta con la
 		// botella de vidrio (263) sobre una colmena/nido (acciones.js).
-		I.HONEY_BOTTLE
+		I.HONEY_BOTTLE,
+		// Fase 21.5 (C3): tótem — no craftea: SOLO loot de cofres. Interino:
+		// templo de jungla (TEMPLE_LOOT_TABLE, chests.js) hasta mansión/Trial
+		// Chambers (fuentes oficiales MC).
+		I.TOTEM_OF_UNDYING,
+		// Fase 21.5 (C4): tintes nuevos (266-268) — creative-only por ahora;
+		// se obtendrán de squids/cocoa cuando esos mobs/items se implementen.
+		I.BLACK_DYE,
+		I.BROWN_DYE,
+		I.GRAY_DYE,
+		// Fase 21.5 (D/D-D/D/E): items prospectivos — creative-only por ahora;
+		// se obtendrán cuando Trial Chambers/Pale Garden/Mochila se implementen.
+		I.WIND_CHARGE,
+		I.BREEZE_ROD,
+		I.MACE,
+		I.TRIAL_EXPLORER_MAP,
+		I.BUNDLE,
+		I.MUSIC_DISC_CAT,
+		I.MUSIC_DISC_13,
+		I.PAINTING
 	]);
 	const huérfanos = Object.values(I)
 		.filter((id) => typeof id === "number")

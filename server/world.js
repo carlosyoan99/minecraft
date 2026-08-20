@@ -17,7 +17,11 @@ const {
 	B,
 	isSolidBlock,
 	isDoor, // Fase 13 (L2): puertas/portones (estado de apertura)
-	GRAVITY_BLOCKS
+	GRAVITY_BLOCKS,
+	// Fase 21.5 (C5): concreto — el polvo cae con gravedad y al tocar agua se
+	// convierte en concreto sólido (CONCRETE_SOLID_FOR_POWDER).
+	isConcretePowder,
+	CONCRETE_SOLID_FOR_POWDER
 } = constants;
 const state = require("./state.js");
 const _chests = require("./chests.js"); // cofres de loot de las minas abandonadas (Fase 7)
@@ -430,6 +434,42 @@ function isFallable(b) {
 	return b === B.AIR || b === B.WATER || b === B.LAVA;
 }
 
+// Fase 21.5 (C5): ¿el bloque de polvo de concreto toca agua (él mismo o un
+// vecino ortogonal)? En Minecraft el polvo se endurece al ENTRAR en contacto
+// con el agua; aquí se simplifica a "toque ortogonal".
+
+function touchesWater(wx, wy, wz) {
+	if (getBlock(wx, wy, wz) === B.WATER) return true;
+	if (getBlock(wx + 1, wy, wz) === B.WATER) return true;
+	if (getBlock(wx - 1, wy, wz) === B.WATER) return true;
+	if (getBlock(wx, wy + 1, wz) === B.WATER) return true;
+	if (getBlock(wx, wy - 1, wz) === B.WATER) return true;
+	if (getBlock(wx, wy, wz + 1) === B.WATER) return true;
+	if (getBlock(wx, wy, wz - 1) === B.WATER) return true;
+	return false;
+}
+
+// Convierte en concreto sólido cualquier polvo de concreto de la VERTICAL
+// (wx, wz) entre wy y el tope del mundo que toque agua, y avisa del cambio.
+function hardenWetConcrete(wx, wy, wz) {
+	for (let y = wy; y <= WORLD_MAX_Y; y++) {
+		const b = getBlock(wx, y, wz);
+		if (isConcretePowder(b) && touchesWater(wx, y, wz)) {
+			const solidFor = CONCRETE_SOLID_FOR_POWDER[b];
+			if (solidFor !== undefined && solidFor !== b) {
+				const cx = Math.floor(wx / CHUNK_SIZE),
+					cz = Math.floor(wz / CHUNK_SIZE);
+				const chunk = generation.generateChunk(cx, cz);
+				const x = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+				const z = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+				chunk[idx(x, toLocal(y), z)] = solidFor;
+				markChunkDirty(cx, cz);
+				if (blockChangeHandler) blockChangeHandler(wx, y, wz, solidFor);
+			}
+		}
+	}
+}
+
 function settleColumn(wx, wy, wz) {
 	// wy: celda recién cambiada. La gravedad afecta a la propia celda (si se
 	// colocó arena/grava en el aire) y a las de encima (si se rompió su apoyo).
@@ -457,6 +497,9 @@ function settleColumn(wx, wy, wz) {
 		}
 		// La celda que estaba encima ahora cae al hueco (el bucle continúa).
 	}
+	// Fase 21.5 (C5): tras asentar la gravedad, endurecer los polvos que tocan
+	// agua (caen a través de ella hasta el fondo y ahí se convierten).
+	hardenWetConcrete(wx, wy, wz);
 }
 
 // Fase 11 (C): fuente de agua infinita — nº de fuentes de agua ORTOGONALES

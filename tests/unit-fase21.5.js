@@ -803,5 +803,82 @@ check(
 	check("C2: al romperse el escudo se deja de bloquear", p6.blocking === false);
 }
 
+// BLOQUE C (C3): TÓTEM DE LA INMORTALIDAD (1.11) — al recibir daño letal con
+// el tótem en la mano activa evita la muerte, cura la mitad de la vida y da
+// absorción (TOTEM_ABSORPTION_HP), y se consume. Sin tótem el daño letal
+// mata. La absorción come daño antes que la vida (corazones dorados).
+// ============================================================
+{
+	const mkTotemFighter = (over = {}) => ({
+		id: "p-totem",
+		ws: { readyState: 3, send() {} },
+		health: 20,
+		maxHealth: 20,
+		spawnGraceUntil: 0,
+		gamemode: "survival",
+		x: 0,
+		y: 60,
+		z: 0,
+		selectedSlot: 0,
+		armor: { helmet: null, chestplate: null, leggings: null, boots: null },
+		inventory: new Array(36).fill(null),
+		craftingGrid: new Array(9).fill(null),
+		...over
+	});
+
+	check(
+		"C3: TOTEM_OF_UNDYING es el 269, isTotem/constantes sincronizadas",
+		I.TOTEM_OF_UNDYING === 269 &&
+			constants.isTotem(269) &&
+			constants.TOTEM_ABSORPTION_HP === 8 &&
+			constants.isTool(269),
+		`id=${I.TOTEM_OF_UNDYING} abs=${constants.TOTEM_ABSORPTION_HP}`
+	);
+
+	// Daño letal con tótem en mano → no muere, cura mitad (10) y da absorción.
+	const p1 = mkTotemFighter();
+	p1.inventory[0] = new ItemStack(I.TOTEM_OF_UNDYING);
+	combat.damagePlayer(p1, 20, { source: "mob", meta: { mobType: "zombie" } });
+	check("C3: con tótem en mano no se muere (vida 10)", p1.health === 10, `vida=${p1.health}`);
+	check(
+		"C3: la absorción del tótem es TOTEM_ABSORPTION_HP (8)",
+		p1.absorption === constants.TOTEM_ABSORPTION_HP,
+		`abs=${p1.absorption}`
+	);
+	check(
+		"C3: el tótem se consume al salvar de la muerte",
+		p1.inventory[0] === null,
+		`slot=${JSON.stringify(p1.inventory[0])}`
+	);
+
+	// La absorción come el siguiente daño antes que la vida.
+	combat.damagePlayer(p1, 3, { source: "fall" });
+	check(
+		"C3: la absorción absorbe el daño antes que la vida (vida sigue 10)",
+		p1.health === 10 && p1.absorption === 5,
+		`vida=${p1.health} abs=${p1.absorption}`
+	);
+
+	// Sin tótem en mano (o en otra ranura) el daño letal mata → respawn (vida 20).
+	const p2 = mkTotemFighter();
+	p2.inventory[1] = new ItemStack(I.TOTEM_OF_UNDYING); // no está en la mano activa
+	combat.damagePlayer(p2, 20, { source: "mob", meta: { mobType: "zombie" } });
+	check(
+		"C3: el tótem en otra ranura NO salva (muere y respawnea a 20)",
+		p2.health === 20 && p2.inventory.every((s) => s === null),
+		`vida=${p2.health}`
+	);
+
+	// Daño no letal con tótem en mano → no se consume.
+	const p3 = mkTotemFighter();
+	p3.inventory[0] = new ItemStack(I.TOTEM_OF_UNDYING);
+	combat.damagePlayer(p3, 5, { source: "mob", meta: { mobType: "zombie" } });
+	check(
+		"C3: el daño no letal no consume el tótem (vida 15, sigue en la mano)",
+		p3.health === 15 && p3.inventory[0] && p3.inventory[0].id === I.TOTEM_OF_UNDYING,
+		`vida=${p3.health}`
+	);
+}
+
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);

@@ -115,7 +115,7 @@ socket.addEventListener("message", (e) => {
 				loadChunkData(data.chunkData);
 				applyInventory(data.inventory);
 				applyArmor(data.armor); // Fase 7: armadura equipada
-				applyHealth(data.health, data.maxHealth);
+				applyHealth(data.health, data.maxHealth, data.absorption);
 				applyXp(data.xp || 0, data.level || 0, data.xpInto, data.xpToNext); // Fase 9 (C): barra con la curva MC
 				applyFood(data.food, data.saturation);
 				updateMobs(data.mobs);
@@ -339,7 +339,7 @@ socket.addEventListener("message", (e) => {
 				flashMessage("🌙 Solo puedes dormir de noche.");
 				break; // Fase 7
 			case "health_update":
-				applyHealth(data.health, data.maxHealth);
+				applyHealth(data.health, data.maxHealth, data.absorption);
 				break;
 			case "xp_update":
 				// Fase 9 (Bloque C): xpInto/xpToNext llegan del servidor (curva MC

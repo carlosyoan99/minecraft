@@ -370,4 +370,33 @@ check(
 		"isTool(SHIELD) debe ser true (no apila, durabilidad propia)"
 	);
 }
+
+// --- 13) Fase 21.5 (C3): tótem de la inmortalidad sincronizado ---
+{
+	const clientItems = parseObj("ITEM_NAMES");
+	const mTotem = src.match(/export const TOTEM_OF_UNDYING = (\d+);/);
+	check(
+		"Fase 21.5 (C3): tótem (269) con nombre y en ITEM_NAMES del cliente",
+		!!clientItems && clientItems[server.I.TOTEM_OF_UNDYING]
+	);
+	check(
+		"TOTEM_OF_UNDYING id = 269 en ambos lados",
+		server.I.TOTEM_OF_UNDYING === 269 &&
+			!!mTotem &&
+			Number(mTotem[1]) === server.I.TOTEM_OF_UNDYING,
+		`server=${server.I.TOTEM_OF_UNDYING} cliente=${mTotem ? mTotem[1] : "no exportado"}`
+	);
+	check(
+		"TOTEM como ítem no apilable (isTool, sin durabilidad propia)",
+		server.isTool(server.I.TOTEM_OF_UNDYING) &&
+			!(server.I.TOTEM_OF_UNDYING in server.TOOL_DURABILITY),
+		"isTool(TOTEM) debe ser true y no estar en TOOL_DURABILITY"
+	);
+	check(
+		"TOTEM_ABSORPTION_HP == 8 (4 corazones dorados, valor MC)",
+		server.TOTEM_ABSORPTION_HP === 8,
+		`${server.TOTEM_ABSORPTION_HP}`
+	);
+}
+
 process.exit(fails ? 1 : 0);

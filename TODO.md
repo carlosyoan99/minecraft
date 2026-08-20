@@ -1126,14 +1126,15 @@
       vuelan alrededor; sin polinización de cultivos
 - [x] B5 Coral y algas (1.13): `CORAL_BLOCK`/`CORAL_FAN`/`KELP`/`SEAGRASS`
       en arrecifes de océano cálido (estático, sin decoloración)
-- [ ] C1 Horno de fundición (1.14): `BLAST_FURNACE` funde minerales ×2, UI
+- [x] C1 Horno de fundición (1.14): `BLAST_FURNACE` funde minerales ×2, UI
       propia, crafteo (5 lingotes + horno)
 - [x] C2 Escudo (1.9): `SHIELD` — clic derecho mantiene el bloqueo y reduce el
       daño de mobs/proyectiles (60 %, antes de armadura), durabilidad 336,
       viñeta de pose en cliente, crafteo (1 lingote + 6 tablones)
-- [ ] C3 Tótem de inmortalidad (1.11): evita la muerte, cura + absorción, se
-      consume; loot de mansión (F21) y Trial Chambers (D1)
-- [ ] C4 Camas de colores (1.12): 16 camas con los 16 tintes (dormir/respawn
+- [x] C3 Tótem de inmortalidad (1.11): evita la muerte con él en la mano
+      activa (cura mitad + absorción 8, consume); loot interino del templo de
+      jungla hasta mansión/Trial Chambers (D1)
+- [x] C4 Camas de colores (1.12): 16 camas con los 16 tintes (dormir/respawn
       igual que la roja), crafteo cama + tinte
 - [ ] C5 Concreto (1.12): 16 `CONCRETE` + 16 `CONCRETE_POWDER`; el polvo cae
       con gravedad (física arena/grava) y al tocar agua se convierte en
@@ -1154,13 +1155,13 @@
 - [ ] D6 Discos de música, pinturas y partituras (visual/audio, tras F19.5)
 - [ ] E1 Variantes de animales por bioma (1.21.5): cerdos/vacas/gallinas con
       `variant` frío/cálido según bioma de spawn, textura distinta
-- [ ] E2 Color de lana de oveja según bioma (1.21.5): paleta por bioma,
+- [x] E2 Color de lana de oveja según bioma (1.21.5): paleta por bioma,
       esquileo suelta esa lana
-- [ ] E3 Bloques decorativos 1.21.5: `FIREFLY_BUSH`, `LEAF_LITTER`,
+- [x] E3 Bloques decorativos 1.21.5: `FIREFLY_BUSH`, `LEAF_LITTER`,
       `WILDFLOWERS`, `BUSH`, hierba seca corta/alta, `CACTUS_FLOWER`
 - [ ] E4 Partículas de hojas cayendo (cliente; "reducir movimiento" las
       atenúa)
-- [ ] E5 Sonidos ambientales de desierto/badlands (con el audio por bioma
+- [x] E5 Sonidos ambientales de desierto/badlands (con el audio por bioma
       de F19.5 A1)
 - [ ] F1 Pale Garden (1.22/26.1): bioma con roble pálido y musgo claro
 - [ ] F2 Creaking (1.22): mob que solo se mueve cuando el jugador no lo mira

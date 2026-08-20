@@ -94,6 +94,27 @@ export const BLOCK_COLORS = {
 	70: 0x8a6a3a,
 	71: 0x8a6a3a,
 	72: 0xe86a5e, // coral (Fase 21.5, D2): rosa coral del arrecife cálido
+	// Fase 21.5 (C4): 16 camas de colores — tonos de la lana de MC
+	44: 0xf5f5f0, // cama blanca
+	45: 0xe88a2a, // cama naranja
+	46: 0xc93ac9, // cama magenta
+	47: 0x5a8ad9, // cama azul claro
+	52: 0xe8d21a, // cama amarilla
+	53: 0x6fd93a, // cama verde lima
+	54: 0xe88ab0, // cama rosa
+	55: 0x8a8a8a, // cama gris
+	56: 0xc0c0c0, // cama gris claro
+	57: 0x2ab8c9, // cama cian
+	58: 0x7a3ac9, // cama púrpura
+	59: 0x3a5ac9, // cama azul
+	62: 0x8a5a3a, // cama marrón
+	63: 0x3a9a3a, // cama verde
+	64: 0xc0392b, // cama roja
+	65: 0x2a2a2a, // cama negra
+	// Fase 21.5 (E2/E4): lana nueva — gris (66), negra (89), marrón (90)
+	66: 0x8a8a88, // lana gris
+	89: 0x2a2a2a, // lana negra
+	90: 0x8a5a3a, // lana marrón
 	// Fase 21.5 (B1): piedra pulida — granito rosa, diorita gris/blanca,
 	// andesita gris apagado y sus pulidas (tonos más regulares).
 	73: 0xc9917f,
@@ -118,7 +139,37 @@ export const BLOCK_COLORS = {
 	// marino (verde).
 	86: 0xf08040,
 	87: 0x2f7a30,
-	88: 0x3a8f3a
+	88: 0x3a8f3a,
+	// Fase 21.5 (C1): horno de fundición — piedra oscura con reja naranja
+	91: 0x5a4a3a,
+	// Fase 21.5 (E3): bloques decorativos — tonos de naturaleza
+	92: 0x4a6a2a, // arbusto de luciérnagas (verde oscuro)
+	93: 0x6a8a3a, // hojarasca (verde otoñal)
+	94: 0xc9a040, // flores silvestres (amarillo/dorado)
+	95: 0x3a7a2a, // arbusto genérico (verde)
+	96: 0xb8a868, // hierba seca corta (paja)
+	97: 0xa89858, // hierba seca alta (paja oscura)
+	98: 0xe85a6a, // flor de cactus (rosa)
+	// Fase 21.5 (C5): concreto (142-157) — colores MC oficiales.
+	// Los IDs evitan el rango 100-277 (ítems: el namespace es compartido).
+	142: 0xf0f0f0, 143: 0xe87a2a, 144: 0xc93ac9, 145: 0x5a8ad9,
+	146: 0xe8d21a, 147: 0x6fd93a, 148: 0xe88ab0, 149: 0x8a8a8a,
+	150: 0xc0c0c0, 151: 0x2ab8c9, 152: 0x7a3ac9, 153: 0x3a5ac9,
+	154: 0x8a5a3a, 155: 0x3a9a3a, 156: 0xc0392b, 157: 0x2a2a2a,
+	// Fase 21.5 (C5): polvo de concreto (158-173) — tonos más claros
+	158: 0xf8f8f8, 159: 0xf0a050, 160: 0xd86ad8, 161: 0x88b8e8,
+	162: 0xf0e060, 163: 0x98e870, 164: 0xf0b8c8, 165: 0xb0b0b0,
+	166: 0xd0d0d0, 167: 0x60d0d8, 168: 0x9868d8, 169: 0x6888d8,
+	170: 0xa87850, 171: 0x68b860, 172: 0xd86050, 173: 0x4a4a4a,
+	// Fase 21.5 (D1/F1/F3/D3): bloques prospectivos
+	174: 0x6a6a7a, // vault
+	175: 0x8a6a40, // creaking heart
+	176: 0x9a8a7a, // pale oak log
+	177: 0x8aaa7a, // pale oak leaves
+	178: 0xb8a88a, // pale oak planks
+	179: 0x7a9a6a, // pale moss block
+	180: 0x6a8a5a, // pale moss
+	181: 0x5a5a6a // heavy core
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -195,7 +246,52 @@ export const BLOCK_NAMES = {
 	// Fase 21.5 (B5): coral y algas
 	86: "Abanico de coral",
 	87: "Kelp",
-	88: "Pasto marino"
+	88: "Pasto marino",
+	// Fase 21.5 (C4): 16 camas de colores
+	44: "Cama blanca",
+	45: "Cama naranja",
+	46: "Cama magenta",
+	47: "Cama azul claro",
+	52: "Cama amarilla",
+	53: "Cama verde lima",
+	54: "Cama rosa",
+	55: "Cama gris",
+	56: "Cama gris claro",
+	57: "Cama cian",
+	58: "Cama púrpura",
+	59: "Cama azul",
+	62: "Cama marrón",
+	63: "Cama verde",
+	64: "Cama roja",
+	65: "Cama negra",
+	// Fase 21.5 (E2): lana nueva
+	66: "Lana gris",
+	89: "Lana negra",
+	90: "Lana marrón",
+	// Fase 21.5 (C1): horno de fundición
+	91: "Horno de fundición",
+	// Fase 21.5 (E3): bloques decorativos
+	92: "Arbusto de luciérnagas",
+	93: "Hojarasca",
+	94: "Flores silvestres",
+	95: "Arbusto",
+	96: "Hierba seca",
+	97: "Hierba seca alta",
+	98: "Flor de cactus",
+	// Fase 21.5 (C5): concreto (142-157)
+	142: "Concreto blanco", 143: "Concreto naranja", 144: "Concreto magenta", 145: "Concreto azul claro",
+	146: "Concreto amarillo", 147: "Concreto verde lima", 148: "Concreto rosa", 149: "Concreto gris",
+	150: "Concreto gris claro", 151: "Concreto cian", 152: "Concreto púrpura", 153: "Concreto azul",
+	154: "Concreto marrón", 155: "Concreto verde", 156: "Concreto rojo", 157: "Concreto negro",
+	// Fase 21.5 (C5): polvo de concreto (158-173)
+	158: "Polvo de concreto blanco", 159: "Polvo de concreto naranja", 160: "Polvo de concreto magenta", 161: "Polvo de concreto azul claro",
+	162: "Polvo de concreto amarillo", 163: "Polvo de concreto verde lima", 164: "Polvo de concreto rosa", 165: "Polvo de concreto gris",
+	166: "Polvo de concreto gris claro", 167: "Polvo de concreto cian", 168: "Polvo de concreto púrpura", 169: "Polvo de concreto azul",
+	170: "Polvo de concreto marrón", 171: "Polvo de concreto verde", 172: "Polvo de concreto rojo", 173: "Polvo de concreto negro",
+	// Fase 21.5 (D1/F1/F3/D3): bloques prospectivos
+	174: "Bóveda", 175: "Corazón crujiente", 176: "Tronco de roble pálido",
+	177: "Hojas de roble pálido", 178: "Tablones de roble pálido",
+	179: "Bloque de musgo pálido", 180: "Musgo pálido", 181: "Núcleo pesado"
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
@@ -217,7 +313,40 @@ export const HONEY_BLOCK = 85;
 export const CORAL_FAN = 86;
 export const KELP = 87;
 export const SEAGRASS = 88;
+// Fase 21.5 (E2): lana nueva
+export const GRAY_WOOL = 66;
+export const BLACK_WOOL = 89;
+export const BROWN_WOOL = 90;
+// Fase 21.5 (C4): 16 camas de colores
+export const BED_WHITE = 44;
+export const BED_ORANGE = 45;
+export const BED_MAGENTA = 46;
+export const BED_LIGHT_BLUE = 47;
+export const BED_YELLOW = 52;
+export const BED_LIME = 53;
+export const BED_PINK = 54;
+export const BED_GRAY = 55;
+export const BED_LIGHT_GRAY = 56;
+export const BED_CYAN = 57;
+export const BED_PURPLE = 58;
+export const BED_BLUE = 59;
+export const BED_BROWN = 62;
+export const BED_GREEN = 63;
+export const BED_RED = 64;
+export const BED_BLACK = 65;
+// Fase 21.5 (C1): horno de fundición
+export const BLAST_FURNACE = 91;
+// Fase 21.5 (E3): bloques decorativos
+export const FIREFLY_BUSH = 92;
+export const LEAF_LITTER = 93;
+export const WILDFLOWERS = 94;
+export const BUSH = 95;
+export const SHORT_DRY_GRASS = 96;
+export const TALL_DRY_GRASS = 97;
+export const CACTUS_FLOWER = 98;
 export const BED = 24; // Fase 7: dormir de noche fija el punto de reaparición
+// Fase 21.5 (C4): set de todas las camas (24 + 16 colores 44-65).
+export const BED_SET = new Set([24, 44, 45, 46, 47, 52, 53, 54, 55, 56, 57, 58, 59, 62, 63, 64, 65]);
 export const LAVA = 25; // Fase 7: pozos decorativos en superficie (no minable)
 export const FARMLAND = 26; // Fase 9 (C): tierra arada
 export const WHEAT = 27; // Fase 9 (C): cultivo de trigo (no sólido)
@@ -267,7 +396,8 @@ export const DURABILITY = {
 	242: 250,
 	243: 32,
 	244: 1561,
-	141: 238 // tijeras (auditoría 4.2): durabilidad MC 238, no se apilan
+	141: 238, // tijeras (auditoría 4.2): durabilidad MC 238, no se apilan
+	272: 250 // Fase 21.5 (D3): maza (1.21) — durabilidad media de MC
 };
 export const XP_PER_LEVEL = 100; // retrocompat: paridad auditada (unit-sync); la curva real usa xpToNext
 // Curva de XP OFICIAL de Minecraft (Fase 13, paridad B2): coste del nivel
@@ -388,7 +518,24 @@ export const ITEM_NAMES = {
 	263: "Botella de vidrio",
 	264: "Botella de miel",
 	// Fase 21.5 (C2): escudo (clic derecho mantenido bloquea y reduce el daño)
-	265: "Escudo"
+	265: "Escudo",
+	// Fase 21.5 (C3): tótem de la inmortalidad (evita la muerte con él en mano)
+	269: "Tótem de la inmortalidad",
+	// Fase 21.5 (C4): tintes nuevos para camas
+	266: "Tinte negro",
+	267: "Tinte marrón",
+	268: "Tinte gris",
+	// Fase 21.5 (D5): ítems de Trial/Breeze
+	270: "Carga de viento",
+	271: "Barra de breeze",
+	272: "Maza",
+	273: "Mapa de exploración de prueba",
+	// Fase 21.5 (F4): mochila
+	274: "Mochila",
+	// Fase 21.5 (D6): discos y pintura
+	275: "Disco musical (cat)",
+	276: "Disco musical (13)",
+	277: "Pintura"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -414,12 +561,25 @@ export const PLACEABLE_BLOCKS = new Set([
 	// Fase 21.5 (B4): nidos, colmenas y bloque de miel.
 	83, 84, 85,
 	// Fase 21.5 (B5): coral y algas.
-	86, 87, 88
+	86, 87, 88,
+	// Fase 21.5 (C4): camas de colores
+	44, 45, 46, 47, 52, 53, 54, 55, 56, 57, 58, 59, 62, 63, 64, 65,
+	// Fase 21.5 (E2): lana nueva
+	66, 89, 90,
+	// Fase 21.5 (C1): horno de fundición
+	91,
+	// Fase 21.5 (E3): bloques decorativos (cross-quad, no sólidos)
+	92, 93, 94, 95, 96, 97, 98,
+	// Fase 21.5 (C5): concreto sólido (142-157) y polvo (158-173).
+	142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157,
+	158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173,
+	// Fase 21.5 (D1/D3/F1/F3): bóveda, núcleo pesado y Pale Garden.
+	174, 175, 176, 177, 178, 179, 180, 181
 ]);
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
 // Fase 21.5 (B3): bambú (planta alta) y andamio (no sólido, escalable).
 // Fase 21.5 (B5): coral y algas bajo el agua (cross-quad).
-export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43, 80, 82, 86, 87, 88]); // 27/33/34/35/43 = flores/hierba/lianas (Fase 9/11)
+export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43, 80, 82, 86, 87, 88, 92, 93, 94, 95, 96, 97, 98, 180]); // 27/33/34/35/43 = flores/hierba/lianas (Fase 9/11); 180 = musgo pálido (F1)
 // Armadura equipable (Fase 7): clic derecho con la pieza en mano la equipa.
 // No se apilan (cada pieza con su durabilidad, como las herramientas).
 export const ARMOR_ITEMS = new Set([
@@ -473,6 +633,10 @@ export const HONEY_BOTTLE = 264;
 // mantiene el bloqueo. No se apila, lleva durabilidad propia. Mantener en
 // sincronía con SHIELD_DURABILITY del servidor (unit-sync lo verifica).
 export const SHIELD = 265;
+// Fase 21.5 (C3): tótem de la inmortalidad (1.11) — no se apila, sin receta
+// (solo loot de cofres). Al recibir daño letal con él en la mano activa evita
+// la muerte, cura mitad de la vida y da absorción; se consume.
+export const TOTEM_OF_UNDYING = 269;
 // Durabilidad máxima por pieza (Fase 7). Mantener en sincronía con
 // ARMOR_DURABILITY de constants.js (servidor) — lo verifica unit-sync.js.
 export const ARMOR_DURABILITY = {

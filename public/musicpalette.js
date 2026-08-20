@@ -31,6 +31,10 @@ const BIOME_PALETTES = {
 	snow: { pool: [3, 4, 6], vol: 0.9, gapMin: 3200 },
 	taiga: { pool: [3, 4, 6], vol: 0.9, gapMin: 3200 },
 	desert: { pool: [4, 5, 6], vol: 1.15, gapMin: 2600 },
+	// Fase 21.5 (E5): badlands — paleta más grave y espaciada que el
+	// desierto (viento árido sobre mesetas); notas 0-2-4 (grave) con
+	// volumen medio y gaps amplios (4000ms) para transmitir soledad.
+	badlands: { pool: [0, 2, 4], vol: 0.85, gapMin: 4000 },
 	forest: { pool: [1, 2, 3, 4, 5], vol: 1.0, gapMin: 3000 },
 	plains: { pool: [1, 2, 3, 4, 5], vol: 1.0, gapMin: 3000 }
 };

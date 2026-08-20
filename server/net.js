@@ -193,6 +193,8 @@ function sendInit(p) {
 				armor: p.armor, // Fase 7: 4 slots (casco, pechera, pantalones, botas)
 				health: p.health,
 				maxHealth: p.maxHealth,
+				// Fase 21.5 (C3): absorción del tótem (corazones dorados del HUD).
+				absorption: p.absorption || 0,
 				xp: p.xp,
 				level: p.level, // Fase 5
 				// Fase 9 (Bloque C): progreso DENTRO del nivel (curva MC no

@@ -7,8 +7,9 @@ const fs = require("node:fs");
 const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const constants = require("./constants.js");
-const { FUEL_TICKS } = constants;
+const { B, FUEL_TICKS } = constants;
 const state = require("./state.js");
+const world = require("./world.js"); // Fase 21.5 (C1): blast furnace necesita leer el bloque del mundo
 
 const { furnaces } = state;
 let recipes = {};
@@ -231,6 +232,14 @@ function isCookable(itemId) {
 	return !!furnaceRecipes[String(itemId)];
 }
 
+// Fase 21.5 (C1): ¿el ITEM se puede fundir en el horno de fundición? Solo
+// las recetas cuyo RESULTADO es un lingote (el horno de fundición no cocina
+// comida ni madera). El blast se valida en esta función y en el tick.
+function isBlastCookable(itemId) {
+	const r = furnaceRecipes[String(itemId)];
+	return !!r && constants.isBlastSmelt(r.result.id);
+}
+
 // Carga la siguiente unidad de combustible (tanque o cola FIFO) y devuelve
 // si el fuego quedó activo. Fase 18 (C-6): el DESPACHO de la cola vive aquí
 // para que el cambio de combustible encolado ocurra en el tick correcto.
@@ -283,7 +292,18 @@ function tickFurnaces() {
 
 		if (burning || (canCook && f.fuelTicksLeft > 0)) {
 			if (canCook && f.fuelTicksLeft >= 0) {
-				f.requiredTicks = recipe.time;
+				// Fase 21.5 (C1): blast furnace funde minerales ×2 (tiempo
+				// a la mitad). Solo acepta recetas de mineral (resultado =
+				// lingote, ver BLAST_SMELT_RESULTS); los alimentos se ignoran.
+				const [bx, by, bz] = key.split(",").map(Number);
+				const blockAt = world.getBlock(bx, by, bz);
+				const isBlast = blockAt === B.BLAST_FURNACE;
+				const isOreRecipe = constants.isBlastSmelt(recipe.result.id);
+				if (isBlast && !isOreRecipe) {
+					// Blast furnace solo funde minerales: pausar progreso si es comida
+					continue;
+				}
+				f.requiredTicks = isBlast ? Math.ceil(recipe.time / 2) : recipe.time;
 				f.progress++;
 				if (f.progress >= f.requiredTicks) {
 					f.progress = 0;
@@ -349,5 +369,6 @@ module.exports = {
 	tickFurnaces,
 	restoreFurnaces,
 	isCookable,
+	isBlastCookable,
 	getRecipeTables
 };

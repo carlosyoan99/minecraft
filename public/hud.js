@@ -25,6 +25,7 @@ export let inventory = new Array(36).fill(null);
 let selectedSlot = 0;
 let health = 20;
 let maxHealth = 20; // Fase 5: sube con el nivel (máx +10)
+let absorption = 0; // Fase 21.5 (C3): HP de absorción del tótem (corazones dorados)
 let food = 20;
 let saturation = 20; // barra dorada sobre la comida (como en Minecraft)
 let level = 0; // Fase 5: niveles simples
@@ -196,6 +197,13 @@ hotbarEl.addEventListener("mouseout", (ev) => {
 function updateHealthUI() {
 	document.getElementById("hp").textContent = health;
 	document.getElementById("maxhp").textContent = maxHealth;
+	// Fase 21.5 (C3): absorción del tótem — corazones dorados añadidos encima
+	// (como en Minecraft): se muestran como "+N" dorado junto a la vida.
+	const abs = document.getElementById("abs");
+	if (abs) {
+		abs.textContent = absorption > 0 ? ` +${absorption}` : "";
+		abs.hidden = absorption <= 0;
+	}
 }
 function updateXpUI() {
 	const fill = document.getElementById("xp-fill");
@@ -279,9 +287,11 @@ export function setInventory(inv) {
 	inventory = inv;
 	updateHotbarUI();
 }
-export function applyHealth(hp, maxHp) {
+export function applyHealth(hp, maxHp, absorptionHp) {
 	health = hp;
 	if (typeof maxHp === "number") maxHealth = maxHp;
+	// Fase 21.5 (C3): absorción del tótem (0 sí no se recibió).
+	if (typeof absorptionHp === "number") absorption = absorptionHp;
 	updateHealthUI();
 }
 export function applyXp(_xp, lvl, into, toNext) {

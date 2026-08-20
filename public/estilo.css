@@ -837,6 +837,11 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	gap: 6px;
 	line-height: 1.1;
 }
+/* Fase 21.5 (C3): absorción del tótem — corazones dorados junto a la vida */
+#abs {
+	color: #ffd24a;
+	font-weight: bold;
+}
 /* Barra de comida con la saturación dorada encima (como en Minecraft) */
 .bar {
 	position: relative;

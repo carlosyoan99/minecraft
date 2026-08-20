@@ -18,6 +18,7 @@ const {
 	B,
 	I,
 	canHarvest,
+	isBed,
 	isDoor, // Fase 13 (L2): limpieza al romper puertas/portones
 	ORE_DROP, // Fase 14 (Bloque B): mena → gema/lingote al minar
 	ORE_XP // Fase 5: XP al minar minerales
@@ -147,10 +148,11 @@ function finishMining(player, x, y, z, block, opts = {}) {
 	// abierto deja de recibir furnace_state (net.js ya salta los que no
 	// existen). Su contenido se pierde (no hay entidades de item en el
 	// suelo — misma simplificación que los drops sueltos).
-	if (block === B.FURNACE) state.furnaces.delete(`${x},${y},${z}`);
+	// Fase 21.5 (C1): horno de fundición comparte la misma lógica de limpieza.
+	if (block === B.FURNACE || block === B.BLAST_FURNACE) state.furnaces.delete(`${x},${y},${z}`);
 	// Cama rota: los jugadores que tenían ahí su punto de reaparición vuelven
 	// a reaparecer en el spawn inicial (como en Minecraft).
-	if (block === B.BED) {
+	if (isBed(block)) {
 		for (const p of state.players.values()) {
 			if (
 				p.respawnPoint &&

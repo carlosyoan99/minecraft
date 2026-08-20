@@ -329,6 +329,12 @@ const SWAMP_GATE = 0.42; // ruido de pantano en [-1,1]: regiones templadas donde
 const SUBBIOME_FREQ = 0.02;
 const SUBBIOME_GATE = 0.25;
 const PEAK_GATE = 0.1;
+// Fase 21.5 (E5): badlands como sub-bioma del desierto — misma banda de
+// temperatura (< -0.05) pero con un gate de ruido independiente. En MC las
+// badlands son secas y calientes como el desierto; aquí solo se diferencia
+// la etiqueta (para la paleta de audio por bioma, F19.5 A1). Superficie:
+// arena (sin terracotta/red_sand aún — decisión documentada).
+const BADLANDS_GATE = 0.35;
 function biomeFrom(temp, mnt, swamp, wx, wz) {
 	if (mnt > MOUNTAIN_THRESHOLD) {
 		if (
@@ -348,7 +354,15 @@ function biomeFrom(temp, mnt, swamp, wx, wz) {
 			return "giant_taiga";
 		return "taiga";
 	}
-	if (temp < -0.05) return "desert";
+	if (temp < -0.05) {
+		if (
+			wx !== undefined &&
+			noise.noise2D_detail(wx * SUBBIOME_FREQ, wz * SUBBIOME_FREQ) >
+				BADLANDS_GATE
+		)
+			return "badlands";
+		return "desert";
+	}
 	if (swamp !== undefined && swamp > SWAMP_GATE && temp < 0.2) return "swamp";
 	if (temp > 0.38) return "jungle";
 	if (temp > 0.2) {

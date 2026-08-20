@@ -363,13 +363,142 @@ const B = {
 	// mismas; sin decoloración fuera del agua — estático, como la D2).
 	CORAL_FAN: 86,
 	KELP: 87,
-	SEAGRASS: 88
+	SEAGRASS: 88,
+	// Fase 21.5 (E2): lana negra y marrón para ovejas de biomas fríos/cálidos
+	BLACK_WOOL: 89,
+	BROWN_WOOL: 90,
+	// Fase 21.5 (E2): lana gris para ovejas de montaña (rango libre 15-17)
+	GRAY_WOOL: 66,
+	// Fase 21.5 (C4): 16 camas de colores (1.12) — rango 44-59 (huecos
+	// libres entre puertas/escaleras y losas). Mismo comportamiento que la
+	// cama base (BED=24, dormir/respawn), distintos IDs/teselas.
+	BED_WHITE: 44,
+	BED_ORANGE: 45,
+	BED_MAGENTA: 46,
+	BED_LIGHT_BLUE: 47,
+	BED_YELLOW: 52,
+	BED_LIME: 53,
+	BED_PINK: 54,
+	BED_GRAY: 55,
+	BED_LIGHT_GRAY: 56,
+	BED_CYAN: 57,
+	BED_PURPLE: 58,
+	BED_BLUE: 59,
+	BED_BROWN: 62,
+	BED_GREEN: 63,
+	BED_RED: 64,
+	BED_BLACK: 65,
+	// Fase 21.5 (C1): horno de fundición (1.14) — funde minerales ×2
+	BLAST_FURNACE: 91,
+	// Fase 21.5 (E3): bloques decorativos 1.21.5
+	FIREFLY_BUSH: 92, // arbusto de luciérnagas (luz suave opcional)
+	LEAF_LITTER: 93, // hojarasca
+	WILDFLOWERS: 94, // flores silvestres
+	BUSH: 95, // arbusto genérico
+	SHORT_DRY_GRASS: 96, // hierba seca corta
+	TALL_DRY_GRASS: 97, // hierba seca alta
+	CACTUS_FLOWER: 98, // flor de cactus
+	// ============================================================
+	// Fase 21.5 (C5): CONCRETO (1.12) — 16 colores sólidos (142-157) y
+	// 16 polvos (158-173). El polvo cae con gravedad (física arena/grava) y al
+	// tocar agua se convierte en concreto sólido. Orden MC de los colores.
+	// NOTA: los IDs evitan el rango de los ítems (100-277): el namespace de
+	// bloques/ítems es COMPARTIDO (un ídem en mano se coloca como bloque), así
+	// que el concreto no puede reutilizar 100-131 (palo, carbón, lingotes...).
+	// ============================================================
+	CONCRETE_WHITE: 142,
+	CONCRETE_ORANGE: 143,
+	CONCRETE_MAGENTA: 144,
+	CONCRETE_LIGHT_BLUE: 145,
+	CONCRETE_YELLOW: 146,
+	CONCRETE_LIME: 147,
+	CONCRETE_PINK: 148,
+	CONCRETE_GRAY: 149,
+	CONCRETE_LIGHT_GRAY: 150,
+	CONCRETE_CYAN: 151,
+	CONCRETE_PURPLE: 152,
+	CONCRETE_BLUE: 153,
+	CONCRETE_BROWN: 154,
+	CONCRETE_GREEN: 155,
+	CONCRETE_RED: 156,
+	CONCRETE_BLACK: 157,
+	CONCRETE_POWDER_WHITE: 158,
+	CONCRETE_POWDER_ORANGE: 159,
+	CONCRETE_POWDER_MAGENTA: 160,
+	CONCRETE_POWDER_LIGHT_BLUE: 161,
+	CONCRETE_POWDER_YELLOW: 162,
+	CONCRETE_POWDER_LIME: 163,
+	CONCRETE_POWDER_PINK: 164,
+	CONCRETE_POWDER_GRAY: 165,
+	CONCRETE_POWDER_LIGHT_GRAY: 166,
+	CONCRETE_POWDER_CYAN: 167,
+	CONCRETE_POWDER_PURPLE: 168,
+	CONCRETE_POWDER_BLUE: 169,
+	CONCRETE_POWDER_BROWN: 170,
+	CONCRETE_POWDER_GREEN: 171,
+	CONCRETE_POWDER_RED: 172,
+	CONCRETE_POWDER_BLACK: 173,
+	// ============================================================
+	// Fase 21.5 (D1/D5): Trial Chambers (1.21) — bóveda decorativa
+	// (tesoro único, sin llave), de piso de la estructura.
+	// ============================================================
+	VAULT: 174,
+	// Fase 21.5 (F2/F3): Creaking Heart (1.22) — vincula al Creaking.
+	CREAKING_HEART: 175,
+	// Fase 21.5 (F1): Pale Garden (1.22) — roble pálido y musgo claro.
+	PALE_OAK_LOG: 176,
+	PALE_OAK_LEAVES: 177,
+	PALE_OAK_PLANKS: 178,
+	PALE_MOSS_BLOCK: 179,
+	PALE_MOSS: 180, // alfombra de musgo pálido (como la hierba alta)
+	// Fase 21.5 (D3): núcleo pesado (de Trial Chambers, elemento de la maza).
+	HEAVY_CORE: 181
 };
+
+// Fase 21.5 (C4): 16 camas de colores + la cama base (24) comparten
+// comportamiento (dormir/respawn). isBed identifica todas.
+const BED_SET = new Set([
+	B.BED, B.BED_WHITE, B.BED_ORANGE, B.BED_MAGENTA, B.BED_LIGHT_BLUE,
+	B.BED_YELLOW, B.BED_LIME, B.BED_PINK, B.BED_GRAY, B.BED_LIGHT_GRAY,
+	B.BED_CYAN, B.BED_PURPLE, B.BED_BLUE, B.BED_BROWN, B.BED_GREEN,
+	B.BED_RED, B.BED_BLACK
+]);
+const isBed = (id) => BED_SET.has(id);
+// Mapeo cama de color → ID del tinte correspondiente para crafteo.
+// No lo usamos server-side directamente (las recetas en recetas.json lo
+// manejan), pero sirve para referencia y tests.
+const BED_COLOR_IDS = [
+	B.BED_WHITE, B.BED_ORANGE, B.BED_MAGENTA, B.BED_LIGHT_BLUE,
+	B.BED_YELLOW, B.BED_LIME, B.BED_PINK, B.BED_GRAY,
+	B.BED_LIGHT_GRAY, B.BED_CYAN, B.BED_PURPLE, B.BED_BLUE,
+	B.BED_BROWN, B.BED_GREEN, B.BED_RED, B.BED_BLACK
+];
+
+// Fase 21.5 (C1): horno y horno de fundición comparten el mismo handler de
+// apertura (furnace_open). isFurnace identifica ambos.
+const isFurnace = (id) => id === B.FURNACE || id === B.BLAST_FURNACE;
 
 // Bloques con gravedad (Fase 10, D1): caen si el bloque de debajo no es
 // sólido (arena y grava). El servidor es la fuente de verdad: world.settleColumn
 // los mueve al setBlock y broadcast con block_update.
+// Fase 21.5 (C5): el polvo de concreto (158-173) cae igual que la arena.
 const GRAVITY_BLOCKS = new Set([B.SAND, B.GRAVEL]);
+// Fase 21.5 (C5): polvo de concreto → concreto sólido del mismo color
+// (conversión al tocar agua). Indexado por ID de bloque del polvo.
+const CONCRETE_POWDER_BLOCKS = [];
+for (let i = 0; i < 16; i++) {
+	const powder = B.CONCRETE_POWDER_WHITE + i;
+	CONCRETE_POWDER_BLOCKS.push(powder);
+	GRAVITY_BLOCKS.add(powder);
+}
+const CONCRETE_SOLID_FOR_POWDER = {};
+for (let i = 0; i < 16; i++) {
+	CONCRETE_SOLID_FOR_POWDER[B.CONCRETE_POWDER_WHITE + i] = B.CONCRETE_WHITE + i;
+}
+const isConcretePowder = (id) =>
+	id >= B.CONCRETE_POWDER_WHITE && id <= B.CONCRETE_POWDER_BLACK;
+const isConcrete = (id) =>
+	id >= B.CONCRETE_WHITE && id <= B.CONCRETE_BLACK;
 
 // Fase 10 (D2): TNT — mecha, radio del cráter y daño por explosión.
 const TNT_FUSE_MS = 1600; // ~1.6s de mecha (chisporroteo) antes de explotar
@@ -526,7 +655,34 @@ const I = {
 	// y mantiene el clic derecho para bloquear (reduce el daño entrante de
 	// mobs y proyectiles; desgasta solo al bloquear un impacto real).
 	// Durabilidad oficial MC: 336. Crafteo: 1 lingote + 6 tablones.
-	SHIELD: 265
+	SHIELD: 265,
+	// Fase 21.5 (E2): tintes adicionales para lana de oveja por bioma
+	BLACK_DYE: 266,
+	BROWN_DYE: 267,
+	GRAY_DYE: 268,
+	// Fase 21.5 (C3): tótem de la inmortalidad (1.11) — al recibir daño letal
+	// con el tótem en la mano activa evita la muerte, cura mitad de la vida y
+	// da absorción, y se consume. Sin receta: solo llega por loot de cofres.
+	TOTEM_OF_UNDYING: 269,
+	// ============================================================
+	// Fase 21.5 (D5): ítems de Trial Chambers y Breeze (1.21)
+	// ============================================================
+	// Carga de viento: proyectil lanzable que empuja (reusar knockback).
+	WIND_CHARGE: 270,
+	// Vara del Breeze: drop del Breeze (F23); aquí entra como loot de Trial
+	// Chambers y componente de la maza (coordinación: F23 A2 la reutiliza).
+	BREEZE_ROD: 271,
+	// Maza (1.21): daño escala con la altura de caída. Receta = core + rod.
+	MACE: 272,
+	// Mapa de exploración de Trial Chambers: brújula hacia la cámara cercana.
+	TRIAL_EXPLORER_MAP: 273,
+	// Fase 21.5 (F4): mochila (Bundle, 1.22) — cofre portátil.
+	BUNDLE: 274,
+	// Fase 21.5 (D6): disco de música (sustituye la música ambiental mientras
+	// suena) y pintura (cuadro decorativo colocable).
+	MUSIC_DISC_CAT: 275,
+	MUSIC_DISC_13: 276,
+	PAINTING: 277
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -579,7 +735,17 @@ const NON_SOLID_PLANTS = new Set([
 	// nadan sobre ellas, como las demás plantas).
 	B.CORAL_FAN,
 	B.KELP,
-	B.SEAGRASS
+	B.SEAGRASS,
+	// Fase 21.5 (E3): bloques decorativos — todos no sólidos (cross-quad)
+	B.FIREFLY_BUSH,
+	B.LEAF_LITTER,
+	B.WILDFLOWERS,
+	B.BUSH,
+	B.SHORT_DRY_GRASS,
+	B.TALL_DRY_GRASS,
+	B.CACTUS_FLOWER,
+	// Fase 21.5 (F1): alfombra de musgo pálido (cross, como la hierba alta).
+	B.PALE_MOSS
 ]);
 // Sólido para física/validación: el agua no es sólida (se nada en ella), la
 // antorcha/cama tampoco (se atraviesan) y las plantas (Fase 9) tampoco.
@@ -604,7 +770,9 @@ const isSolidBlock = (id) =>
 	id !== B.TORCH &&
 	// Fase 21.5 (B2): la linterna no es sólida (se atraviesa, como la antorcha).
 	id !== B.LANTERN &&
-	id !== B.BED &&
+	// Fase 21.5 (C4): las 16 camas de colores + la cama base no son sólidas
+	// (isSolidBlock se define antes que isBed; solo se invoca en runtime).
+	!isBed(id) &&
 	!NON_SOLID_PLANTS.has(id);
 // Fase 13 (L2/L3): puertas y portones (el estado de apertura decide la
 // solidez; ver state.doors y world.isSolidAt).
@@ -712,6 +880,36 @@ const BLOCK_HARDNESS = {
 	[B.RED_WOOL]: 0.8,
 	[B.YELLOW_WOOL]: 0.8,
 	[B.WHITE_WOOL]: 0.8,
+	[B.BLACK_WOOL]: 0.8,
+	[B.BROWN_WOOL]: 0.8,
+	[B.GRAY_WOOL]: 0.8,
+	// Fase 21.5 (C4): camas de colores — misma dureza que la cama base.
+	[B.BED_WHITE]: 0.2,
+	[B.BED_ORANGE]: 0.2,
+	[B.BED_MAGENTA]: 0.2,
+	[B.BED_LIGHT_BLUE]: 0.2,
+	[B.BED_YELLOW]: 0.2,
+	[B.BED_LIME]: 0.2,
+	[B.BED_PINK]: 0.2,
+	[B.BED_GRAY]: 0.2,
+	[B.BED_LIGHT_GRAY]: 0.2,
+	[B.BED_CYAN]: 0.2,
+	[B.BED_PURPLE]: 0.2,
+	[B.BED_BLUE]: 0.2,
+	[B.BED_BROWN]: 0.2,
+	[B.BED_GREEN]: 0.2,
+	[B.BED_RED]: 0.2,
+	[B.BED_BLACK]: 0.2,
+	// Fase 21.5 (C1): horno de fundición — misma dureza que el horno (3.5)
+	[B.BLAST_FURNACE]: 3.5,
+	// Fase 21.5 (E3): bloques decorativos — se rompen al instante (como plantas)
+	[B.FIREFLY_BUSH]: 0.05,
+	[B.LEAF_LITTER]: 0.05,
+	[B.WILDFLOWERS]: 0.05,
+	[B.BUSH]: 0.05,
+	[B.SHORT_DRY_GRASS]: 0.05,
+	[B.TALL_DRY_GRASS]: 0.05,
+	[B.CACTUS_FLOWER]: 0.05,
 	[B.PLANKS]: 2.0,
 	[B.OAK_LOG]: 2.0,
 	[B.BIRCH_LOG]: 2.0,
@@ -874,7 +1072,10 @@ function canHarvest(tool, block) {
 		block === B.POLISHED_DIORITE ||
 		block === B.POLISHED_ANDESITE ||
 		// Fase 21.5 (B4): el bloque de miel se mina con pico (como la piedra).
-		block === B.HONEY_BLOCK
+		block === B.HONEY_BLOCK ||
+		// Fase 21.5 (C1): horno y horno de fundición requieren pico.
+		block === B.FURNACE ||
+		block === B.BLAST_FURNACE
 	)
 		return isPickaxe(tool);
 	if (ORE_TIER[block] !== undefined) {
@@ -922,7 +1123,9 @@ const TOOL_DURABILITY = {
 	// Auditoría 2026-08-09 (§4.2): tijeras 238 (MC Java). Al estar aquí las
 	// considera isTool → NO se apilan, llevan durabilidad propia y esquilar
 	// las desgasta (net.js llama applyToolWear tras aplicar el corte).
-	[I.SHEARS]: 238
+	[I.SHEARS]: 238,
+	// Fase 21.5 (D3): maza (1.21) — durabilidad media de MC (250).
+	[I.MACE]: 250
 };
 // Alias de durabilidad de azadas (para addToInventory/applyToolWear).
 const HOE_DURABILITY = TOOL_DURABILITY;
@@ -930,7 +1133,12 @@ const HOE_DURABILITY = TOOL_DURABILITY;
 // apila y lleva su durabilidad BOW_DURABILITY), pero su desgaste NO va por
 // applyToolWear al minar/atacar: lo gestiona applyBowWear al disparar
 // (players.js). Por eso no está en TOOL_DURABILITY.
-const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id) || id === I.BOW || id === I.FISHING_ROD || id === I.SHIELD;
+const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id) || id === I.BOW || id === I.FISHING_ROD || id === I.SHIELD || id === I.TOTEM_OF_UNDYING || id === I.MACE;
+// Fase 21.5 (C1): el horno de fundición solo funde MINERALES (resultados de
+// recetas de horno que son lingotes). Lo audita crafting.js al seleccionar la
+// receta; se define aquí (después de I) frente a isFurnace.
+const BLAST_SMELT_RESULTS = new Set([I.IRON_INGOT, I.GOLD_INGOT]);
+const isBlastSmelt = (resultId) => BLAST_SMELT_RESULTS.has(resultId);
 
 // ============================================================
 // ARMADURA (Fase 7): reducción de daño por pieza y material.
@@ -1024,6 +1232,14 @@ const isFishingRod = (id) => id === I.FISHING_ROD;
 const SHIELD_DURABILITY = 336;
 const SHIELD_BLOCK_FACTOR = 0.4;
 const isShield = (id) => id === I.SHIELD;
+// Fase 21.5 (C3): tótem de la inmortalidad (1.11) — sin receta: solo llega
+// por loot de cofres. Al recibir daño letal con el tótem en la mano activa
+// evita la muerte (combat.js consumeTotemIfHeld): cura la mitad de la vida
+// máxima y da TOTEM_ABSORPTION_HP de absorción (HP extra que absorbe daño
+// antes que la vida, como los corazones dorados de MC). Es isTool solo a
+// efectos de inventario (no se apila, count 1) pero sin durabilidad propia.
+const TOTEM_ABSORPTION_HP = 8; // 4 corazones dorados, valor de MC Absorption II
+const isTotem = (id) => id === I.TOTEM_OF_UNDYING;
 
 // Reduce el daño según la armadura del jugador: desgasta las piezas (-1 por
 // cada 4 de daño bruto, mínimo 1) y devuelve el daño real. Las piezas que
@@ -1327,7 +1543,8 @@ const ALL_TOOLS_AND_ARMOR = [
 	...Object.values(I).filter((v) => v >= 200 && v <= 239), // herramientas + armadura (incl. oro/malla, Fase 13 L5)
 	...Object.values(I).filter((v) => v >= 240 && v <= 244), // azadas (Fase 9, Bloque C)
 	I.FISHING_ROD, // Fase 21.5 (A1): caña de pescar en el picker creativo
-	I.SHIELD // Fase 21.5 (C2): escudo (no se apila, lleva durabilidad propia)
+	I.SHIELD, // Fase 21.5 (C2): escudo (no se apila, lleva durabilidad propia)
+	I.TOTEM_OF_UNDYING // Fase 21.5 (C3): tótem de la inmortalidad (no se apila)
 ];
 
 // ============================================================
@@ -1482,6 +1699,21 @@ module.exports = {
 	SHIELD_BLOCK_FACTOR,
 	isFishingRod,
 	isShield,
+	// Fase 21.5 (C3): tótem de la inmortalidad
+	TOTEM_ABSORPTION_HP,
+	isTotem,
+	isBed,
+	BED_SET,
+	BED_COLOR_IDS,
+	// Fase 21.5 (C1): horno de fundición
+	isFurnace,
+	BLAST_SMELT_RESULTS,
+	isBlastSmelt,
+	// Fase 21.5 (C5): concreto
+	CONCRETE_POWDER_BLOCKS,
+	CONCRETE_SOLID_FOR_POWDER,
+	isConcretePowder,
+	isConcrete,
 	isBucket: (id) =>
 		id === I.BUCKET || id === I.WATER_BUCKET || id === I.LAVA_BUCKET,
 	WORLD_SIZES,

@@ -291,11 +291,16 @@ for (let cx = -12; cx <= 12; cx++) {
 	const baby = mkSheep();
 	baby.isBaby = true;
 	check("canShear: bebé → baby", mobs.canShear(baby, I.SHEARS) === "baby");
-	const woolCount = mobs.applyShear(m);
+	const { count: woolCount, woolId } = mobs.applyShear(m);
 	check(
 		"applyShear: 1-3 lana",
 		woolCount >= 1 && woolCount <= 3,
 		`${woolCount}`
+	);
+	check(
+		"applyShear: woolId es WHITE_WOOL por defecto",
+		woolId === B.WHITE_WOOL,
+		`woolId=${woolId}`
 	);
 	check(
 		"applyShear marca shearedUntil (pelo por crecer)",

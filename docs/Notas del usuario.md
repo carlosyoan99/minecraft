@@ -32,6 +32,7 @@ secciones de abajo.
 - **Montañas bajas:** montañas más altas y **montañas nevadas** (los picos
   nevados de la F21 A2 existen como sub-bioma, pero las montañas base
   siguen bajas para el gusto del usuario).
+- Las cabezas de los mobs y jugadores muestran caras por todos sus lados.
 
 ---
 

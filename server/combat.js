@@ -34,6 +34,8 @@ const {
 	SHIELD_DURABILITY,
 	isShield,
 	SHIELD_BLOCK_FACTOR,
+	TOTEM_ABSORPTION_HP,
+	isTotem,
 	levelFromXp,
 	xpToNext,
 	xpIntoLevel
@@ -82,7 +84,12 @@ function sendHealth(player) {
 		player.ws.send(
 			JSON.stringify({
 				event: "health_update",
-				data: { health: player.health, maxHealth: player.maxHealth || 20 }
+				data: {
+					health: player.health,
+					maxHealth: player.maxHealth || 20,
+					// Fase 21.5 (C3): HP de absorción del tótem (corazones dorados).
+					absorption: player.absorption || 0
+				}
 			})
 		);
 	}
@@ -222,6 +229,21 @@ function applyShieldWear(player) {
 }
 
 // ============================================================
+// TÓTEM DE LA INMORTALIDAD (Fase 21.5, C3): al recibir daño letal, si el
+// jugador lleva el tótem en la mano activa se consume (count -1, se elimina
+// si era el último) y el llamador evita la muerte. Devuelve true si había
+// tótem en mano y se consumió. Sin receta: solo llega por loot de cofres.
+// ============================================================
+function consumeTotemIfHeld(player) {
+	const slot = player.inventory?.[player.selectedSlot];
+	if (!slot || !isTotem(slot.id)) return false;
+	slot.count -= 1;
+	if (slot.count <= 0) player.inventory[player.selectedSlot] = null;
+	sendInventory(player);
+	return true;
+}
+
+// ============================================================
 // EXPERIENCIA Y NIVELES (Fase 5 simple → Fase 9 curva MC → Fase 13 paridad)
 // XP acumulada -> nivel por la curva OFICIAL de Minecraft (xpToNext por
 // tramos: 7, 9, 11, 13... 37, 42...). La salud máxima es SIEMPRE 20
@@ -333,6 +355,8 @@ function respawnPlayer(player, cause) {
 	player.health = 20;
 	player.food = 20;
 	player.saturation = 20;
+	// Fase 21.5 (C3): la absorción del tótem no sobrevive a la muerte.
+	player.absorption = 0;
 	player.foodAccum = 0;
 	player.regenAccum = 0;
 	player.starveAccum = 0;
@@ -408,11 +432,33 @@ function damagePlayer(player, amount, opts = {}) {
 			}
 		}
 	}
+	// Fase 21.5 (C3): la absorción (HP extra del tótem, corazones dorados)
+	// absorbe daño ANTES que la vida, como en Minecraft.
+	if (player.absorption > 0 && real > 0) {
+		const absorbed = Math.min(player.absorption, real);
+		player.absorption = Math.max(0, player.absorption - absorbed);
+		real -= absorbed;
+	}
 	logDamage(player, opts.source || "unknown", amount, real, opts.meta);
 	player.health = Math.max(0, player.health - real);
 	sendHealth(player);
-	// Fase 10 (B2): la causa de muerte viaja a la pantalla de muerte.
-	if (player.health <= 0) respawnPlayer(player, opts.source || "damage");
+	// Fase 21.5 (C3): tótem de la inmortalidad — el daño letal (cualquier
+	// fuente: mobs, caídas, lava, inanición...) se anula si el tótem está en
+	// la mano activa: cura la mitad de la vida máxima, da absorción y se
+	// consume. No salva del vacío (net.js respawna directo) como en MC.
+	if (player.health <= 0 && consumeTotemIfHeld(player)) {
+		player.health = Math.floor((player.maxHealth || 20) / 2);
+		player.absorption = TOTEM_ABSORPTION_HP;
+		sendHealth(player);
+		if (player.ws.readyState === WebSocket.OPEN) {
+			player.ws.send(
+				JSON.stringify({ event: "totem_used", data: {} })
+			);
+		}
+		// Fase 10 (B2): la causa de muerte viaja a la pantalla de muerte.
+	} else if (player.health <= 0) {
+		respawnPlayer(player, opts.source || "damage");
+	}
 }
 
 // ============================================================

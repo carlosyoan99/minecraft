@@ -444,7 +444,8 @@ class Mob {
 						}
 						// C5 (REN-2): igual con el horno — contenido protegido, vacío
 						// se rompe y se limpia su estado (sin huérfanos).
-						if (block === B.FURNACE) {
+						// Fase 21.5 (C1): horno de fundición usa la misma lógica.
+						if (block === B.FURNACE || block === B.BLAST_FURNACE) {
 							const f = state.furnaces.get(`${bx},${by},${bz}`);
 							if (f && (f.inputItem || f.fuelItem || f.outputItem)) continue;
 							state.furnaces.delete(`${bx},${by},${bz}`);
@@ -722,6 +723,9 @@ function mobSnapshot(m) {
 		z: m.z,
 		type: m.type,
 		color: m.color,
+		// Fase 21.5 (E2): color de lana de la oveja (ID de bloque de la lana
+		// que suelta al esquilar) — el cliente pinta su textura según el bioma.
+		woolColor: m.woolColor,
 		state: m.state,
 		isBaby: m.isBaby,
 		burning: m.burning,
@@ -756,6 +760,9 @@ function restoreMobs(list) {
 		if (typeof m.ownerId === "string") mob.ownerId = m.ownerId;
 		if (typeof m.ownerName === "string") mob.ownerName = m.ownerName;
 		mob.sitting = !!m.sitting;
+		// Fase 21.5 (E2): restaura el color de lana persistido (retrocompatible:
+		// los guardados viejos no lo traen, el default es lana blanca).
+		if (typeof m.woolColor === "number") mob.woolColor = m.woolColor;
 		return mob;
 	});
 }

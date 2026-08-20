@@ -52,7 +52,12 @@ const TEMPLE_LOOT_TABLE = [
 	[I.BONE, 2, 5],
 	[I.TRIDENT, 1, 1],
 	// Fase 21.5 (A8): caña rota en el tesoro de la selva.
-	[I.FISHING_ROD, 1, 1, [1, 20]]
+	[I.FISHING_ROD, 1, 1, [1, 20]],
+	// Fase 21.5 (C3): el tótem de la inmortalidad llega por loot de cofres.
+	// Interino: se metió en el tesoro de la jungla hasta que existan la
+	// mansión del bosque (F21 P1) y las Trial Chambers (F21.5 D1), que son
+	// sus fuentes oficiales en Minecraft.
+	[I.TOTEM_OF_UNDYING, 1, 1]
 ];
 const SHIPWRECK_LOOT_TABLE = [
 	[I.IRON_INGOT, 1, 3],

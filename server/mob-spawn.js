@@ -9,7 +9,8 @@
 // inyectable setCreateMob: así este módulo no requiere mobs.js y no hay
 // ciclos (mobs.js lo requiere a él para re-exportar las fachadas).
 // ============================================================
-const { CHUNK_SIZE, HOSTILE, worldPaths } = require("./constants.js");
+const { CHUNK_SIZE, HOSTILE, worldPaths, B } = require("./constants.js");
+const constants = require("./constants.js");
 const state = require("./state.js");
 const world = require("./world.js");
 
@@ -75,6 +76,25 @@ const SPAWN_TYPES = {
 		"rabbit",
 		"bee"
 	]
+};
+// Fase 21.5 (E2): paleta de lana por bioma para ovejas.
+// Templados (llanura/bosque/jungla/birch): blanco.
+// Fríos (snow/taiga/giant_taiga): negro.
+// Cálidos/áridos (desert/badlands/swamp): marrón.
+// Montañas: gris.
+const SHEEP_WOOL = {
+	plains: B.WHITE_WOOL,
+	forest: B.WHITE_WOOL,
+	birch_forest: B.WHITE_WOOL,
+	jungle: B.WHITE_WOOL,
+	mountain: B.GRAY_WOOL,
+	snow: B.BLACK_WOOL,
+	snowy_peaks: B.BLACK_WOOL,
+	taiga: B.BLACK_WOOL,
+	giant_taiga: B.BLACK_WOOL,
+	desert: B.BROWN_WOOL,
+	badlands: B.BROWN_WOOL,
+	swamp: B.BROWN_WOOL
 };
 const BIOME_SPAWN = {
 	taiga: { day: [], night: ["wolf"] },
@@ -203,6 +223,11 @@ function spawnMobs(isNight) {
 			mob.homeX = wx;
 			mob.homeZ = wz;
 			if (type === "bee") mob.homeY = wy + 2;
+			// Fase 21.5 (E2): ovejas con lana del color del bioma donde spawnean.
+			if (type === "sheep") {
+				const biome = isWater ? null : world.getBiome(hx, hz);
+				mob.woolColor = SHEEP_WOOL[biome] || constants.B.WHITE_WOOL;
+			}
 			state.mobs.push(mob);
 			created.push(mob);
 			placed = mob;

@@ -16,7 +16,7 @@
 // ============================================================
 
 export const COLS = 8; // teselas por fila en el atlas
-export let TILE_COUNT = 63; // nº total de teselas (63 en la Fase 13: +8 de L2/L3)
+export let TILE_COUNT = 139; // 139 teselas: 80 base + 3 lana + 48 camas + 8 blast/decorativos
 
 // textures.js fija el recuento real de teselas (TILES.length) al cargar.
 export function setTileCount(n) {
@@ -100,7 +100,81 @@ const BLOCK_TEX = {
 	// Fase 21.5 (B5): abanico de coral, kelp y pasto marino (cross-quads).
 	86: { all: 77 },
 	87: { all: 78 },
-	88: { all: 79 }
+	88: { all: 79 },
+	// Fase 21.5 (E2): lana nueva
+	66: { all: 80 }, // lana gris
+	89: { all: 81 }, // lana negra
+	90: { all: 82 }, // lana marrón
+	// Fase 21.5 (C4): 16 camas de colores — 3 teselas cada una (top/side/front)
+	44: { top: 83, bottom: 8, side: 84, fronts: 85 }, // cama blanca
+	45: { top: 86, bottom: 8, side: 87, fronts: 88 }, // cama naranja
+	46: { top: 89, bottom: 8, side: 90, fronts: 91 }, // cama magenta
+	47: { top: 92, bottom: 8, side: 93, fronts: 94 }, // cama azul claro
+	52: { top: 95, bottom: 8, side: 96, fronts: 97 }, // cama amarilla
+	53: { top: 98, bottom: 8, side: 99, fronts: 100 }, // cama verde lima
+	54: { top: 101, bottom: 8, side: 102, fronts: 103 }, // cama rosa
+	55: { top: 104, bottom: 8, side: 105, fronts: 106 }, // cama gris
+	56: { top: 107, bottom: 8, side: 108, fronts: 109 }, // cama gris claro
+	57: { top: 110, bottom: 8, side: 111, fronts: 112 }, // cama cian
+	58: { top: 113, bottom: 8, side: 114, fronts: 115 }, // cama púrpura
+	59: { top: 116, bottom: 8, side: 117, fronts: 118 }, // cama azul
+	62: { top: 119, bottom: 8, side: 120, fronts: 121 }, // cama marrón
+	63: { top: 122, bottom: 8, side: 123, fronts: 124 }, // cama verde
+	64: { top: 125, bottom: 8, side: 126, fronts: 127 }, // cama roja
+	65: { top: 128, bottom: 8, side: 129, fronts: 130 }, // cama negra
+	// Fase 21.5 (C1): horno de fundición — misma lógica que el horno (frente ±Z)
+	91: { top: 131, bottom: 8, side: 131, fronts: 131 }, // blast furnace
+	// Fase 21.5 (E3): bloques decorativos (cross-quad, all = misma tesela)
+	92: { all: 132 }, // arbusto de luciérnagas
+	93: { all: 133 }, // hojarasca
+	94: { all: 134 }, // flores silvestres
+	95: { all: 135 }, // arbusto
+	96: { all: 136 }, // hierba seca corta
+	97: { all: 137 }, // hierba seca alta
+	98: { all: 138 }, // flor de cactus
+	// Fase 21.5 (C5): concreto — 16 sólidos (142-157) y 16 polvos (158-173).
+	// Teselas consecutivas 139-170 (color índice = bloque − 142 o bloque − 158).
+	142: { all: 139 },
+	143: { all: 140 },
+	144: { all: 141 },
+	145: { all: 142 },
+	146: { all: 143 },
+	147: { all: 144 },
+	148: { all: 145 },
+	149: { all: 146 },
+	150: { all: 147 },
+	151: { all: 148 },
+	152: { all: 149 },
+	153: { all: 150 },
+	154: { all: 151 },
+	155: { all: 152 },
+	156: { all: 153 },
+	157: { all: 154 },
+	158: { all: 155 },
+	159: { all: 156 },
+	160: { all: 157 },
+	161: { all: 158 },
+	162: { all: 159 },
+	163: { all: 160 },
+	164: { all: 161 },
+	165: { all: 162 },
+	166: { all: 163 },
+	167: { all: 164 },
+	168: { all: 165 },
+	169: { all: 166 },
+	170: { all: 167 },
+	171: { all: 168 },
+	172: { all: 169 },
+	173: { all: 170 },
+	// Fase 21.5 (D1/D3/F1/F3): bóveda, corazón crujiente, pale oak y núcleo.
+	174: { all: 171 },
+	175: { all: 172 },
+	176: { top: 173, bottom: 173, side: 174 }, // tronco de roble pálido
+	177: { all: 175 }, // hojas de roble pálido
+	178: { all: 176 }, // tablones de roble pálido
+	179: { all: 177 }, // bloque de musgo pálido
+	180: { all: 178 }, // alfombra de musgo pálido (cross)
+	181: { all: 179 } // núcleo pesado
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

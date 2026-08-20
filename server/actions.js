@@ -20,6 +20,7 @@ const {
 	FUEL_ITEMS,
 	isTool,
 	isArmor,
+	isBed,
 	ARMOR_SLOTS,
 	ARMOR_DURABILITY,
 	SWORD_DAMAGE,
@@ -181,13 +182,21 @@ function handleRecipeBook(ws) {
 // HORNO
 // ============================================================
 
+// Fase 21.5 (C1): ¿la clave de horno "x,y,z" apunta a un horno de fundición?
+function isBlastFurnaceBlock(key) {
+	const [bx, by, bz] = key.split(",").map(Number);
+	return world.getBlock(bx, by, bz) === B.BLAST_FURNACE;
+}
+
 function handleFurnaceOpen(p, ws, data, playerId) {
 	if (!validCoords(data.x, data.y, data.z)) return; // C2 (SV-3/SEC-3)
 	const key = `${data.x},${data.y},${data.z}`;
 	// Fase 7 (auditoría): validar distancia como chest_open — antes un
 	// jugador podía abrir/operar cualquier horno del mundo desde lejos.
 	if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 7) return;
-	if (world.getBlock(data.x, data.y, data.z) !== B.FURNACE) return;
+	// Fase 21.5 (C1): horno de fundición comparte la misma UI.
+	const blk = world.getBlock(data.x, data.y, data.z);
+	if (blk !== B.FURNACE && blk !== B.BLAST_FURNACE) return;
 	// Fase 16 (C5/REN-2): registrar en el índice de watchers (en vez de
 	// escanear O(H×J) por tick) y NO crear una entrada de horno para un horno
 	// vacío — antes cada horno alguna vez abierto quedaba en memoria y en
@@ -252,6 +261,9 @@ function handleFurnaceAction(p, ws, data, playerId) {
 		if (
 			slot &&
 			crafting.isCookable(slot.id) &&
+			// Fase 21.5 (C1): el horno de fundición solo acepta minerales
+			// (isBlastCookable comprueba que el resultado es un lingote).
+			(!isBlastFurnaceBlock(key) || crafting.isBlastCookable(slot.id)) &&
 			(!f.inputItem || f.inputItem.id === slot.id)
 		) {
 			f.inputItem = f.inputItem
@@ -521,7 +533,7 @@ function handleSleep(p, ws, data) {
 		by = data.y,
 		bz = data.z;
 	if (Math.hypot(bx - p.x, by - p.y, bz - p.z) > 7) return;
-	if (world.getBlock(bx, by, bz) !== B.BED) return;
+	if (!isBed(world.getBlock(bx, by, bz))) return;
 	// Fase 18 (C-1): dormir solo en la NOCHE ESTRICTA (fase ≥ duskEnd). Antes
 	// el umbral era DAY_CYCLE_MS/2 (binario 10/10); con las franjas MC la
 	// noche son 7 min de 20 y el atardecer/amanecer no cuentan para dormir.
@@ -593,8 +605,8 @@ function handleShearMob(p, data) {
 	const held = p.inventory[p.selectedSlot];
 	if (!held || held.id !== I.SHEARS) return;
 	if (mobs.canShear(mob, held.id) !== "ok") return;
-	const woolCount = mobs.applyShear(mob);
-	playerHelpers.addToInventory(p, B.WHITE_WOOL, woolCount);
+	const { count: woolCount, woolId } = mobs.applyShear(mob);
+	playerHelpers.addToInventory(p, woolId, woolCount);
 	// Auditoría 2026-08-09 (§4.2): esquilar desgasta las tijeras (como MC: -1
 	// por corte). El break/sync lo gestiona applyToolWear.
 	playerHelpers.applyToolWear(p);

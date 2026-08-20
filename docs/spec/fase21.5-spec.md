@@ -263,15 +263,31 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   `unit-fase21.5` sección C2); `unit-sync`/`unit-recetas` en verde.
   Resultado: suite `--unit` completa en verde en el árbol limpio del commit.
 
-### C3 — Tótem de inmortalidad (1.11)
+### C3 — Tótem de inmortalidad (1.11) — ✅ IMPLEMENTADO (2026-08-19)
 
 - **Qué hacer:** ítem `TOTEM_OF_UNDYING`: al recibir daño letal, si va en
   la mano, **evita la muerte**, cura (p. ej. mitad de vida), da absorción y
   se consume. Se obtiene en cofres (mansión de la F21, Trial Chambers D1).
 - **Qué no incluir:** efecto de partículas doradas (opcional visual), totem
   en ambas manos.
+- **Decisión documentada:** sin "mano secundaria" (off-hand completo), el
+  tótem se activa SOLO en la MANO ACTIVA. Evita la muerte ante daño letal de
+  CUALQUIER fuente (mobs, proyectiles, caída, lava, fuego, inanición), salvo
+  el vacío (net.js respawnea directo, como MC). Efecto: cura la mitad de la
+  vida máxima (10 HP) y otorga `TOTEM_ABSORPTION_HP = 8` (4 corazones
+  dorados, el valor de la Absorción II de MC) que absorben daño antes que la
+  vida; se consume (count −1). El HUD pinta los corazones dorados como
+  "+N" ámbar junto a la vida (sin partículas, fuera de alcance). Sin receta:
+  solo loot de cofres. Interino: entra en el tesoro del templo de jungla
+  (`chests.js TEMPLE_LOOT_TABLE`) hasta que existan la mansión (F21 P1) y
+  las Trial Chambers (D1), sus fuentes oficiales. `isTool` solo a efectos de
+  inventario (no se apila, count 1) y SIN durabilidad propia (no en
+  `TOOL_DURABILITY`).
 - **Criterio:** test: con totem en mano no mueres y se consume; sin totem
-  mueres; assert en `unit-combat`/`unit-fase21.5`.
+  mueres; assert en `unit-combat`/`unit-fase21.5`. Resultado: sección C3 de
+  `unit-fase21.5` en verde (7 checks: ID/constantes, no-muerte, absorción,
+  consumo, absorción absorbe daño, otra ranura no salva, daño no letal no
+  consume).
 
 ### C4 — Camas de colores (1.12)
 

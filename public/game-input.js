@@ -10,7 +10,7 @@ import { playBreak, playDrink, playEat, playFeed, playPlace } from "./audio.js";
 import { send } from "./connection.js";
 import {
 	ARMOR_ITEMS,
-	BED,
+	BED_SET,
 	BEE_HIVE,
 	BEE_NEST,
 	BREED_FOOD,
@@ -179,6 +179,7 @@ function startMiningAt(x, y, z) {
 	if (
 		target === 15 ||
 		target === 16 ||
+		target === 91 || // Fase 21.5 (C1): horno de fundición — interactivo, no minable
 		chestRefused ||
 		(target === WATER && !isCreative()) ||
 		target === -1
@@ -505,7 +506,8 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 
 	if (e.button === 0) {
 		const target = getClientBlock(x, y, z);
-		if (target === 16) {
+		// Fase 21.5 (C1): el horno de fundición (91) abre la misma UI del horno.
+		if (target === 16 || target === 91) {
 			toggleFurnaceUI(true, { x, y, z });
 			return;
 		}
@@ -524,7 +526,7 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 	} else if (e.button === 2) {
 		// Fase 7: clic derecho en una cama = dormir (de noche salta al amanecer
 		// y fija el punto de reaparición; de día el servidor lo rechaza).
-		if (getClientBlock(x, y, z) === BED) {
+		if (BED_SET.has(getClientBlock(x, y, z))) {
 			send("sleep", { x, y, z });
 			return;
 		}

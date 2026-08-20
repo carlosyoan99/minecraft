@@ -1094,6 +1094,41 @@ function drawShield(g) {
 	set(g, 8, 8, ironDark);
 }
 
+// Tótem de la inmortalidad (Fase 21.5, C3): estatuilla dorada con rostro,
+// brazos abiertos y un anillo en la cabeza (como el ítem de Minecraft).
+function drawTotem(g) {
+	const gold = "#efc93d",
+		goldDark = "#c49a2c",
+		goldLight = "#f8e08a",
+		eyeblue = "#3b7fbf";
+	// Cabeza con anillo
+	rect(g, 7, 1, 3, 3, gold);
+	rect(g, 7, 1, 3, 1, goldLight);
+	set(g, 6, 2, goldDark);
+	// Ojos azules
+	set(g, 7, 3, eyeblue);
+	set(g, 9, 3, eyeblue);
+	// Cuerpo
+	rect(g, 6, 4, 5, 6, gold);
+	rect(g, 6, 4, 5, 1, goldLight);
+	set(g, 6, 4, goldDark);
+	set(g, 10, 4, goldDark);
+	set(g, 6, 9, goldDark);
+	set(g, 10, 9, goldDark);
+	// Brazos extendidos
+	rect(g, 3, 5, 2, 2, gold);
+	rect(g, 11, 5, 2, 2, gold);
+	set(g, 3, 5, goldLight);
+	set(g, 11, 5, goldLight);
+	// Piernas
+	rect(g, 6, 10, 2, 3, gold);
+	rect(g, 9, 10, 2, 3, gold);
+	set(g, 6, 12, goldDark);
+	set(g, 9, 12, goldDark);
+	// Boca
+	set(g, 8, 7, goldDark);
+}
+
 // Flecha: astil diagonal con punta y plumas.
 function drawArrow(g) {
 	const shaft = "#cfc4a8",
@@ -1502,6 +1537,25 @@ for (let id = 73; id <= 78; id++)
 ICONS[79] = (g, rng) => drawBlockIcon(79, g, rng);
 // Fase 21.5 (B3): bambú, tablones de bambú y andamio (80-82).
 for (const id of [80, 81, 82]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (B4): nidos, colmenas y bloque de miel (83-85).
+for (const id of [83, 84, 85]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (B5): abanico de coral, kelp, pasto marino (86-88).
+for (const id of [86, 87, 88]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (E2): lana nueva — gris (66), negra (89), marrón (90).
+for (const id of [66, 89, 90]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (C4): 16 camas de colores — icono de cubo con su color.
+for (const id of [44, 45, 46, 47, 52, 53, 54, 55, 56, 57, 58, 59, 62, 63, 64, 65])
+	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (C1): horno de fundición (91)
+ICONS[91] = (g, rng) => drawBlockIcon(91, g, rng);
+// Fase 21.5 (C5): concreto y polvo de concreto (142-181) — cubo con su color.
+// El namespace bloques/ítems es compartido, por eso el concreto usa 142-181 y
+// no 100-131 (que colisionan con palo, carbón, lingotes...).
+for (let id = 142; id <= 181; id++)
+	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (E3): bloques decorativos (92-98)
+for (const id of [92, 93, 94, 95, 96, 97, 98])
+	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Ítems
 ICONS[100] = drawStick;
 ICONS[101] = drawCoal;
@@ -1541,6 +1595,10 @@ ICONS[136] = drawBone;
 ICONS[137] = (g) => drawDye(g, "#d92626", "#8f1010", "#f05a5a");
 ICONS[138] = (g) => drawDye(g, "#e8c547", "#b8860b", "#f5e07a");
 ICONS[139] = (g) => drawDye(g, "#f5f5f0", "#c9c9c0", "#ffffff");
+// Fase 21.5 (C4): tintes nuevos para camas de colores
+ICONS[266] = (g) => drawDye(g, "#2a2a2a", "#0a0a0a", "#4a4a4a"); // tinte negro
+ICONS[267] = (g) => drawDye(g, "#8a5a3a", "#5a3a1a", "#b87a5a"); // tinte marrón
+ICONS[268] = (g) => drawDye(g, "#8a8a88", "#5a5a58", "#b0b0ae"); // tinte gris
 ICONS[140] = drawHoney;
 // Fase 11 (C): tijeras
 ICONS[141] = drawShears; // Fase 12 (A): tridente (245) y bola de slime (246)
@@ -1570,11 +1628,71 @@ ICONS[263] = drawGlassBottle;
 ICONS[264] = drawHoneyBottle;
 // Fase 21.5 (C2): escudo (1.9).
 ICONS[265] = drawShield;
+// Fase 21.5 (C3): tótem de la inmortalidad (1.11).
+ICONS[269] = drawTotem;
 // Fase 21.5 (B4): bloques de colmenas y bloque de miel (cubo con su color).
 for (const id of [83, 84, 85]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Fase 21.5 (B5): coral y algas (cross-quads → icono con su color como
 // planta; el atlas les da la silueta de cross en el inventario).
 for (const id of [86, 87, 88]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (D5): carga de viento (orbe azulado, glow) y barra de breeze
+// (asta delgada azul-cyan).
+ICONS[270] = (g) => {
+	for (let y = 3; y <= 12; y++)
+		for (let x = 3; x <= 12; x++) {
+			const dx = x - 7.5, dy = y - 7.5;
+			if (dx * dx + dy * dy <= 25) set(g, x, y, y < 8 ? "#a0d8ff" : "#60b0e0");
+		}
+	set(g, 7, 5, "#e0f0ff"); set(g, 8, 6, "#e0f0ff");
+};
+ICONS[271] = (g) => {
+	for (let y = 2; y <= 14; y++) {
+		set(g, 7, y, "#4a9ad0"); set(g, 8, y, "#6abae0");
+	}
+	set(g, 6, 3, "#80c0e8"); set(g, 9, 3, "#80c0e8");
+};
+// Fase 21.5 (D3): maza — mazo pesado con la cabeza de piedra.
+ICONS[272] = (g) => {
+	// Asta
+	for (let y = 6; y <= 14; y++) { set(g, 7, y, "#8a6a4a"); set(g, 8, y, "#a0805a"); }
+	// Cabeza
+	for (let y = 2; y <= 7; y++)
+		for (let x = 4; x <= 11; x++)
+			set(g, x, y, x < 8 ? "#9a9a9a" : "#b0b0b0");
+	set(g, 6, 3, "#d0d0d0"); set(g, 9, 3, "#d0d0d0");
+};
+// Fase 21.5 (D5): mapa de exploración de prueba — cuadrado parchment con brújula.
+ICONS[273] = (g) => {
+	for (let y = 2; y <= 13; y++)
+		for (let x = 2; x <= 13; x++)
+			set(g, x, y, (x + y) % 3 === 0 ? "#d8c898" : "#e8d8a8");
+	set(g, 7, 7, "#c04040"); set(g, 8, 7, "#4040c0");
+};
+// Fase 21.5 (H1): mochila — cuero enrollado.
+ICONS[274] = (g) => {
+	for (let y = 4; y <= 13; y++)
+		for (let x = 3; x <= 12; x++)
+			set(g, x, y, x < 8 ? "#a07040" : "#c09060");
+	set(g, 6, 4, "#604020"); set(g, 9, 4, "#604020");
+	set(g, 5, 5, "#b08050"); set(g, 10, 5, "#b08050");
+};
+// Discos musicales — disco negro con etiqueta de color central.
+function drawDisc(g, color) {
+	for (let y = 2; y <= 13; y++)
+		for (let x = 2; x <= 13; x++) {
+			const dx = x - 7.5, dy = y - 7.5, r = dx * dx + dy * dy;
+			if (r <= 36) set(g, x, y, r <= 8 ? color : "#1a1a1a");
+		}
+}
+ICONS[275] = (g) => drawDisc(g, "#e04040"); // cat — rojo
+ICONS[276] = (g) => drawDisc(g, "#40a040"); // 13 — verde
+// Fase 21.5 (D6): pintura — lienzo rectangular.
+ICONS[277] = (g) => {
+	for (let y = 2; y <= 13; y++)
+		for (let x = 3; x <= 12; x++) set(g, x, y, "#d8d0c0");
+	set(g, 4, 5, "#c06030"); set(g, 8, 4, "#3080c0");
+	set(g, 6, 8, "#40a040"); set(g, 10, 7, "#c0c040");
+};
 // Herramientas 200..219: (id-200)/5 = tipo, (id-200)%5 = material
 for (let id = 200; id <= 219; id++) {
 	ICONS[id] = makeToolIcon(Math.floor((id - 200) / 5), (id - 200) % 5);

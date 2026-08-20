@@ -470,6 +470,58 @@ function makeWool(color, light, dark) {
 		speckle(ctx, rng, light, 0.08);
 	};
 }
+// Fase 21.5 (C4): fábricas de teselas de cama por color — cada cama de
+// color necesita 3 teselas (top, side, front) como la cama base (24).
+function lighten(hex, amt) {
+	const r = Math.min(255, parseInt(hex.slice(1, 3), 16) + amt);
+	const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amt);
+	const b = Math.min(255, parseInt(hex.slice(5, 7), 16) + amt);
+	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+function darken(hex, amt) {
+	const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amt);
+	const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amt);
+	const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - amt);
+	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+function makeBedTop(color) {
+	const light = lighten(color, 30);
+	const dark = darken(color, 50);
+	return (ctx, rng) => {
+		fill(ctx, light);
+		rect(ctx, 0, 0, TILE, 2, dark);
+		rect(ctx, 0, TILE - 2, TILE, 2, dark);
+		speckle(ctx, rng, color, 0.12);
+		rect(ctx, 10, 3, 6, 5, PAL.pillow);
+		rect(ctx, 10, 3, 6, 1, PAL.woolDark);
+		rect(ctx, 0, 3, 2, 5, dark);
+	};
+}
+function makeBedSide(color) {
+	const light = lighten(color, 30);
+	const dark = darken(color, 50);
+	return (ctx, rng) => {
+		fill(ctx, PAL.wood);
+		rect(ctx, 0, 0, TILE, 3, PAL.woodDark);
+		rect(ctx, 0, 3, TILE, 9, light);
+		rect(ctx, 0, 12, TILE, 2, PAL.woodDark);
+		speckle(ctx, rng, color, 0.1);
+		rect(ctx, 2, 13, 2, 3, PAL.woodDark);
+		rect(ctx, TILE - 4, 13, 2, 3, PAL.woodDark);
+	};
+}
+function makeBedFront(color) {
+	const light = lighten(color, 30);
+	return (ctx, _rng) => {
+		fill(ctx, PAL.wood);
+		rect(ctx, 0, 0, TILE, 3, PAL.woodDark);
+		rect(ctx, 0, 3, TILE, 9, light);
+		rect(ctx, 0, 12, TILE, 2, PAL.woodDark);
+		rect(ctx, 7, 5, 2, 3, PAL.pillow);
+		rect(ctx, 3, 13, 2, 3, PAL.woodDark);
+		rect(ctx, 11, 13, 2, 3, PAL.woodDark);
+	};
+}
 
 // Cama (Fase 7): marco de madera + manta con almohada (manta roja clásica).
 function drawBedTop(ctx, rng) {
@@ -810,6 +862,70 @@ function drawSeagrass(ctx, rng) {
 	px(ctx, 12, 13, "#2f7a30");
 	px(ctx, 2, 13, "#3a8f3a");
 }
+// Fase 21.5 (C1): horno de fundición — piedra oscura con reja naranja.
+function drawBlastFurnace(ctx, rng) {
+	fill(ctx, "#4a3a2a");
+	// Reja frontal naranja
+	rect(ctx, 3, 3, 10, 8, "#d86a2a");
+	rect(ctx, 4, 4, 8, 6, "#c94a1a");
+	// Líneas de la reja
+	for (let y = 4; y < 10; y += 2) rect(ctx, 4, y, 8, 1, "#4a3a2a");
+	speckle(ctx, rng, "#5a4a3a", 0.08);
+}
+// Fase 21.5 (E3): bloques decorativos — arbustos, hojarasca, flores secas.
+function drawFireflyBush(ctx, rng) {
+	fill(ctx, "#2a4a1a");
+	for (const [x, y] of [[3, 4], [6, 2], [9, 5], [5, 8], [10, 7], [2, 9]])
+		rect(ctx, x, y, 3, 3, "#3a6a2a");
+	// Luciérnagas: puntos amarillos brillantes
+	px(ctx, 5, 5, "#f5e84a"); px(ctx, 10, 4, "#f5e84a");
+	px(ctx, 7, 9, "#f5e84a"); px(ctx, 3, 7, "#f5e84a");
+}
+function drawLeafLitter(ctx, rng) {
+	fill(ctx, "#6a8a3a");
+	for (let i = 0; i < 8; i++) {
+		const x = 1 + rng() * 12, y = 5 + rng() * 8;
+		rect(ctx, Math.floor(x), Math.floor(y), 3, 2, "#5a7a2a");
+	}
+	speckle(ctx, rng, "#7a9a4a", 0.15);
+}
+function drawWildflowers(ctx, rng) {
+	fill(ctx, "#5a8a3a");
+	// Tallos
+	for (const x of [3, 6, 9, 12]) rect(ctx, x, 6, 1, 6, "#4a7a2a");
+	// Flores amarillas
+	for (const [x, y] of [[2, 3], [5, 2], [8, 4], [11, 3]])
+		rect(ctx, x, y, 2, 2, "#f5d040");
+}
+function drawBush(ctx, rng) {
+	fill(ctx, "#3a6a2a");
+	for (const [x, y, w, h] of [[2, 3, 5, 5], [7, 2, 6, 6], [4, 6, 5, 4]])
+		rect(ctx, x, y, w, h, "#2a5a1a");
+	speckle(ctx, rng, "#4a8a3a", 0.12);
+}
+function drawShortDryGrass(ctx, rng) {
+	fill(ctx, "#c8b870");
+	for (const x of [2, 5, 8, 11]) {
+		rect(ctx, x, 8, 1, 5, "#b0a050");
+		rect(ctx, x, 7, 2, 1, "#d0c080");
+	}
+}
+function drawTallDryGrass(ctx, rng) {
+	fill(ctx, "#b0a050");
+	for (const x of [2, 5, 8, 11]) {
+		rect(ctx, x, 3, 1, 10, "#a09040");
+		rect(ctx, x, 2, 2, 1, "#c0b060");
+	}
+}
+function drawCactusFlower(ctx, rng) {
+	fill(ctx, "#3a8a2a");
+	// Tallo del cactus
+	rect(ctx, 6, 5, 4, 9, "#2a7a1a");
+	// Flor rosa
+	for (const [x, y] of [[4, 1], [6, 0], [8, 1], [5, 2], [7, 2]])
+		rect(ctx, x, y, 2, 2, "#e85a6a");
+	px(ctx, 6, 1, "#f5c84a"); // centro
+}
 // Fase 21.5 (B4): nido de abeja — madera clara con panal dorado central y
 // agujero oscuro (como MC: un tronco con miel).
 function drawBeeNest(ctx, rng) {
@@ -847,6 +963,106 @@ function drawHoneyBlock(ctx, rng) {
 	rect(ctx, 2, 2, 12, 2, "#ffc04a");
 	rect(ctx, 2, 12, 12, 2, "#d9820a");
 	speckle(ctx, rng, "#d9820a", 0.08);
+}
+
+// ============================================================
+// Fase 21.5 (C5): CONCRETO — 16 colores lisos (makeConcrete) y 16 polvos
+// granulados (makeConcretePowder). El polvo cae con gravedad y al tocar agua
+// se convierte en el concreto del mismo color (world.js lo aplica).
+// ============================================================
+function makeConcrete(color) {
+	return (ctx, rng) => {
+		fill(ctx, color);
+		// Biselado ligero de bloque (más claro arriba, más oscuro abajo).
+		rect(ctx, 0, 0, TILE, 1, lighten(color, 24));
+		rect(ctx, 0, TILE - 1, TILE, 1, darken(color, 24));
+		speckle(ctx, rng, darken(color, 14), 0.05);
+		speckle(ctx, rng, lighten(color, 18), 0.04);
+	};
+}
+function makeConcretePowder(color) {
+	return (ctx, rng) => {
+		fill(ctx, color);
+		// El polvo se ve más "punteado" que el bloque endurecido.
+		for (let i = 0; i < 26; i++) {
+			const x = Math.floor(rng() * TILE);
+			const y = Math.floor(rng() * TILE);
+			px(ctx, x, y, rng() < 0.5 ? darken(color, 30) : lighten(color, 26));
+		}
+		speckle(ctx, rng, darken(color, 18), 0.12);
+	};
+}
+// Fase 21.5 (D1): bóveda (Vault) de Trial Chambers — piedra gris con reja
+// metálica; decorativo (sin llave).
+function drawVault(ctx, _rng) {
+	fill(ctx, "#6a6560");
+	rect(ctx, 1, 1, TILE - 2, TILE - 2, "#57524d");
+	rect(ctx, 4, 3, 8, 10, "#2a2724");
+	rect(ctx, 5, 4, 6, 8, "#3f3a35");
+	for (let y = 4; y < 12; y += 2) rect(ctx, 5, y, 6, 1, "#1c1a18");
+	rect(ctx, 6, 10, 4, 2, "#d8c06a"); // brillo dorado del tesoro
+}
+// Fase 21.5 (F3): Corazón Crujiente — madera pálida con el centro que late
+// (naranja vivo). El mob Creaking se vincula a este bloque.
+function drawCreakingHeart(ctx, _rng) {
+	fill(ctx, "#ddd5c8");
+	speckle(ctx, _rng, "#c8c0b2", 0.15);
+	rect(ctx, 5, 1, 6, 3, "#f0ead8");
+	rect(ctx, 5, 12, 6, 3, "#f0ead8");
+	rect(ctx, 3, 5, 10, 6, "#f0ead8");
+	rect(ctx, 5, 5, 6, 6, "#6a1a0a"); // corazón oscuro
+	px(ctx, 7, 7, "#ff8a3a"); // latido
+	px(ctx, 8, 8, "#ff8a3a");
+}
+// Fase 21.5 (F1): Pale Garden — corteza pálida (vertical), hojas claras,
+// tablones blanquecinos y musgo.
+function drawPaleLogSide(ctx, rng) {
+	fill(ctx, "#e8e2d5");
+	for (let y = 0; y < 16; y += 5) rect(ctx, 0, y, 16, 1, "#d5cfc0");
+	speckle(ctx, rng, "#cfc8b8", 0.1);
+}
+function drawPaleLogTop(ctx, rng) {
+	fill(ctx, "#f0ecdf");
+	for (const [x, y, w, h] of [[3, 4, 4, 3], [9, 8, 4, 3], [6, 1, 3, 3]])
+		rect(ctx, x, y, w, h, "#ddd6c4");
+	speckle(ctx, rng, "#d8d0c0", 0.08);
+}
+function drawPaleLeaves(ctx, rng) {
+	fill(ctx, "#b8c8a8");
+	rect(ctx, 0, 0, TILE, 2, "#a8b898");
+	rect(ctx, 0, TILE - 2, TILE, 2, "#a8b898");
+	speckle(ctx, rng, "#9cac8c", 0.15);
+	rect(ctx, 3, 5, 4, 3, "#c8d8b8");
+	rect(ctx, 9, 9, 4, 3, "#c8d8b8");
+}
+function drawPalePlanks(ctx, rng) {
+	fill(ctx, "#f0ead8");
+	for (let y = 0; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "#ddd6c2");
+	rect(ctx, 7, 0, 1, 16, "#ddd6c2");
+	speckle(ctx, rng, "#e5dec8", 0.06);
+}
+function drawPaleMossBlock(ctx, rng) {
+	fill(ctx, "#8fae84");
+	speckle(ctx, rng, "#7d9c72", 0.2);
+	rect(ctx, 2, 2, 4, 3, "#a2c096");
+	rect(ctx, 10, 8, 4, 4, "#a2c096");
+	rect(ctx, 5, 11, 3, 3, "#779a6e");
+}
+function drawPaleMoss(ctx, rng) {
+	fill(ctx, "#0a0a0a00");
+	// Alfombra: guirnaldas claras apelotonadas (transparente alrededor)
+	for (const [x, y, w, h] of [[2, 6, 4, 3], [7, 6, 4, 3], [11, 8, 3, 2], [4, 9, 3, 3]])
+		rect(ctx, x, y, w, h, "#a5c398");
+	speckle(ctx, rng, "#8fae84", 0.12);
+}
+// Fase 21.5 (D3): núcleo pesado — bloque denso de piedra con nervios.
+function drawHeavyCore(ctx, rng) {
+	fill(ctx, "#8a8682");
+	speckle(ctx, rng, "#75716d", 0.15);
+	rect(ctx, 3, 3, 10, 10, "#6a665f");
+	rect(ctx, 5, 5, 6, 6, "#97938b");
+	rect(ctx, 0, 7, 16, 2, "#5a5650");
+	rect(ctx, 7, 0, 2, 16, "#5a5650");
 }
 
 // Índices de tesela (el orden define su posición en el atlas)
@@ -935,7 +1151,135 @@ const TILES = [
 	// Fase 21.5 (B5): abanico de coral, kelp y pasto marino (cross-quads)
 	drawCoralFan, // 77
 	drawKelp, // 78
-	drawSeagrass // 79
+	drawSeagrass, // 79
+	// Fase 21.5 (E2): lana nueva (gris, negra, marrón)
+	makeWool("#8a8a88", "#a8a8a6", "#6a6a68"), // 80 lana gris
+	makeWool("#2a2a2a", "#4a4a4a", "#0a0a0a"), // 81 lana negra
+	makeWool("#8a5a3a", "#a87a5a", "#6a3a1a"), // 82 lana marrón
+	// Fase 21.5 (C4): 16 camas de colores (3 teselas cada una: top, side, front)
+	// Blanco (44)
+	makeBedTop("#f5f5f0"), // 83
+	makeBedSide("#f5f5f0"), // 84
+	makeBedFront("#f5f5f0"), // 85
+	// Naranja (45)
+	makeBedTop("#e88a2a"), // 86
+	makeBedSide("#e88a2a"), // 87
+	makeBedFront("#e88a2a"), // 88
+	// Magenta (46)
+	makeBedTop("#c93ac9"), // 89
+	makeBedSide("#c93ac9"), // 90
+	makeBedFront("#c93ac9"), // 91
+	// Azul claro (47)
+	makeBedTop("#5a8ad9"), // 92
+	makeBedSide("#5a8ad9"), // 93
+	makeBedFront("#5a8ad9"), // 94
+	// Amarilla (52)
+	makeBedTop("#e8d21a"), // 95
+	makeBedSide("#e8d21a"), // 96
+	makeBedFront("#e8d21a"), // 97
+	// Verde lima (53)
+	makeBedTop("#6fd93a"), // 98
+	makeBedSide("#6fd93a"), // 99
+	makeBedFront("#6fd93a"), // 100
+	// Rosa (54)
+	makeBedTop("#e88ab0"), // 101
+	makeBedSide("#e88ab0"), // 102
+	makeBedFront("#e88ab0"), // 103
+	// Gris (55)
+	makeBedTop("#8a8a8a"), // 104
+	makeBedSide("#8a8a8a"), // 105
+	makeBedFront("#8a8a8a"), // 106
+	// Gris claro (56)
+	makeBedTop("#c0c0c0"), // 107
+	makeBedSide("#c0c0c0"), // 108
+	makeBedFront("#c0c0c0"), // 109
+	// Cian (57)
+	makeBedTop("#2ab8c9"), // 110
+	makeBedSide("#2ab8c9"), // 111
+	makeBedFront("#2ab8c9"), // 112
+	// Púrpura (58)
+	makeBedTop("#7a3ac9"), // 113
+	makeBedSide("#7a3ac9"), // 114
+	makeBedFront("#7a3ac9"), // 115
+	// Azul (59)
+	makeBedTop("#3a5ac9"), // 116
+	makeBedSide("#3a5ac9"), // 117
+	makeBedFront("#3a5ac9"), // 118
+	// Marrón (62)
+	makeBedTop("#8a5a3a"), // 119
+	makeBedSide("#8a5a3a"), // 120
+	makeBedFront("#8a5a3a"), // 121
+	// Verde (63)
+	makeBedTop("#3a9a3a"), // 122
+	makeBedSide("#3a9a3a"), // 123
+	makeBedFront("#3a9a3a"), // 124
+	// Roja (64)
+	makeBedTop("#c0392b"), // 125
+	makeBedSide("#c0392b"), // 126
+	makeBedFront("#c0392b"), // 127
+	// Negra (65)
+	makeBedTop("#2a2a2a"), // 128
+	makeBedSide("#2a2a2a"), // 129
+	makeBedFront("#2a2a2a") // 130
+	,
+	// Fase 21.5 (C1): horno de fundición — piedra oscura con reja naranja (frente)
+	drawBlastFurnace, // 131
+	// Fase 21.5 (E3): bloques decorativos (cross-quads)
+	drawFireflyBush, // 132
+	drawLeafLitter, // 133
+	drawWildflowers, // 134
+	drawBush, // 135
+	drawShortDryGrass, // 136
+	drawTallDryGrass, // 137
+	drawCactusFlower, // 138
+	// ============================================================
+	// Fase 21.5 (C5): concreto (16) y polvo de concreto (16).
+	// ============================================================
+	makeConcrete("#f5f5f0"), // 139 blanco
+	makeConcrete("#e88a2a"), // 140 naranja
+	makeConcrete("#c93ac9"), // 141 magenta
+	makeConcrete("#5a8ad9"), // 142 azul claro
+	makeConcrete("#e8d21a"), // 143 amarillo
+	makeConcrete("#6fd93a"), // 144 lima
+	makeConcrete("#e88ab0"), // 145 rosa
+	makeConcrete("#8a8a8a"), // 146 gris
+	makeConcrete("#c0c0c0"), // 147 gris claro
+	makeConcrete("#2ab8c9"), // 148 cian
+	makeConcrete("#7a3ac9"), // 149 púrpura
+	makeConcrete("#3a5ac9"), // 150 azul
+	makeConcrete("#8a5a3a"), // 151 marrón
+	makeConcrete("#3a9a3a"), // 152 verde
+	makeConcrete("#c0392b"), // 153 rojo
+	makeConcrete("#2a2a2a"), // 154 negro
+	makeConcretePowder("#f5f5f0"), // 155
+	makeConcretePowder("#e88a2a"), // 156
+	makeConcretePowder("#c93ac9"), // 157
+	makeConcretePowder("#5a8ad9"), // 158
+	makeConcretePowder("#e8d21a"), // 159
+	makeConcretePowder("#6fd93a"), // 160
+	makeConcretePowder("#e88ab0"), // 161
+	makeConcretePowder("#8a8a8a"), // 162
+	makeConcretePowder("#c0c0c0"), // 163
+	makeConcretePowder("#2ab8c9"), // 164
+	makeConcretePowder("#7a3ac9"), // 165
+	makeConcretePowder("#3a5ac9"), // 166
+	makeConcretePowder("#8a5a3a"), // 167
+	makeConcretePowder("#3a9a3a"), // 168
+	makeConcretePowder("#c0392b"), // 169
+	makeConcretePowder("#2a2a2a"), // 170
+	// ============================================================
+	// Fase 21.5 (D1/D3/F1/F3): Bóveda, Corazón Crujiente, Pale Garden y
+	// núcleo pesado.
+	// ============================================================
+	drawVault, // 171
+	drawCreakingHeart, // 172
+	drawPaleLogTop, // 173
+	drawPaleLogSide, // 174
+	drawPaleLeaves, // 175
+	drawPalePlanks, // 176
+	drawPaleMossBlock, // 177
+	drawPaleMoss, // 178
+	drawHeavyCore // 179
 ];
 
 // El mapa de teselas por bloque/cara (BLOCK_TEX) y los rectángulos UV viven en

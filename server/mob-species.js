@@ -653,7 +653,10 @@ function canShear(mob, itemId) {
 // (1-3) se añade al inventario del jugador (la entrega la hace el handler).
 function applyShear(mob) {
 	mob.shearedUntil = Date.now() + SHEAR_REGROW_MS;
-	return 1 + Math.floor(Math.random() * 3);
+	return {
+		count: 1 + Math.floor(Math.random() * 3),
+		woolId: mob.woolColor || constants.B.WHITE_WOOL
+	};
 }
 
 // Alimentar al mob: entra en modo amor y busca pareja del mismo tipo ya
@@ -692,6 +695,14 @@ function applyFeed(mob, mobs) {
 	);
 	baby.isBaby = true;
 	baby.age = 0;
+	// Fase 21.5 (E2): el cordero hereda la lana del color de uno de los
+	// padres al azar (simplificación de la mezcla de colores de MC).
+	if (mob.type === "sheep") {
+		baby.woolColor =
+			Math.random() < 0.5
+				? mob.woolColor || constants.B.WHITE_WOOL
+				: partner.woolColor || constants.B.WHITE_WOOL;
+	}
 	state.mobs.push(baby);
 	return baby;
 }
