@@ -797,14 +797,65 @@ function generateChunk(cx, cz) {
 						}
 					}
 				}
+				// Fase 21.5 (E3): vegetación decorativa por bioma.
+				// La paleta cambia según el bioma: arbustos en bosque/llanura,
+				// luciérnagas en pantano, hojarasca bajo árboles del bosque.
+				// La hierba seca de desierto/badlands corre fuera de canGrowTree
+				// (ver más abajo) porque el suelo no es GRASS.
 				const veg = rand();
-				if (veg < 0.1)
-					data[core.idx(x, core.toLocal(height), z)] = B.TALL_GRASS;
-				else if (veg < 0.12)
-					data[core.idx(x, core.toLocal(height), z)] = B.POPPY;
-				else if (veg < 0.14)
-					data[core.idx(x, core.toLocal(height), z)] = B.DANDELION;
+				if (biome === "swamp") {
+					// Pantano: arbusto de luciérnagas (brillo suave) y hierba alta.
+					if (veg < 0.06)
+						data[core.idx(x, core.toLocal(height), z)] = B.FIREFLY_BUSH;
+					else if (veg < 0.14)
+						data[core.idx(x, core.toLocal(height), z)] = B.TALL_GRASS;
+				} else if (
+					biome === "plains" ||
+					biome === "forest" ||
+					biome === "birch_forest"
+				) {
+					// Llanura/bosque: flores silvestres, arbusto, hierba alta y
+					// las flores clásicas (amapola/diente de león).
+					if (veg < 0.05)
+						data[core.idx(x, core.toLocal(height), z)] = B.WILDFLOWERS;
+					else if (veg < 0.08)
+						data[core.idx(x, core.toLocal(height), z)] = B.BUSH;
+					else if (veg < 0.14)
+						data[core.idx(x, core.toLocal(height), z)] = B.TALL_GRASS;
+					else if (veg < 0.155)
+						data[core.idx(x, core.toLocal(height), z)] = B.POPPY;
+					else if (veg < 0.17)
+						data[core.idx(x, core.toLocal(height), z)] = B.DANDELION;
+				} else if (biome === "taiga" || biome === "giant_taiga") {
+					// Taiga: hierba alta + hojarasca (bajo pinos).
+					if (veg < 0.08)
+						data[core.idx(x, core.toLocal(height), z)] = B.LEAF_LITTER;
+					else if (veg < 0.14)
+						data[core.idx(x, core.toLocal(height), z)] = B.TALL_GRASS;
+				} else {
+					// Otros biomas (montaña, jungla, snow): hierba alta + flores.
+					if (veg < 0.1)
+						data[core.idx(x, core.toLocal(height), z)] = B.TALL_GRASS;
+					else if (veg < 0.12)
+						data[core.idx(x, core.toLocal(height), z)] = B.POPPY;
+					else if (veg < 0.14)
+						data[core.idx(x, core.toLocal(height), z)] = B.DANDELION;
+				}
 			}
+				// Fase 21.5 (E3): hierba seca en desierto/badlands — corre fuera
+				// de canGrowTree (que exige GRASS); en estos biomas el suelo es
+				// arena/terracota, así que se coloca directamente sobre la superficie.
+				if (
+					(biome === "desert" || biome === "badlands") &&
+					data[core.idx(x, core.toLocal(height), z)] === B.AIR
+				) {
+					const dry = rand();
+					if (dry < 0.08)
+						data[core.idx(x, core.toLocal(height), z)] =
+							biome === "badlands" && dry < 0.03
+								? B.TALL_DRY_GRASS
+								: B.SHORT_DRY_GRASS;
+				}
 			if (
 				canGrowTree &&
 				(biome === "plains" || biome === "forest") &&
