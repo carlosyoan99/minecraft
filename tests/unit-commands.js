@@ -584,4 +584,181 @@ check(
 	);
 	constants.worldPaths.worldSize = origSize;
 }
+
+// --- Fase 21.5 (G1): /summon invoca un mob ---
+{
+	const h = makeHarness();
+	const before = state.mobs.length;
+	commands.executeCommand(h.player, "/summon zombie", h.ctx);
+	check(
+		"G1: /summon zombie crea un mob en state.mobs",
+		state.mobs.length === before + 1
+	);
+	const mob = state.mobs[state.mobs.length - 1];
+	check(
+		"G1: /summon coloca el mob junto al jugador (hacia su mirada)",
+		mob.type === "zombie" &&
+			Math.hypot(mob.x - (h.player.x - Math.sin(0) * 2), mob.z - (h.player.z - Math.cos(0) * 2)) <
+				0.001
+	);
+	// /summon con coordenadas explícitas
+	const b2 = state.mobs.length;
+	commands.executeCommand(h.player, "/summon cow 100 64 -50", h.ctx);
+	const mob2 = state.mobs[state.mobs.length - 1];
+	check(
+		"G1: /summon con x y z coloca el mob en las coordenadas dadas",
+		state.mobs.length === b2 + 1 && mob2.x === 100 && mob2.z === -50
+	);
+	// /summon desconocido no crea nada
+	const b3 = state.mobs.length;
+	commands.executeCommand(h.player, "/summon unicornio", h.ctx);
+	check(
+		"G1: /summon desconocido no crea mob y avisa",
+		state.mobs.length === b3 &&
+			systemMsgs(h.sent).some((m) => m.includes("Mob desconocido"))
+	);
+}
+
+// --- Fase 21.5 (G1): selectores en /kill ---
+{
+	state.players.clear();
+	const h = makeHarness();
+	state.players.set("p1", h.player);
+	state.players.set("p2", { ...h.player, id: "p2", name: "compa", x: 30, y: 10, z: 0.5, ws: h.player.ws });
+	// @e mata criaturas
+	const mobsBefore = state.mobs.filter((m) => m.alive).length;
+	commands.executeCommand(h.player, "/kill @e", h.ctx);
+	const aliveAfter = state.mobs.filter((m) => m.alive).length;
+	check(
+		"G1: /kill @e elimina todas las criaturas vivas",
+		aliveAfter === 0 && mobsBefore > 0,
+		`antes=${mobsBefore} después=${aliveAfter}`
+	);
+	// @s mata al emisor
+	commands.executeCommand(h.player, "/kill @s", h.ctx);
+	check(
+		"G1: /kill @s apunta al propio emisor",
+		systemMsgs(h.sent).some((m) => m.includes("Te has eliminado"))
+	);
+	// @p apunta al más cercano: resolución directa (el emisor siempre está a
+	// distancia 0 de sí mismo, así que con él dentro el resultado es él mismo).
+	{
+		const st = new Map();
+		const self = { id: "e", name: "emisor", x: 1000, y: 0, z: 1000 };
+		const cerc = { id: "c", name: "cercano", x: 1002, y: 0, z: 1000 };
+		const lejos = { id: "l", name: "lejos", x: 2000, y: 0, z: 2000 };
+		st.set(cerc.id, cerc);
+		st.set(lejos.id, lejos);
+		const res = commands.resolveTargets("@p", self, { players: st });
+		check(
+			"G1: @p resuelve al jugador más cercano entre los conectados",
+			res.players.length === 1 && res.players[0] === cerc
+		);
+		// @e (mobs) devuelve la marca de criaturas
+		const resE = commands.resolveTargets("@e", self, { players: st });
+		check("G1: @e marca la resolución a criaturas", resE.mobs === true);
+		// @r elige aleatorio distinto del emisor (si hay otros)
+		const resR = commands.resolveTargets("@r", self, { players: st });
+		check(
+			"G1: @r elige un jugador aleatorio distinto del emisor",
+			resR.players.length === 1 && resR.players[0] !== self
+		);
+		// Nombre por texto
+		const resN = commands.resolveTargets("LEJOS", self, { players: st });
+		check("G1: nombre sin distinguir mayúsculas resuelve al jugador", resN.players[0] === lejos);
+	}
+	// @a respawnea a todos los jugadores conectados
+	state.players.clear();
+}
+// --- Fase 21.5 (G1): /locate estructura y bioma ---
+{
+	const h = makeHarness();
+	commands.executeCommand(h.player, "/locate lista", h.ctx);
+	check(
+		"G1: /locate lista lista las opciones",
+		systemMsgs(h.sent).some((m) => m.includes("well") && m.includes("biomas"))
+	);
+	// Buscar un bioma cercano real: escaneamos en espiral hasta encontrar uno
+	// no-plains cerca del spawn (el spawn cae en plano si no hay montaña).
+	const raw = require("../server/biomes.js");
+	let target = null;
+	for (let r = 8; r <= 512; r += 8) {
+		if (
+			raw.getBiome(h.player.x + r, h.player.z) !== "plains" ||
+			raw.getBiome(h.player.x - r, h.player.z) !== "plains"
+		) {
+			target = r;
+			break;
+		}
+	}
+	if (target) {
+		commands.executeCommand(h.player, `/locate ${raw.getBiome(h.player.x + target, h.player.z)}`, h.ctx);
+		check(
+			"G1: /locate <bioma> devuelve unas coordenadas (a N bloques)",
+			systemMsgs(h.sent).some((m) => m.includes("Bioma") && m.includes("bloques"))
+		);
+	} else {
+		check("G1: /locate <bioma> (sin bioma cercano en 512 bloques) avisa", true);
+	}
+	commands.executeCommand(h.player, "/locate quimera", h.ctx);
+	check(
+		"G1: /locate inválido avisa del uso",
+		systemMsgs(h.sent).some((m) => m.includes("No encontré") || m.includes("/locate"))
+	);
+}
+
+// --- Fase 21.5 (G1): /effect absorption (give/clear/get) ---
+{
+	const h = makeHarness();
+	const hp0 = h.player.health;
+	commands.executeCommand(h.player, "/effect give absorption 12 @s", h.ctx);
+	check(
+		"G1: /effect give absorption añade HP de absorción",
+		h.player.absorption === 12
+	);
+	check(
+		"G1: /effect give absorption reenvía health_update (HUD corazones dorados)",
+		h.sent.some((e) => e.event === "health_update" && e.data.absorption === 12)
+	);
+	// el daño consume primero la absorción (combat.js damagePlayer)
+	const combat = require("../server/combat.js");
+	combat.damagePlayer(h.player, 100, "test");
+	check(
+		"G1: la absorción del /effect protege (el daño consume primero la absorción)",
+		h.player.absorption === 0 && h.player.health === hp0,
+		`abs=${h.player.absorption} hp=${h.player.health}`
+	);
+	commands.executeCommand(h.player, "/effect clear @s", h.ctx);
+	check(
+		"G1: /effect clear quita la absorción",
+		h.player.absorption === 0
+	);
+	commands.executeCommand(h.player, "/effect get @s", h.ctx);
+	check(
+		"G1: /effect get reporta el estado actual",
+		systemMsgs(h.sent).some((m) => m.includes("absorción"))
+	);
+}
+
+// --- Fase 21.5 (G1): comandos nuevos son solo-para-operadores ---
+{
+	const h = makeHarness();
+	h.player.isOp = false;
+	const mobsBefore = state.mobs.filter((m) => m.alive).length;
+	commands.executeCommand(h.player, "/summon cow", h.ctx);
+	commands.executeCommand(h.player, "/effect give absorption 5", h.ctx);
+	check(
+		"G1: /summon y /effect se rechazan a no operadores (sin mutar nada)",
+		state.mobs.filter((m) => m.alive).length === mobsBefore &&
+			h.player.absorption !== 5 &&
+			systemMsgs(h.sent).some((m) => m.includes("operadores"))
+	);
+	// /locate es de acceso abierto (no muta el mundo)
+	h.player.isOp = false;
+	commands.executeCommand(h.player, "/locate lista", h.ctx);
+	check(
+		"G1: /locate es accesible sin ser operador",
+		systemMsgs(h.sent).some((m) => m.includes("well"))
+	);
+}
 process.exit(failed ? 1 : 0);

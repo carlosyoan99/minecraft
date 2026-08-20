@@ -11,6 +11,10 @@
 const WebSocket = require("ws");
 const log = require("./log.js");
 const constants = require("./constants.js");
+// Fase 21.5 (G1): estructuras (para /locate) y mobs (para /summon). No hay
+// ciclo: estructuras/mobs no requieren commands.js (lo carga actions.js).
+const structures = require("./structures.js");
+const mobs = require("./mobs.js");
 const {
 	B,
 	I,
@@ -112,8 +116,12 @@ const HELP = [
 	"/time set <day|noon|night|midnight|ms> — fija la hora del mundo (0-239999 ms) (solo operadores)",
 	"/gamemode <creative|survival> — cambia el modo de juego (creative: sin hambre ni daño) (solo operadores)",
 	"/op <nombre> — otorga permisos de operador a un jugador conectado (solo operadores)",
-	"/kill [nombre|mobs] — mata a un jugador conectado (sin nombre, a ti) o a TODAS las criaturas con «mobs» (solo operadores)",
+	"/kill [@s|@p|@a|@e|@r|nombre|mobs] — elimina jugadores (selectores o nombres) o criaturas con @e/mobs (solo operadores)",
+	"/summon <mob> [x y z] — invoca un mob (solo operadores)",
+	"/effect <give absorption [cantidad]|clear|get> [@s|@p|@a|@r|nombre] — gestiona efectos (solo operadores)",
+	"/locate <estructura|bioma> — encuentra la estructura (well/pyramid/temple/shipwreck) o bioma más cercano",
 	"/reload — recarga recetas (recetas.json, recetas_horno.json) y el atlas del cliente (solo operadores)",
+	"Selectores: @s emisor · @p más cercano · @a todos · @e todas las criaturas · @r aleatorio",
 	"Los comandos con (solo operadores) los ejecuta el host (primer jugador) o la lista OPS (env var OPS)"
 ].join("\n");
 
@@ -135,7 +143,9 @@ const OP_ONLY = new Set([
 	"gamemode",
 	"reload",
 	"op",
-	"kill"
+	"kill",
+	"summon",
+	"effect"
 ]);
 
 function systemMessage(player, text) {
@@ -173,6 +183,153 @@ function parseId(tok) {
 	return NAME_TO_ID[tok.toLowerCase().replace(/[\s-]+/g, "_")] ?? null;
 }
 
+// ============================================================
+// SELECTORES DE OBJETIVO (Fase 21.5, G1)
+// Resolución de @s/@p/@a/@r (jugadores) y @e (mobs) en el handler, como MC.
+//  - @s → el emisor; @p → el jugador más cercano al emisor; @a → TODOS los
+//    jugadores conectados; @r → un jugador aleatorio (excluye al emisor si
+//    hay otro). @e → todas las criaturas vivas (state.mobs).
+// El resto de tokens se interpretan como nombre de jugador (búsqueda por
+// nombre, sin distinguir mayúsculas). Devuelve { players: [], mobs: false }.
+// ============================================================
+function resolveTargets(tok, player, state) {
+	const t = (tok || "").trim();
+	const allPlayers = [...state.players.values()];
+	const playersList = [];
+	switch (t) {
+		case "@s":
+			return { players: [player] };
+		case "@p": {
+			// Distancia en 2D (horizontal): el más cercano en el plano XZ,
+			// incluye al propio emisor (MC: @p siempre apunta al más cercano).
+			let best = null,
+				bestD = Infinity;
+			for (const q of allPlayers) {
+				const d = Math.hypot(q.x - player.x, q.z - player.z);
+				if (d < bestD) {
+					bestD = d;
+					best = q;
+				}
+			}
+			return { players: best ? [best] : [] };
+		}
+		case "@a":
+			return { players: allPlayers };
+		case "@r": {
+			const pool = allPlayers.filter((q) => q !== player);
+			if (pool.length === 0) return { players: [] };
+			const rnd = Math.floor(Math.random() * pool.length);
+			return { players: [pool[rnd]] };
+		}
+		case "@e":
+			return { players: [], mobs: true };
+		default: {
+			if (t === "") return { players: [player] }; // sin argumento → el emisor
+			return {
+				players: allPlayers.filter(
+					(q) => (q.name || "").toLowerCase() === t.toLowerCase()
+				)
+			};
+		}
+	}
+}
+
+// ============================================================
+// /locate (Fase 21.5, G1): búsqueda determinista de la estructura más
+// cercana reusando la localización por celda con hash 2D con sal de
+// structures.js (mismo esquema que genera el mundo: F12 templo/naufragio,
+// F21 pozo/pirámide). Escanea anillos de celdas alrededor del jugador y
+// devuelve el centro más próximo (validado por el filtro de bioma que ya
+// aplica cada función). El corte `(r-1)*cell < bestDist` garantiza que un
+// anillo más lejano no puede contener algo más cercano.
+// ============================================================
+const LOCATE_STRUCTURES = {
+	well: { cell: 40, fn: structures.wellCenterAt },
+	pyramid: { cell: 48, fn: structures.pyramidCenterAt },
+	temple: { cell: 32, fn: structures.structCenterAt, type: "temple" },
+	shipwreck: { cell: 32, fn: structures.structCenterAt, type: "shipwreck" }
+};
+const LOCATE_MAX_RINGS = 64; // celdas (~40·64 = 2560 bloques máx. de barrido)
+
+function locateStructure(type, wx, wz) {
+	const cfg = LOCATE_STRUCTURES[type];
+	if (!cfg) return null;
+	const pcx = Math.floor(wx / cfg.cell),
+		pcz = Math.floor(wz / cfg.cell);
+	let best = null,
+		bestDist = Infinity;
+	for (let r = 1; r <= LOCATE_MAX_RINGS && (r - 1) * cfg.cell < bestDist; r++) {
+		for (let i = -r; i <= r; i++) {
+			const edges = [
+				[pcx + i, pcz - r],
+				[pcx + i, pcz + r],
+				[pcx - r, pcz + i],
+				[pcx + r, pcz + i]
+			];
+			for (let e = 0; e < 4; e++) {
+				const c = cfg.fn(edges[e][0], edges[e][1]);
+				if (!c) continue;
+				if (cfg.type && c.type !== cfg.type) continue;
+				const d = Math.hypot(c.cx - wx, c.cz - wz);
+				if (d < bestDist) {
+					bestDist = d;
+					best = c;
+				}
+			}
+		}
+	}
+	return best;
+}
+
+// Bioma más cercano: escanea una cuadrícula de puntos (paso 8 bloques, media
+// celda de chunk) en espiral alrededor del jugador. getBiome es determinista
+// (solo ruido + umbrales), así que el resultado es estable entre reinicios.
+const LOCATE_BIOMES = [
+	"plains",
+	"forest",
+	"birch_forest",
+	"jungle",
+	"swamp",
+	"desert",
+	"badlands",
+	"taiga",
+	"giant_taiga",
+	"snow",
+	"snowy_peaks",
+	"mountain"
+];
+const LOCATE_BIOME_RADIUS = 1024; // bloques
+
+const biomes = require("./biomes.js");
+
+function locateBiome(name, wx, wz) {
+	const target = name.toLowerCase();
+	if (!LOCATE_BIOMES.includes(target)) return null;
+	let best = null,
+		bestDist = Infinity;
+	const step = 8;
+	for (let r = step; r <= LOCATE_BIOME_RADIUS && r - step < bestDist; r += step) {
+		for (let i = -r; i <= r; i += step) {
+			const edges = [
+				[wx + i, wz - r],
+				[wx + i, wz + r],
+				[wx - r, wz + i],
+				[wx + r, wz + i]
+			];
+			for (let e = 0; e < 4; e++) {
+				if (Math.hypot(edges[e][0] - wx, edges[e][1] - wz) >= bestDist) continue;
+				if (biomes.getBiome(edges[e][0], edges[e][1]) !== target) continue;
+				const d = Math.hypot(edges[e][0] - wx, edges[e][1] - wz);
+				if (d < bestDist) {
+					bestDist = d;
+					best = { x: edges[e][0], z: edges[e][1] };
+				}
+			}
+		}
+	}
+	return best;
+}
+
 // Devuelve true si `raw` era un comando (se procesó) y false si es chat
 // normal. ctx = { state, world, broadcast, playerHelpers, viewDistance }.
 function executeCommand(player, raw, ctx) {
@@ -206,15 +363,16 @@ function executeCommand(player, raw, ctx) {
 			break;
 
 		case "kill": {
-			// Fase 10 (B3): /kill [nombre] — solo operadores; sin nombre, al emisor.
-			// Usa respawnPlayer directamente (funciona en creative, donde
+			// Fase 10 (B3): /kill [objetivo] — solo operadores; sin objetivo, al
+			// emisor. Usa respawnPlayer directamente (funciona en creative, donde
 			// damagePlayer se ignora) y respeta el respawn por gamemode.
 			// Fase 13 (cierre): `/kill mobs` elimina TODAS las criaturas vivas
 			// (herramienta dev para liberar el tope de spawn de 30 mobs cuando
 			// el mundo se llena; la usa e2e-mascotas para que el lobo de taiga
 			// tenga hueco). El bucle principal difunde el snapshot vacío.
-			const name = (args[0] || "").trim();
-			if (name.toLowerCase() === "mobs") {
+			// Fase 21.5 (G1): selectores @s/@p/@a/@e/@r + nombre de jugador.
+			const target = (args[0] || "").trim();
+			if (target.toLowerCase() === "mobs") {
 				state.mobs = state.mobs.filter((m) => !m.alive);
 				systemMessage(
 					player,
@@ -222,19 +380,157 @@ function executeCommand(player, raw, ctx) {
 				);
 				break;
 			}
-			const target = name
-				? [...state.players.values()].find(
-						(q) => (q.name || "").toLowerCase() === name.toLowerCase()
-					)
-				: player;
-			if (name && !target) {
-				systemMessage(player, `No hay ningún jugador «${name}» conectado.`);
+			const resolved = resolveTargets(target, player, state);
+			if (resolved.mobs) {
+				state.mobs = state.mobs.filter((m) => !m.alive);
+				const remaining = state.mobs.length;
+				systemMessage(
+					player,
+					`💨 ${remaining === 0 ? "Sin" : remaining} criaturas vivas en el mundo.`
+				);
 				break;
 			}
-			ctx.playerHelpers.respawnPlayer(target, "kill");
+			if (resolved.players.length === 0) {
+				systemMessage(player, `No hay ningún jugador «${target}» conectado.`);
+				break;
+			}
+			for (const t of resolved.players) {
+				ctx.playerHelpers.respawnPlayer(t, "kill");
+			}
+			const who =
+				resolved.players.length === 1 &&
+				resolved.players[0] === player
+					? "Te has eliminado"
+					: `${resolved.players.map((t) => t.name).join(", ")} ${resolved.players.length === 1 ? "ha sido eliminado" : "han sido eliminados"}`;
+			systemMessage(player, `💀 ${who}.`);
+			break;
+		}
+
+		case "summon": {
+			// Fase 21.5 (G1): invoca un mob en la posición del jugador (o en las
+			// coordenadas opcionales). El tick del servidor (mobs_update) lo
+			// difunde a los clientes en el siguiente ciclo, igual que los spawns
+			// naturales. Solo acepta especies del MOB_CLASSES real.
+			const name = (args[0] || "").toLowerCase();
+			if (!Object.prototype.hasOwnProperty.call(mobs.MOB_CLASSES, name)) {
+				systemMessage(
+					player,
+					`Mob desconocido: ${args[0] || ""}. Disponibles: ${Object.keys(mobs.MOB_CLASSES).join(", ")}`
+				);
+				break;
+			}
+			let x = player.x,
+				y = player.y + 1.5,
+				z = player.z;
+			if (
+				args.length >= 4 &&
+				args.slice(1, 4).every((a) => /^-?\d+(\.\d+)?$/.test(a))
+			) {
+				x = parseFloat(args[1]);
+				y = parseFloat(args[2]);
+				z = parseFloat(args[3]);
+			} else {
+				// Sin coordenadas: 2 bloques hacia donde mira el jugador (yaw en
+				// radianes de Three.js, mirada base −Z).
+				const dx = -Math.sin(player.yaw || 0),
+					dz = -Math.cos(player.yaw || 0);
+				x = player.x + dx * 2;
+				z = player.z + dz * 2;
+			}
+			const mob = mobs.createMob(name, x, y, z);
+			state.mobs.push(mob);
 			systemMessage(
 				player,
-				name ? `💀 ${target.name} ha sido eliminado.` : "💀 Te has eliminado."
+				`✨ ${name} invocado en ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`
+			);
+			break;
+		}
+
+		case "locate": {
+			// Fase 21.5 (G1): /locate <structure|biome|lista> — devuelve el
+			// centro de la estructura o la celda del bioma más cercanos.
+			const what = (args[0] || "").toLowerCase();
+			if (!what || what === "lista" || what === "help") {
+				systemMessage(
+					player,
+					`Uso: /locate <estructura|bioma> — estructuras: ${Object.keys(LOCATE_STRUCTURES).join(", ")} · biomas: ${LOCATE_BIOMES.join(", ")}`
+				);
+				break;
+			}
+			if (what.startsWith("b") || LOCATE_BIOMES.includes(what)) {
+				const found = locateBiome(what, player.x, player.z);
+				systemMessage(
+					player,
+					found
+						? `🌍 Bioma ${what}: ${Math.round(found.x)}, ${Math.round(found.z)} (a ${Math.round(Math.hypot(found.x - player.x, found.z - player.z))} bloques)`
+						: `No encontré bioma «${what}». Prueba /locate lista`
+				);
+				break;
+			}
+			const found = locateStructure(what, player.x, player.z);
+			systemMessage(
+				player,
+				found
+					? `🏛️ ${what} encontrado en ${Math.round(found.cx)}, ${Math.round(found.cz)} (a ${Math.round(Math.hypot(found.cx - player.x, found.cz - player.z))} bloques)`
+					: `No encontré estructura «${what}» en un radio razonable. Usa /locate lista`
+			);
+			break;
+		}
+
+		case "effect": {
+			// Fase 21.5 (G1): /effect give|clear <efecto> [cantidad] — el juego
+			// tiene absorción (tótem, Fase 21.5 C3) como efecto de estado con
+			// HUD propio (corazones dorados); es el único efecto implementado y
+			// por eso es el único invocable. give suma HP de absorción; clear
+			// la quita. Objetivo por selector @s (por defecto el emisor).
+			const action = (args[0] || "").toLowerCase();
+			const what = (args[1] || "").toLowerCase();
+			const rest = args.slice(2); // [cantidad?, @selector?] en cualquier orden
+			const selIdx = rest.findIndex((a) => a.startsWith("@"));
+			const targetTok = selIdx >= 0 ? rest[selIdx] : "@s";
+			const amountTok =
+				selIdx >= 0 ? rest.find((a, i) => i !== selIdx) : rest[0];
+			const resolved = resolveTargets(targetTok, player, state);
+			if (resolved.mobs || resolved.players.length === 0) {
+				systemMessage(player, "No hay un jugador objetivo válido.");
+				break;
+			}
+			if (action === "clear") {
+				for (const t of resolved.players) {
+					t.absorption = 0;
+					ctx.playerHelpers.sendHealth(t);
+				}
+				systemMessage(
+					player,
+					`🧪 Efectos limpiados a ${resolved.players.map((t) => t.name).join(", ")}.`
+				);
+				break;
+			}
+			if (action === "get") {
+				const t = resolved.players[0];
+				systemMessage(
+					player,
+					`${t.name}: absorción ${t.absorption || 0} HP (efectos: ${t.absorption ? "absorption" : "ninguno"})`
+				);
+				break;
+			}
+			if (action === "give" && what === "absorption") {
+				const amount = Math.min(
+					40,
+					Math.max(0, parseInt(amountTok, 10) || 0) +
+						(resolved.players[0].absorption || 0)
+				);
+				for (const t of resolved.players) t.absorption = amount;
+				for (const t of resolved.players) ctx.playerHelpers.sendHealth(t);
+				systemMessage(
+					player,
+					`✨ Absorción ${amount} HP dada a ${resolved.players.map((t) => t.name).join(", ")}.`
+				);
+				break;
+			}
+			systemMessage(
+				player,
+				"Uso: /effect <give absorption [cantidad]|clear|get> [@s|@p|@a|@r|nombre]"
 			);
 			break;
 		}
@@ -477,4 +773,4 @@ function executeCommand(player, raw, ctx) {
 	return true;
 }
 
-module.exports = { executeCommand, worldTime, moonTime };
+module.exports = { executeCommand, worldTime, moonTime, resolveTargets };

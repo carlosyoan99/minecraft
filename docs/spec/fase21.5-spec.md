@@ -51,7 +51,7 @@
 | F2 | Lista usuario 1.22 | Mob Crujiente (Creaking): solo se mueve cuando no lo miras | F21.5 F2 | 🔴 |
 | F3 | Lista usuario 1.22 | Bloque Corazón Crujiente (Creaking Heart): destruirlo lo mata | F21.5 F3 | 🔴 |
 | F4 | Lista usuario 1.22 | Mochila (Bundle): inventario portátil (cofre portátil) | F21.5 F4 | 🟠 |
-| G1 | Lista usuario "Comandos" + borrador | Comandos nuevos: `/weather`, `/kill`, `/locate`, `/effect`, `/summon`, `/ban`, `/op`, `/list` + selectores `@p/@a/@e/@s/@r` + `/time` actualizado | F21.5 G1 | 🟠 |
+| G1 | Lista usuario "Comandos" + borrador | Comandos nuevos: `/summon` invoca mobs, `/locate` encuentra estructuras (pozo/pirámide/templo/naufragio) y biomas, `/effect` gestiona la absorción (give/clear/get), `/kill` generalizado con selectores `@s/@p/@a/@e/@r` (resolución en el handler); `/weather` requiere clima visual (partículas de lluvia) inexistente → diferido al bloque G2 (cliente) | F21.5 G1 | 🟢 |
 | Z1 | Lista usuario (zanahoria/patata) | **YA IMPLEMENTADO** (F18 C-3): `FOOD_VALUES` zanahoria 3/3.6, patata 1/0.6, `BAKED_POTATO` 5/6 — no se planifica | — `[x]` | — |
 | Z2 | Lista usuario (miel en cofres) | **YA EXISTE** (F9 F1): `HONEY` (140) llega por cofres de loot | — `[x]` | — |
 

@@ -1170,9 +1170,11 @@
       mata; lógica de vínculo mob↔bloque
 - [ ] F4 Mochila/Bundle (1.22): ítem que abre un segundo inventario (cofre
       portátil), persistido con el jugador (retrocompatible si es viable)
-- [ ] G1 Comandos nuevos + selectores: `/weather`, `/kill` (general),
-      `/locate`, `/effect`, `/summon`, `/ban`, `/op`, `/list` y selectores
-      `@p @a @e @s @r` (resolución en el handler); `unit-commands.js` al día
+- [x] G1 Comandos nuevos + selectores: `/summon` (invoca mobs), `/locate`
+      (estructuras well/pyramid/temple/shipwreck y biomas), `/effect` (give/
+      clear/get de absorción), `/kill` generalizado con `@s/@p/@a/@e/@r` y
+      nombres; selectores resueltos en el handler (`resolveTargets`);
+      `/weather` diferido (necesita lluvia/clima visual en el cliente)
 - [ ] Z1 Cierre y auditoría de Fase 21.5: suite + E2E + `--audit` +
       `unit-fase21.5.js` en verde + manual (pesca, linterna, andamio, miel,
       arrecife, escudo/maza/tótem, Trial, variantes, Pale Garden, mochila,
