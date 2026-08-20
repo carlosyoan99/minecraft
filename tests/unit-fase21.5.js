@@ -1150,5 +1150,68 @@ check(
 	state.mobs = [];
 }
 
+// ============================================================
+// D4) Familia de cobre y tuff (1.21): IDs, durezas, recetas y reglas.
+// Los bloques base (COPPER_BLOCK 182, TUFF 186) se obtienen por creative
+// (la minería llega con F22); sus derivados se craftean en cadena.
+// ============================================================
+{
+	// Bloque base y derivados registrados con dureza MC.
+	check("D4: cobre — dureza 3.0 (bloque/escalera/losa)", (
+		B.COPPER_BLOCK === 182 &&
+		B.COPPER_STAIRS === 183 &&
+		B.COPPER_SLAB === 184 &&
+		constants.BLOCK_HARDNESS[182] === 3.0 &&
+		constants.BLOCK_HARDNESS[183] === 3.0 &&
+		constants.BLOCK_HARDNESS[184] === 3.0
+	));
+	check("D4: puerta de cobre es isDoor y dureza 5.0 (metálica)", (
+		B.COPPER_DOOR === 185 &&
+		constants.isDoor(B.COPPER_DOOR) === true &&
+		constants.BLOCK_HARDNESS[185] === 5.0
+	));
+	check("D4: tuff — dureza 1.5 (tuff/pulido/ladrillos)", (
+		B.TUFF === 186 &&
+		B.POLISHED_TUFF === 187 &&
+		B.TUFF_BRICKS === 188 &&
+		constants.BLOCK_HARDNESS[186] === 1.5 &&
+		constants.BLOCK_HARDNESS[187] === 1.5 &&
+		constants.BLOCK_HARDNESS[188] === 1.5
+	));
+	// Losas/escaleras entran en el sólido en media caja/escalón.
+	check("D4: COPPER_SLAB/COPPER_STAIRS en SHAPED_SOLIDS", (
+		constants.SHAPED_SOLIDS.has(B.COPPER_SLAB) &&
+		constants.SHAPED_SOLIDS.has(B.COPPER_STAIRS)
+	));
+	// Necesitan pico (categoría stone).
+	check("D4: los 7 bloques requieren pico (canHarvest)", (
+		[182, 183, 184, 185, 186, 187, 188].every((id) =>
+			constants.canHarvest(id, "pickaxe")
+		)
+	));
+	// Todos aparecen en el creative.
+	check("D4: los 7 bloques están en CREATIVE_ITEMS", (
+		[182, 183, 184, 185, 186, 187, 188].every((id) =>
+			constants.CREATIVE_ITEMS.includes(id)
+		)
+	));
+	// Cadena de crafteo: escaleras/losa/puerta desde el bloque de cobre,
+	// pulido y ladrillos desde tuff. Los verifica unit-recetas (shape e
+	// ingredientes); aquí comprobamos que existen con resultado correcto.
+	const recetas = require("../recetas.json");
+	const res = (n) => recetas[n]?.result;
+	check("D4: recetas de cobre (escaleras/losa/puerta desde bloque)", (
+		res("copper_stairs")?.id === 183 &&
+		res("copper_slab")?.id === 184 &&
+		res("copper_door")?.id === 185
+	));
+	check("D4: recetas de tuff (pulido y ladrillos en cadena)", (
+		res("polished_tuff")?.id === 187 &&
+		recetas["polished_tuff"]?.ingredients?.["#"] === 186 &&
+		res("tuff_bricks")?.id === 188 &&
+		recetas["tuff_bricks"]?.ingredients?.["#"] === 187
+	));
+}
+
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);

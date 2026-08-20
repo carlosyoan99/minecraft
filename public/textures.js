@@ -1065,6 +1065,97 @@ function drawHeavyCore(ctx, rng) {
 	rect(ctx, 7, 0, 2, 16, "#5a5650");
 }
 
+// ============================================================
+// Fase 21.5 (D4): familia de cobre y tuff (1.21)
+// ============================================================
+// Cobble-like del bloque de cobre: base naranja cobrizo con motas y el
+// reborde marrón metálico (sin oxidación — paleta del cobre limpio).
+function drawCopperBlock(ctx, rng) {
+	fill(ctx, "#e8855a");
+	speckle(ctx, rng, "#c96a42", 0.18);
+	for (const [x, y, w, h] of [[2, 2, 4, 3], [9, 5, 4, 3], [4, 9, 4, 4], [11, 11, 3, 3]])
+		rect(ctx, x, y, w, h, "#f0a07a");
+	rect(ctx, 0, 0, 16, 1, "#a84f33");
+	rect(ctx, 0, 15, 16, 1, "#a84f33");
+}
+// Escalera de cobre: usa la tesela del bloque en cada escalón (el meshing
+// dibuja el silueteado por forma, la tesela es la misma superficie).
+// Losa de cobre: mitad inferior con la superficie del bloque.
+function drawCopperSlab(ctx, rng) {
+	fill(ctx, "#0a0a0a00");
+	rect(ctx, 0, 8, 16, 8, "#e8855a");
+	speckle(ctx, rng, "#c96a42", 0.1);
+}
+// Puerta de cobre: dos alas metálicas con remaches (patrón de la de hierro
+// en tono cobrizo para distinguirla en el atlas).
+function drawCopperDoor(ctx, rng) {
+	fill(ctx, "#c96a42");
+	for (let y = 0; y < 16; y += 5) rect(ctx, 0, y, 16, 1, "#a84f33");
+	rect(ctx, 1, 3, 2, 2, "#e8855a");
+	rect(ctx, 13, 3, 2, 2, "#e8855a");
+	rect(ctx, 5, 7, 2, 2, "#e8855a");
+	rect(ctx, 9, 12, 2, 2, "#e8855a");
+}
+// Tuff: piedra volcánica gris moteada (base del 1.21).
+function drawTuff(ctx, rng) {
+	fill(ctx, "#8f8f8f");
+	speckle(ctx, rng, "#7d7d7d", 0.22);
+	rect(ctx, 2, 3, 3, 2, "#a2a2a2");
+	rect(ctx, 11, 6, 3, 3, "#9b9b9b");
+	rect(ctx, 6, 11, 4, 3, "#a2a2a2");
+}
+// Tuff pulido: color uniforme con juntas finas de losa.
+function drawPolishedTuff(ctx, rng) {
+	fill(ctx, "#a8a8a8");
+	for (let y = 0; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "#969696");
+	rect(ctx, 7, 0, 1, 16, "#969696");
+	speckle(ctx, rng, "#b4b4b4", 0.05);
+}
+// Ladrillos de tuff: patrón de ladrillo claro con juntas.
+function drawTuffBricks(ctx, rng) {
+	fill(ctx, "#b8b0a8");
+	for (let y = 0; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "#a49c94");
+	for (let [x, y] of [[0, 0], [8, 0], [0, 8], [8, 8]]) {
+		rect(ctx, x, y, 1, 8, "#a49c94");
+	}
+	rect(ctx, 4, 4, 1, 8, "#a49c94");
+	speckle(ctx, rng, "#c4bcb4", 0.06);
+}
+// Fase 21.5 (D6): jukebox — bloque de madera oscura con ranura de disco.
+function drawJukebox(ctx, _rng) {
+	fill(ctx, "#6b4c2a");
+	rect(ctx, 2, 2, 12, 12, "#5a3c1c");
+	rect(ctx, 5, 5, 6, 3, "#4a2c0c"); // ranura del disco
+	rect(ctx, 6, 6, 4, 1, "#c8a878"); // brillo ranura
+	speckle(ctx, _rng, "#7c5a3c", 0.04);
+}
+// Fase 21.5 (D6): pintura — lienzo con marco.
+function drawPainting(ctx, rng) {
+	fill(ctx, "#d8d0c0");
+	rect(ctx, 0, 0, 16, 1, "#8b6b4a"); // marco arriba
+	rect(ctx, 0, 15, 16, 1, "#8b6b4a"); // marco abajo
+	rect(ctx, 0, 0, 1, 16, "#8b6b4a"); // marco izq
+	rect(ctx, 15, 0, 1, 16, "#8b6b4a"); // marco der
+	// Pintura abstracta: manchas de color.
+	rect(ctx, 3, 3, 4, 5, "#c06030");
+	rect(ctx, 8, 2, 5, 4, "#3080c0");
+	rect(ctx, 5, 9, 6, 4, "#40a040");
+	rect(ctx, 10, 10, 3, 3, "#c0c040");
+	speckle(ctx, rng, "#b0a898", 0.03);
+}
+// Fase 21.5 (D6): note block — bloque de madera con parche circular.
+function drawNoteBlock(ctx, _rng) {
+	fill(ctx, "#8b6b4a");
+	rect(ctx, 2, 2, 12, 12, "#7a5a3a");
+	// Parche circular.
+	for (let dy = -3; dy <= 3; dy++) {
+		for (let dx = -3; dx <= 3; dx++) {
+			if (dx * dx + dy * dy <= 9) set(ctx, 8 + dx, 8 + dy, "#c8a878");
+		}
+	}
+	speckle(ctx, _rng, "#9c7c5c", 0.03);
+}
+
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
 	drawDirt, // 0  tierra
@@ -1279,7 +1370,20 @@ const TILES = [
 	drawPalePlanks, // 176
 	drawPaleMossBlock, // 177
 	drawPaleMoss, // 178
-	drawHeavyCore // 179
+	drawHeavyCore, // 179
+	// ============================================================
+	// Fase 21.5 (D4): familia de cobre y tuff (1.21)
+	// ============================================================
+	drawCopperBlock, // 180 bloque de cobre
+	drawCopperSlab, // 181 losa de cobre
+	drawCopperDoor, // 182 puerta de cobre
+	drawTuff, // 183 tuff
+	drawPolishedTuff, // 184 tuff pulido
+	drawTuffBricks, // 185 ladrillos de tuff
+	// Fase 21.5 (D6): jukebox, pintura, note block.
+	drawJukebox, // 186 jukebox
+	drawPainting, // 187 pintura
+	drawNoteBlock // 188 note block
 ];
 
 // El mapa de teselas por bloque/cara (BLOCK_TEX) y los rectángulos UV viven en

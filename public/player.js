@@ -125,11 +125,11 @@ function solidAt(x, y, z) {
 	if (!solid) return false;
 	// Fase 13 (L2/L3): COLISIÓN POR FORMA (paridad con server/world.isSolidAt).
 	// Puerta/portón abiertos → se atraviesan.
-	if (b === 48 || b === 49 || b === 71)
+	if (b === 48 || b === 49 || b === 71 || b === 185)
 		return !isDoorOpen(Math.floor(x), Math.floor(y), Math.floor(z));
 	// Losas y escaleras: solo la mitad inferior de la celda es sólida (media
 	// caja / escalón). La Y flotante decide dentro de la celda.
-	if (b === 60 || b === 61 || b === 50 || b === 51)
+	if (b === 60 || b === 61 || b === 50 || b === 51 || b === 184 || b === 183)
 		return y - Math.floor(y) < 0.5;
 	return true; // valla (70) y resto: celda completa
 }

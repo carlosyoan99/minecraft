@@ -1553,6 +1553,12 @@ ICONS[91] = (g, rng) => drawBlockIcon(91, g, rng);
 // no 100-131 (que colisionan con palo, carbón, lingotes...).
 for (let id = 142; id <= 181; id++)
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (D4): familia de cobre y tuff (182-188) — cubo con su tesela.
+for (let id = 182; id <= 188; id++)
+	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 21.5 (D6): jukebox, pintura y note block (189-191) — cubo con su color.
+for (const id of [189, 190, 191])
+	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Fase 21.5 (E3): bloques decorativos (92-98)
 for (const id of [92, 93, 94, 95, 96, 97, 98])
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);

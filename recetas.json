@@ -1019,6 +1019,72 @@
 			"count": 6
 		}
 	},
+	"copper_stairs": {
+		"shape": [
+			"#  ",
+			"## ",
+			"###"
+		],
+		"ingredients": {
+			"#": 182
+		},
+		"result": {
+			"id": 183,
+			"count": 4
+		}
+	},
+	"copper_slab": {
+		"shape": [
+			"###"
+		],
+		"ingredients": {
+			"#": 182
+		},
+		"result": {
+			"id": 184,
+			"count": 6
+		}
+	},
+	"copper_door": {
+		"shape": [
+			"##",
+			"##",
+			"##"
+		],
+		"ingredients": {
+			"#": 182
+		},
+		"result": {
+			"id": 185,
+			"count": 3
+		}
+	},
+	"polished_tuff": {
+		"shape": [
+			"##",
+			"##"
+		],
+		"ingredients": {
+			"#": 186
+		},
+		"result": {
+			"id": 187,
+			"count": 4
+		}
+	},
+	"tuff_bricks": {
+		"shape": [
+			"##",
+			"##"
+		],
+		"ingredients": {
+			"#": 187
+		},
+		"result": {
+			"id": 188,
+			"count": 4
+		}
+	},
 	"oak_fence": {
 		"shape": [
 			"#I#",

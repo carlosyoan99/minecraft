@@ -323,12 +323,12 @@ function isSolidAt(wx, wy, wz) {
 		return !d?.open;
 	}
 	// Losa: media caja inferior (la Y fraccionaria del punto decide).
-	if (b === B.OAK_SLAB || b === B.STONE_SLAB) {
+	if (b === B.OAK_SLAB || b === B.STONE_SLAB || b === B.COPPER_SLAB) {
 		const fy = wy - Math.floor(wy);
 		return fy < 0.5;
 	}
 	// Escalera: escalón inferior sólido, el superior se pisa (como MC).
-	if (b === B.OAK_STAIRS || b === B.STONE_STAIRS) {
+	if (b === B.OAK_STAIRS || b === B.STONE_STAIRS || b === B.COPPER_STAIRS) {
 		const fy = wy - Math.floor(wy);
 		return fy < 0.5;
 	}

@@ -16,7 +16,7 @@
 // ============================================================
 
 export const COLS = 8; // teselas por fila en el atlas
-export let TILE_COUNT = 139; // 139 teselas: 80 base + 3 lana + 48 camas + 8 blast/decorativos
+export let TILE_COUNT = 186; // 186 teselas: 80 base + 3 lana + 48 camas + 8 blast/decorativos + 21.5
 
 // textures.js fija el recuento real de teselas (TILES.length) al cargar.
 export function setTileCount(n) {
@@ -174,7 +174,22 @@ const BLOCK_TEX = {
 	178: { all: 176 }, // tablones de roble pálido
 	179: { all: 177 }, // bloque de musgo pálido
 	180: { all: 178 }, // alfombra de musgo pálido (cross)
-	181: { all: 179 } // núcleo pesado
+	181: { all: 179 }, // núcleo pesado
+	// Fase 21.5 (D4): familia de cobre y tuff (1.21).
+	// COPPER_STAIRS (183) usa la tesela del bloque de cobre (180) — el meshing
+	// recorta la forma, la superficie es la misma. COPPER_SLAB (184) usa la
+	// tesela de losa (181, mitad inferior) y COPPER_DOOR (185) la de puerta.
+	182: { all: 180 }, // bloque de cobre
+	183: { all: 180 }, // escaleras de cobre
+	184: { all: 181 }, // losa de cobre
+	185: { all: 182 }, // puerta de cobre
+	186: { all: 183 }, // tuff
+	187: { all: 184 }, // tuff pulido
+	188: { all: 185 }, // ladrillos de tuff
+	// Fase 21.5 (D6): jukebox, pintura, note block.
+	189: { all: 186 }, // jukebox
+	190: { all: 187 }, // pintura (cross, en pared)
+	191: { all: 188 } // note block
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

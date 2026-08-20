@@ -452,7 +452,26 @@ const B = {
 	PALE_MOSS_BLOCK: 179,
 	PALE_MOSS: 180, // alfombra de musgo pálido (como la hierba alta)
 	// Fase 21.5 (D3): núcleo pesado (de Trial Chambers, elemento de la maza).
-	HEAVY_CORE: 181
+	HEAVY_CORE: 181,
+	// ============================================================
+	// Fase 21.5 (D4): familia de cobre y tuff (1.21). Sobre ellos se craftean
+	// las variantes (escaleras/losas/puerta de cobre, tuff pulido/ladrillo).
+	// COPPER_BLOCK y TUFF son bloques base DECORATIVOS (entran por creative;
+	// la obtención por minería llega con F22 A5 / F23 A4: mena de cobre y
+	// generación de tuff subterráneo — coordinado en TODO.md, no duplicar).
+	// Sin oxidación por tiempo (simplificado).
+	// ============================================================
+	COPPER_BLOCK: 182,
+	COPPER_STAIRS: 183,
+	COPPER_SLAB: 184,
+	COPPER_DOOR: 185, // metálica: solo clic derecho (como la de hierro)
+	TUFF: 186,
+	POLISHED_TUFF: 187,
+	TUFF_BRICKS: 188,
+	// Fase 21.5 (D6): bloques decorativos/auditivos.
+	JUKEBOX: 189, // bloque musical: clic derecho con disco para reproducir
+	PAINTING: 190, // cuadro decorativo en pared (wall-mounted)
+	NOTE_BLOCK: 191 // bloque de notas: clic derecho emite un sonido
 };
 
 // Fase 21.5 (C4): 16 camas de colores + la cama base (24) comparten
@@ -745,7 +764,9 @@ const NON_SOLID_PLANTS = new Set([
 	B.TALL_DRY_GRASS,
 	B.CACTUS_FLOWER,
 	// Fase 21.5 (F1): alfombra de musgo pálido (cross, como la hierba alta).
-	B.PALE_MOSS
+	B.PALE_MOSS,
+	// Fase 21.5 (D6): la pintura es un bloque decorativo en pared (se atraviesa).
+	B.PAINTING
 ]);
 // Sólido para física/validación: el agua no es sólida (se nada en ella), la
 // antorcha/cama tampoco (se atraviesan) y las plantas (Fase 9) tampoco.
@@ -761,7 +782,11 @@ const SHAPED_SOLIDS = new Set([
 	B.OAK_SLAB,
 	B.STONE_SLAB,
 	B.OAK_STAIRS,
-	B.STONE_STAIRS
+	B.STONE_STAIRS,
+	// Fase 21.5 (D4): losas y escaleras de cobre — misma colisión por forma
+	// que las de madera/piedra (media caja / escalón).
+	B.COPPER_SLAB,
+	B.COPPER_STAIRS
 ]);
 const isSolidBlock = (id) =>
 	id !== B.AIR &&
@@ -777,7 +802,10 @@ const isSolidBlock = (id) =>
 // Fase 13 (L2/L3): puertas y portones (el estado de apertura decide la
 // solidez; ver state.doors y world.isSolidAt).
 const isDoor = (id) =>
-	id === B.OAK_DOOR || id === B.IRON_DOOR || id === B.OAK_FENCE_GATE;
+	id === B.OAK_DOOR ||
+	id === B.IRON_DOOR ||
+	id === B.OAK_FENCE_GATE ||
+	id === B.COPPER_DOOR; // Fase 21.5 (D4): puerta de cobre (metálica)
 const FUEL_ITEMS = new Set([
 	B.OAK_LOG,
 	B.BIRCH_LOG,
@@ -977,7 +1005,22 @@ const BLOCK_HARDNESS = {
 	// musgo bloque (0.1, suave como tierra), musgo planta (0.05, al instante),
 	// hojas (0.2, como hojas normales), corazón crujiente (2.0, madera dura).
 	[B.PALE_OAK_LOG]: 2.0, [B.PALE_OAK_LEAVES]: 0.2, [B.PALE_OAK_PLANKS]: 2.0,
-	[B.PALE_MOSS_BLOCK]: 0.1, [B.PALE_MOSS]: 0.05, [B.CREAKING_HEART]: 2.0
+	[B.PALE_MOSS_BLOCK]: 0.1, [B.PALE_MOSS]: 0.05, [B.CREAKING_HEART]: 2.0,
+	// Fase 21.5 (D4): familia de cobre y tuff — durezas estilo MC (cobre 3.0,
+	// tuff 1.5). Las escaleras/losas/puerta de cobre comparten la dureza del
+	// bloque base; la puerta de cobre es metálica (5.0, como la de hierro).
+	[B.COPPER_BLOCK]: 3.0,
+	[B.COPPER_STAIRS]: 3.0,
+	[B.COPPER_SLAB]: 3.0,
+	[B.COPPER_DOOR]: 5.0,
+	[B.TUFF]: 1.5,
+	[B.POLISHED_TUFF]: 1.5,
+	[B.TUFF_BRICKS]: 1.5,
+	// Fase 21.5 (D6): jukebox (2.0, como cofre), pintura (0, como planta),
+	// note block (0.5, como arena — se rompe fácil).
+	[B.JUKEBOX]: 2.0,
+	[B.PAINTING]: 0,
+	[B.NOTE_BLOCK]: 0.5
 };
 // Velocidad por material (multiplicador sobre la dureza): madera 2x,
 // piedra 4x, hierro 6x, oro 12x (rápida pero frágil), diamante 8x.
@@ -1065,7 +1108,21 @@ const BLOCK_CATEGORY = {
 	// Fase 21.5 (F1): Pale Garden — roble pálido y musgo.
 	[B.PALE_OAK_LOG]: "wood", [B.PALE_OAK_LEAVES]: null, [B.PALE_OAK_PLANKS]: "wood",
 	[B.PALE_MOSS_BLOCK]: "dirt", [B.PALE_MOSS]: null,
-	[B.CREAKING_HEART]: "wood"
+	[B.CREAKING_HEART]: "wood",
+	// Fase 21.5 (D4): cobre y tuff se minan con pico (piedra/stone); la
+	// escalera/losa de cobre igual al bloque y la puerta metálica con pico.
+	[B.COPPER_BLOCK]: "stone",
+	[B.COPPER_STAIRS]: "stone",
+	[B.COPPER_SLAB]: "stone",
+	[B.COPPER_DOOR]: "stone",
+	[B.TUFF]: "stone",
+	[B.POLISHED_TUFF]: "stone",
+	[B.TUFF_BRICKS]: "stone",
+	// Fase 21.5 (D6): jukebox (madera, como cofre), pintura (null, mano),
+	// note block (madera, como tambor).
+	[B.JUKEBOX]: "wood",
+	[B.PAINTING]: null,
+	[B.NOTE_BLOCK]: "wood"
 };
 const toolCategoryOf = (id) =>
 	isPickaxe(id)
@@ -1113,7 +1170,16 @@ function canHarvest(tool, block) {
 		block === B.FURNACE ||
 		block === B.BLAST_FURNACE ||
 		// Fase 21.5 (C5): concreto sólido requiere pico (categoría stone).
-		isConcrete(block)
+		isConcrete(block) ||
+		// Fase 21.5 (D4): familia de cobre y tuff — bloques de piedra/metal
+		// que requieren pico para soltar el bloque a sí mismos.
+		block === B.COPPER_BLOCK ||
+		block === B.COPPER_STAIRS ||
+		block === B.COPPER_SLAB ||
+		block === B.COPPER_DOOR ||
+		block === B.TUFF ||
+		block === B.POLISHED_TUFF ||
+		block === B.TUFF_BRICKS
 	)
 		return isPickaxe(tool);
 	if (isConcretePowder(block)) return true; // polvo de concreto: como arena (mano/pala)
@@ -1633,7 +1699,15 @@ const CREATIVE_ITEMS = [
 	B.PALE_OAK_PLANKS,
 	B.PALE_MOSS_BLOCK,
 	B.PALE_MOSS,
-	B.CREAKING_HEART
+	B.CREAKING_HEART,
+	// Fase 21.5 (D4): familia de cobre y tuff (1.21)
+	B.COPPER_BLOCK,
+	B.COPPER_STAIRS,
+	B.COPPER_SLAB,
+	B.COPPER_DOOR,
+	B.TUFF,
+	B.POLISHED_TUFF,
+	B.TUFF_BRICKS
 ];
 // Todos los ítems/armas/herramientas del juego (para el picker creativo).
 const ALL_TOOLS_AND_ARMOR = [

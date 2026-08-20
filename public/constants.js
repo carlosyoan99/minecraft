@@ -169,7 +169,20 @@ export const BLOCK_COLORS = {
 	178: 0xb8a88a, // pale oak planks
 	179: 0x7a9a6a, // pale moss block
 	180: 0x6a8a5a, // pale moss
-	181: 0x5a5a6a // heavy core
+	181: 0x5a5a6a, // heavy core
+	// Fase 21.5 (D4): familia de cobre (naranja cobrizo) y tuff (gris)
+	182: 0xea7a5a, // bloque de cobre
+	183: 0xea7a5a, // escaleras de cobre
+	184: 0xea7a5a, // losa de cobre
+	185: 0xc95a3a, // puerta de cobre (tono más oscuro, metálico)
+	186: 0x8f8f8f, // tuff
+	187: 0xa8a8a8, // tuff pulido
+	188: 0xb8b0a8, // ladrillos de tuff
+	// Fase 21.5 (D6): jukebox (marrón oscuro, como cofre), pintura (marco
+	// colorido), note block (marrón con parche).
+	189: 0x7c5a3c, // jukebox
+	190: 0xd8d0c0, // pintura (lienzo base)
+	191: 0x8b6b4a // note block
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -291,7 +304,19 @@ export const BLOCK_NAMES = {
 	// Fase 21.5 (D1/F1/F3/D3): bloques prospectivos
 	174: "Bóveda", 175: "Corazón crujiente", 176: "Tronco de roble pálido",
 	177: "Hojas de roble pálido", 178: "Tablones de roble pálido",
-	179: "Bloque de musgo pálido", 180: "Musgo pálido", 181: "Núcleo pesado"
+	179: "Bloque de musgo pálido", 180: "Musgo pálido", 181: "Núcleo pesado",
+	// Fase 21.5 (D4): familia de cobre y tuff (1.21)
+	182: "Bloque de cobre",
+	183: "Escaleras de cobre",
+	184: "Losa de cobre",
+	185: "Puerta de cobre",
+	186: "Tuff",
+	187: "Tuff pulido",
+	188: "Ladrillos de tuff",
+	// Fase 21.5 (D6): jukebox, pintura, note block.
+	189: "Jukebox",
+	190: "Pintura",
+	191: "Note Block"
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
@@ -574,7 +599,9 @@ export const PLACEABLE_BLOCKS = new Set([
 	142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157,
 	158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173,
 	// Fase 21.5 (D1/D3/F1/F3): bóveda, núcleo pesado y Pale Garden.
-	174, 175, 176, 177, 178, 179, 180, 181
+	174, 175, 176, 177, 178, 179, 180, 181,
+	// Fase 21.5 (D4): familia de cobre y tuff (1.21)
+	182, 183, 184, 185, 186, 187, 188
 ]);
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
 // Fase 21.5 (B3): bambú (planta alta) y andamio (no sólido, escalable).
@@ -675,6 +702,12 @@ export const FISHING_ROD_DURABILITY = 64;
 export const SHIELD_DURABILITY = 336;
 // Fase 21.5 (F4): mochila (Bundle, 1.22) — ítem que abre un inventario portátil.
 export const BUNDLE = 274;
+// Fase 21.5 (D6): bloques de audio/visual.
+export const JUKEBOX = 189;
+export const PAINTING_BLOCK = 190;
+export const NOTE_BLOCK = 191;
+export const MUSIC_DISC_CAT = 275;
+export const MUSIC_DISC_13 = 276;
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)
