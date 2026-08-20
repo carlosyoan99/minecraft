@@ -1020,7 +1020,13 @@ const BLOCK_HARDNESS = {
 	// note block (0.5, como arena — se rompe fácil).
 	[B.JUKEBOX]: 2.0,
 	[B.PAINTING]: 0,
-	[B.NOTE_BLOCK]: 0.5
+	[B.NOTE_BLOCK]: 0.5,
+	// Fase 21.5 (D1): el núcleo pesado es un tesoro de piedra densa (dureza
+	// alta, se mina con pico para dropear el ítem de la maza — D3).
+	[B.HEAVY_CORE]: 15.0,
+	// El VAULT decorativo se rompe con la mano (dureza baja, como la
+	// piedra blanda — la cámara no se destruye con pico).
+	[B.VAULT]: 1.5
 };
 // Velocidad por material (multiplicador sobre la dureza): madera 2x,
 // piedra 4x, hierro 6x, oro 12x (rápida pero frágil), diamante 8x.
@@ -1109,8 +1115,6 @@ const BLOCK_CATEGORY = {
 	[B.PALE_OAK_LOG]: "wood", [B.PALE_OAK_LEAVES]: null, [B.PALE_OAK_PLANKS]: "wood",
 	[B.PALE_MOSS_BLOCK]: "dirt", [B.PALE_MOSS]: null,
 	[B.CREAKING_HEART]: "wood",
-	// Fase 21.5 (D4): cobre y tuff se minan con pico (piedra/stone); la
-	// escalera/losa de cobre igual al bloque y la puerta metálica con pico.
 	[B.COPPER_BLOCK]: "stone",
 	[B.COPPER_STAIRS]: "stone",
 	[B.COPPER_SLAB]: "stone",
@@ -1122,7 +1126,9 @@ const BLOCK_CATEGORY = {
 	// note block (madera, como tambor).
 	[B.JUKEBOX]: "wood",
 	[B.PAINTING]: null,
-	[B.NOTE_BLOCK]: "wood"
+	[B.NOTE_BLOCK]: "wood",
+	// Fase 21.5 (D1): el núcleo pesado es piedra densa — pico (stone).
+	[B.HEAVY_CORE]: "stone"
 };
 const toolCategoryOf = (id) =>
 	isPickaxe(id)
@@ -1179,7 +1185,10 @@ function canHarvest(tool, block) {
 		block === B.COPPER_DOOR ||
 		block === B.TUFF ||
 		block === B.POLISHED_TUFF ||
-		block === B.TUFF_BRICKS
+		block === B.TUFF_BRICKS ||
+		// Fase 21.5 (D1): el núcleo pesado (tesoro de las Trial Chambers) se
+		// mina con pico y suelta el ítem 181 (ingrediente de la maza, D3).
+		block === B.HEAVY_CORE
 	)
 		return isPickaxe(tool);
 	if (isConcretePowder(block)) return true; // polvo de concreto: como arena (mano/pala)

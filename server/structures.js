@@ -495,6 +495,155 @@ function placePyramidColumn(data, x, z, wx, wz, pyramid, height) {
 	}
 }
 
+// ============================================================
+// TRIAL CHAMBERS (Fase 21.5, D1): estructura subterránea ACTIVA determinista.
+// Esquema de celdas propio (TRIAL_CELL, patrón pyramidAt) con hash 2D con sal.
+// Solo en terreno firme (nunca sobre agua: excavar bajo un lago/océano
+// rompería la invariante de unit-mundo). Se excava en la capa de piedra
+// profunda del v6 (el deepslate llega con la F22 A3; aquí piedra, decisión
+// documentada en la spec). Layout: sala de 9×9 (footprint, dx,dz ∈ [-4,4]),
+// piso de adoquín, pasillos en cruz al N/S/E/O + corredor perimetral 1 de
+// ancho que conecta con una cámara central 3×3 (dx,dz ∈ [-1,1]); el resto
+// son paredes de piedra. El VAULT decorativo ocupa el centro exacto de la
+// cámara y 1-2 HEAVY_CORE (D3) lo flanquean (única fuente del mundo, como en
+// MC); los cofres de botín (Trial) van en las 4 esquinas interiores del
+// corredor perimetral (2-4 cofres, determinista por celda). Sin Trial
+// Spawner/ominous (Won't). Determinista (sin Math.random).
+// ============================================================
+const TRIAL_CELL = 64; // celdas de 64×64 (estructura grande, escasa)
+const TRIAL_HALF = 4; // footprint 9×9 (dx,dz ∈ [-4,4])
+const TRIAL_GATE = 0.035; // ~3.5% de celdas candidatas (la validación por terreno deja menos)
+const TRIAL_HEIGHT = 3; // volumen excavado: piso + 2 de interior
+// Profundidad de excavación bajo el terreno del centro: el piso queda a
+// baseY-TRIAL_DEPTH, dentro de la capa de piedra (el techo de la sala di
+// queda cubierto por el terreno natural del chunk por encima).
+const TRIAL_DEPTH = 14;
+
+function trialCenterAt(cellX, cellZ) {
+	const gate = structCellHash(cellX, cellZ, 41);
+	if (gate >= TRIAL_GATE) return null;
+	const jx = Math.floor(structCellHash(cellX, cellZ, 42) * (TRIAL_CELL - 10));
+	const jz = Math.floor(structCellHash(cellX, cellZ, 43) * (TRIAL_CELL - 10));
+	const cx = cellX * TRIAL_CELL + 5 + jx;
+	const cz = cellZ * TRIAL_CELL + 5 + jz;
+	// Solo en terreno firme: nunca sobre agua.
+	if (biomes.columnFloorY(cx, cz) !== null) return null;
+	// La cámara no debe caer en la capa de roca madre (local 0): el piso
+	// baseY-TRIAL_DEPTH ha de quedar por encima de WORLD_MIN_Y con margen.
+	const baseY = biomes.getHeight(cx, cz);
+	if (baseY - TRIAL_DEPTH <= WORLD_MIN_Y + 3) return null;
+	return { cx, cz };
+}
+
+// ¿La columna (wx, wz) es parte de una Trial Chamber? Devuelve { cx, cz } o null.
+function trialAt(wx, wz) {
+	const t = trialCenterAt(
+		Math.floor(wx / TRIAL_CELL),
+		Math.floor(wz / TRIAL_CELL)
+	);
+	if (!t) return null;
+	if (Math.abs(wx - t.cx) > TRIAL_HALF || Math.abs(wz - t.cz) > TRIAL_HALF)
+		return null;
+	return t;
+}
+
+// Bloque de la sala en (dx, dz, dy) con dy absoluto desde el PISO (floorY):
+//   dy 0 = piso de adoquín en todo el footprint;
+//   dy 1 = paredes de piedra (borde del footprint y entre pasillos);
+//   dy 2 = interior de pasillos/aire (3 de alto total; el terreno del chunk
+//          por encima forma el techo).
+// Cámara central 3×3, pasillos en cruz (dx===0 || dz===0) y corredor
+// perimetral 1 de ancho (|dx|===3 || |dz|===3). Devuelve `undefined` donde
+// NO hay bloque de estructura.
+function trialBlockAt(dx, dz, dy) {
+	// Piso: adoquín en el footprint completo.
+	if (dy === 0) return B.COBBLESTONE;
+	const inCore = Math.abs(dx) <= 1 && Math.abs(dz) <= 1;
+	const onCross = dx === 0 || dz === 0;
+	const onPerimeter = Math.abs(dx) === TRIAL_HALF - 1 || Math.abs(dz) === TRIAL_HALF - 1;
+	// Interior: aire en la cámara central, los pasillos en cruz y el
+	// corredor perimetral; piedra en el resto (paredes entre pasillos).
+	if (inCore || onCross || onPerimeter) return B.AIR;
+	if (dy === 1) return B.COBBLESTONE; // pared (base de la columna)
+	return B.AIR; // dy 2: interior ya abierto (sin muro arriba)
+}
+
+// Layout determinista de la cámara central: nº de cofres (2-4) con sus
+// posiciones en las 4 esquinas del corredor perimetral (aire interior).
+function trialLootChests(cx, cz) {
+	const k = 2 + Math.floor(structCellHash(cx, cz, 44) * 3); // 2..4 cofres
+	const cornerSlots = [
+		[-3, -3],
+		[3, -3],
+		[-3, 3],
+		[3, 3]
+	];
+	return cornerSlots.slice(0, k);
+}
+
+// ¿(dx,dz) es una posición de cofre de botín de esta Trial Chamber?
+function isTrialChest(cx, cz, dx, dz) {
+	return trialLootChests(cx, cz).some(([cx2, cz2]) => cx2 === dx && cz2 === dz);
+}
+
+// Coloca la columna de la Trial Chamber en el chunk local (x, z) → mundo
+// (wx, wz). Excava el volumen [floorY, floorY+TRIAL_HEIGHT) bajo el terreno
+// del centro, coloca el VAULT + HEAVY_CORE deterministas y registra los
+// cofres de botín (Trial) una vez con guard en state.chests.
+function placeTrialColumn(data, x, z, wx, wz, trial, height) {
+	const cx = Math.floor(trial.cx);
+	const cz = Math.floor(trial.cz);
+	const baseY = biomes.getHeight(cx, cz);
+	const floorY = baseY - TRIAL_DEPTH;
+	const dx = wx - cx;
+	const dz = wz - cz;
+	if (Math.abs(dx) > TRIAL_HALF || Math.abs(dz) > TRIAL_HALF) return;
+	for (let dy = 0; dy < TRIAL_HEIGHT; dy++) {
+		const y = floorY + dy;
+		if (y <= WORLD_MIN_Y || y > WORLD_MAX_Y) continue;
+		let block = trialBlockAt(dx, dz, dy);
+		if (block === undefined) continue;
+		// Cámara central (solo el piso, dy===0): VAULT en el centro exacto y
+		// HEAVY_CORE (1-2) a su lado en posiciones deterministas.
+		if (dy === 0 && Math.abs(dx) <= 1 && Math.abs(dz) <= 1) {
+			if (dx === 0 && dz === 0) block = B.VAULT;
+			else if (
+				(block === B.AIR || block === B.COBBLESTONE) &&
+				(dx === 1 || dx === -1 || dz === 1 || dz === -1)
+			) {
+				// Solo los 4 adyacentes ortogonales al VAULT son candidatos;
+				// el número de cores (1-2) los elige por hash (N/E primero).
+				const cores =
+					1 + Math.floor(structCellHash(cx, cz, 45) * 2);
+				const order = [
+					[1, 0],
+					[-1, 0],
+					[0, 1],
+					[0, -1]
+				];
+				let placed = false;
+				for (let i = 0; i < cores; i++) {
+					const [ox, oz] = order[i];
+					if (dx === ox && dz === oz) {
+						block = B.HEAVY_CORE;
+						placed = true;
+						break;
+					}
+				}
+				if (!placed) block = B.COBBLESTONE;
+			}
+		}
+		data[core.idx(x, core.toLocal(y), z)] = block;
+		// Cofres de botín en el piso (las esquinas interiores del corredor).
+		if (dy === 0 && isTrialChest(cx, cz, dx, dz)) {
+			data[core.idx(x, core.toLocal(y), z)] = B.CHEST;
+			const key = `${wx},${y},${wz}`;
+			if (!state.chests.has(key))
+				state.chests.set(key, chests.trialLootSlots());
+		}
+	}
+}
+
 module.exports = {
 	mineshaftAt,
 	mineshaftDepth,
@@ -514,6 +663,14 @@ module.exports = {
 	pyramidCenterAt,
 	pyramidTrapAt,
 	placePyramidColumn,
+	// Fase 21.5 (D1): Trial Chambers.
+	trialAt,
+	trialCenterAt,
+	trialBlockAt,
+	trialLootChests,
+	isTrialChest,
+	TRIAL_DEPTH,
+	placeTrialColumn,
 	MS_TUNNEL_H,
 	setCore
 };

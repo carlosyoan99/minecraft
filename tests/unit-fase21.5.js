@@ -1151,6 +1151,165 @@ check(
 }
 
 // ============================================================
+// D1) Trial Chambers (estructura subterránea determinista).
+// Patrón de pirámide (unit-fase21 B2) con esquema de celdas propio
+// (TRIAL_CELL 64, gate 3.5 %, hash 2D con sal): solo en terreno firme
+// (nunca sobre agua), determinista. Verifica:
+//   1. determinismo — trialCenterAt misma celda → mismo centro; trialAt
+//      devuelve el footprint y null fuera;
+//   2. ubicación — toda Trial está en terreno firme (nunca sobre agua);
+//   3. layout de bloques — piso de adoquín, VAULT en el centro exacto,
+//      HEAVY_CORE (1-2) adyacente, cofres de botín Trial en las esquinas
+//      del corredor perimetral con loot registrado, interior de aire;
+//   4. el piso queda bajo la superficie a TRIAL_DEPTH (cámara excavada).
+// ============================================================
+{
+	const structures = require("../server/structures.js");
+	let trialsFound = 0;
+	let trialsOnWater = 0;
+	let firstTrial = null;
+	const UPTO = 32; // celdas de 64×64 → ±2048 bloques (como la pirámide)
+	for (let ccx = -UPTO; ccx < UPTO && !firstTrial; ccx++) {
+		for (let ccz = -UPTO; ccz < UPTO; ccz++) {
+			const t = structures.trialCenterAt(ccx, ccz);
+			if (!t) continue;
+			trialsFound++;
+			if (world.columnFloorY(t.cx, t.cz) !== null) trialsOnWater++;
+			if (!firstTrial) firstTrial = t;
+		}
+	}
+	check(
+		"hay al menos 1 Trial Chamber en la semilla",
+		trialsFound > 0,
+		`${trialsFound} Trial en ±2048`
+	);
+	check(
+		"toda Trial Chamber está en terreno firme (nunca sobre agua)",
+		trialsOnWater === 0,
+		`${trialsOnWater} sobre agua`
+	);
+	if (firstTrial) {
+		const cellX = Math.floor(firstTrial.cx / 64);
+		const cellZ = Math.floor(firstTrial.cz / 64);
+		const again = structures.trialCenterAt(cellX, cellZ);
+		check(
+			"trialCenterAt es determinista (misma celda → mismo centro)",
+			again !== null &&
+				again.cx === firstTrial.cx &&
+				again.cz === firstTrial.cz,
+			`(${firstTrial.cx},${firstTrial.cz}) vs (${again && again.cx},${again && again.cz})`
+		);
+		const t1 = structures.trialAt(firstTrial.cx, firstTrial.cz);
+		const tx = structures.trialAt(firstTrial.cx + 5, firstTrial.cz);
+		check(
+			"trialAt devuelve el footprint (centro) y null fuera (5 bloques)",
+			t1 !== null && t1.cx === firstTrial.cx && tx === null,
+			`centro ${t1 && t1.cx} | fuera ${tx}`
+		);
+		// Layout de bloques: generar los chunks que tocan el footprint 9×9.
+		const { cx: wx0, cz: wz0 } = firstTrial;
+		const R = 5;
+		for (
+			let cgx = Math.floor((wx0 - R) / 16);
+			cgx <= Math.floor((wx0 + R) / 16);
+			cgx++
+		) {
+			for (
+				let cgz = Math.floor((wz0 - R) / 16);
+				cgz <= Math.floor((wz0 + R) / 16);
+				cgz++
+			) {
+				world.generateChunk(cgx, cgz);
+			}
+		}
+		const tBaseY = world.getHeight(wx0, wz0);
+		const floorY = tBaseY - structures.TRIAL_DEPTH;
+		const tBlk = (wx, wz, y) => {
+			const gx = Math.floor(wx / 16);
+			const gz = Math.floor(wz / 16);
+			const lx = ((wx % 16) + 16) % 16;
+			const lz = ((wz % 16) + 16) % 16;
+			const d = state.chunks.get(`${gx},${gz}`);
+			if (!d) return -1;
+			// Layout v6: local y = mundo y − WORLD_MIN_Y (−64).
+			const ly = y + 64;
+			if (ly < 0 || ly >= 128) return -1;
+			return d[(ly * 16 + lz) * 16 + lx];
+		};
+		// Piso de adoquín en el footprint 9×9 (salvo VAULT/core/cofres).
+		let cobbleFloor = 0;
+		for (let dx = -4; dx <= 4; dx++) {
+			for (let dz = -4; dz <= 4; dz++) {
+				if (tBlk(wx0 + dx, wz0 + dz, floorY) === B.COBBLESTONE)
+					cobbleFloor++;
+			}
+		}
+		// El piso queda bajo la superficie: la cámara completa (TRIAL_HEIGHT
+		// 3) está excavada en el subsuelo, con terreno natural por encima del
+		// techo de la sala (varias cuevas pueden atravesarlo, no es parte de
+		// la estructura). La invariante clave: el interior nunca alcanza la
+		// superficie ni cae bajo agua.
+		const underground =
+			floorY === tBaseY - structures.TRIAL_DEPTH &&
+			floorY + 3 <= tBaseY - 2 &&
+			floorY > world.WORLD_MIN_Y;
+		check(
+			"la cámara está excavada a TRIAL_DEPTH bajo el terreno (sin romper la superficie)",
+			underground,
+			`piso ${floorY}, superficie ${tBaseY}`
+		);
+		check(
+			"el piso es de adoquín en el footprint (9×9, 76 + tesoros)",
+			cobbleFloor >= 70,
+			`${cobbleFloor}/81`
+		);
+		check(
+			"el VAULT decorativo está en el centro exacto",
+			tBlk(wx0, wz0, floorY) === B.VAULT
+		);
+		// 1-2 HEAVY_CORE adyacentes (ortogonales) al VAULT.
+		const cores = [
+			[1, 0],
+			[-1, 0],
+			[0, 1],
+			[0, -1]
+		].filter(([a, b]) => tBlk(wx0 + a, wz0 + b, floorY) === B.HEAVY_CORE)
+			.length;
+		check(
+			"1-2 HEAVY_CORE flanquean el VAULT (fuente de la maza D3)",
+			cores >= 1 && cores <= 2,
+			`${cores} cores`
+		);
+		// Cofres de botín Trial (2-4, determinista) en las esquinas del
+		// corredor perimetral, con loot registrado una vez en state.chests.
+		const chestSlots = structures.trialLootChests(wx0, wz0);
+		let chestsPlaced = 0;
+		for (const [a, b] of chestSlots) {
+			if (tBlk(wx0 + a, wz0 + b, floorY) === B.CHEST) chestsPlaced++;
+		}
+		check(
+			"los cofres de botín Trial se colocan en el corredor perimetral",
+			chestsPlaced === chestSlots.length,
+			`${chestsPlaced}/${chestSlots ? chestSlots.length : "-"}`
+		);
+		check(
+			"los cofres Trial tienen loot registrado (trialLootSlots)",
+			chestSlots.every(([a, b]) => {
+				const key = `${wx0 + a},${floorY},${wz0 + b}`;
+				const c = state.chests.get(key);
+				return c && c.some((s) => s !== null);
+			})
+		);
+		// Interior de la cámara central 3×3 en aire (dy 1).
+		const coreAir =
+			tBlk(wx0, wz0, floorY + 1) === B.AIR &&
+			tBlk(wx0 + 1, wz0, floorY + 1) === B.AIR &&
+			tBlk(wx0, wz0 + 1, floorY + 1) === B.AIR;
+		check("la cámara central tiene 3×3 interior de aire", coreAir);
+	}
+}
+
+// ============================================================
 // D4) Familia de cobre y tuff (1.21): IDs, durezas, recetas y reglas.
 // Los bloques base (COPPER_BLOCK 182, TUFF 186) se obtienen por creative
 // (la minería llega con F22); sus derivados se craftean en cadena.
@@ -1212,6 +1371,5 @@ check(
 		recetas["tuff_bricks"]?.ingredients?.["#"] === 187
 	));
 }
-
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);

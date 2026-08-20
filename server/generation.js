@@ -480,6 +480,11 @@ function generateChunk(cx, cz) {
 			// árboles y el pilar de piedra para que ninguna vegetación crezca
 			// sobre el cuerpo escalonado (footprint 15×15) ni tape la cima.
 			const pyramid = structures.pyramidAt(wx, wz);
+			// Fase 21.5 (D1): Trial Chambers — se calcula antes que los árboles
+			// para que no crezca vegetación sobre el footprint de la cámara
+			// subterránea (la excavación va más abajo, pero así el terreno por
+			// encima queda limpio para que el techo se soporte en el chunk).
+			const trial = structures.trialAt(wx, wz);
 
 			// Minas abandonadas (Fase 7): excavar el pasillo horizontal en piedra
 			// (preserva minerales y el techo) a la profundidad del túnel; nunca
@@ -524,6 +529,7 @@ function generateChunk(cx, cz) {
 				!struct &&
 				!well &&
 				!pyramid &&
+				!trial &&
 				surfaceBlock === B.GRASS;
 
 			// Fase 15 (A2): el tronco debe estar a ≥2 bloques del borde del chunk
@@ -932,6 +938,9 @@ function generateChunk(cx, cz) {
 			// resto (escribe el sótano y el cuerpo escalonado completo).
 			if (pyramid)
 				structures.placePyramidColumn(data, x, z, wx, wz, pyramid, height);
+			// Fase 21.5 (D1): Trial Chambers — excava el volumen de la cámara
+			// bajo el terreno (piso baseY-TRIAL_DEPTH) tras el resto.
+			if (trial) structures.placeTrialColumn(data, x, z, wx, wz, trial, height);
 		}
 	}
 

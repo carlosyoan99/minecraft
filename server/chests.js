@@ -12,7 +12,7 @@
 // (net.js), igual que con el horno.
 // ============================================================
 const state = require("./state.js");
-const { I } = require("./constants.js");
+const { B, I } = require("./constants.js");
 const { ItemStack } = require("./items.js"); // Fase 13 (C3): loot como clase
 
 const { chests } = state;
@@ -125,6 +125,28 @@ function pyramidLootSlots() {
 	return lootSlotsFrom(PYRAMID_LOOT_TABLE);
 }
 
+// Fase 21.5 (D1): botín de las Trial Chambers — como en Minecraft, un abanico
+// de recursos (hierro/esmeralda/pan) con rarezas de la estructura (huesos,
+// pólvora — los "peligros" — y el Arco de las salas). El tótem de la
+// inmortalidad (C3) pasa a ser fuente oficial aquí (antes interino en el
+// templo hasta que existieran las Trial Chambers) y el HEAVY_CORE (D3) llega
+// raro desde la cámara central (va junto al Vault) como su fuente de D3.
+const TRIAL_LOOT_TABLE = [
+	[I.IRON_INGOT, 1, 4],
+	[I.GOLD_INGOT, 1, 2],
+	[I.EMERALD, 1, 3],
+	[I.BREAD, 1, 3],
+	[I.BONE, 2, 5],
+	[I.GUNPOWDER, 1, 2],
+	[I.ARROW, 2, 6],
+	[B.HEAVY_CORE, 1, 1] // 181: se rompe con pico (canHarvest stone) → el ítem para la maza (D3)
+];
+
+// Loot de los cofres de las Trial Chambers (Fase 21.5, D1).
+function trialLootSlots() {
+	return lootSlotsFrom(TRIAL_LOOT_TABLE);
+}
+
 function getOrCreateChest(key) {
 	let c = chests.get(key);
 	if (!c) {
@@ -158,11 +180,13 @@ module.exports = {
 	TEMPLE_LOOT_TABLE,
 	SHIPWRECK_LOOT_TABLE,
 	PYRAMID_LOOT_TABLE,
+	TRIAL_LOOT_TABLE,
 	getOrCreateChest,
 	chestSnapshot,
 	restoreChests,
 	lootSlots,
 	templeLootSlots,
 	shipwreckLootSlots,
-	pyramidLootSlots
+	pyramidLootSlots,
+	trialLootSlots
 };
