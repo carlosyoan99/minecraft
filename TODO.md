@@ -1153,8 +1153,10 @@
       `BREEZE_ROD` (drop), `TRIAL_EXPLORER_MAP` (mapa/brújula hacia la
       estructra); B/I + receta + icono
 - [ ] D6 Discos de música, pinturas y partituras (visual/audio, tras F19.5)
-- [ ] E1 Variantes de animales por bioma (1.21.5): cerdos/vacas/gallinas con
-      `variant` frío/cálido según bioma de spawn, textura distinta
+- [x] E1 Variantes de animales por bioma (1.21.5): cerdos/vacas/gallinas con
+      `variant` frío/cálido según bioma de spawn (templados = base); la cría
+      hereda la variante de un padre al azar; el tinte lo aplica el cliente
+      (`VARIANT_TINT`); retrocompatible (sin cambios de wire)
 - [x] E2 Color de lana de oveja según bioma (1.21.5): paleta por bioma,
       esquileo suelta esa lana
 - [x] E3 Bloques decorativos 1.21.5: `FIREFLY_BUSH`, `LEAF_LITTER`,

@@ -703,6 +703,12 @@ function applyFeed(mob, mobs) {
 				? mob.woolColor || constants.B.WHITE_WOOL
 				: partner.woolColor || constants.B.WHITE_WOOL;
 	}
+	// Fase 21.5 (E1): la cría de cerdo/vaca/gallina hereda la variante
+	// (frío/cálido/templado) de uno de los padres al azar, como la lana.
+	if (mob.type === "cow" || mob.type === "pig" || mob.type === "chicken") {
+		baby.variant =
+			Math.random() < 0.5 ? mob.variant || "" : partner.variant || "";
+	}
 	state.mobs.push(baby);
 	return baby;
 }

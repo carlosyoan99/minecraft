@@ -42,7 +42,7 @@
 | D4 | Lista usuario 1.21 | Bloques de Cobre (variantes: bloques, escaleras, losas, puertas, sin oxidación simplificado) y Tuff (Tuff bloque ya en F23 A4 → aquí la familia) | F21.5 D4 | 🟠 |
 | D5 | Lista usuario 1.21 | Ítems: Carga de Viento, Barra de Breeze, Mapa de Exploración de Prueba | F21.5 D5 | 🟠 |
 | D6 | Lista usuario 1.21 | Discos de música, pinturas y partituras (visual/audio) | F21.5 D6 | 🟢 |
-| E1 | Lista usuario "1.21.5" | Variantes de animales por bioma (cerdo/vaca/gallina frías y cálidas via `variant`) | F21.5 E1 | 🟠 |
+| E1 | Lista usuario "1.21.5" | Variantes de animales por bioma (cerdo/vaca/gallina frías y cálidas via `variant`) | F21.5 E1 | 🟢 |
 | E2 | Lista usuario 1.21.5 | Color de lana de oveja según bioma | F21.5 E2 | 🟢 |
 | E3 | Lista usuario 1.21.5 | Bloques decorativos: Firefly Bush, Leaf Litter, Wildflowers, Bush, hierba seca corta/alta, Cactus Flower | F21.5 E3 | 🟢 |
 | E4 | Lista usuario 1.21.5 | Partículas de hojas cayendo (cliente) | F21.5 E4 | 🟢 |
@@ -403,6 +403,12 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   (`MOB_PARTS`/`mobtextures.js`). Retrocompatible (no cambia el wire).
 - **Criterio:** test: el mob de un bioma frío nace con su variante;
   `unit-sync`/`unit-mobs-*` en verde.
+- **✅ IMPLEMENTADO (2026-08-20):** `ANIMAL_VARIANT` + `animalVariantFor`
+  en `server/mob-spawn.js` (asignado al spawnear; la cría lo hereda de un
+  padre al azar en `mob-species.js`). El snapshot ya llevaba `variant` y el
+  tinte cliente (`VARIANT_TINT`) existía; esta tarea conecta origen y
+  destino. Templados → base (sin tinte); fríos → "cold"; cálidos/áridos →
+  "warm".
 
 ### E2 — Color de lana de oveja según bioma
 

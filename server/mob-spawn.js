@@ -96,6 +96,33 @@ const SHEEP_WOOL = {
 	badlands: B.BROWN_WOOL,
 	swamp: B.BROWN_WOOL
 };
+// Fase 21.5 (E1): variante de animal por bioma para cerdo/vaca/gallina
+// (1.21.5 "Spring to Life"). Fríos → "cold" (tinte oscuro), cálidos/áridos
+// → "warm" (tinte cálido), templados → base ("", sin tinte). Se replica al
+// cliente en el snapshot (mob.variant) y el tinte lo aplica VARIANT_TINT de
+// mobtextures; retrocompatible (sin cambios de wire ni guardado).
+const ANIMAL_VARIANT = {
+	plains: "",
+	forest: "",
+	birch_forest: "",
+	mountain: "",
+	snow: "cold",
+	snowy_peaks: "cold",
+	taiga: "cold",
+	giant_taiga: "cold",
+	desert: "warm",
+	badlands: "warm",
+	jungle: "warm",
+	swamp: "warm"
+};
+const VARIANT_ANIMALS = new Set(["cow", "pig", "chicken"]);
+
+// Variante frío/cálido/templado para un animal (E1): "" si la especie no
+// tiene variante o el bioma es templado/desconocido. Función pura (tests).
+function animalVariantFor(type, biome) {
+	if (!VARIANT_ANIMALS.has(type)) return "";
+	return ANIMAL_VARIANT[biome] || "";
+}
 const BIOME_SPAWN = {
 	taiga: { day: [], night: ["wolf"] },
 	swamp: { day: [], night: ["slime"] }, // el slime solo aparece de NOCHE (como MC)
@@ -228,6 +255,20 @@ function spawnMobs(isNight) {
 				const biome = isWater ? null : world.getBiome(hx, hz);
 				mob.woolColor = SHEEP_WOOL[biome] || constants.B.WHITE_WOOL;
 			}
+			// Fase 21.5 (E1): cerdo/vaca/gallina con la variante frío/cálido/
+			// templado del bioma de spawn (1.21.5 Spring to Life). El cliente
+			// tiñe el material según mob.variant (VARIANT_TINT en mobs.js).
+			if (VARIANT_ANIMALS.has(type)) {
+				const biome = isWater ? null : world.getBiome(hx, hz);
+				mob.variant = animalVariantFor(type, biome);
+			}
+			// Fase 21.5 (E1): variantes de animales por bioma (cerdo/vaca/gallina).
+			// "cold" = frío (snow/taiga/giant_taiga/snowy_peaks/birch_forest),
+			// "warm" = cálido (desert/badlands/swamp/jungle), "" = templado.
+			if (type === "pig" || type === "cow" || type === "chicken") {
+				const biome = isWater ? null : world.getBiome(hx, hz);
+				mob.variant = ANIMAL_VARIANT[biome] || "";
+			}
 			state.mobs.push(mob);
 			created.push(mob);
 			placed = mob;
@@ -248,6 +289,8 @@ module.exports = {
 	SPAWN_TYPES,
 	BIOME_SPAWN,
 	WATER_SPAWN,
+	ANIMAL_VARIANT, // Fase 21.5 (E1): variante de animal por bioma (tests)
+	animalVariantFor, // Fase 21.5 (E1): helper puro type+bioma→variant
 	spawnMobs,
 	setCreateMob
 };

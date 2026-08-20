@@ -880,5 +880,56 @@ check(
 	);
 }
 
+// --- Fase 21.5 (E1): variantes de animal por bioma ---
+{
+	const mobSpawn = require("../server/mob-spawn.js");
+	const { animalVariantFor, ANIMAL_VARIANT } = mobSpawn;
+	// Mapeo puro: fríos → "cold", cálidos → "warm", templados → base "".
+	check(
+		"E1: vaca en taiga/snow/giant_taiga → cold",
+		animalVariantFor("cow", "taiga") === "cold" &&
+			animalVariantFor("cow", "snow") === "cold" &&
+			animalVariantFor("cow", "giant_taiga") === "cold" &&
+			animalVariantFor("cow", "snowy_peaks") === "cold"
+	);
+	check(
+		"E1: cerdo en desert/badlands/jungle/swamp → warm",
+		animalVariantFor("pig", "desert") === "warm" &&
+			animalVariantFor("pig", "badlands") === "warm" &&
+			animalVariantFor("pig", "jungle") === "warm" &&
+			animalVariantFor("pig", "swamp") === "warm"
+	);
+	check(
+		"E1: gallina en templados (plains/forest/birch/mountain) → base",
+		animalVariantFor("chicken", "plains") === "" &&
+			animalVariantFor("chicken", "forest") === "" &&
+			animalVariantFor("chicken", "birch_forest") === "" &&
+			animalVariantFor("chicken", "mountain") === ""
+	);
+	check(
+		"E1: oveja/conejo/bee no cambian (sin variante)",
+		animalVariantFor("sheep", "taiga") === "" &&
+			animalVariantFor("rabbit", "desert") === "" &&
+			animalVariantFor("bee", "plains") === ""
+	);
+	check(
+		"E1: ANIMAL_VARIANT cubre todos los biomas conocidos",
+		Object.keys(ANIMAL_VARIANT).length === 12 &&
+			new Set(Object.keys(ANIMAL_VARIANT)).has("snow") &&
+			new Set(Object.keys(ANIMAL_VARIANT)).has("badlands") &&
+			new Set(Object.keys(ANIMAL_VARIANT)).has("swamp")
+	);
+	// El snapshot lleva la variante al cliente (retrocompatible, sin wire).
+	{
+		const mobs = require("../server/mobs.js");
+		const cow = mobs.createMob("cow", 0, 0, 0);
+		cow.variant = "cold";
+		const snap = mobs.mobSnapshot(cow);
+		check("E1: el snapshot expone mob.variant", snap.variant === "cold");
+		const snap2 = mobs.mobSnapshot(mobs.createMob("cow", 0, 0, 0));
+		check("E1: sin variante → snapshot con '' (templado base)", snap2.variant === "");
+	}
+}
+
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);
