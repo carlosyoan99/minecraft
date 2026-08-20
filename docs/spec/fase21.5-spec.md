@@ -391,9 +391,11 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   radial sin daño (`WIND_BURST_RADIUS` 3, alcance vertical ±3) — jugadores
   reciben el evento WS `knockback` + `p.kbUntil` (600 ms), mobs `m.kb`
   (fuerza 0.8, up 0.45, ttl 10). Física del viento. Tests en `tests/unit-fase21.5.js`
-  (D5). **Pendiente:** receta/obtención de `WIND_CHARGE` (270), drops e
-  iconos de `BREEZE_ROD` (271) y `TRIAL_EXPLORER_MAP` (273) — la carga que
-  suelta el Breeze aún no libre; `BREEZE_ROD` no es crafteable todavía.
+  (D5). Receta `wind_charge` = 1 `BREEZE_ROD` → 4 (recetas.json); iconos de
+  270/271/273 ya estaban en `itemicons.js`. **Pendiente (depende del Breeze,
+  F23):** `BREEZE_ROD` es su drop y `TRIAL_EXPLORER_MAP` su botín/brújula —
+  no son crafteables, su fuente llega con el mob; la carga que suelta el
+  Breeze aún no queda libre.
 
 ### D6 — Discos de música, pinturas y partituras
 

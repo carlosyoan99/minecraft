@@ -1281,6 +1281,18 @@
 			"count": 1
 		}
 	},
+	"wind_charge": {
+		"shape": [
+			"R"
+		],
+		"ingredients": {
+			"R": 271
+		},
+		"result": {
+			"id": 270,
+			"count": 4
+		}
+	},
 	"concrete_powder_white": {
 		"shape": [
 			"SGS",

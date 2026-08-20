@@ -1154,7 +1154,8 @@
       `knockback`/`kbUntil`, mobs → `m.kb`; consumible de un solo uso, no
       vuelve al inventario; clic derecho 270), `BREEZE_ROD` (drop),
       `TRIAL_EXPLORER_MAP` (mapa/brújula hacia la estructra); B/I + receta +
-      icono (recetas e icono de BREEZE_ROD/TRIAL_EXPLORER_MAP pendientes)
+      icono (receta de WIND_CHARGE = 1 rod → 4; iconos ya en `itemicons.js`;
+      BREEZE_ROD/TRIAL_EXPLORER_MAP son drops/obtención del Breeze F23)
 - [ ] D6 Discos de música, pinturas y partituras (visual/audio, tras F19.5)
 - [x] E1 Variantes de animales por bioma (1.21.5): cerdos/vacas/gallinas con
       `variant` frío/cálido según bioma de spawn (templados = base); la cría
