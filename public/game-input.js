@@ -447,6 +447,15 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 		return;
 	}
 
+	// Fase 21.5 (D5): lanzar la carga de viento (270) con clic derecho — el
+	// proyectil vuela hacia donde mira y empuja a bloques/entidades. El
+	// servidor la retira del inventario (un solo uso) y la reemplaza por la
+	// ráfaga al impactar.
+	if (e.button === 2 && held && held.id === 270) {
+		send("throw_wind_charge", {});
+		return;
+	}
+
 	// Fase 13 (L4): cubo de líquidos con clic derecho. Cubo vacío (249):
 	// recoger la fuente de agua/lava a la que apunta el rayo; cubo lleno
 	// (250/251): verter donde se mira (la celda tras la cara apuntada). Si no

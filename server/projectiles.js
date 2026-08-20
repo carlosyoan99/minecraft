@@ -39,6 +39,19 @@ const ARROW_HIT_DIST = 0.7;
 const TRIDENT_DAMAGE = 6; // ahogado
 const TRIDENT_PLAYER_DAMAGE = 8; // lanzado por el jugador
 const TRIDENT_SPEED = 16; // algo más veloz que la flecha
+// Fase 21.5 (D5): carga de viento (WIND_CHARGE) — proyectil del Breeze que
+// el jugador puede lanzar con clic derecho. No hace daño: al impactar con
+// un bloque o una entidad hace una RÁFAGA que empuja a jugadores y mobs
+// cercanos (reusa el knockback de la TNT: evento `knockback` para jugadores
+// y `mob.kb` para mobs), y se consume (no vuelve al inventario, paridad MC).
+const WIND_SPEED = 16; // bloques/s (como el tridente)
+const WIND_LIFE_MS = 1500;
+const WIND_HIT_DIST = 0.8; // radio de "impacto" con una entidad
+const WIND_BURST_RADIUS = 3; // radio de la ráfaga que empuja
+const WIND_KB_STRENGTH = 0.8; // impulso horizontal (un poco más que TNT)
+const WIND_KB_UP = 0.45; // impulso vertical (parábola MC)
+const WIND_KB_UNTIL_MS = 600; // ventana de confianza del anti-cheat
+const WIND_KB_TTL_TICKS = 10; // duración del impulso de los mobs
 
 // Hooks inyectables: mobDrops/mobXp viven en mobs.js (que requiere este
 // módulo). Para no crear un ciclo de require, mobs.js los inyecta al
@@ -179,6 +192,74 @@ function returnPlayerArrow(a) {
 	if (owner?.inventory) addToInventory(owner, I.ARROW, 1);
 }
 
+// ============================================================
+// CARGA DE VIENTO (Fase 21.5, D5)
+// El jugador lanza su carga de viento con clic derecho hacia donde mira
+// (misma dirección que tridente/arco). Se retira del inventario al lanzarla
+// y NO vuelve: es de un solo uso (paridad MC). Al impactar hace la ráfaga.
+// ============================================================
+function throwWindCharge(player) {
+	const held = player.inventory?.[player.selectedSlot || 0];
+	if (!held || held.id !== I.WIND_CHARGE) return false;
+	const yaw = player.yaw || 0;
+	const pitch = player.pitch || 0;
+	const cp = Math.cos(pitch);
+	const dx = -Math.sin(yaw) * cp;
+	const dy = Math.sin(pitch);
+	const dz = -Math.cos(yaw) * cp;
+	removeFromInventory(player, I.WIND_CHARGE, 1);
+	state.arrows.push({
+		x: player.x,
+		y: player.y + 1.4,
+		z: player.z,
+		vx: dx * WIND_SPEED,
+		vy: dy * WIND_SPEED,
+		vz: dz * WIND_SPEED,
+		life: WIND_LIFE_MS,
+		from: player.id,
+		kind: "wind"
+	});
+	return true;
+}
+
+// Ráfaga de viento en (bx, by, bz): empuja a jugadores y mobs cercanos en
+// dirección radial, sin daño. Mismo patrón que el knockback de la TNT (Fase
+// 20 B3): los jugadores reciben el evento `knockback` (el cliente lo integra
+// en su física y el anti-cheat lo tolera durante kbUntil) y los mobs el
+// impulso `m.kb` que integra su tick.
+function windBurst(bx, by, bz) {
+	for (const p of players.values()) {
+		const distXZ = Math.hypot(p.x - bx, p.z - bz);
+		if (distXZ < 0.01 || distXZ >= WIND_BURST_RADIUS) continue;
+		if (Math.abs(p.y - by) > 3) continue; // alcance vertical acotado (±3)
+		const nx = (p.x - bx) / distXZ;
+		const nz = (p.z - bz) / distXZ;
+		p.kbUntil = Date.now() + WIND_KB_UNTIL_MS;
+		try {
+			p.ws.send(
+				JSON.stringify({
+					event: "knockback",
+					data: { vx: nx * WIND_KB_STRENGTH, vy: WIND_KB_UP, vz: nz * WIND_KB_STRENGTH }
+				})
+			);
+		} catch {
+			/* socket cerrado: la ventana de confianza caduca sola */
+		}
+	}
+	for (const m of state.mobs) {
+		if (!m.alive) continue;
+		const distXZ = Math.hypot(m.x - bx, m.z - bz);
+		if (distXZ < 0.01 || distXZ >= WIND_BURST_RADIUS) continue;
+		if (Math.abs(m.y - by) > 3) continue;
+		m.kb = {
+			vx: ((m.x - bx) / distXZ) * WIND_KB_STRENGTH,
+			vy: WIND_KB_UP,
+			vz: ((m.z - bz) / distXZ) * WIND_KB_STRENGTH,
+			ttl: WIND_KB_TTL_TICKS
+		};
+	}
+}
+
 // Avanza las flechas (dtMs) y aplica daño al primer jugador que intersecten.
 // Devuelve las flechas vivas para el broadcast (arrows_update).
 function tickArrows(dtMs) {
@@ -200,6 +281,59 @@ function tickArrows(dtMs) {
 		const px = a.x,
 			py = a.y,
 			pz = a.z;
+		// Fase 21.5 (D5): carga de viento — trayectoria recta SIN gravedad
+		// (paridad MC: la brisa no cae). Al impactar con una entidad o un
+		// bloque hace la ráfaga que empuja (sin daño) y se consume: no vuelve
+		// al inventario (a diferencia de flechas/tridente, es de un solo uso).
+		if (a.kind === "wind") {
+			a.x += a.vx * dt;
+			a.y += a.vy * dt;
+			a.z += a.vz * dt;
+			const lanzadorJugador = typeof a.from === "string" && players.has(a.from);
+			let burst = null;
+			for (const p of players.values()) {
+				if (a.from === p.id) continue; // el lanzador no se golpea a sí mismo
+				if (Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) < WIND_HIT_DIST) {
+					burst = { x: a.x, y: a.y, z: a.z };
+					break;
+				}
+			}
+			if (!burst) {
+				for (const m of state.mobs) {
+					if (!m.alive || a.from === m.id) continue;
+					// No friendly-fire con las mascotas del lanzador (empuje no dañino,
+					// pero se salta igual para no desplazar al propio aliado).
+					if (lanzadorJugador && m.ownerId === a.from) continue;
+					if (Math.hypot(m.x - a.x, m.y - a.y, m.z - a.z) < WIND_HIT_DIST) {
+						burst = { x: a.x, y: a.y, z: a.z };
+						break;
+					}
+				}
+			}
+			if (!burst) {
+				const wdx = a.x - px,
+					wdy = a.y - py,
+					wdz = a.z - pz;
+				const wdist = Math.hypot(wdx, wdy, wdz) || 0.0001;
+				const wsteps = Math.max(1, Math.ceil(wdist / 0.25));
+				for (let s = 1; s <= wsteps; s++) {
+					const t = s / wsteps;
+					const wbx = Math.floor(px + wdx * t),
+						wby = Math.floor(py + wdy * t),
+						wbz = Math.floor(pz + wdz * t);
+					if (isSolidBlock(world.getBlock(wbx, wby, wbz))) {
+						burst = { x: px + wdx * t, y: py + wdy * t, z: pz + wdz * t };
+						break;
+					}
+				}
+			}
+			if (burst) {
+				windBurst(burst.x, burst.y, burst.z);
+				continue; // se consume en el impacto
+			}
+			alive.push(a);
+			continue;
+		}
 		// Gravedad: la flecha cae (la Y de los ojos es la de los pies + 1.4).
 		a.vy -= ARROW_GRAVITY * dt;
 		a.x += a.vx * dt;
@@ -339,12 +473,18 @@ module.exports = {
 	TRIDENT_DAMAGE,
 	TRIDENT_PLAYER_DAMAGE,
 	TRIDENT_SPEED,
+	WIND_SPEED, // Fase 21.5 (D5): carga de viento — constantes para tests
+	WIND_LIFE_MS,
+	WIND_HIT_DIST,
+	WIND_BURST_RADIUS,
 	shootArrow,
 	shootTrident,
 	throwPlayerTrident,
 	returnPlayerTrident,
 	shootPlayerArrow,
 	returnPlayerArrow,
+	throwWindCharge, // Fase 21.5 (D5)
+	windBurst, // Fase 21.5 (D5): ráfaga que empuja (tests)
 	tickArrows,
 	arrowSnapshot,
 	setMobDrops,

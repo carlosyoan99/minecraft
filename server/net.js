@@ -1156,6 +1156,13 @@ function handleConnection(ws, req) {
 					break;
 				}
 
+				case "throw_wind_charge": {
+					// Fase 21.5 (D5): clic derecho con la carga de viento →
+					// lanzar el proyectil que empuja (kind "wind").
+					actions.handleThrowWindCharge(p);
+					break;
+				}
+
 				case "honey_bottle": {
 					// Fase 21.5 (B4): botella de vidrio sobre la colmena → miel.
 					actions.handleHoneyBottle(p, data);

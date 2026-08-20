@@ -931,5 +931,122 @@ check(
 	}
 }
 
+// --- Fase 21.5 (D5): carga de viento (proyectil que empuja) ---
+{
+	const projectiles = require("../server/projectiles.js");
+	const mobsL = require("../server/mobs.js");
+	const prev = state.arrows;
+	state.arrows = [];
+	// Lanzar consume 1 carga de viento y crea el proyectil kind "wind".
+	const p = mkPlayer({ inventory: new Array(36).fill(null) });
+	p.selectedSlot = 0;
+	p.inventory[0] = new ItemStack(I.WIND_CHARGE);
+	p.yaw = 0;
+	p.pitch = 0; // mirada −Z
+	p.x = 0;
+	p.y = 10;
+	p.z = 0;
+	check(
+		"D5: lanzar consume 1 carga de viento y crea el proyectil wind",
+		mobsL.throwWindCharge(p) === true &&
+			p.inventory[0] === null &&
+			state.arrows.length === 1 &&
+			state.arrows[0].kind === "wind",
+		`arrows=${state.arrows.length}`
+	);
+	state.arrows = [];
+	// La ráfaga empuja a un mob cercano (m.kb) sin dañarlo.
+	state.mobs = [];
+	const mob = mobsL.createMob("zombie", 0.5, 10, 0.5);
+	mob.health = 20;
+	state.mobs.push(mob);
+	projectiles.windBurst(0, 10, 0);
+	check(
+		"D5: la ráfaga empuja a un mob cercano (m.kb) sin dañarlo",
+		!!mob.kb && mob.kb.ttl > 0 && mob.health === 20,
+		`ttl=${mob.kb?.ttl}`
+	);
+	// La ráfaga empuja al jugador (evento knockback) sin daño.
+	const wsMsgs = [];
+	const p2 = mkPlayer({
+		inventory: new Array(36).fill(null),
+		ws: { readyState: 1, send: (s) => wsMsgs.push(JSON.parse(s)) }
+	});
+	p2.x = 1;
+	p2.y = 10;
+	p2.z = 0;
+	p2.health = 20;
+	state.players.clear();
+	state.players.set("p2", p2);
+	projectiles.windBurst(0, 10, 0);
+	check(
+		"D5: la ráfaga envía knockback al jugador sin dañarlo",
+		wsMsgs.some((m) => m.event === "knockback") && p2.health === 20,
+		wsMsgs.map((m) => m.event).join(",")
+	);
+	// Un mob lejos de la ráfaga NO recibe impulso.
+	state.mobs = [];
+	const lejosMob = mobsL.createMob("cow", 9, 10, 9);
+	lejosMob.health = 10;
+	state.mobs.push(lejosMob);
+	projectiles.windBurst(0, 10, 0);
+	check(
+		"D5: un mob fuera del radio de la ráfaga no se ve afectado",
+		!lejosMob.kb && lejosMob.health === 10
+	);
+	// La carga en vuelo impacta un bloque, hace la ráfaga y desaparece (no
+	// vuelve al inventario, un solo uso).
+	state.arrows = [];
+	state.mobs = [];
+	const shooter = mkPlayer({ inventory: new Array(36).fill(null) });
+	shooter.selectedSlot = 0;
+	shooter.inventory[0] = new ItemStack(I.WIND_CHARGE);
+	shooter.yaw = 0;
+	shooter.pitch = 0;
+	shooter.x = 5;
+	shooter.y = 10;
+	shooter.z = 40;
+	state.players.clear();
+	state.players.set(shooter.id, shooter);
+	// Pared a 2 bloques delante (z=38) y un mob a 1 bloque (z=37.3) que se
+	// llevará la ráfaga al impactar la carga contra la pared.
+	for (let y = 9; y <= 11; y++) {
+		world.setBlock(5, y, 38, B.STONE);
+		world.setBlock(5, y, 37, B.STONE);
+	}
+	const pushed = mobsL.createMob("skeleton", 5, 10, 36.5);
+	pushed.health = 20;
+	state.mobs.push(pushed);
+	mobsL.throwWindCharge(shooter);
+	let ticks = 0;
+	while (state.arrows.length > 0 && ticks < 10) {
+		mobsL.tickArrows(50);
+		ticks++;
+	}
+	check(
+		"D5: la carga impacta el bloque, consume la ráfaga y desaparece",
+		state.arrows.length === 0 && ticks > 1,
+		`ticks=${ticks} arrows=${state.arrows.length}`
+	);
+	check(
+		"D5: la ráfaga del impacto empuja al mob cercano sin dañarlo",
+		!!pushed.kb && pushed.health === 20,
+		`kb=${!!pushed.kb} hp=${pushed.health}`
+	);
+	// No vuelve ninguna carga al lanzador (un solo uso).
+	check(
+		"D5: la carga consumida no vuelve al inventario",
+		shooter.inventory[0] === null
+	);
+	// limpiar estado
+	for (let y = 9; y <= 11; y++) {
+		world.setBlock(5, y, 38, B.AIR);
+		world.setBlock(5, y, 37, B.AIR);
+	}
+	state.arrows = prev;
+	state.players.clear();
+	state.mobs = [];
+}
+
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);

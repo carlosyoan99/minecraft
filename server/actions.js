@@ -679,6 +679,14 @@ function handleShootBow(p, ws) {
 	}
 }
 
+// Fase 21.5 (D5): el jugador lanza su carga de viento (clic derecho). El
+// servidor valida que la mano es una carga de viento, consume 1 del
+// inventario y lanza el proyectil que empuja (kind "wind"). No vuelve al
+// inventario (un solo uso, paridad MC).
+function handleThrowWindCharge(p) {
+	if (mobs.throwWindCharge(p)) playerHelpers.sendInventory(p);
+}
+
 // Fase 21.5 (B4): recoger miel — clic derecho con una botella de vidrio sobre
 // una colmena/nido (a 4 bloques) la consume y devuelve una botella de miel
 // (comida 6/1.2, como en Minecraft). Simplificación: la colmena no se agota.
@@ -957,6 +965,7 @@ module.exports = {
 	handleBucketUse,
 	handleDoorUse,
 	handleSleep,
+	handleThrowWindCharge, // Fase 21.5 (D5): carga de viento
 	handleEat,
 	handleFeedMob,
 	handleShearMob,

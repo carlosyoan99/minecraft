@@ -812,6 +812,8 @@ module.exports = {
 	arrowSnapshot: projectiles.arrowSnapshot,
 	shootPlayerArrow: projectiles.shootPlayerArrow,
 	returnPlayerArrow: projectiles.returnPlayerArrow,
+	// Fase 21.5 (D5): carga de viento (kind "wind") — fachadas para actions.js
+	throwWindCharge: projectiles.throwWindCharge,
 	mobXp, // auditoría §4.1: XP por tamaño (slime)
 	canTame,
 	applyTame,
