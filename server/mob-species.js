@@ -192,6 +192,41 @@ function tickSkeleton(mob, isNight, nearest, dist) {
 	}
 }
 
+// Fase 21.5 (D2): Bogged — esqueleto de pantano (1.21). Reutiliza TODA la IA
+// del esqueleto (mantener distancia + strafe + cooldown de tiro) con una
+// única diferencia: la flecha lleva veneno (`poison: true` → el servidor
+// envenena al jugador al impactar y el cliente la pinta verdosa). No arde
+// al sol (como el esqueleto): no está en BURNS_IN_SUN.
+function tickBogged(mob, isNight, nearest, dist) {
+	if (nearest && (isNight || dist < 16 || mob.isAggroed())) {
+		mob.state = "chase";
+		if (dist < 6)
+			mob.chase({ x: 2 * mob.x - nearest.x, z: 2 * mob.z - nearest.z }, 0.03);
+		else if (dist > 12) mob.chase(nearest, 0.03);
+		else {
+			const dx = nearest.x - mob.x,
+				dz = nearest.z - mob.z;
+			const len = Math.hypot(dx, dz) || 1;
+			mob.strafeFlip = !mob.strafeFlip;
+			const dir = mob.strafeFlip ? 1 : -1;
+			mob.chase(
+				{
+					x: mob.x + (-dz / len) * dir,
+					z: mob.z + (dx / len) * dir
+				},
+				0.025
+			);
+		}
+		if (dist < 18 && Date.now() > mob.shootCooldown) {
+			projectiles.shootPoisonArrow(mob, nearest);
+			mob.shootCooldown = Date.now() + 2500;
+		}
+	} else {
+		mob.state = "idle";
+		mob.wander();
+	}
+}
+
 // ============================================================
 // ENDERMAN (neutral, Fase 21 C2): no agrede por proximidad ni de noche.
 // Es NEUTRO: solo se vuelve hostil si (a) un jugador LO MIRA (los ojos del
@@ -734,6 +769,62 @@ function tickBee(mob) {
 }
 
 // ============================================================
+// Fase 21.5 (F2): CRUJIENTE (Creaking) — mob que solo se mueve cuando
+// el jugador NO lo mira. Detección de línea de visión en el servidor:
+// si algún jugador está mirando al mob (ángulo < 45° + distancia < 24
+// bloques) y tiene línea de visión libre, el mob se congela. De lo
+// contrario, persigue al jugador más cercano como un hostil normal.
+// ============================================================
+const CREAKING_VISION_RANGE = 24;
+const CREAKING_VISION_ANGLE = Math.PI / 4; // 45° a cada lado del eje de mira
+function _hasLineOfSight(px, py, pz, mx, my, mz, playerYaw, playerPitch) {
+	// Vector del jugador al mob.
+	const dx = mx - px, dy = my - py, dz = mz - pz;
+	const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+	if (dist > CREAKING_VISION_RANGE || dist < 0.5) return false;
+	// Ángulo horizontal: yaw del jugador en radianes (Three.js: 0 = −Z).
+	const mobYaw = Math.atan2(-dx, -dz); // ángulo del mob visto desde el jugador
+	let yawDiff = Math.abs(mobYaw - (playerYaw || 0));
+	if (yawDiff > Math.PI) yawDiff = Math.PI * 2 - yawDiff;
+	// Ángulo vertical (pitch): simplificación — si el mob está a ±3 bloques
+	// de altura, se considera dentro del campo de visión vertical.
+	const pitchDiff = Math.abs(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)) - (playerPitch || 0));
+	if (yawDiff > CREAKING_VISION_ANGLE) return false;
+	if (pitchDiff > CREAKING_VISION_ANGLE) return false;
+	// Línea de visión simple: muestrear 3 puntos entre el jugador y el mob.
+	for (let t = 0.3; t < 1; t += 0.35) {
+		const sx = Math.floor(px + dx * t);
+		const sy = Math.floor(py + dy * t + 1.6); // cámara a 1.6
+		const sz = Math.floor(pz + dz * t);
+		if (world.getBlock(sx, sy, sz) !== 0) return false;
+	}
+	return true;
+}
+function tickCreaking(mob, isNight, nearest, dist) {
+	// El creaking se congela si algún jugador lo está mirando.
+	let frozen = false;
+	for (const [, p] of players) {
+		if (!p.alive) continue;
+		const dx = mob.x - p.x, dz = mob.z - p.z;
+		const d = Math.sqrt(dx * dx + dz * dz);
+		if (d > CREAKING_VISION_RANGE) continue;
+		if (_hasLineOfSight(p.x, p.y, p.z, mob.x, mob.y, mob.z, p.yaw, p.pitch)) {
+			frozen = true;
+			break;
+		}
+	}
+	mob.frozen = frozen;
+	if (frozen || !nearest) {
+		mob.state = "idle";
+		return;
+	}
+	// No congelado: persigue al jugador más cercano.
+	mob.state = "chase";
+	mob.chase(nearest, 0.03);
+	if (dist < 1.6) mob.attack(nearest, 4, 1500);
+}
+
+// ============================================================
 // DROPS DE COMIDA DE ANIMALES (Fase 3)
 // Al morir, los pasivos sueltan su comida cruda (rango aleatorio, estilo
 // Minecraft). Los hostiles no dropean nada por ahora. Fase 18 (D-2): movido
@@ -758,6 +849,13 @@ const OTHER_DROPS = {
 		// Fase 13 (L1): el esqueleto también suelta flechas (0-2, como MC).
 		{ id: I.ARROW, min: 0, max: 2 }
 	],
+	// Fase 21.5 (D2): Bogged — mismos drops que el esqueleto (huesos +
+	// flechas; en MC puede soltar flechas de veneno con 8.5%, aquí se
+	// simplifica a flechas normales para no añadir un ítem de poción).
+	bogged: [
+		{ id: I.BONE, min: 0, max: 2 },
+		{ id: I.ARROW, min: 0, max: 2 }
+	],
 	// Fase 13 (L1): el pollo suelta plumas (material de las flechas, como MC).
 	chicken: { id: I.FEATHER, min: 0, max: 2 },
 	// Fase 12 (Bloque A): slime → slimeball (0-1, solo el pequeño lo suelta)
@@ -773,7 +871,9 @@ const OTHER_DROPS = {
 		{ id: I.ROTTEN_FLESH, min: 0, max: 2 },
 		{ id: I.POTATO, min: 1, max: 1, chance: 0.025 }
 	],
-	creeper: { id: I.GUNPOWDER, min: 0, max: 2 }
+	creeper: { id: I.GUNPOWDER, min: 0, max: 2 },
+	// Fase 21.5 (F2): creaking suelta stick (palos) al morir — como MC.
+	creaking: { id: I.STICK, min: 0, max: 2 }
 };
 
 // Devuelve [{ id, count }] para el tipo o null si no dropea nada. Un mob
@@ -879,6 +979,18 @@ function createSpecies(Mob) {
 		}
 	}
 
+	// Fase 21.5 (D2): Bogged — esqueleto de pantano (1.21). Subclase con IA
+	// propia (tickBogged = tickSkeleton + flecha de veneno); el resto (forma,
+	// drops de hueso/flechas) lo comparte con el esqueleto. Patrón F12.
+	class Bogged extends Mob {
+		constructor(x, y, z) {
+			super("bogged", x, y, z);
+		}
+		tickSpecies(isNight, nearest, dist) {
+			tickBogged(this, isNight, nearest, dist);
+		}
+	}
+
 	class Enderman extends Mob {
 		constructor(x, y, z) {
 			super("enderman", x, y, z);
@@ -959,6 +1071,16 @@ function createSpecies(Mob) {
 		}
 	}
 
+	// Fase 21.5 (F2): Creaking — mob que se congela cuando lo miras.
+	class Creaking extends Mob {
+		constructor(x, y, z) {
+			super("creaking", x, y, z);
+		}
+		tickSpecies(isNight, nearest, dist) {
+			tickCreaking(this, isNight, nearest, dist);
+		}
+	}
+
 	// Registro tipo → clase (C2): createMob elige aquí. Los tipos sin clase
 	// (p. ej. "cat" solo existe como type runtime de Ocelot) caen en Mob base.
 	const MOB_CLASSES = {
@@ -976,7 +1098,9 @@ function createSpecies(Mob) {
 		sheep: Sheep,
 		rabbit: Rabbit,
 		bee: Bee,
-		ocelot: Ocelot
+		ocelot: Ocelot,
+		creaking: Creaking,
+		bogged: Bogged // Fase 21.5 (D2)
 	};
 
 	// Crea un mob de la clase correcta según el tipo (fábrica tipo→clase).
@@ -991,6 +1115,8 @@ function createSpecies(Mob) {
 	return {
 		Zombie,
 		Spider,
+		Creaking,
+		Bogged, // Fase 21.5 (D2)
 		Wolf,
 		Slime,
 		Drowned,
@@ -1024,6 +1150,7 @@ function createSpecies(Mob) {
 		tickWolf,
 		tickCreeper,
 		tickSkeleton,
+		tickBogged, // Fase 21.5 (D2)
 		tickEnderman,
 		tickPassive,
 		tickChicken,

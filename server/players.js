@@ -48,7 +48,10 @@ const {
 	applyFallDamage,
 	canEat,
 	eatFood,
-	tickPlayer
+	tickPlayer,
+	sendPoisonState, // Fase 21.5 (D2): veneno del Bogged
+	applyPoison,
+	POISON_DURATION_MS // Fase 21.5 (D2): duración del veneno del Bogged
 } = require("./combat.js");
 
 // ============================================================
@@ -161,6 +164,26 @@ function finishMining(player, x, y, z, block, opts = {}) {
 				Math.floor(p.respawnPoint.z) === z
 			)
 				p.respawnPoint = null;
+		}
+	}
+	// Fase 21.5 (F3): Corazón Crujiente destruido → matar al Creaking
+	// vinculado más cercano (radio 32 bloques). El mob se marca como
+	// muerto y el tick del servidor (mobs_update) lo difunde al siguiente
+	// ciclo — sin necesidad de broadcast explícito aquí.
+	if (block === B.CREAKING_HEART) {
+		let best = null,
+			bestD = 1024;
+		for (const m of state.mobs) {
+			if (!m.alive || m.type !== "creaking") continue;
+			const d = Math.hypot(m.x - x, m.y - y, m.z - z);
+			if (d < bestD) {
+				bestD = d;
+				best = m;
+			}
+		}
+		if (best) {
+			best.alive = false;
+			best.health = 0;
 		}
 	}
 	// Antorchas que se quedaron sin soporte al romper el bloque: caen también.
@@ -330,6 +353,9 @@ module.exports = {
 	applyToolWear,
 	applyBowWear,
 	applyFishingWear, // Fase 21.5 (A1): caña de pescar
+	sendPoisonState, // Fase 21.5 (D2): veneno del Bogged
+	applyPoison, // Fase 21.5 (D2): activa el veneno por tiempo
+	POISON_DURATION_MS, // Fase 21.5 (D2): duración del veneno del Bogged
 	addXp,
 	setBroadcastHandler,
 	setXpDropHandler, // Fase 18 (C-8): orbe de XP al morir

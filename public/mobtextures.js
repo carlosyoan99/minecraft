@@ -81,6 +81,18 @@ export const MOB_PARTS = {
 			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [0.125, 0.375, 0] }
 		]
 	},
+	// Fase 21.5 (D2): Bogged — esqueleto de pantano que comparte la silueta
+	// del esqueleto (solo cambia la textura musgosa, como en MC).
+	bogged: {
+		parts: [
+			{ name: "head", size: [0.5, 0.5, 0.5], pos: [0, 1.55, 0] },
+			{ name: "body", size: [0.5, 0.75, 0.25], pos: [0, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [-0.375, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [0.375, 1.05, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [-0.125, 0.375, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [0.125, 0.375, 0] }
+		]
+	},
 	// Enderman: alto (2.55 bloques), brazos y piernas largos.
 	enderman: {
 		parts: [
@@ -266,6 +278,18 @@ export const MOB_PARTS = {
 			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [-0.125, 0.375, 0] },
 			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [0.125, 0.375, 0] }
 		]
+	},
+	// Fase 21.5 (F2): Creaking — humanoide alto de madera pálida con ojos
+	// que brillan. Silueta similar al esqueleto pero con tonos de madera.
+	creaking: {
+		parts: [
+			{ name: "head", size: [0.5, 0.5, 0.5], pos: [0, 1.55, 0] },
+			{ name: "body", size: [0.5, 0.75, 0.25], pos: [0, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [-0.375, 1.05, 0] },
+			{ name: "arm", size: [0.25, 0.75, 0.25], pos: [0.375, 1.05, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [-0.125, 0.375, 0] },
+			{ name: "leg", size: [0.25, 0.75, 0.25], pos: [0.125, 0.375, 0] }
+		]
 	}
 };
 
@@ -381,6 +405,49 @@ function drawSkeletonArm(ctx, rng) {
 function drawSkeletonLeg(ctx, rng) {
 	fill(ctx, S.boneDark);
 	speckle(ctx, rng, S.bone, 0.18);
+}
+
+// --- Fase 21.5 (D2): BOGGED — esqueleto de pantano (1.21). En MC es un
+// esqueleto cubierto de musgo: huesos gris-verdosos con manchas verde musgo
+// en la cabeza y el torso (las cuencas se conservan negras como en el
+// esqueleto). El resto de la forma es idéntica a la del esqueleto.
+const BG = {
+	bone: "#aab88a", // hueso verdoso
+	boneDark: "#6f7d58", // sombra verdosa
+	boneLight: "#d0d8b0", // brillo musgoso
+	socket: "#141414",
+	moss: "#4d6b2f", // verde musgo
+	mossLight: "#5f7f3a"
+};
+function drawBoggedHead(ctx, rng) {
+	fill(ctx, BG.bone);
+	speckle(ctx, rng, BG.moss, 0.25); // musgo moteado (como MC)
+	rect(ctx, 3, 1, 3, 2, BG.socket); // cuencas
+	rect(ctx, 10, 1, 3, 2, BG.socket);
+	rect(ctx, 7, 2, 2, 1, BG.socket); // nariz
+	rect(ctx, 4, 5, 8, 2, BG.boneDark); // mandíbula
+	px(ctx, 5, 5, BG.boneLight);
+	px(ctx, 10, 6, BG.boneLight);
+}
+function drawBoggedBody(ctx, rng) {
+	fill(ctx, BG.boneDark);
+	// Costillas con musgo entreverado (a diferencia del esqueleto limpio).
+	rect(ctx, 3, 1, 10, 1, BG.boneLight);
+	rect(ctx, 4, 4, 8, 1, BG.boneLight);
+	rect(ctx, 5, 7, 6, 1, BG.boneLight);
+	rect(ctx, 6, 10, 4, 1, BG.boneLight);
+	speckle(ctx, rng, BG.moss, 0.35);
+	speckle(ctx, rng, BG.bone, 0.1);
+}
+function drawBoggedArm(ctx, rng) {
+	fill(ctx, BG.bone);
+	speckle(ctx, rng, BG.moss, 0.3);
+	for (let y = 2; y < TILE; y += 4) rect(ctx, 0, y, TILE, 1, BG.boneDark);
+}
+function drawBoggedLeg(ctx, rng) {
+	fill(ctx, BG.boneDark);
+	speckle(ctx, rng, BG.bone, 0.18);
+	speckle(ctx, rng, BG.moss, 0.2);
 }
 
 // --- ENDERMAN: negro profundo, ojos morados brillantes ---
@@ -740,6 +807,39 @@ function drawDrownedLeg(ctx, rng) {
 	rect(ctx, 0, 13, TILE, 3, D.skinDark); // pie
 }
 
+// --- CREAKING: humanoid de madera pálida con ojos brillantes (Fase 21.5 F2) ---
+const CK = {
+	wood: "#8a7a5a",
+	woodDark: "#6a5a3a",
+	woodLight: "#a89a7a",
+	eye: "#ffee44",
+	bark: "#5a4a3a"
+};
+function drawCreakingHead(ctx, rng) {
+	fill(ctx, CK.wood);
+	speckle(ctx, rng, CK.woodDark, 0.15);
+	rect(ctx, 3, 2, 2, 2, CK.eye); // ojos brillantes
+	rect(ctx, 11, 2, 2, 2, CK.eye);
+	px(ctx, 7, 5, CK.bark); // nariz de corteza
+	px(ctx, 8, 5, CK.bark);
+	rect(ctx, 6, 7, 4, 2, CK.woodDark); // boca tallada
+}
+function drawCreakingBody(ctx, rng) {
+	fill(ctx, CK.wood);
+	speckle(ctx, rng, CK.woodDark, 0.18);
+	speckle(ctx, rng, CK.woodLight, 0.08);
+	rect(ctx, 3, 8, 4, 2, CK.bark); // ranuras de corteza
+	rect(ctx, 9, 4, 3, 2, CK.bark);
+}
+function drawCreakingArm(ctx, rng) {
+	fill(ctx, CK.woodDark);
+	speckle(ctx, rng, CK.wood, 0.15);
+}
+function drawCreakingLeg(ctx, rng) {
+	fill(ctx, CK.bark);
+	speckle(ctx, rng, CK.woodDark, 0.12);
+}
+
 // --- RABBIT: crema con orejas largas ---
 const R = {
 	body: "#d9c8a8",
@@ -831,6 +931,19 @@ const MOB_TEXTURES = {
 		body: drawDrownedBody,
 		arm: drawDrownedArm,
 		leg: drawDrownedLeg
+	},
+	creaking: {
+		head: drawCreakingHead,
+		body: drawCreakingBody,
+		arm: drawCreakingArm,
+		leg: drawCreakingLeg
+	},
+	// Fase 21.5 (D2): Bogged — esqueleto de pantano musgoso.
+	bogged: {
+		head: drawBoggedHead,
+		body: drawBoggedBody,
+		arm: drawBoggedArm,
+		leg: drawBoggedLeg
 	}
 };
 

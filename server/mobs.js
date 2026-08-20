@@ -65,6 +65,7 @@ let _tickPet = () => {};
 let tickSlime = () => {};
 let tickDrowned = () => {};
 let tickBee = () => {};
+let tickBogged = () => {}; // Fase 21.5 (D2): Bogged (esqueleto de pantano)
 let splitSlime = () => [];
 
 // Clases y fábricas (asignadas tras createSpecies(Mob) al final del archivo).
@@ -83,6 +84,7 @@ let Zombie,
 	Rabbit,
 	Bee,
 	Ocelot,
+	Bogged, // Fase 21.5 (D2)
 	MOB_CLASSES,
 	createMob,
 	catNearby,
@@ -135,7 +137,9 @@ const MOB_HEALTH = {
 	// Auditoría 2026-08-09 (§3.8): salud de pasivos según MC Java — pollo 4,
 	// oveja 8 (antes caían al default 10; no lo fijaban los tests).
 	chicken: 4,
-	sheep: 8
+	sheep: 8,
+	// Fase 21.5 (D2): Bogged — 16 HP como MC (el esqueleto común tiene 20).
+	bogged: 16
 };
 // Notas del usuario: duración del aggro de los hostiles al ser golpeados
 // (~10s, como el aggro de Minecraft Java).
@@ -535,6 +539,9 @@ class Mob {
 			case "skeleton":
 				tickSkeleton(this, isNight, nearest, dist);
 				break;
+			case "bogged": // Fase 21.5 (D2): esqueleto de pantano
+				tickBogged(this, isNight, nearest, dist);
+				break;
 			case "enderman":
 				tickEnderman(this, isNight, nearest, dist);
 				break;
@@ -620,6 +627,7 @@ class Mob {
 	Rabbit,
 	Bee,
 	Ocelot,
+	Bogged, // Fase 21.5 (D2)
 	MOB_CLASSES,
 	createMob,
 	catNearby,
@@ -639,6 +647,7 @@ class Mob {
 	tickWolf,
 	tickCreeper,
 	tickSkeleton,
+	tickBogged, // Fase 21.5 (D2)
 	tickEnderman,
 	tickPassive,
 	tickOcelot,
@@ -726,6 +735,8 @@ function mobSnapshot(m) {
 		// Fase 21.5 (E2): color de lana de la oveja (ID de bloque de la lana
 		// que suelta al esquilar) — el cliente pinta su textura según el bioma.
 		woolColor: m.woolColor,
+		// Fase 21.5 (E1): variante de animal por bioma ("cold"/"warm"/"").
+		variant: m.variant || "",
 		state: m.state,
 		isBaby: m.isBaby,
 		burning: m.burning,
@@ -763,6 +774,8 @@ function restoreMobs(list) {
 		// Fase 21.5 (E2): restaura el color de lana persistido (retrocompatible:
 		// los guardados viejos no lo traen, el default es lana blanca).
 		if (typeof m.woolColor === "number") mob.woolColor = m.woolColor;
+		// Fase 21.5 (E1): restaura la variante del animal (retrocompatible).
+		if (typeof m.variant === "string") mob.variant = m.variant;
 		return mob;
 	});
 }
@@ -791,6 +804,7 @@ module.exports = {
 	Rabbit,
 	Bee,
 	Ocelot,
+	Bogged, // Fase 21.5 (D2)
 	createMob,
 	MOB_CLASSES,
 	// Fase 18 (D-2): el spawn vive en mob-spawn.js (re-exportado como fachada).

@@ -751,6 +751,30 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	}
 }
 
+/* Fase 21.5 (D2): veneno del Bogged — viñeta verde pulsante. El estado lo
+   replica el servidor con `poison_state` (patrón del fuego). */
+#poison-overlay {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 150;
+	background: radial-gradient(
+		ellipse at center,
+		transparent 45%,
+		rgba(0, 200, 60, 0.18) 72%,
+		rgba(0, 140, 40, 0.35) 100%
+	);
+	animation: poison-pulse 1s infinite alternate ease-in-out;
+}
+@keyframes poison-pulse {
+	from {
+		opacity: 0.5;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
 /* Fase 21.5 (C2): pose del escudo — viñeta cerrada MÁS CLAVE cuando el
    jugador bloquea (clic derecho mantenido con el escudo en mano). No es un
    modelo 3D de brazo (fuera de alcance): la señal visual es la viñeta + la

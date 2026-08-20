@@ -1048,5 +1048,107 @@ check(
 	state.mobs = [];
 }
 
+// --- Fase 21.5 (D2): Bogged — esqueleto de pantano con flecha de veneno ---
+{
+	const playersMod = require("../server/players.js");
+	const mobsL = require("../server/mobs.js");
+	state.players.clear();
+	state.arrows = [];
+	state.mobs = [];
+	state.damageLog.length = 0;
+	mobsL.setSpawnSafeRadius(0); // sin zona segura: el mob agrede al jugador de prueba
+	// 1) La fábrica crea un bogged como subclase propia (tickSpecies propia) y
+	//    el mob es hostil (spawn solo de noche + spawn lejano).
+	const bog = mobsL.createMob("bogged", 0, LOW + 6, 0);
+	check(
+		"D2: createMob('bogged') es una instancia con IA propia (Bogged)",
+		bog instanceof mobsL.Mob &&
+			bog.type === "bogged" &&
+			bog.constructor.name === "Bogged",
+		`ctor=${bog.constructor.name}`
+	);
+	check(
+		"D2: bogged es hostil (HOSTILE)",
+		require("../server/constants.js").HOSTILE.has("bogged")
+	);
+	// 2) De noche y con el jugador a 4 bloques dispara una flecha de veneno
+	//    (state.arrows con poison) y su salud es 16 (paridad MC).
+	check("D2: bogged tiene 16 HP (MC)", bog.health === 16);
+	const pBog = mkPlayer({
+		id: "p-bogged",
+		x: 4,
+		y: LOW + 6,
+		z: 0,
+		gamemode: "survival",
+		absorption: 0
+	});
+	state.players.set(pBog.id, pBog);
+	bog.tick(true);
+	check(
+		"D2: el bogged dispara una flecha con poison",
+		state.arrows.length === 1 && state.arrows[0].poison === true,
+		`arrows=${state.arrows.length}`
+	);
+	// 3) La flecha de veneno impacta: 3 de daño (flecha) + envenena.
+	//    Reutilizamos la flecha recién disparada (el shootCooldown evita una
+	//    segunda volandera inmediata).
+	const pArrow = state.arrows.shift();
+	pArrow.poison = true; // la marcamos como la del bogged si no salió ya
+	pArrow.x = pBog.x;
+	pArrow.y = pBog.y;
+	pArrow.z = pBog.z;
+	pArrow.vx = 0;
+	pArrow.vy = 0;
+	pArrow.vz = 0;
+	state.arrows.push(pArrow);
+	mobsL.tickArrows(50);
+	check(
+		"D2: la flecha de veneno daña 3 y activa el veneno (poisonUntil)",
+		pBog.health === 17 && (pBog.poisonUntil || 0) > Date.now(),
+		`hp=${pBog.health} poison=${pBog.poisonUntil}`
+	);
+	// 4) El veneno hace daño periódico (1 HP/s) y REPLICA poison_state al
+	//    cliente. Avanzamos el reloj de veneno para que el acumulador llegue.
+	const msgs = [];
+	pBog.ws.readyState = 1; // WebSocket.OPEN — sendPoisonState replica al HUD
+	pBog.ws.send = (s) => msgs.push(JSON.parse(s));
+	pBog.poisonAccum = 900; // a punto de aplicar el primer tick de veneno
+	playersMod.tickPlayer(pBog, 100);
+	check(
+		"D2: el veneno hace 1 de daño por segundo y replica poison_state",
+		pBog.health === 16 &&
+			msgs.some((m) => m.event === "poison_state" && m.data.on === true),
+		`hp=${pBog.health}`
+	);
+	// 5) El veneno NUNCA mata: con 1 HP deja de hacer daño (paridad MC).
+	pBog.health = 1;
+	pBog.poisonAccum = 900;
+	msgs.length = 0;
+	playersMod.tickPlayer(pBog, 100);
+	check("D2: el veneno no mata (se detiene en 1 HP)", pBog.health === 1);
+	// 6) El spawn del pantano lo incluye de noche (BIOME_SPAWN.swamp.night).
+	const BS = mobsL.BIOME_SPAWN;
+	check(
+		"D2: bogged aparece en el pantano de noche",
+		Array.isArray(BS.swamp?.night) && BS.swamp.night.includes("bogged")
+	);
+	// 7) Suelta huesos y flechas (mismos drops que el esqueleto). Fuerza el
+	//    máximo del random para que ambas tablas (min0..max2) cuenten >0.
+	const randOrig = Math.random;
+	Math.random = () => 1;
+	const drops = mobsL.mobDrops({ type: "bogged" });
+	Math.random = randOrig;
+	check(
+		"D2: los drops del bogged incluyen huesos y flechas",
+		Array.isArray(drops) &&
+			drops.some((d) => d.id === I.BONE) &&
+			drops.some((d) => d.id === I.ARROW)
+	);
+	// limpiar
+	state.players.clear();
+	state.arrows = [];
+	state.mobs = [];
+}
+
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);

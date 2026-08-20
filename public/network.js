@@ -40,6 +40,7 @@ import {
 	addChatLine,
 	applyArmor,
 	applyChestState,
+	applyBundleState, // Fase 21.5 (F4): mochila
 	applyCraftingGrid,
 	applyFood,
 	applyFurnaceState,
@@ -91,6 +92,13 @@ function setFire(on) {
 	if (fireOverlay) fireOverlay.classList.toggle("hidden", !on);
 }
 setFire(false); // por defecto: sin llamas hasta que el servidor diga lo contrario
+// Fase 21.5 (D2): veneno del Bogged — viñeta verde mientras dure. El
+// servidor la manda con `poison_state` cuando cambia; el init la replica.
+const poisonOverlay = document.getElementById("poison-overlay");
+function setPoison(on) {
+	if (poisonOverlay) poisonOverlay.classList.toggle("hidden", !on);
+}
+setPoison(false);
 // Fase 7: nombre visible del jugador local (fuente de verdad: el servidor).
 export function getPlayerName() {
 	return playerName;
@@ -126,6 +134,7 @@ socket.addEventListener("message", (e) => {
 				// Fase 10 (D4): catálogo del picker creativo (tecla E en creative).
 				setCreativeCatalog(data.creativeCatalog);
 				setFire(!!data.burning); // Fase 10 (A2): reconectando ardiendo
+				setPoison(!!data.poisoned); // Fase 21.5 (D2): reconectando envenenado
 				initDayNight(data.dayTime, data.moonTime); // Fase 8 (B8): + fase lunar
 				for (const p of data.otherPlayers)
 					spawnRemotePlayer(p.id, p.x, p.y, p.z, p.name, p.skin);
@@ -313,6 +322,10 @@ socket.addEventListener("message", (e) => {
 				// Fase 10 (A2): cambio del estado de quemadura (lava).
 				setFire(!!data.on);
 				break;
+			case "poison_state":
+				// Fase 21.5 (D2): veneno del Bogged (viñeta verde).
+				setPoison(!!data.on);
+				break;
 			case "player_die":
 				// Fase 7: lostInventory distingue la pérdida según gamemode (survival
 				// pierde el inventario al morir; creative lo conserva).
@@ -373,6 +386,9 @@ socket.addEventListener("message", (e) => {
 			case "chest_state":
 				applyChestState(data);
 				break; // Fase 6: slots del cofre abierto
+			case "bundle_state":
+				applyBundleState(data);
+				break; // Fase 21.5 (F4): slots de la mochila
 			case "door_state":
 				// Fase 13 (L2): apertura/cierre de una puerta/portón — el estado
 				// afecta a la colisión local (solidAt). La puerta ocupa 2 celdas:

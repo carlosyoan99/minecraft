@@ -207,6 +207,9 @@ function sendInit(p) {
 				// Fase 10 (A2): quemadura residual de lava — el cliente pinta la
 				// llamarada si el jugador reconecta ardiendo.
 				burning: (p.fireUntil || 0) > Date.now(),
+				// Fase 21.5 (D2): veneno del Bogged — el HUD lo replica al
+				// reconectar si seguía envenenado.
+				poisoned: (p.poisonUntil || 0) > Date.now(),
 				seed: constants.worldPaths.currentSeed, // Fase 6: semilla activa del mundo
 				// Fase 9 (Bloque B): modo de juego del MUNDO (fijo por mundo). El
 				// cliente lo usa para el HUD, el inventario creativo y el vuelo.
@@ -454,6 +457,9 @@ function handleConnection(ws, req) {
 		craftingGrid: new Array(9).fill(null),
 		openFurnace: null,
 		openChest: null, // Fase 6: cofre abierto ("x,y,z"), para mover items entre él y el inventario
+		// Fase 21.5 (F4): mochila (Bundle) — 9 slots de inventario portátil.
+		bundle: new Array(9).fill(null),
+		openBundle: false, // true cuando el jugador tiene la UI de la mochila abierta
 		mining: null, // Fase 6: sesión de minería activa (progreso en el bucle principal)
 		// Fase 7: armadura equipada (4 slots; cada pieza con su durabilidad) y
 		// punto de reaparición fijado al dormir en una cama (no se persisten: el
@@ -953,14 +959,22 @@ function handleConnection(ws, req) {
 				case "chest_open": {
 					actions.handleChestOpen(p, ws, data);
 					break;
-				}
+				}					case "chest_action": {
+						actions.handleChestAction(p, ws, data);
+						break;
+					}
 
-				case "chest_action": {
-					actions.handleChestAction(p, ws, data);
-					break;
-				}
+					// Fase 21.5 (F4): mochila (Bundle) — abrir y operar.
+					case "bundle_open": {
+						actions.handleBundleOpen(p, ws);
+						break;
+					}
+					case "bundle_action": {
+						actions.handleBundleAction(p, ws, data);
+						break;
+					}
 
-				case "furnace_action": {
+					case "furnace_action": {
 					actions.handleFurnaceAction(p, ws, data, playerId);
 					break;
 				}

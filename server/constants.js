@@ -958,7 +958,26 @@ const BLOCK_HARDNESS = {
 	// Fase 21.5 (B5): coral y algas — se rompen al instante (plantas).
 	[B.CORAL_FAN]: 0.05,
 	[B.KELP]: 0.05,
-	[B.SEAGRASS]: 0.05
+	[B.SEAGRASS]: 0.05,
+	// Fase 21.5 (C5): concreto sólido (1.8, MC) y polvo (0.5, como arena).
+	// El polvo cae con gravedad y se convierte en concreto al tocar agua.
+	[B.CONCRETE_WHITE]: 1.8, [B.CONCRETE_ORANGE]: 1.8, [B.CONCRETE_MAGENTA]: 1.8,
+	[B.CONCRETE_LIGHT_BLUE]: 1.8, [B.CONCRETE_YELLOW]: 1.8, [B.CONCRETE_LIME]: 1.8,
+	[B.CONCRETE_PINK]: 1.8, [B.CONCRETE_GRAY]: 1.8, [B.CONCRETE_LIGHT_GRAY]: 1.8,
+	[B.CONCRETE_CYAN]: 1.8, [B.CONCRETE_PURPLE]: 1.8, [B.CONCRETE_BLUE]: 1.8,
+	[B.CONCRETE_BROWN]: 1.8, [B.CONCRETE_GREEN]: 1.8, [B.CONCRETE_RED]: 1.8,
+	[B.CONCRETE_BLACK]: 1.8,
+	[B.CONCRETE_POWDER_WHITE]: 0.5, [B.CONCRETE_POWDER_ORANGE]: 0.5, [B.CONCRETE_POWDER_MAGENTA]: 0.5,
+	[B.CONCRETE_POWDER_LIGHT_BLUE]: 0.5, [B.CONCRETE_POWDER_YELLOW]: 0.5, [B.CONCRETE_POWDER_LIME]: 0.5,
+	[B.CONCRETE_POWDER_PINK]: 0.5, [B.CONCRETE_POWDER_GRAY]: 0.5, [B.CONCRETE_POWDER_LIGHT_GRAY]: 0.5,
+	[B.CONCRETE_POWDER_CYAN]: 0.5, [B.CONCRETE_POWDER_PURPLE]: 0.5, [B.CONCRETE_POWDER_BLUE]: 0.5,
+	[B.CONCRETE_POWDER_BROWN]: 0.5, [B.CONCRETE_POWDER_GREEN]: 0.5, [B.CONCRETE_POWDER_RED]: 0.5,
+	[B.CONCRETE_POWDER_BLACK]: 0.5,
+	// Fase 21.5 (F1): Pale Garden — tronco y tablones (2.0, como roble),
+	// musgo bloque (0.1, suave como tierra), musgo planta (0.05, al instante),
+	// hojas (0.2, como hojas normales), corazón crujiente (2.0, madera dura).
+	[B.PALE_OAK_LOG]: 2.0, [B.PALE_OAK_LEAVES]: 0.2, [B.PALE_OAK_PLANKS]: 2.0,
+	[B.PALE_MOSS_BLOCK]: 0.1, [B.PALE_MOSS]: 0.05, [B.CREAKING_HEART]: 2.0
 };
 // Velocidad por material (multiplicador sobre la dureza): madera 2x,
 // piedra 4x, hierro 6x, oro 12x (rápida pero frágil), diamante 8x.
@@ -1029,7 +1048,24 @@ const BLOCK_CATEGORY = {
 	// Fase 21.5 (B3): tablones de bambú se minan con hacha (categoría wood).
 	// El bambú y el andamio no tienen categoría (se rompen a mano, como las
 	// plantas → la espada no cosecha, el resto sí).
-	[B.BAMBOO_PLANKS]: "wood"
+	[B.BAMBOO_PLANKS]: "wood",
+	// Fase 21.5 (C5): concreto sólido → pico (stone), polvo → pala (sand, como arena).
+	[B.CONCRETE_WHITE]: "stone", [B.CONCRETE_ORANGE]: "stone", [B.CONCRETE_MAGENTA]: "stone",
+	[B.CONCRETE_LIGHT_BLUE]: "stone", [B.CONCRETE_YELLOW]: "stone", [B.CONCRETE_LIME]: "stone",
+	[B.CONCRETE_PINK]: "stone", [B.CONCRETE_GRAY]: "stone", [B.CONCRETE_LIGHT_GRAY]: "stone",
+	[B.CONCRETE_CYAN]: "stone", [B.CONCRETE_PURPLE]: "stone", [B.CONCRETE_BLUE]: "stone",
+	[B.CONCRETE_BROWN]: "stone", [B.CONCRETE_GREEN]: "stone", [B.CONCRETE_RED]: "stone",
+	[B.CONCRETE_BLACK]: "stone",
+	[B.CONCRETE_POWDER_WHITE]: "sand", [B.CONCRETE_POWDER_ORANGE]: "sand", [B.CONCRETE_POWDER_MAGENTA]: "sand",
+	[B.CONCRETE_POWDER_LIGHT_BLUE]: "sand", [B.CONCRETE_POWDER_YELLOW]: "sand", [B.CONCRETE_POWDER_LIME]: "sand",
+	[B.CONCRETE_POWDER_PINK]: "sand", [B.CONCRETE_POWDER_GRAY]: "sand", [B.CONCRETE_POWDER_LIGHT_GRAY]: "sand",
+	[B.CONCRETE_POWDER_CYAN]: "sand", [B.CONCRETE_POWDER_PURPLE]: "sand", [B.CONCRETE_POWDER_BLUE]: "sand",
+	[B.CONCRETE_POWDER_BROWN]: "sand", [B.CONCRETE_POWDER_GREEN]: "sand", [B.CONCRETE_POWDER_RED]: "sand",
+	[B.CONCRETE_POWDER_BLACK]: "sand",
+	// Fase 21.5 (F1): Pale Garden — roble pálido y musgo.
+	[B.PALE_OAK_LOG]: "wood", [B.PALE_OAK_LEAVES]: null, [B.PALE_OAK_PLANKS]: "wood",
+	[B.PALE_MOSS_BLOCK]: "dirt", [B.PALE_MOSS]: null,
+	[B.CREAKING_HEART]: "wood"
 };
 const toolCategoryOf = (id) =>
 	isPickaxe(id)
@@ -1075,9 +1111,12 @@ function canHarvest(tool, block) {
 		block === B.HONEY_BLOCK ||
 		// Fase 21.5 (C1): horno y horno de fundición requieren pico.
 		block === B.FURNACE ||
-		block === B.BLAST_FURNACE
+		block === B.BLAST_FURNACE ||
+		// Fase 21.5 (C5): concreto sólido requiere pico (categoría stone).
+		isConcrete(block)
 	)
 		return isPickaxe(tool);
+	if (isConcretePowder(block)) return true; // polvo de concreto: como arena (mano/pala)
 	if (ORE_TIER[block] !== undefined) {
 		if (!isPickaxe(tool)) return false;
 		return (PICKAXE_TIER[tool] ?? 0) >= ORE_TIER[block];
@@ -1375,7 +1414,9 @@ const MOB_XP = {
 	slime: 1, // por tamaño (grande 4, mediano 2, pequeño 1) — lo aplica mobXp()
 	ocelot: 2,
 	cat: 2,
-	drowned: 5
+	drowned: 5,
+	// Fase 21.5 (D2): Bogged — 5 XP al morir, como el esqueleto.
+	bogged: 5
 };
 const ORE_XP = {
 	[B.COAL_ORE]: 1,
@@ -1624,7 +1665,12 @@ const MOB_COLORS = {
 	slime: 0x7ac74f,
 	ocelot: 0xe8a03c,
 	cat: 0x9a9a9a,
-	drowned: 0x4a8f6f
+	drowned: 0x4a8f6f,
+	// Fase 21.5 (F2): creaking — humanoid de madera pálida.
+	creaking: 0x8a7a5a,
+	// Fase 21.5 (D2): Bogged — esqueleto de pantano, huesos gris-verdosos
+	// (fallback de color; la textura musgosa vive en mobtextures.js).
+	bogged: 0x8f9a6a
 };
 const HOSTILE = new Set([
 	"zombie",
@@ -1636,7 +1682,11 @@ const HOSTILE = new Set([
 	// Fase 12 (Bloque A): slime (pantano) y ahogado (océanos/ríos) atacan al
 	// jugador; el ocelote y el gato son pasivos (no van en HOSTILE).
 	"slime",
-	"drowned"
+	"drowned",
+	// Fase 21.5 (F2): creaking — hostil del pale garden.
+	"creaking",
+	// Fase 21.5 (D2): bogged — esqueleto de pantano (hostil, como en MC).
+	"bogged"
 ]);
 // Mobs que se queman con el sol de día (Fase 6: IA hostil más fiel): solo
 // los no-muertos clásicos arden al exponerse a la luz del día sin techo

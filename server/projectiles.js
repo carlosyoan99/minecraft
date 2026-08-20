@@ -16,7 +16,7 @@ const state = require("./state.js");
 const world = require("./world.js");
 // players.js no importa mobs.js/projectiles.js, así que es seguro requerirlo
 // aquí (mismos imports que tenía el bloque en mobs.js).
-const { damagePlayer, addToInventory, removeFromInventory, addXp } =
+const { damagePlayer, applyPoison, POISON_DURATION_MS, addToInventory, removeFromInventory, addXp } =
 	require("./players.js");
 
 const { players } = state;
@@ -84,6 +84,16 @@ function shootArrow(shooter, target) {
 		life: ARROW_LIFE_MS,
 		from: shooter.id
 	});
+}
+
+// Fase 21.5 (D2): flecha del Bogged (esqueleto de pantano) — la física es
+// la misma que la flecha del esqueleto pero el proyectil lleva `poison: true`
+// para que (a) el servidor envenene al jugador al impactar y (b) el cliente
+// la pinte verdosa. El veneno se replica al HUD con `poison_state`.
+function shootPoisonArrow(shooter, target) {
+	shootArrow(shooter, target);
+	const a = state.arrows[state.arrows.length - 1];
+	if (a) a.poison = true;
 }
 
 // Fase 12 (Bloque A4): el ahogado arroja tridentes reusando la física de las
@@ -359,6 +369,14 @@ function tickArrows(dtMs) {
 			if (a.from === p.id) continue; // el lanzador no se golpea a sí mismo
 			if (Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) < ARROW_HIT_DIST) {
 				const lanzador = players.get(a.from);
+				// Fase 21.5 (D2): la flecha del Bogged envenena al impacto. El
+				// estado `poisonUntil` lo integra tickPlayer (combat.js) con el
+				// patrón del fuego: daño periódico y replicación al HUD con
+				// `poison_state` (la viñeta verde). Funciona con cualquier flecha
+				// que el servidor marque con poison (por ahora solo el Bogged).
+				if (a.poison) {
+					applyPoison(p, POISON_DURATION_MS);
+				}
 				damagePlayer(p, a.damage || ARROW_DAMAGE, {
 					source: lanzador ? "player" : "mob",
 					meta: lanzador
@@ -477,7 +495,8 @@ module.exports = {
 	WIND_LIFE_MS,
 	WIND_HIT_DIST,
 	WIND_BURST_RADIUS,
-	shootArrow,
+shootArrow,
+	shootPoisonArrow, // Fase 21.5 (D2): flecha que envenena (Bogged)
 	shootTrident,
 	throwPlayerTrident,
 	returnPlayerTrident,

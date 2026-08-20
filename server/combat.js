@@ -130,6 +130,22 @@ function sendFireState(player, on) {
 	}
 }
 
+// Fase 21.5 (D2): veneno del Bogged — estado por tiempo como el fuego, pero
+// con replicación propia (`poison_state`) para la viñeta verde del HUD. El
+// daño lo integra tickPlayer (mismo patrón de intervalos que el fuego).
+function sendPoisonState(player, on) {
+	if (player.ws && player.ws.readyState === WebSocket.OPEN) {
+		player.ws.send(JSON.stringify({ event: "poison_state", data: { on: !!on } }));
+	}
+}
+
+// Activa el veneno en el jugador durante `durationMs` (puede refrescarse si
+// recibe otra flecha mientras está envenenado — acumula, como en MC).
+function applyPoison(player, durationMs) {
+	player.poisonUntil = Date.now() + durationMs;
+	player.poisonAccum = 0;
+}
+
 // ============================================================
 // DURABILIDAD DE HERRAMIENTAS (Fase 5)
 // Desgasta la herramienta en la mano del jugador: -1 por uso. Si llega a 0,
@@ -348,6 +364,11 @@ function respawnPlayer(player, cause) {
 	player.fireAccum = 0;
 	player.lastFireOn = false;
 	sendFireState(player, false);
+	// Fase 21.5 (D2): el veneno no sobrevive a la muerte.
+	player.poisonUntil = 0;
+	player.poisonAccum = 0;
+	player.lastPoisonOn = false;
+	sendPoisonState(player, false);
 	// B2 (Fase 8): gracia inicial al reaparecer (30s sin daño de mobs).
 	player.spawnGraceUntil = Date.now() + SPAWN_GRACE_MS;
 	// Respawn (la XP y el nivel se conservan; la salud máxima es siempre 20,
@@ -573,6 +594,11 @@ const LAVA_DAMAGE = 2;
 const FIRE_DURATION_MS = 5000; // ardiendo tras salir de la lava (5s)
 const FIRE_DAMAGE_INTERVAL_MS = 1000; // 1 HP por segundo mientras arda
 const FIRE_DAMAGE = 1;
+// Fase 21.5 (D2): veneno del Bogged — daño por segundo durante ~5s, sin
+// matar (deja al jugador en 1 HP; el daño periódico respeta ese mínimo).
+const POISON_DURATION_MS = 5000;
+const POISON_DAMAGE_INTERVAL_MS = 1000;
+const POISON_DAMAGE = 1;
 
 // ============================================================
 // COMER (Fase 3): aplica hambre + saturación si el ítem es comida
@@ -659,6 +685,30 @@ function tickPlayer(player, dtMs) {
 		sendFireState(player, fireOn);
 	}
 
+	// Fase 21.5 (D2): veneno del Bogged — daño periódico mientras dure el
+	// estado (paridad MC: baja en corazones enteros y NUNCA mata, deja al
+	// jugador en 1 HP). Se replica con `poison_state` al cambiar para que la
+	// viñeta verde del HUD se encienda/apague.
+	const poisonOn = (player.poisonUntil || 0) > Date.now();
+	if (poisonOn) {
+		player.poisonAccum = (player.poisonAccum || 0) + dtMs;
+		if (player.poisonAccum >= POISON_DAMAGE_INTERVAL_MS) {
+			player.poisonAccum = 0;
+			if (player.health > 1) {
+				damagePlayer(player, POISON_DAMAGE, {
+					source: "poison",
+					armor: false
+				});
+			}
+		}
+	} else {
+		player.poisonAccum = 0;
+	}
+	if (poisonOn !== player.lastPoisonOn) {
+		player.lastPoisonOn = poisonOn;
+		sendPoisonState(player, poisonOn);
+	}
+
 	// Decaimiento: más rápido en movimiento. La saturación se consume primero
 	// (amortigua el hambre), como en Minecraft; luego baja la comida.
 	const moving =
@@ -715,6 +765,9 @@ module.exports = {
 	sendFood,
 	sendXp,
 	sendFireState,
+	sendPoisonState, // Fase 21.5 (D2): veneno del Bogged
+	applyPoison, // Fase 21.5 (D2): activa el veneno por tiempo
+	POISON_DURATION_MS, // para tests
 	// desgaste
 	applyToolWear,
 	applyBowWear,

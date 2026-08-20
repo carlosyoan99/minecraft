@@ -125,8 +125,9 @@ function animalVariantFor(type, biome) {
 }
 const BIOME_SPAWN = {
 	taiga: { day: [], night: ["wolf"] },
-	swamp: { day: [], night: ["slime"] }, // el slime solo aparece de NOCHE (como MC)
-	jungle: { day: ["ocelot"], night: [] } // el ocelote es pasivo y solo de DÍA
+	swamp: { day: [], night: ["slime", "bogged"] }, // F21.5 D2: bogged hostil de noche (como MC)
+	jungle: { day: ["ocelot"], night: [] }, // el ocelote es pasivo y solo de DÍA
+	pale_garden: { day: [], night: ["creaking"] } // Fase 21.5 (F2): creaking solo de noche
 };
 // Los ahogados viven en cualquier columna de agua (océano, río o lago): se
 // eligen como mob propio del "agua" de día y de noche (E4), y se colocan
