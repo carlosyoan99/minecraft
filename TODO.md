@@ -1146,7 +1146,7 @@
       spawn en pantano; Breeze ya en F23 A2 (coordinación: no duplicar)
 - [x] D3 Maza (1.21): `MACE` + `HEAVY_CORE` (de Trial Chambers); daño
       escala con altura de caída en `attack_mob`; receta maza = core + rod
-- [ ] D4 Familia de cobre y tuff (1.21): variantes de cobre (escaleras/
+- [x] D4 Familia de cobre y tuff (1.21): variantes de cobre (escaleras/
       losas/puertas, sin oxidación) + familia de tuff (pulido/ladrillo)
       sobre el bloque de F22 A5 / Tuff de F23 A4 — sin duplicar IDs
 - [x] D5 Ítems de Trial/Breeze: `WIND_CHARGE` (proyectil kind "wind" que
@@ -1156,7 +1156,7 @@
       `TRIAL_EXPLORER_MAP` (mapa/brújula hacia la estructra); B/I + receta +
       icono (receta de WIND_CHARGE = 1 rod → 4; iconos ya en `itemicons.js`;
       BREEZE_ROD/TRIAL_EXPLORER_MAP son drops/obtención del Breeze F23)
-- [ ] D6 Discos de música, pinturas y partituras (visual/audio, tras F19.5)
+- [x] D6 Discos de música, pinturas y partituras (visual/audio, tras F19.5)
 - [x] E1 Variantes de animales por bioma (1.21.5): cerdos/vacas/gallinas con
       `variant` frío/cálido según bioma de spawn (templados = base); la cría
       hereda la variante de un padre al azar; el tinte lo aplica el cliente

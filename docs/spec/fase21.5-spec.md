@@ -372,6 +372,19 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
 - **Qué no incluir:** oxidación por tiempo; cobre cortado (cut) si no entra.
 - **Criterio:** test: crafteos de las variantes; `unit-sync`/`unit-recetas`
   en verde; no duplica IDs de F22/F23 (coordinación en `TODO.md`).
+- **✅ IMPLEMENTADO (2026-08-20):** bloques `COPPER_BLOCK` (182),
+  `COPPER_STAIRS` (183), `COPPER_SLAB` (184), `COPPER_DOOR` (185, metálica:
+  solo clic derecho via `isDoor`), `TUFF` (186), `POLISHED_TUFF` (187),
+  `TUFF_BRICKS` (188) — IDs libres de F22/F23. Los bloques base (cobre/tuff)
+  entran por creative (la minería llega con F22 A5 / F23 A4, sin duplicar);
+  los derivados se craftean en cadena (escaleras/losa/puerta desde el bloque
+  de cobre → 4/6/3; tuff pulido ↑4 desde tuff; ladrillos ↑4 desde pulido).
+  Durezas MC: cobre 3.0, puerta 5.0, tuff 1.5. Categoría `stone` (pico),
+  canHarvest con pico, CREATIVE_ITEMS y PLACEABLE incluidas, losa/escaleras
+  en `SHAPED_SOLIDS`/`isSolidAt`, iconos y teselas del atlas (drawCopperBlock/
+  Slab/Door, drawTuff/PolishedTuff/TuffBricks). Sin oxidación por tiempo
+  (simplificado). Tests en `tests/unit-fase21.5.js` (D4) + `unit-sync`/
+  `unit-recetas` verdes.
 
 ### D5 — Ítems de Trial Chambers y Breeze
 
@@ -405,6 +418,14 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   Van detrás del sistema de audio por bioma de la F19.5.
 - **Criterio:** colocar/reproducir sin regresión de audio; `unit-sync` en
   verde.
+- **✅ IMPLEMENTADO (2026-08-20):** JUKEBOX (189) + PAINTING (190) +
+  NOTE_BLOCK (191) en B; drops de jukebox (suelta disco contenido);
+  handlers `jukebox_interact`/`note_block_click` en net.js + actions.js;
+  audio procedural (`playDisc`/`stopDisc`/`playNote` en audio.js con
+  paletas cat/13); texturas procedurales (drawJukebox/drawPainting/
+  drawNoteBlock) + BLOCK_TEX; note play en `note_play` del servidor;
+  sin persistencia de estado del note block (efímero, como MC); sync
+  constants cliente (BLOCK_COLORS/BLOCK_NAMES/BUNDLE export + D6).
 
 ---
 
