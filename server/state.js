@@ -49,6 +49,10 @@ const pyramidTrapCooldowns = new Map();
 // No se persiste: al recargar, las puertas vuelven a estar cerradas
 // (simplificación documentada: el estado visual es efímero).
 const doors = new Map();
+// Fase 21.5 (D6): jukeboxes — clave "x,y,z" → { disc: itemId } (275=cat, 276=13).
+// Al romperse el jukebox, el disco se suelta como item. Se envía a los
+// clientes cercanos via jukebox_state (solo quien tiene uno abierto).
+const jukeboxes = new Map();
 
 module.exports = {
 	chunks,
@@ -65,5 +69,6 @@ module.exports = {
 	timeOffset,
 	damageLog,
 	templeTrapCooldowns,
-	pyramidTrapCooldowns
+	pyramidTrapCooldowns,
+	jukeboxes
 };

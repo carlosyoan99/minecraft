@@ -974,6 +974,17 @@ function handleConnection(ws, req) {
 						break;
 					}
 
+					// Fase 21.5 (D6): jukebox — clic derecho para insertar/extraer disco.
+					case "jukebox_interact": {
+						actions.handleJukeboxInteract(p, ws, data);
+						break;
+					}
+					// Fase 21.5 (D6): note block — clic derecho emite un sonido.
+					case "note_block_click": {
+						actions.handleNoteBlockClick(p, ws, data);
+						break;
+					}
+
 					case "furnace_action": {
 					actions.handleFurnaceAction(p, ws, data, playerId);
 					break;

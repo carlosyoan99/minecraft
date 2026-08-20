@@ -16,6 +16,8 @@ import {
 	BREED_FOOD,
 	BUCKET,
 	BUNDLE, // Fase 21.5 (F4): mochila
+	JUKEBOX, NOTE_BLOCK, // Fase 21.5 (D6): jukebox y note block
+	MUSIC_DISC_CAT, MUSIC_DISC_13, // Fase 21.5 (D6): discos de música
 	FARMLAND,
 	FISHING_ROD,
 	FOOD_ITEMS,
@@ -564,6 +566,22 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 			if ((hiveBlock === BEE_HIVE || hiveBlock === BEE_NEST) && getHeldItem()?.id === GLASS_BOTTLE) {
 				playDrink();
 				send("honey_bottle", { x, y, z });
+				return;
+			}
+		}
+		// Fase 21.5 (D6): clic derecho sobre jukebox → insertar/extraer disco.
+		{
+			const jbBlock = getClientBlock(x, y, z);
+			if (jbBlock === JUKEBOX) {
+				send("jukebox_interact", { x, y, z });
+				return;
+			}
+		}
+		// Fase 21.5 (D6): clic derecho sobre note block → emitir sonido.
+		{
+			const nbBlock = getClientBlock(x, y, z);
+			if (nbBlock === NOTE_BLOCK) {
+				send("note_block_click", { x, y, z });
 				return;
 			}
 		}

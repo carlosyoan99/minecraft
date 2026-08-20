@@ -237,6 +237,15 @@ function finishMining(player, x, y, z, block, opts = {}) {
 			addToInventory(player, I.SEEDS, 1);
 		// Fase 5: XP al minar minerales (solo si se obtiene el drop).
 		if (ORE_XP[block]) addXp(player, ORE_XP[block]);
+		// Fase 21.5 (D6): jukebox suelta el disco que contiene (si lo hay).
+		if (block === B.JUKEBOX) {
+			const key = `${x},${y},${z}`;
+			const jb = state.jukeboxes.get(key);
+			if (jb) {
+				addToInventory(player, jb.disc, 1);
+				state.jukeboxes.delete(key);
+			}
+		}
 	}
 	const broke = applyToolWear(player);
 	sendInventory(player);

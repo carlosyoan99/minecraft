@@ -758,3 +758,61 @@ export function updateAmbient() {
 		nextCricketAt = now + 400 + Math.random() * 700;
 	}
 }
+
+// ============================================================
+// Fase 21.5 (D6): DISCOS DE MÚSICA — procedurales con osciladores.
+// Cada disco tiene una paleta de notas diferente (cat: tonos cálidos,
+// 13: tonos fríos). El disco se repite en loop hasta que se extrae.
+// ============================================================
+let discOscillators = [];
+let discIntervalId = null;
+const DISC_PALETTES = {
+	275: [261.63, 329.63, 392.0, 523.25, 349.23], // cat — Do mayor, cálido
+	276: [220.0, 277.18, 329.63, 440.0, 293.66] // 13 — La menor, frío
+};
+export function playDisc(discId) {
+	stopDisc();
+	const ctx = ensureCtx();
+	if (!ctx) return;
+	const notes = DISC_PALETTES[discId] || DISC_PALETTES[275];
+	let noteIdx = 0;
+	discIntervalId = setInterval(() => {
+		if (muted) return;
+		const freq = notes[noteIdx % notes.length];
+		const osc = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.type = "triangle";
+		osc.frequency.value = freq;
+		gain.gain.value = 0.06;
+		gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+		osc.connect(gain).connect(ambGain);
+		osc.start();
+		osc.stop(ctx.currentTime + 0.5);
+		noteIdx++;
+	}, 400);
+}
+export function stopDisc() {
+	if (discIntervalId) {
+		clearInterval(discIntervalId);
+		discIntervalId = null;
+	}
+}
+// ============================================================
+// Fase 21.5 (D6): NOTE BLOCK — sonido percusivo corto.
+// Nota 0-24 (MC) → frecuencia 0.5x–2x del La4 (440 Hz).
+// ============================================================
+export function playNote(note) {
+	const ctx = ensureCtx();
+	if (!ctx) return;
+	if (muted) return;
+	const freq = 440 * Math.pow(2, (note - 12) / 12); // 0→220Hz, 12→440Hz, 24→880Hz
+	const osc = ctx.createOscillator();
+	const gain = ctx.createGain();
+	osc.type = "triangle";
+	osc.frequency.value = freq;
+	gain.gain.value = 0.08;
+	gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+	osc.connect(gain).connect(sfxGain);
+	osc.start();
+	osc.stop(ctx.currentTime + 0.3);
+}

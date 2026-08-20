@@ -1047,6 +1047,50 @@ function handleBundleAction(p, ws, data) {
 	handleBundleOpen(p, ws);
 }
 
+// ============================================================
+// Fase 21.5 (D6): JUKEBOX — clic derecho con disco para reproducir,
+// clic derecho vacío para extraer. El servidor gestiona el estado
+// (qué disco hay) y lo difunde a los clientes cercanos.
+// ============================================================
+const MUSIC_DISC_IDS = new Set([275, 276]); // cat y 13
+function handleJukeboxInteract(p, ws, data) {
+	const { x, y, z } = data;
+	if (x === undefined || y === undefined || z === undefined) return;
+	if (Math.hypot(x - p.x, y - p.y, z - p.z) > 6) return;
+	const key = `${x},${y},${z}`;
+	const slot = p.inventory[p.selectedSlot];
+	const jukeState = state.jukeboxes.get(key);
+	// Insertar disco: el slot seleccionado es un disco y el jukebox está vacío.
+	if (slot && MUSIC_DISC_IDS.has(slot.id) && !jukeState) {
+		p.inventory[p.selectedSlot] = null;
+		state.jukeboxes.set(key, { disc: slot.id });
+		p.send(JSON.stringify({ event: "jukebox_state", data: { x, y, z, disc: slot.id } }));
+		// Notificar a clientes cercanos.
+		_broadcastNear("jukebox_state", { x, y, z, disc: slot.id }, p.x, p.z);
+		return;
+	}
+	// Extraer disco: jukebox tiene disco y el jugador tiene hueco.
+	if (jukeState && !slot) {
+		p.inventory[p.selectedSlot] = { id: jukeState.disc, count: 1, durability: 0 };
+		state.jukeboxes.delete(key);
+		p.send(JSON.stringify({ event: "jukebox_state", data: { x, y, z, disc: 0 } }));
+		_broadcastNear("jukebox_state", { x, y, z, disc: 0 }, p.x, p.z);
+		return;
+	}
+}
+// ============================================================
+// Fase 21.5 (D6): NOTE BLOCK — clic derecho emite un sonido.
+// El servidor envía note_play a los clientes cercanos con un pitch
+// aleatorio (0-24, como MC). No requiere estado persistente.
+// ============================================================
+function handleNoteBlockClick(p, ws, data) {
+	const { x, y, z } = data;
+	if (x === undefined || y === undefined || z === undefined) return;
+	if (Math.hypot(x - p.x, y - p.y, z - p.z) > 6) return;
+	const note = Math.floor(Math.random() * 25); // 0-24
+	_broadcastNear("note_play", { x, y, z, note }, p.x, p.z);
+}
+
 module.exports = {
 	handleCraft,
 	handleGridSet,
@@ -1084,6 +1128,8 @@ module.exports = {
 	handleShieldBlock,
 	handleBundleOpen, // Fase 21.5 (F4): mochila
 	handleBundleAction, // Fase 21.5 (F4): mochila
+	handleJukeboxInteract, // Fase 21.5 (D6): jukebox
+	handleNoteBlockClick, // Fase 21.5 (D6): note block
 	setWorldTimeFn,
 	setBroadcastFn,
 	setBroadcastNearFn

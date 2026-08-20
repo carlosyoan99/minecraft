@@ -36,6 +36,7 @@ import { spawnBlockBreak, spawnBlockPlace } from "./particles.js"; // Fase 7: pa
 import { applyKnockback, teleport } from "./player.js"; // applyKnockback: F20 B3 (TNT)
 import { camera } from "./scene.js";
 import { applyStoredSettings } from "./settings.js";
+import { playDisc, stopDisc, playNote } from "./audio.js"; // Fase 21.5 (D6): discos y note block
 import {
 	addChatLine,
 	applyArmor,
@@ -389,6 +390,17 @@ socket.addEventListener("message", (e) => {
 			case "bundle_state":
 				applyBundleState(data);
 				break; // Fase 21.5 (F4): slots de la mochila
+			case "jukebox_state": {
+				// Fase 21.5 (D6): el jukebox en (x,y,z) tiene o no tiene disco.
+				if (data.disc && data.disc > 0) playDisc(data.disc);
+				else stopDisc();
+				break;
+			}
+			case "note_play": {
+				// Fase 21.5 (D6): note block emite un sonido con el pitch dado.
+				playNote(data.note);
+				break;
+			}
 			case "door_state":
 				// Fase 13 (L2): apertura/cierre de una puerta/portón — el estado
 				// afecta a la colisión local (solidAt). La puerta ocupa 2 celdas:
