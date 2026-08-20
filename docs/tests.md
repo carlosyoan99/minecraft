@@ -92,7 +92,7 @@ Three/DOM para forzarlos.
 > reporte uniforme que parsea `run.js` (`N OK, M FAIL` + `# checks
 > fallidos`), `mkPlayer`, `withRandom` (LCG determinista) y `loaderESM`.
 
-## Suite unitaria (61 tests)
+## Suite unitaria (62 tests)
 
 > Orden de `UNIT` en `tests/run.js`. El `(*)` marca tests que importan código
 > del cliente (`public/`) como ESM.
@@ -181,6 +181,23 @@ Three/DOM para forzarlos.
 | **C3** Mejoras de IA | ✅ `audit-fase21.js` (zombi convoca ≤16, araña día/noche, creeper huye de gatos) | esqueleto strafe cubierto también en `unit-mobs-ia` |
 | **Iteración v21.2 D1** ríos | ✅ `audit-fase21.js` (lecho ≤ SEA_LEVEL, cauce ≤ terreno) + `unit-biomas.js`/`audit-altura.js` recalibrados | D2/D3 diferidos a la F21.5 |
 | **Cierre D1** | ✅ `audit-fase21.js` (25 checks) | `--audit` 8/8, E2E 7/7, biome 0 |
+
+## Fase 21.5 (EN CURSO) — matriz parcial
+
+> La F21.5 (contenido y paridad ampliados) **está en curso** (abierta
+> 2026-08-17). Ver [`fase21.5-spec.md`](spec/fase21.5-spec.md) para
+> decisiones y bloque completos. Suite parcial en `unit-fase21.5.js`.
+
+| Bloque F21.5 | Tests | Notas |
+| --- | --- | --- |
+| **A1/A8** Pesca | ✅ `unit-fase21.5.js` | caña, bobber, loot, receta, cañas en cofres |
+| **B1-B5** Piedra/linternas/bambú/miel/coral | ✅ `unit-fase21.5.js` | |
+| **C1-C5** Horno/escudo/tótem/camas/concreto | ✅ `unit-fase21.5.js` + `unit-sync.js` | |
+| **D2-D5** Bogged/maza/cobre/tuff/carga viento | ✅ `unit-fase21.5.js` | |
+| **D6** Discos/Pinturas/Note Block | ✅ `unit-fase21.5.js` + `unit-sync.js` | |
+| **E1-E5** Variantes/lana/decorativos/hojas/sonidos | ✅ `unit-fase21.5.js` + `unit-sync.js` | |
+| **F1-F4** Pale Garden/Creaking/Heart/Bundle | ✅ `unit-fase21.5.js` + `unit-sync.js` | |
+| **G1** Comandos selectores | ✅ `unit-commands.js` + `unit-fase21.5.js` | |
 
 ## Auditorías standalone
 

@@ -49,8 +49,14 @@ usar los comandos marcados. `/help` en el juego lista todos.
 | `/time set <day\|noon\|night\|midnight\|ms>` | Fijar la hora del mundo (0-239999 ms) | sí |
 | `/gamemode <creative\|survival>` | Cambiar el modo de juego (creative: sin hambre ni daño) | sí |
 | `/op <nombre>` | Dar permisos de operador a un jugador conectado | sí |
-| `/kill [nombre\|mobs]` | Matar a un jugador (sin nombre, a ti) o a todas las criaturas con `mobs` | sí |
+| `/kill [@s|@p|@a|@e|@r|nombre|mobs]` | Eliminar jugadores (selectores) o criaturas | sí |
+| `/summon <mob> [x y z]` | Invocar un mob en tu posición o coordenadas dadas | sí |
+| `/effect <give absorption [cant]|clear|get> [@selector]` | Gestionar efectos (solo absorción hoy) | sí |
+| `/locate <estructura|bioma>` | Encontrar la estructura o bioma más cercano | no |
 | `/reload` | Recargar recetas y el atlas del cliente | sí |
+
+> **Selectores** (F21.5 G1): `@s` emisor, `@p` más cercano, `@a` todos,
+> `@e` todas las criaturas, `@r` aleatorio.
 
 ## Recetas con hot-reload
 

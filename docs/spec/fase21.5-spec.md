@@ -47,10 +47,10 @@
 | E3 | Lista usuario 1.21.5 | Bloques decorativos: Firefly Bush, Leaf Litter, Wildflowers, Bush, hierba seca corta/alta, Cactus Flower | F21.5 E3 | 🟢 |
 | E4 | Lista usuario 1.21.5 | Partículas de hojas cayendo (cliente) | F21.5 E4 | 🟢 |
 | E5 | Lista usuario 1.21.5 | Sonidos ambientales de desierto/badlands (encaja con audio por bioma F19.5) | F21.5 E5 | 🟢 |
-| F1 | Lista usuario "1.22/26.1" | Bioma Jardín Pálido (Pale Garden) | F21.5 F1 | 🟠 |
-| F2 | Lista usuario 1.22 | Mob Crujiente (Creaking): solo se mueve cuando no lo miras | F21.5 F2 | 🔴 |
-| F3 | Lista usuario 1.22 | Bloque Corazón Crujiente (Creaking Heart): destruirlo lo mata | F21.5 F3 | 🔴 |
-| F4 | Lista usuario 1.22 | Mochila (Bundle): inventario portátil (cofre portátil) | F21.5 F4 | 🟠 |
+| F1 | Lista usuario "1.22/26.1" | Bioma Jardín Pálido (Pale Garden) | F21.5 F1 | 🟢 |
+| F2 | Lista usuario 1.22 | Mob Crujiente (Creaking): solo se mueve cuando no lo miras | F21.5 F2 | 🟢 |
+| F3 | Lista usuario 1.22 | Bloque Corazón Crujiente (Creaking Heart): destruirlo lo mata | F21.5 F3 | 🟢 |
+| F4 | Lista usuario 1.22 | Mochila (Bundle): inventario portátil (cofre portátil) | F21.5 F4 | 🟢 |
 | G1 | Lista usuario "Comandos" + borrador | Comandos nuevos: `/summon` invoca mobs, `/locate` encuentra estructuras (pozo/pirámide/templo/naufragio) y biomas, `/effect` gestiona la absorción (give/clear/get), `/kill` generalizado con selectores `@s/@p/@a/@e/@r` (resolución en el handler); `/weather` requiere clima visual (partículas de lluvia) inexistente → diferido al bloque G2 (cliente) | F21.5 G1 | 🟢 |
 | Z1 | Lista usuario (zanahoria/patata) | **YA IMPLEMENTADO** (F18 C-3): `FOOD_VALUES` zanahoria 3/3.6, patata 1/0.6, `BAKED_POTATO` 5/6 — no se planifica | — `[x]` | — |
 | Z2 | Lista usuario (miel en cofres) | **YA EXISTE** (F9 F1): `HONEY` (140) llega por cofres de loot | — `[x]` | — |
@@ -488,6 +488,15 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   ligera. Determinista (patrón A2 de la F21). Genera los árboles de roble
   pálido y el bloque de musgo pálido (B nuevos).
 - **Criterio:** test determinista del bioma; `unit-biomas` en verde.
+- **✅ IMPLEMENTADO (2026-08-20):** bioma `pale_garden` en `biomes.js`
+  (gate propio `PALE_GARDEN_GATE` 0.35 + `PALE_GARDEN_FREQ` 0.015,
+  sub-bioma del bosque); superficie `PALE_MOSS_BLOCK` en
+  `surfaceBlockFor`; generación de árboles de roble pálido en
+  `generation.js` (tronco 4-6 bloques, copa 5×5, 10% Creaking Heart);
+  receta tablones de roble pálido (1 tronco → 4 tablones); paleta de
+  música `pale_garden` en `musicpalette.js`; `/locate pale_garden` en
+  `commands.js`; `BLOCK_HARDNESS`/`BLOCK_CATEGORY` y `BLOCK_COLORS`/
+  `BLOCK_NAMES` en ambos lados.
 
 ### F2 — Mob Crujiente (Creaking)
 
@@ -499,6 +508,12 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
 - **Qué no incluir:** el complejo vínculo de comportamiento por bloques
   (fuera de F3 mostrable).
 - **Criterio:** test de IA: con mirada → quieto; sin mirada → se mueve.
+- **✅ IMPLEMENTADO (2026-08-20):** `tickCreaking` en `mob-species.js`
+  (fork de tickZombie: raycast jugador→mob, si se ve → `m.state =
+  "still"`; si no → movimiento lento). Clase `Creaking` (16 HP, XP 5,
+  hostil). Spawn `pale_garden.night` en `mob-spawn.js`. Textura en
+  `mobtextures.js` (MOB_PARTS, paleta BG, drawCreaking). `MOB_HEALTH`,
+  `MOB_COLORS`, `HOSTILE` en constants.
 
 ### F3 — Corazón Crujiente (Creaking Heart)
 
@@ -508,6 +523,11 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   mob↔bloque en `server/world.js`/`mobs.js`.
 - **Criterio:** test: destruir el corazón mata al mob vinculado; sin
   regresión de mobs.
+- **✅ IMPLEMENTADO (2026-08-20):** en `players.js finishMining`, al
+  romper CREAKING_HEART se busca el `Creaking` más cercano vivo y se
+  mata (`m.alive = false`). Generación del bloque en árboles de pale
+  garden (10% de probabilidad por tronco). `BLOCK_HARDNESS` 2.0,
+  `BLOCK_CATEGORY` "wood".
 
 ### F4 — Mochila (Bundle)
 
@@ -518,6 +538,14 @@ los corales que D2 añade con su sync) ni `SCHEMA_VERSION`.**
   inventario sin quitar `SCHEMA_VERSION` 6 si es viable).
 - **Criterio:** test: guardar/recuperar ítems en la mochila monitorizada;
   persistencia redondeada al reiniciar.
+- **✅ IMPLEMENTADO (2026-08-20):** `bundle` (Array(9)) en `net.js`
+  player creation, handlers `bundle_open`/`bundle_action` en `actions.js`
+  (put/take/close), `openBundle` flag. Persistencia retrocompatible en
+  `save-players.js` (campo aditivo, SCHEMA_VERSION 6 intacto). Cliente:
+  panel `bundle-ui` en `index.html`, `toggleBundleUI`/`applyBundleState`
+  en `panels.js`, handler `bundle_state` en `network.js`, clic derecho
+  con BUNDLE en `game-input.js`. `BUNDLE` (274) exportado en constants
+  ambos lados.
 
 ---
 
