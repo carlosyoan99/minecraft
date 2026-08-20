@@ -9,11 +9,18 @@
 import * as THREE from "three";
 import { BLOCK_COLORS } from "./constants.js";
 import { scene } from "./scene.js";
+import { getClientBlock } from "./chunkstore.js";
+import { findLeafPoint, leafParticleConfig } from "./leafparticles.js"; // Fase 21.5 (E4): hojas cayendo
 
 // Pool de partículas vivas: cada una un cubito con estado de física.
 const cubeGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+// Fase 21.5 (E4): hoja aplanada (finísima, ~la mitad de un cubo) que cae
+// con balanceo. Geometría aparte del pool de cubos: las mallas se reutilizan
+// por tipo (una malla de cubo nunca se recicla como hoja ni al revés).
+const leafGeo = new THREE.BoxGeometry(0.34, 0.02, 0.34);
 const materials = new Map(); // colorHex -> material compartido
-const alive = []; // { mesh, vx, vy, vz, life, ttl }
+const alive = []; // { mesh, kind, vx, vy, vz, life, ttl, ... }
+const freeLeaves = []; // hoja muerta reutilizable (par de freeMeshes)
 // Auditoría 2026-08-15 (CL-8): pool de meshes MUERTOS reutilizables (P6 en
 // la auditoría: spawnCube creaba un Mesh nuevo por partícula). Al morir, la
 // instancia no se descarta: se recicla reasignando material y posición. Tope
@@ -41,6 +48,26 @@ function tickParticles() {
 	for (let i = alive.length - 1; i >= 0; i--) {
 		const p = alive[i];
 		p.life += dt;
+		if (p.kind === "leaf") {
+			// Fase 21.5 (E4): física de hoja — cae a velocidad constante con
+			// balanceo lateral sinusoidal (viento suave) y giro leve. La copa
+			// está siempre al menos a TTL*speed del suelo, así la hoja nunca
+			// "atraviesa" el suelo antes de desvanecerse.
+			p.mesh.position.y += -p.vy * dt;
+			const wob = Math.sin(p.life * p.wobSpeed + p.phase) * p.wobAmp;
+			p.mesh.position.x = p.baseX + wob;
+			p.mesh.position.z = p.baseZ + Math.cos(p.life * p.wobSpeed * 0.8 + p.phase) * p.wobAmp * 0.7;
+			p.mesh.rotation.z += 1.5 * dt;
+			p.mesh.rotation.x += 0.8 * dt;
+			const k = 1 - p.life / p.ttl;
+			p.mesh.material.opacity = Math.max(0, Math.min(1, k));
+			if (p.life >= p.ttl) {
+				scene.remove(p.mesh);
+				freeLeaves.push(p.mesh);
+				alive.splice(i, 1);
+			}
+			continue;
+		}
 		p.vy -= 9.8 * dt; // gravedad
 		p.mesh.position.x += p.vx * dt;
 		p.mesh.position.y += p.vy * dt;
@@ -115,4 +142,73 @@ export function spawnBlockBreak(x, y, z, blockId) {
 }
 export function spawnBlockPlace(x, y, z, blockId) {
 	burst(x, y, z, blockId, 4, 0.55);
+}
+
+// ------------------------------------------------------------
+// Fase 21.5 (E4): partículas de hojas cayendo bajo los árboles.
+// Puramente visual (el servidor no las conoce): el bucle muestrea
+// columnas de copa alrededor del jugador y, al encontrar una hoja,
+// emite un aplanado que cae con vaivén hasta desvanecerse.
+// "Reducir movimiento" (F19.5 B4) alarga el intervalo y suaviza el
+// vaivén (la política vive en leafparticles.js, lógica pura).
+// ------------------------------------------------------------
+const leafAcc0 = { v: 0 };
+
+// Malla de hoja nueva (reutiliza una del pool si la hay). El material de
+// hoja es translúcido y NO emisivo: la vegetación no emite su propia luz.
+function spawnLeafMesh(colorHex) {
+	const mesh = freeLeaves.pop() || new THREE.Mesh(leafGeo, materialFor(colorHex));
+	mesh.geometry = leafGeo;
+	mesh.material = materialFor(colorHex);
+	mesh.material.transparent = true;
+	mesh.castShadow = false;
+	scene.add(mesh);
+	return mesh;
+}
+
+// Emite una hoja desde el bloque {x,y,z} (borde superior de la copa).
+function emitLeaf(x, y, z, colorHex, cfg) {
+	ensureLoop();
+	if (alive.length >= MAX_ALIVE) return; // tope duro compartido (CL-8)
+	const phase = Math.random() * Math.PI * 2;
+	const mesh = spawnLeafMesh(colorHex);
+	// Jitter para que no salgan todas del mismo punto del bloque.
+	mesh.position.set(
+		x + 0.5 + (Math.random() - 0.5) * 0.6,
+		y + 0.9,
+		z + 0.5 + (Math.random() - 0.5) * 0.6
+	);
+	mesh.material.opacity = 1;
+	alive.push({
+		kind: "leaf",
+		mesh,
+		baseX: mesh.position.x,
+		baseZ: mesh.position.z,
+		vy: cfg.fallSpeed,
+		wobAmp: cfg.swayAmp,
+		wobSpeed: cfg.swaySpeed,
+		phase,
+		life: 0,
+		ttl: cfg.ttlBase * (0.75 + Math.random() * 0.5)
+	});
+}
+
+// Muestrea copas alrededor del jugador y emite hojas. Llamado por frame con
+// el dt real (acumulador) para que el ritmo no dependa del framerate.
+// `reduceMotion` (F19.5 B4) la atenúa: el jugador (player.js) lo pasa ya
+// evaluado para no acoplar particles.js al sistema de ajustes.
+export function tickFallingLeaves(dt, px, py, pz, reduceMotion) {
+	const full = leafParticleConfig(reduceMotion);
+	leafAcc0.v += dt;
+	if (leafAcc0.v < full.sampleInterval) return;
+	leafAcc0.v = 0;
+	// Al menos 1 candidato por tick; la política "reducir movimiento" usa uno.
+	const tries = reduceMotion ? 1 : 2;
+	for (let t = 0; t < tries; t++) {
+		const hit = findLeafPoint(px, pz, py, 12, getClientBlock, Math.random);
+		if (hit) {
+			const id = getClientBlock(hit.x, hit.y, hit.z);
+			if (Math.random() < full.chance) emitLeaf(hit.x, hit.y, hit.z, BLOCK_COLORS[id] ?? 0x3a7a2e, full);
+		}
+	}
 }

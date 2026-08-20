@@ -23,6 +23,7 @@ import {
 } from "./constants.js";
 import { setUnderwater, updateDayNight } from "./daynight.js";
 import { isDoorOpen } from "./network.js"; // Fase 13 (L2): estado local de puertas
+import { tickFallingLeaves } from "./particles.js"; // F21.5 (E4)
 import { camera, controls, renderer, scene, sun } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
 import { updateTorchLights } from "./torchlights.js"; // Fase 19.6 (A2)
@@ -470,6 +471,15 @@ function animate() {
 	// Fase 19.6 (A2): luz puntual de antorchas cercanas (toggle torchLight,
 	// OFF por defecto). Internamente hace early-return si está desactivada.
 	updateTorchLights(camera.position.x, camera.position.y, camera.position.z);
+	// Fase 21.5 (E4): hojas cayendo bajo los árboles (puramente visual);
+	// "reducir movimiento" (F19.5 B4) atenúa la emisión.
+	tickFallingLeaves(
+		dt,
+		camera.position.x,
+		camera.position.y,
+		camera.position.z,
+		getSetting("reduceMotion")
+	);
 	renderer.render(scene, camera);
 	updateCoords(
 		camera.position.x,

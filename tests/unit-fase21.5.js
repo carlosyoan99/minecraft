@@ -1371,5 +1371,95 @@ check(
 		recetas["tuff_bricks"]?.ingredients?.["#"] === 187
 	));
 }
+
+// ------------------------------------------------------------
+// E4 — Partículas de hojas cayendo (cliente, lógica pura).
+// La política de emisión (frecuencia/vaivén, sensibilidad a "reducir
+// movimiento") vive en public/leafparticles.js, ESM puro sin THREE.
+// Se resuelve en un child con --input-type=module (los tests son CJS).
+// ------------------------------------------------------------
+{
+	const { execFileSync } = require("node:child_process");
+	let probe = null;
+	try {
+		const src = `
+			import { LEAF_BLOCKS, findLeafPoint, leafParticleConfig } from "file://${process.cwd()}/public/leafparticles.js";
+			// Discos cuadrados de copa que cubren TODO el area de muestreo
+			// (el punto aleatorio cae siempre dentro): determinista aunque el
+			// rng del test sea fijo.
+			//  - roble:  centro (0,0)  radio 16, hojas a y=24 y y=40 (-> 40)
+			//  - jungla: centro (-20,-20) radio 16, hojas a y=60 y y=70 (-> 70)
+			//  - pale:   centro (-40,-40) radio 16, hoja a y=38 (-> 38)
+			//  - vacio:  centro (-30,-10) radio 10, sin hojas (-> null)
+			const grabada = (x, z, cx, cz, r) => Math.abs(x - cx) <= r && Math.abs(z - cz) <= r;
+			const mundo = new Map([
+				["eyoak1", [5, 24]], ["eyoak2", [5, 40]],
+				["ejung1", [42, 60]], ["ejung2", [42, 70]],
+				["epale", [177, 38]]
+			]);
+			const getBlock = (x, y, z) => {
+				if (grabada(x, z, 0, 0, 16)) return y === 24 || y === 40 ? 5 : -1;
+				if (grabada(x, z, -20, -20, 16)) return y === 60 || y === 70 ? 42 : -1;
+				if (grabada(x, z, -40, -40, 16)) return y === 38 ? 177 : -1;
+				return -1;
+			};
+			const rand = (() => { let n = 0; return () => ((n = (n * 9301 + 49297) % 233280) / 233280); })();
+			const a = leafParticleConfig(false);
+			const b = leafParticleConfig(true);
+			console.log(JSON.stringify({
+				bloques: [...LEAF_BLOCKS].sort((x, y) => x - y),
+				arbol: findLeafPoint(0, 0, 10, 16, getBlock, rand, 40),
+				jungla: findLeafPoint(-20, -20, 50, 16, getBlock, rand, 40),
+				pale: findLeafPoint(-40, -40, 5, 16, getBlock, rand, 40),
+				sinCopa: findLeafPoint(-30, -10, 5, 10, getBlock, rand, 40),
+				intervaloNormal: a.sampleInterval,
+				intervaloReduce: b.sampleInterval,
+				chanceNormal: a.chance,
+				chanceReduce: b.chance,
+				vaivenReduce: b.swayAmp < a.swayAmp
+			}));
+		`;
+		probe = JSON.parse(
+			execFileSync(process.execPath, ["--input-type=module", "-e", src], {
+				encoding: "utf8"
+			}).trim()
+		);
+	} catch (e) {
+		probe = { error: String(e).slice(0, 100) };
+	}
+	check(
+		"E4: LEAF_BLOCKS cubre roble/abedul/pino/jungla/pale-oak",
+		probe?.bloques?.join(",") === "5,29,31,42,177",
+		JSON.stringify(probe?.bloques)
+	);
+	check(
+		"E4: findLeafPoint halla la hoja MÁS ALTA de la copa (roble 40)",
+		probe?.arbol?.y === 40,
+		JSON.stringify(probe?.arbol)
+	);
+	check(
+		"E4: también encuentra jungla (42, y 70) y pale-oak (177, y 38)",
+		probe?.jungla?.y === 70 &&
+			Math.abs(probe?.jungla?.x + 20) <= 16 &&
+			probe?.pale?.y === 38,
+		JSON.stringify({ jungla: probe?.jungla, pale: probe?.pale })
+	);
+	check(
+		"E4: sin copa en el disco devuelve null (no false positivo)",
+		probe?.sinCopa === null,
+		JSON.stringify(probe?.sinCopa)
+	);
+	check(
+		"E4: 'reducir movimiento' alarga el intervalo y recorta el chance",
+		probe?.intervaloReduce > probe?.intervaloNormal * 3 &&
+			probe?.chanceReduce < probe?.chanceNormal,
+		JSON.stringify({ i: probe?.intervaloNormal, iR: probe?.intervaloReduce })
+	);
+	check(
+		"E4: 'reducir movimiento' también suaviza el vaivén (accessibilidad)",
+		probe?.vaivenReduce === true
+	);
+}
+
 console.log(`${failed ? "FAIL" : "OK"} — ${failed ? failed : "0"} fallos`);
 process.exit(failed ? 1 : 0);
