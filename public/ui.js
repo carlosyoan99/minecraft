@@ -73,16 +73,16 @@ export {
 // panels.js — inventario/cofre/horno/picker
 export {
 	applyArmor,
-	applyChestState,
 	applyBundleState, // Fase 21.5 (F4): mochila
+	applyChestState,
 	applyCraftingGrid,
 	applyFurnaceState,
 	closePanels,
+	isBundleOpen,
 	openCraftingFromBlock,
 	setCreativeCatalog,
-	toggleChestUI,
 	toggleBundleUI, // Fase 21.5 (F4): mochila
-	isBundleOpen,
+	toggleChestUI,
 	toggleFurnaceUI,
 	toggleInventory,
 	togglePicker

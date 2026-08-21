@@ -29,7 +29,9 @@ const AIR = 0,
 // ¿El bloque deja pasar la luz de antorcha? (aire, agua, antorcha y
 // linterna sí).
 export function isLightPassable(block) {
-	return block === AIR || block === WATER || block === TORCH || block === LANTERN;
+	return (
+		block === AIR || block === WATER || block === TORCH || block === LANTERN
+	);
 }
 
 // Empuja luz desde una antorcha al array del chunk (BFS 6-direccional con

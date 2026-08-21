@@ -415,7 +415,7 @@ function resetMobWalk(mesh) {
 
 const VARIANT_TINT = {
 	cold: 0xbbbbbb, // frío: tinte oscuro (más marrón/gris)
-	warm: 0xffe8cc  // cálido: tinte cálido (más claro/dorado)
+	warm: 0xffe8cc // cálido: tinte cálido (más claro/dorado)
 };
 export function updateMobs(list) {
 	const seen = new Set();
@@ -624,10 +624,16 @@ function makeBobberMesh(id) {
 		bobberMaterial
 	);
 	group.add(body);
-	const topTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 6), bobberTipMaterial);
+	const topTip = new THREE.Mesh(
+		new THREE.ConeGeometry(0.03, 0.1, 6),
+		bobberTipMaterial
+	);
 	topTip.position.y = 0.09;
 	group.add(topTip);
-	const bottomTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 6), bobberTipMaterial);
+	const bottomTip = new THREE.Mesh(
+		new THREE.ConeGeometry(0.03, 0.1, 6),
+		bobberTipMaterial
+	);
 	bottomTip.position.y = -0.09;
 	bottomTip.rotation.x = Math.PI;
 	group.add(bottomTip);

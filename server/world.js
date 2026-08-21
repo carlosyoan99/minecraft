@@ -377,10 +377,7 @@ function cleanUnsupportedTorches(wx, wy, wz) {
 			ny = wy + dy,
 			nz = wz + dz;
 		const b = getBlock(nx, ny, nz);
-		if (
-			(b === B.TORCH || b === B.LANTERN) &&
-			!torchSupported(nx, ny, nz)
-		) {
+		if ((b === B.TORCH || b === B.LANTERN) && !torchSupported(nx, ny, nz)) {
 			setBlock(nx, ny, nz, B.AIR);
 		}
 	}

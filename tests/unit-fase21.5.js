@@ -27,7 +27,8 @@ const fishing = require("../server/fishing.js");
 const chests = require("../server/chests.js");
 const combat = require("../server/combat.js");
 const { ItemStack } = require("../server/items.js");
-const { B, I, FISHING_ROD_DURABILITY, isFishingRod, SHIELD_DURABILITY } = constants;
+const { B, I, FISHING_ROD_DURABILITY, isFishingRod, SHIELD_DURABILITY } =
+	constants;
 
 const LOW = 58; // y de mundo de la base de la zona de prueba (aire/agua)
 
@@ -133,16 +134,33 @@ check(
 }
 {
 	limpiarBobbers();
-	const p = mkPlayer({ inventory: [new ItemStack(I.FISHING_ROD, 1, 40), ...new Array(35).fill(null)] });
-	check("con caña castFishingLine devuelve true y crea 1 bobber", fishing.castFishingLine(p) === true && state.bobbers.length === 1);
+	const p = mkPlayer({
+		inventory: [
+			new ItemStack(I.FISHING_ROD, 1, 40),
+			...new Array(35).fill(null)
+		]
+	});
+	check(
+		"con caña castFishingLine devuelve true y crea 1 bobber",
+		fishing.castFishingLine(p) === true && state.bobbers.length === 1
+	);
 	const b = state.bobbers[0];
-	check("el bobber se lanza desde los ojos (y del player + EYE_HEIGHT)", b.y === p.y + constants.EYE_HEIGHT && b.playerId === p.id && b.kind === undefined);
+	check(
+		"el bobber se lanza desde los ojos (y del player + EYE_HEIGHT)",
+		b.y === p.y + constants.EYE_HEIGHT &&
+			b.playerId === p.id &&
+			b.kind === undefined
+	);
 	check(
 		"relanzar con una linea activa no crea bobber duplicado",
 		fishing.castFishingLine(p) === false && state.bobbers.length === 1,
 		`${state.bobbers.length}`
 	);
-	check("el snapshot del bobber lleva id estable por playerId", fishing.bobberSnapshot(b).playerId === p.id && fishing.bobberSnapshot(b).kind === "bobber");
+	check(
+		"el snapshot del bobber lleva id estable por playerId",
+		fishing.bobberSnapshot(b).playerId === p.id &&
+			fishing.bobberSnapshot(b).kind === "bobber"
+	);
 }
 
 // ============================================================
@@ -151,7 +169,12 @@ check(
 {
 	limpiarBobbers();
 	zonaAgua();
-	const p = mkPlayer({ inventory: [new ItemStack(I.FISHING_ROD, 1, 40), ...new Array(35).fill(null)] });
+	const p = mkPlayer({
+		inventory: [
+			new ItemStack(I.FISHING_ROD, 1, 40),
+			...new Array(35).fill(null)
+		]
+	});
 	fishing.castFishingLine(p);
 	// Simular el vuelo: avanzar de 50 en 50 ms (suficiente para que llegue al agua)
 	// y detectar que aterriza flotando (vx=vy=vz=0, inWater true).
@@ -161,18 +184,26 @@ check(
 		b = state.bobbers[0];
 		if (b && b.inWater) break;
 	}
-	check("al caer en agua el bobber aterriza (inWater) y se queda quieto", !!b?.inWater && b.vx === 0 && b.vy === 0 && b.vz === 0, JSON.stringify(b));
+	check(
+		"al caer en agua el bobber aterriza (inWater) y se queda quieto",
+		!!b?.inWater && b.vx === 0 && b.vy === 0 && b.vz === 0,
+		JSON.stringify(b)
+	);
 	if (b) {
 		check(
 			"el picoteo se programa dentro de la ventana 1.5-5 s",
-			b.biteAt >= Date.now() + fishing.BITE_MIN_MS && b.biteAt <= Date.now() + fishing.BITE_MIN_MS + fishing.BITE_RANGE_MS,
+			b.biteAt >= Date.now() + fishing.BITE_MIN_MS &&
+				b.biteAt <= Date.now() + fishing.BITE_MIN_MS + fishing.BITE_RANGE_MS,
 			`biteAt-now=${b.biteAt - Date.now()}`
 		);
 		check("antes del picoteo no biting", b.biting === false);
 		// Forzar el momento: postergar biteAt al pasado → "pica" en el siguiente tick.
 		b.biteAt = 0;
 		fishing.tickBobbers(50);
-		check("transcurrido el tiempo el bobber pica (biting)", state.bobbers[0]?.biting === true);
+		check(
+			"transcurrido el tiempo el bobber pica (biting)",
+			state.bobbers[0]?.biting === true
+		);
 	}
 }
 
@@ -182,7 +213,12 @@ check(
 {
 	limpiarBobbers();
 	zonaAgua();
-	const p = mkPlayer({ inventory: [new ItemStack(I.FISHING_ROD, 1, 40), ...new Array(35).fill(null)] });
+	const p = mkPlayer({
+		inventory: [
+			new ItemStack(I.FISHING_ROD, 1, 40),
+			...new Array(35).fill(null)
+		]
+	});
 	fishing.castFishingLine(p);
 	for (let t = 0; t < 3000; t += 50) {
 		fishing.tickBobbers(50);
@@ -191,13 +227,18 @@ check(
 	// Recoger ANTES de picar → devuelve null, sin gastar durabilidad.
 	const antes = fishing.reelBobber(p);
 	check("recoger antes de picar no entrega item", antes.caught === null);
-	check("recoger antes de picar no gasta durabilidad", p.inventory[0].durability === 40, `${p.inventory[0]?.durability}`);
+	check(
+		"recoger antes de picar no gasta durabilidad",
+		p.inventory[0].durability === 40,
+		`${p.inventory[0]?.durability}`
+	);
 	check("recoger antes de picar retira la linea", state.bobbers.length === 0);
 
 	// Picar y recoger → entrega un item de la tabla y desgasta 1.
 	limpiarBobbers();
 	fishing.castFishingLine(p);
-	for (let t = 0; t < 3000 && !state.bobbers[0]?.inWater; t += 50) fishing.tickBobbers(50);
+	for (let t = 0; t < 3000 && !state.bobbers[0]?.inWater; t += 50)
+		fishing.tickBobbers(50);
 	const b = state.bobbers[0];
 	if (b) {
 		b.biteAt = 0;
@@ -213,10 +254,20 @@ check(
 			despues.caught && allLoot.includes(despues.caught.id),
 			`${JSON.stringify(despues.caught)}`
 		);
-		check("recoger picando desgasta la caña (durabilidad 39)", p.inventory[0].durability === 39, `${p.inventory[0]?.durability}`);
-		check("el item entregado va al inventario", p.inventory.some((s) => s && s.id === despues.caught.id));
+		check(
+			"recoger picando desgasta la caña (durabilidad 39)",
+			p.inventory[0].durability === 39,
+			`${p.inventory[0]?.durability}`
+		);
+		check(
+			"el item entregado va al inventario",
+			p.inventory.some((s) => s && s.id === despues.caught.id)
+		);
 		check("la linea se retira al recoger", state.bobbers.length === 0);
-		check("una categoria valida (pescado/tesoro/basura)", ["fish", "treasure", "junk"].includes(despues.caught.category));
+		check(
+			"una categoria valida (pescado/tesoro/basura)",
+			["fish", "treasure", "junk"].includes(despues.caught.category)
+		);
 	}
 }
 
@@ -226,9 +277,12 @@ check(
 {
 	limpiarBobbers();
 	zonaAgua();
-	const p = mkPlayer({ inventory: [new ItemStack(I.FISHING_ROD, 1, 1), ...new Array(35).fill(null)] });
+	const p = mkPlayer({
+		inventory: [new ItemStack(I.FISHING_ROD, 1, 1), ...new Array(35).fill(null)]
+	});
 	fishing.castFishingLine(p);
-	for (let t = 0; t < 3000 && !state.bobbers[0]?.inWater; t += 50) fishing.tickBobbers(50);
+	for (let t = 0; t < 3000 && !state.bobbers[0]?.inWater; t += 50)
+		fishing.tickBobbers(50);
 	const b = state.bobbers[0];
 	if (b) {
 		b.biteAt = 0;
@@ -245,24 +299,41 @@ check(
 {
 	limpiarBobbers();
 	zonaSuelo();
-	const p = mkPlayer({ inventory: [new ItemStack(I.FISHING_ROD, 1, 40), ...new Array(35).fill(null)] });
+	const p = mkPlayer({
+		inventory: [
+			new ItemStack(I.FISHING_ROD, 1, 40),
+			...new Array(35).fill(null)
+		]
+	});
 	fishing.castFishingLine(p);
 	let b;
 	for (let t = 0; t < 3000; t += 50) {
 		fishing.tickBobbers(50);
 		b = state.bobbers[0];
 		// El bobber se detiene (v=0) al aterrizar en piedra.
-		if (b && b.vx === 0 && b.vy === 0 && b.vz === 0 && Math.floor(b.y) <= LOW) break;
+		if (b && b.vx === 0 && b.vy === 0 && b.vz === 0 && Math.floor(b.y) <= LOW)
+			break;
 	}
-	check("fuera de agua el bobber aterriza en el suelo (se detiene)", !!b && b.vx === 0 && b.vy === 0 && b.vz === 0, JSON.stringify(b));
+	check(
+		"fuera de agua el bobber aterriza en el suelo (se detiene)",
+		!!b && b.vx === 0 && b.vy === 0 && b.vz === 0,
+		JSON.stringify(b)
+	);
 	if (b) {
-		check("fuera de agua no se programa picoteo (biteAt 0)", b.biteAt === 0, `${b.biteAt}`);
+		check(
+			"fuera de agua no se programa picoteo (biteAt 0)",
+			b.biteAt === 0,
+			`${b.biteAt}`
+		);
 		fishing.tickBobbers(50);
 		check("fuera de agua nunca pica", state.bobbers[0]?.biting === false);
 		const antes = p.inventory[0].durability;
 		const res = fishing.reelBobber(p);
 		check("fuera de agua recoger no entrega item", res.caught === null);
-		check("fuera de agua recoger no desgasta", p.inventory[0].durability === antes);
+		check(
+			"fuera de agua recoger no desgasta",
+			p.inventory[0].durability === antes
+		);
 	}
 }
 
@@ -270,7 +341,12 @@ check(
 // 7) DESGASTE POR USO: applyToolWear no toca la caña; applyFishingWear si.
 // ============================================================
 {
-	const p = mkPlayer({ inventory: [new ItemStack(I.FISHING_ROD, 1, 40), ...new Array(35).fill(null)] });
+	const p = mkPlayer({
+		inventory: [
+			new ItemStack(I.FISHING_ROD, 1, 40),
+			...new Array(35).fill(null)
+		]
+	});
 	check(
 		"applyToolWear (minar/atacar) NO desgasta la caña",
 		combat.applyToolWear(p) === false && p.inventory[0].durability === 40,
@@ -282,20 +358,36 @@ check(
 		`${p.inventory[0]?.durability}`
 	);
 	p.inventory[0].durability = 1;
-	check("applyFishingWear rompe la caña al llegar a 0 y la retira", combat.applyFishingWear(p) === true && !p.inventory[0]);
+	check(
+		"applyFishingWear rompe la caña al llegar a 0 y la retira",
+		combat.applyFishingWear(p) === true && !p.inventory[0]
+	);
 }
 
 // ============================================================
 // 8) A8 — CABAS ROTAS EN LOS COFRES.
 // ============================================================
 {
-	const tables = [chests.LOOT_TABLE, chests.TEMPLE_LOOT_TABLE, chests.SHIPWRECK_LOOT_TABLE, chests.PYRAMID_LOOT_TABLE];
+	const tables = [
+		chests.LOOT_TABLE,
+		chests.TEMPLE_LOOT_TABLE,
+		chests.SHIPWRECK_LOOT_TABLE,
+		chests.PYRAMID_LOOT_TABLE
+	];
 	for (const table of tables) {
 		// La tabla incluye la caña [id, 1, 1, [1, 20]] (A8).
 		const entry = table.find((t) => t[0] === I.FISHING_ROD);
-		check("la tabla de loot incluye la caña de pescar (A8)", !!entry, table === chests.LOOT_TABLE ? "LOOT_TABLE" : "estructura");
+		check(
+			"la tabla de loot incluye la caña de pescar (A8)",
+			!!entry,
+			table === chests.LOOT_TABLE ? "LOOT_TABLE" : "estructura"
+		);
 		if (entry) {
-			check("caña de botín con rango de durabilidad 1-20", entry[3]?.[0] === 1 && entry[3]?.[1] === 20, JSON.stringify(entry[3]));
+			check(
+				"caña de botín con rango de durabilidad 1-20",
+				entry[3]?.[0] === 1 && entry[3]?.[1] === 20,
+				JSON.stringify(entry[3])
+			);
 		}
 	}
 	// Generar slots desde la LOOT_TABLE muchas veces: ninguna caña sobrepasa 20
@@ -310,9 +402,17 @@ check(
 			// para la caña, y el item existe (conserva el loot viejo de Fase 7).
 			if (s.id === I.FISHING_ROD) {
 				rods++;
-				check("caña de botín con durabilidad 1-20 (< 64)", s.durability >= 1 && s.durability <= 20, `dur=${s.durability}`);
+				check(
+					"caña de botín con durabilidad 1-20 (< 64)",
+					s.durability >= 1 && s.durability <= 20,
+					`dur=${s.durability}`
+				);
 			}
-			check("los items de loot son del universo I (sin romper lo viejo)", known.has(s.id), `id=${s.id}`);
+			check(
+				"los items de loot son del universo I (sin romper lo viejo)",
+				known.has(s.id),
+				`id=${s.id}`
+			);
 		}
 	}
 	check("la caña aparece en el botin (200 cofres)", rods > 0, `${rods}`);
@@ -324,7 +424,14 @@ check(
 //    en vetas del subsuelo y recetas de pulido 2×2.
 // ============================================================
 {
-	const pulidas = [B.GRANITE, B.DIORITE, B.ANDESITE, B.POLISHED_GRANITE, B.POLISHED_DIORITE, B.POLISHED_ANDESITE];
+	const pulidas = [
+		B.GRANITE,
+		B.DIORITE,
+		B.ANDESITE,
+		B.POLISHED_GRANITE,
+		B.POLISHED_DIORITE,
+		B.POLISHED_ANDESITE
+	];
 	for (const b of pulidas) {
 		check(
 			`B1: dureza de pulida (${b}) es 1.5 (MC)`,
@@ -336,9 +443,11 @@ check(
 			// canHarvest con pico cubre la categoría (stone→pickaxe); el mapa
 			// BLOCK_CATEGORY no se exporta.
 			constants.canHarvest(I.IRON_PICKAXE, b) === true
-		);		check(
+		);
+		check(
 			`B1: la pulida (${b}) requiere pico para cosechar`,
-			constants.canHarvest(0, b) === false && constants.canHarvest(I.IRON_PICKAXE, b) === true,
+			constants.canHarvest(0, b) === false &&
+				constants.canHarvest(I.IRON_PICKAXE, b) === true,
 			`mano=${constants.canHarvest(0, b)} pico=${constants.canHarvest(I.IRON_PICKAXE, b)}`
 		);
 		check(`B1: la pulida (${b}) es sólida`, constants.isSolidBlock(b) === true);
@@ -354,14 +463,18 @@ check(
 		const r = recipes[recipe];
 		check(
 			`B1: receta ${recipe} existe y da 4 de la pulida`,
-			!!r && r.shape?.join("") === "####" && r.ingredients["#"] === mat && r.result?.id === out && r.result?.count === 4,
+			!!r &&
+				r.shape?.join("") === "####" &&
+				r.ingredients["#"] === mat &&
+				r.result?.id === out &&
+				r.result?.count === 4,
 			JSON.stringify(r?.shape) + "/" + JSON.stringify(r?.result)
 		);
 	}
 	// Vetas en el subsuelo: barren varios chunks de ejemplo que NINGÚN test
 	// anterior tocó (lejos de la zona de pesca) y cuentan granito/diorita/
 	// andesita en la banda y ≥ −8 de la generación por defecto de la semilla.
-	let contar = { [B.GRANITE]: 0, [B.DIORITE]: 0, [B.ANDESITE]: 0 };
+	const contar = { [B.GRANITE]: 0, [B.DIORITE]: 0, [B.ANDESITE]: 0 };
 	const { CHUNK_SIZE } = constants;
 	for (let cx = -6; cx <= -4; cx++)
 		for (let cz = -6; cz <= -4; cz++) {
@@ -373,7 +486,11 @@ check(
 					for (let ly = baseY; ly < -1; ly++) {
 						// mundo y = local + WORLD_MIN_Y (−64); el local de y=−8..−2 es ly = 56..62.
 						const localRow = ly + 64;
-						if (localRow < 0 || localRow >= ch.length / (CHUNK_SIZE * CHUNK_SIZE)) continue;
+						if (
+							localRow < 0 ||
+							localRow >= ch.length / (CHUNK_SIZE * CHUNK_SIZE)
+						)
+							continue;
 						const b = ch[(localRow * CHUNK_SIZE + lz) * CHUNK_SIZE + lx];
 						if (contar[b] !== undefined) contar[b]++;
 					}
@@ -403,34 +520,28 @@ check(
 	);
 	check(
 		"B2: la linterna se cosecha a mano (cae a sí misma)",
-		constants.canHarvest(0, B.LANTERN) === true && constants.canHarvest(I.IRON_SWORD, B.LANTERN) === false
+		constants.canHarvest(0, B.LANTERN) === true &&
+			constants.canHarvest(I.IRON_SWORD, B.LANTERN) === false
 	);
-	// Colocación: la linterna necesita un vecino sólido (soporte), como la
-	// antorcha (net.js lo exige antes de setBlock). Se comprueba el soporte
-	// del mundo sobre una celda con suelo sólido, dentro del mundo v6
-	// (−64..+63): la celda base y=4, con un bloque de piedra en y=3 (suelo)
-	// y el entorno en aire.
-	{
-		limpiarBobbers();
-		// Limpiar un cubo 3×3×3 alrededor de (0,4,0) y poner suelo sólido.
-		for (let x = -1; x <= 1; x++)
-			for (let z = -1; z <= 1; z++)
-				for (let y = 2; y <= 5; y++) world.setBlock(x, y, z, B.AIR);
-		world.setBlock(0, 2, 0, B.STONE); // suelo bajo la celda y=3
-		check(
-			"B2: con un bloque sólido debajo la linterna tiene soporte",
-			world.torchSupported(0, 3, 0) === true
-		);
-		world.setBlock(0, 2, 0, B.AIR); // quitar el suelo
-		check(
-			"B2: sin vecinos sólidos la linterna no tiene soporte",
-			world.torchSupported(0, 3, 0) === false
-		);
-		// Restaurar el entorno (aire) para no contaminar otros tests.
-		for (let x = -1; x <= 1; x++)
-			for (let z = -1; z <= 1; z++)
-				for (let y = 2; y <= 5; y++) world.setBlock(x, y, z, B.AIR);
-	}
+	limpiarBobbers();
+	// Limpiar un cubo 3×3×3 alrededor de (0,4,0) y poner suelo sólido.
+	for (let x = -1; x <= 1; x++)
+		for (let z = -1; z <= 1; z++)
+			for (let y = 2; y <= 5; y++) world.setBlock(x, y, z, B.AIR);
+	world.setBlock(0, 2, 0, B.STONE); // suelo bajo la celda y=3
+	check(
+		"B2: con un bloque sólido debajo la linterna tiene soporte",
+		world.torchSupported(0, 3, 0) === true
+	);
+	world.setBlock(0, 2, 0, B.AIR); // quitar el suelo
+	check(
+		"B2: sin vecinos sólidos la linterna no tiene soporte",
+		world.torchSupported(0, 3, 0) === false
+	);
+	// Restaurar el entorno (aire) para no contaminar otros tests.
+	for (let x = -1; x <= 1; x++)
+		for (let z = -1; z <= 1; z++)
+			for (let y = 2; y <= 5; y++) world.setBlock(x, y, z, B.AIR);
 	// Luz del cliente: lighting.js (módulo puro ESM) deja pasar la luz a
 	// través de la linterna y una linterna horneada produce luz como una
 	// antorcha (mismo radio/atenuación). Se resuelve en un child con
@@ -453,7 +564,11 @@ check(
 			};
 			console.log(JSON.stringify(r));
 		`;
-		luzProbe = JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", probe], { encoding: "utf8" }).trim());
+		luzProbe = JSON.parse(
+			execFileSync(process.execPath, ["--input-type=module", "-e", probe], {
+				encoding: "utf8"
+			}).trim()
+		);
 	} catch (e) {
 		luzProbe = { error: String(e).slice(0, 80) };
 	}
@@ -487,238 +602,315 @@ check(
 		);
 	}
 }
-
-// ============================================================
-// 11) B3 — BAMBÚ Y ANDAMIOS: el bambú (80) se genera en la jungla como
-//     planta alta estática (tallos de 3-8), no es sólido, cae a sí mismo y
-//     craftea tablones (81) y andamios (82); el andamio es no sólido y se
-//     craftea en pilas de 6.
-// ============================================================
-{
-	// Identidad y propiedades de servidor
-	check("B3: BAMBOO 80, BAMBOO_PLANKS 81, SCAFFOLDING 82",
-		B.BAMBOO === 80 && B.BAMBOO_PLANKS === 81 && B.SCAFFOLDING === 82);
-	for (const b of [B.BAMBOO, B.SCAFFOLDING]) {
-		check(`B3: el bloque ${b} no es sólido`, constants.isSolidBlock(b) === false);
-		check(`B3: el bloque ${b} se rompe al instante`, constants.BLOCK_HARDNESS[b] === 0.05);
-	}
-	check("B3: los tablones de bambú son sólidos y dureza de madera",
-		constants.isSolidBlock(B.BAMBOO_PLANKS) === true && constants.BLOCK_HARDNESS[B.BAMBOO_PLANKS] === 2.0);
-	// Recetas
-	{
-		const recipes = require("../recetas.json");
-		const plans = recipes.bamboo_planks;
-		check("B3: receta tablones de bambú (2×2 bambú → 1)",
-			!!plans && plans.shape?.join("") === "BBBB" && plans.ingredients.B === B.BAMBOO && plans.result?.id === B.BAMBOO_PLANKS && plans.result?.count === 1);
-		const scaf = recipes.scaffolding;
-		check("B3: receta andamio (6 bambú → 6)",
-			!!scaf && scaf.ingredients.B === B.BAMBOO && scaf.result?.id === B.SCAFFOLDING && scaf.result?.count === 6);
-	}
-	// Drop del bambú a sí mismo (players.breakPlant)
-	{
-		const { createPlayer } = require("../server/players.js");
-		const p = createPlayer("p-b3", { x: 0, y: 50, z: 0 });
-		p.inventory = new Array(36).fill(null);
-		// Simular breakPlant directo (romper la base del tallo)
-		zonaAire();
-		world.setBlock(0, 40, 0, B.BAMBOO);
-		// breakPlant no está exportado; se valida el drop por la vía real:
-		// canHarvest a mano true → drop = block (players.finishMining).
-		check("B3: el bambú se cosecha a mano", constants.canHarvest(0, B.BAMBOO) === true);
-		check("B3: el andamio se cosecha a mano", constants.canHarvest(0, B.SCAFFOLDING) === true);
-		// Ground plant: el bambú rompe con la base (GROUND_PLANTS) — probamos
-		// vía breakSeconds/dureza ya cubierto; aquí solo validar que el drop
-		// de breakPlant lo da: la lógica de players.js añade BAMBOO a sí mismo.
-		// Se verifica indirectamente con unit-sync (ítem 80 existe) y con el
-		// test de recetas de arriba (el ítem entra en crafteos).
-	}
-	// Generación determinista: bambú en la jungla (buscar en varios chunks
-	// lejos de la zona de pesca; la jungla aparece con la semilla por defecto).
-	{
-		const { CHUNK_SIZE: CS } = constants;
-		let encontrados = 0;
-		for (let cx = -8; cx <= 8; cx += 2)
-			for (let cz = -8; cz <= 8; cz += 2) {
-				const ch = world.generateChunk(cx, cz);
-				if (!ch) continue;
-				for (let i = 0; i < ch.length; i++)
-					if (ch[i] === B.BAMBOO) { encontrados++; break; }
-			}
-		check("B3: hay bambú generado en la jungla (semilla por defecto)", encontrados > 0, `${encontrados}`);
-	}
-	// Soporte del andamio: es un bloque NO sólido, así que el soporte de la
-	// antorcha no aplica; se puede colocar en el aire (flota, como MC) — solo
-	// se valida que su solidez no bloquee la física.
-	check("B3: el andamio no bloquea el paso (no sólido en física)", constants.isSolidBlock(B.SCAFFOLDING) === false);
+// Identidad y propiedades de servidor
+check(
+	"B3: BAMBOO 80, BAMBOO_PLANKS 81, SCAFFOLDING 82",
+	B.BAMBOO === 80 && B.BAMBOO_PLANKS === 81 && B.SCAFFOLDING === 82
+);
+for (const b of [B.BAMBOO, B.SCAFFOLDING]) {
+	check(`B3: el bloque ${b} no es sólido`, constants.isSolidBlock(b) === false);
+	check(
+		`B3: el bloque ${b} se rompe al instante`,
+		constants.BLOCK_HARDNESS[b] === 0.05
+	);
 }
-
-// ============================================================
-// 12) B4 — COLMENAS Y MIEL: BEE_NEST (83, generado en árboles) y BEE_HIVE
-//     (84, crafteado); clic derecho con una botella de vidrio (263, crafteo
-//     3 vidrio → 3) sobre la colmena entrega una HONEY_BOTTLE (264, comida
-//     6/1.2); el HONEY_BLOCK (85, crafteo 4 botellas) anula el daño de caída
-//     al aterrizar sobre él.
-// ============================================================
+check(
+	"B3: los tablones de bambú son sólidos y dureza de madera",
+	constants.isSolidBlock(B.BAMBOO_PLANKS) === true &&
+		constants.BLOCK_HARDNESS[B.BAMBOO_PLANKS] === 2.0
+);
+// Recetas
 {
-	// Identidad y propiedades
-	check("B4: BEE_NEST 83, BEE_HIVE 84, HONEY_BLOCK 85",
-		B.BEE_NEST === 83 && B.BEE_HIVE === 84 && B.HONEY_BLOCK === 85);
-	check("B4: botella de vidrio 263 y botella de miel 264",
-		I.GLASS_BOTTLE === 263 && I.HONEY_BOTTLE === 264);
-	check("B4: colmenas y bloque de miel son sólidos",
-		constants.isSolidBlock(B.BEE_NEST) && constants.isSolidBlock(B.BEE_HIVE) && constants.isSolidBlock(B.HONEY_BLOCK));
-	// Comida: botella de miel restaura 6/1.2 (FOOD_VALUES).
-	{
-		const food = constants.FOOD_VALUES?.[I.HONEY_BOTTLE];
-		check("B4: la botella de miel es comida 6/1.2",
-			!!food && food.food === 6 && food.saturation === 1.2,
-			JSON.stringify(food));
-		const { canEat, eatFood } = require("../server/combat.js");
-		const p = mkPlayer({ health: 10, food: 10, saturation: 5 });
-		p.inventory = new Array(36).fill(null);
-		p.inventory[0] = { id: I.HONEY_BOTTLE, count: 1 };
-		check("B4: la botella de miel se puede comer", canEat(p, I.HONEY_BOTTLE) === "ok");
-		eatFood(p, I.HONEY_BOTTLE);
-		check("B4: comer la botella restaura comida (6)",
-			p.food === 16 && p.saturation > 0,
-			`food ${p.food} sat ${p.saturation}`);
-	}
-	// Recolección: handleHoneyBottle consume la botella y devuelve la de miel.
-	{
-		const actions = require("../server/actions.js");
-		zonaAire();
-		world.setBlock(0, LOW, 0, B.BEE_HIVE);
-		const p = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
-		p.inventory = new Array(36).fill(null);
-		p.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
-		actions.handleHoneyBottle(p, { x: 0, y: LOW, z: 0 });
-		const tieneMiel = p.inventory.some((s) => s && s.id === I.HONEY_BOTTLE);
-		const sinVidrio = !p.inventory.some((s) => s && s.id === I.GLASS_BOTTLE);
-		check("B4: botella de vidrio sobre la colmena → botella de miel",
-			tieneMiel && sinVidrio, `miel ${tieneMiel} vidrio ${!sinVidrio}`);
-		// Sin botella en la mano: no hace nada.
-		const p2 = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
-		p2.inventory = new Array(36).fill(null);
-		p2.inventory[0] = { id: B.STONE, count: 1 };
-		actions.handleHoneyBottle(p2, { x: 0, y: LOW, z: 0 });
-		check("B4: sin botella de vidrio no se recolecta miel",
-			!p2.inventory.some((s) => s && s.id === I.HONEY_BOTTLE));
-		// Colmena lejos (fuera del radio 5): no hace nada.
-		const p3 = mkPlayer({ x: 10, y: LOW + 2, z: 10 });
-		p3.inventory = new Array(36).fill(null);
-		p3.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
-		actions.handleHoneyBottle(p3, { x: 0, y: LOW, z: 0 });
-		check("B4: colmena fuera del radio no recolecta miel",
-			!p3.inventory.some((s) => s && s.id === I.HONEY_BOTTLE) &&
-				p3.inventory.some((s) => s && s.id === I.GLASS_BOTTLE));
-		// No es una colmena (piedra): no hace nada.
-		const p4 = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
-		p4.inventory = new Array(36).fill(null);
-		p4.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
-		world.setBlock(0, LOW, 0, B.STONE);
-		actions.handleHoneyBottle(p4, { x: 0, y: LOW, z: 0 });
-		check("B4: un bloque que no es colmena no da miel",
-			!p4.inventory.some((s) => s && s.id === I.HONEY_BOTTLE));
-	}
-	// HONEY_BLOCK: caída aterrizando sobre él → sin daño. Aterriza con los pies
-	// en la celda (0, 2, 0): el jugador manda la altura del ojo, así que los
-	// pies están en floor(player.y - EYE_HEIGHT) = 2 con player.y = 3.7.
-	{
-		const aterrizar = (block) => {
-			world.setBlock(0, 0, 0, B.AIR);
-			world.setBlock(0, 1, 0, B.AIR);
-			world.setBlock(0, 2, 0, block);
-			const p = mkPlayer({ health: 20, maxHealth: 20, fallFromY: 20 });
-			p.x = 0;
-			p.y = 3.7;
-			p.z = 0;
-			p.fallVy = -10;
-			combat.applyFallDamage(p, -10);
-			return p.health;
-		};
-		const conMiel = aterrizar(B.HONEY_BLOCK);
-		check("B4: aterrizar sobre un bloque de miel no hace daño",
-			conMiel === 20, `health ${conMiel}`);
-		const piedra = aterrizar(B.STONE);
-		check("B4: sobre piedra la misma caída sí daña (control)",
-			piedra < 20, `health ${piedra}`);
-	}
-	// Recetas: botella de vidrio, colmena y bloque de miel.
-	{
-		const recipes = require("../recetas.json");
-		const gb = recipes.glass_bottle;
-		check("B4: receta botella de vidrio (3 vidrio → 3)",
-			!!gb && gb.shape?.join("") === "GGG" && gb.ingredients.G === B.GLASS && gb.result?.id === I.GLASS_BOTTLE && gb.result?.count === 3);
-		const bh = recipes.bee_hive;
-		check("B4: receta colmena (6 tablones + 1 miel → 1)",
-			!!bh && bh.ingredients.X === B.PLANKS && bh.ingredients.H === I.HONEY && bh.result?.id === B.BEE_HIVE);
-		const hb = recipes.honey_block;
-		check("B4: receta bloque de miel (4 botellas → 1)",
-			!!hb && hb.shape?.join("") === "HHHH" && hb.ingredients.H === I.HONEY_BOTTLE && hb.result?.id === B.HONEY_BLOCK);
-	}
-	// Generación: nidos de abeja aparecen en los árboles (bosque/abedul) con
-	// la semilla por defecto (buscar en varios chunks donde haya árboles).
-	{
-		let nidos = 0;
-		for (let cx = -8; cx <= 8; cx += 2)
-			for (let cz = -8; cz <= 8; cz += 2) {
-				const ch = world.generateChunk(cx, cz);
-				if (!ch) continue;
-				for (let i = 0; i < ch.length; i++)
-					if (ch[i] === B.BEE_NEST) { nidos++; break; }
-			}
-		check("B4: hay nidos de abeja generados en los árboles", nidos > 0, `${nidos}`);
-	}
+	const recipes = require("../recetas.json");
+	const plans = recipes.bamboo_planks;
+	check(
+		"B3: receta tablones de bambú (2×2 bambú → 1)",
+		!!plans &&
+			plans.shape?.join("") === "BBBB" &&
+			plans.ingredients.B === B.BAMBOO &&
+			plans.result?.id === B.BAMBOO_PLANKS &&
+			plans.result?.count === 1
+	);
+	const scaf = recipes.scaffolding;
+	check(
+		"B3: receta andamio (6 bambú → 6)",
+		!!scaf &&
+			scaf.ingredients.B === B.BAMBOO &&
+			scaf.result?.id === B.SCAFFOLDING &&
+			scaf.result?.count === 6
+	);
 }
-
-// ============================================================
-// 13) B5 — CORAL Y ALGAS (1.13): el arrecife de la D2 se enriquece con el
-//     abanico de coral (86) encima del CORAL_BLOCK (72); en el resto del
-//     océano crece kelp (87, planta alta determinista, libre de arrecife) y
-//     pasto marino (88) en el lecho. Los tres son plantas NO sólidas que se
-//     rompen al instante y caen a sí mismas.
-// ============================================================
+// Drop del bambú a sí mismo (players.breakPlant)
 {
-	// Identidad y propiedades
-	check("B5: CORAL_FAN 86, KELP 87, SEAGRASS 88",
-		B.CORAL_FAN === 86 && B.KELP === 87 && B.SEAGRASS === 88);
-	check("B5: el coral y las algas no son sólidos (se atraviesan)",
-		!constants.isSolidBlock(B.CORAL_FAN) &&
-			!constants.isSolidBlock(B.KELP) &&
-			!constants.isSolidBlock(B.SEAGRASS));
-	for (const b of [B.CORAL_FAN, B.KELP, B.SEAGRASS]) {
-		check(`B5: el bloque ${b} se rompe al instante`, constants.BLOCK_HARDNESS[b] === 0.05);
-		check(`B5: el bloque ${b} se cosecha a mano`, constants.canHarvest(0, b) === true);
-	}
-	// Drop a sí mismo (breakPlant, como el bambú).
-	{
-		const { createPlayer } = require("../server/players.js");
-		const p = createPlayer("p-b5", { x: 0, y: 50, z: 0 });
-		p.inventory = new Array(36).fill(null);
-		check("B5: canHarvest a mano cubre el drop (drop por finishMining)",
-			constants.canHarvest(0, B.CORAL_FAN) === true &&
-				constants.canHarvest(0, B.KELP) === true &&
-				constants.canHarvest(0, B.SEAGRASS) === true);
-	}
-	// Generación determinista: con la semilla por defecto hay coral/alga en
-	// los océanos (buscar en chunks de océano; el arrecife se genera en la
-	// zona cálida y el kelp en el resto del océano).
-	{
-		let fans = 0, kelps = 0, gras = 0;
-		for (let cx = -10; cx <= 10; cx += 2)
-			for (let cz = -10; cz <= 10; cz += 2) {
-				const ch = world.generateChunk(cx, cz);
-				if (!ch) continue;
-				for (let i = 0; i < ch.length; i++) {
-					if (ch[i] === B.CORAL_FAN) fans++;
-					else if (ch[i] === B.KELP) kelps++;
-					else if (ch[i] === B.SEAGRASS) gras++;
+	const { createPlayer } = require("../server/players.js");
+	const p = createPlayer("p-b3", { x: 0, y: 50, z: 0 });
+	p.inventory = new Array(36).fill(null);
+	// Simular breakPlant directo (romper la base del tallo)
+	zonaAire();
+	world.setBlock(0, 40, 0, B.BAMBOO);
+	// breakPlant no está exportado; se valida el drop por la vía real:
+	// canHarvest a mano true → drop = block (players.finishMining).
+	check(
+		"B3: el bambú se cosecha a mano",
+		constants.canHarvest(0, B.BAMBOO) === true
+	);
+	check(
+		"B3: el andamio se cosecha a mano",
+		constants.canHarvest(0, B.SCAFFOLDING) === true
+	);
+	// Ground plant: el bambú rompe con la base (GROUND_PLANTS) — probamos
+	// vía breakSeconds/dureza ya cubierto; aquí solo validar que el drop
+	// de breakPlant lo da: la lógica de players.js añade BAMBOO a sí mismo.
+	// Se verifica indirectamente con unit-sync (ítem 80 existe) y con el
+	// test de recetas de arriba (el ítem entra en crafteos).
+}
+// Generación determinista: bambú en la jungla (buscar en varios chunks
+// lejos de la zona de pesca; la jungla aparece con la semilla por defecto).
+{
+	const { CHUNK_SIZE: CS } = constants;
+	let encontrados = 0;
+	for (let cx = -8; cx <= 8; cx += 2)
+		for (let cz = -8; cz <= 8; cz += 2) {
+			const ch = world.generateChunk(cx, cz);
+			if (!ch) continue;
+			for (let i = 0; i < ch.length; i++)
+				if (ch[i] === B.BAMBOO) {
+					encontrados++;
+					break;
 				}
+		}
+	check(
+		"B3: hay bambú generado en la jungla (semilla por defecto)",
+		encontrados > 0,
+		`${encontrados}`
+	);
+}
+// Soporte del andamio: es un bloque NO sólido, así que el soporte de la
+// antorcha no aplica; se puede colocar en el aire (flota, como MC) — solo
+// se valida que su solidez no bloquee la física.
+check(
+	"B3: el andamio no bloquea el paso (no sólido en física)",
+	constants.isSolidBlock(B.SCAFFOLDING) === false
+);
+// Identidad y propiedades
+check(
+	"B4: BEE_NEST 83, BEE_HIVE 84, HONEY_BLOCK 85",
+	B.BEE_NEST === 83 && B.BEE_HIVE === 84 && B.HONEY_BLOCK === 85
+);
+check(
+	"B4: botella de vidrio 263 y botella de miel 264",
+	I.GLASS_BOTTLE === 263 && I.HONEY_BOTTLE === 264
+);
+check(
+	"B4: colmenas y bloque de miel son sólidos",
+	constants.isSolidBlock(B.BEE_NEST) &&
+		constants.isSolidBlock(B.BEE_HIVE) &&
+		constants.isSolidBlock(B.HONEY_BLOCK)
+);
+// Comida: botella de miel restaura 6/1.2 (FOOD_VALUES).
+{
+	const food = constants.FOOD_VALUES?.[I.HONEY_BOTTLE];
+	check(
+		"B4: la botella de miel es comida 6/1.2",
+		!!food && food.food === 6 && food.saturation === 1.2,
+		JSON.stringify(food)
+	);
+	const { canEat, eatFood } = require("../server/combat.js");
+	const p = mkPlayer({ health: 10, food: 10, saturation: 5 });
+	p.inventory = new Array(36).fill(null);
+	p.inventory[0] = { id: I.HONEY_BOTTLE, count: 1 };
+	check(
+		"B4: la botella de miel se puede comer",
+		canEat(p, I.HONEY_BOTTLE) === "ok"
+	);
+	eatFood(p, I.HONEY_BOTTLE);
+	check(
+		"B4: comer la botella restaura comida (6)",
+		p.food === 16 && p.saturation > 0,
+		`food ${p.food} sat ${p.saturation}`
+	);
+}
+// Recolección: handleHoneyBottle consume la botella y devuelve la de miel.
+{
+	const actions = require("../server/actions.js");
+	zonaAire();
+	world.setBlock(0, LOW, 0, B.BEE_HIVE);
+	const p = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
+	p.inventory = new Array(36).fill(null);
+	p.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
+	actions.handleHoneyBottle(p, { x: 0, y: LOW, z: 0 });
+	const tieneMiel = p.inventory.some((s) => s && s.id === I.HONEY_BOTTLE);
+	const sinVidrio = !p.inventory.some((s) => s && s.id === I.GLASS_BOTTLE);
+	check(
+		"B4: botella de vidrio sobre la colmena → botella de miel",
+		tieneMiel && sinVidrio,
+		`miel ${tieneMiel} vidrio ${!sinVidrio}`
+	);
+	// Sin botella en la mano: no hace nada.
+	const p2 = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
+	p2.inventory = new Array(36).fill(null);
+	p2.inventory[0] = { id: B.STONE, count: 1 };
+	actions.handleHoneyBottle(p2, { x: 0, y: LOW, z: 0 });
+	check(
+		"B4: sin botella de vidrio no se recolecta miel",
+		!p2.inventory.some((s) => s && s.id === I.HONEY_BOTTLE)
+	);
+	// Colmena lejos (fuera del radio 5): no hace nada.
+	const p3 = mkPlayer({ x: 10, y: LOW + 2, z: 10 });
+	p3.inventory = new Array(36).fill(null);
+	p3.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
+	actions.handleHoneyBottle(p3, { x: 0, y: LOW, z: 0 });
+	check(
+		"B4: colmena fuera del radio no recolecta miel",
+		!p3.inventory.some((s) => s && s.id === I.HONEY_BOTTLE) &&
+			p3.inventory.some((s) => s && s.id === I.GLASS_BOTTLE)
+	);
+	// No es una colmena (piedra): no hace nada.
+	const p4 = mkPlayer({ x: 0, y: LOW + 2, z: 0 });
+	p4.inventory = new Array(36).fill(null);
+	p4.inventory[0] = { id: I.GLASS_BOTTLE, count: 1 };
+	world.setBlock(0, LOW, 0, B.STONE);
+	actions.handleHoneyBottle(p4, { x: 0, y: LOW, z: 0 });
+	check(
+		"B4: un bloque que no es colmena no da miel",
+		!p4.inventory.some((s) => s && s.id === I.HONEY_BOTTLE)
+	);
+}
+// HONEY_BLOCK: caída aterrizando sobre él → sin daño. Aterriza con los pies
+// en la celda (0, 2, 0): el jugador manda la altura del ojo, así que los
+// pies están en floor(player.y - EYE_HEIGHT) = 2 con player.y = 3.7.
+{
+	const aterrizar = (block) => {
+		world.setBlock(0, 0, 0, B.AIR);
+		world.setBlock(0, 1, 0, B.AIR);
+		world.setBlock(0, 2, 0, block);
+		const p = mkPlayer({ health: 20, maxHealth: 20, fallFromY: 20 });
+		p.x = 0;
+		p.y = 3.7;
+		p.z = 0;
+		p.fallVy = -10;
+		combat.applyFallDamage(p, -10);
+		return p.health;
+	};
+	const conMiel = aterrizar(B.HONEY_BLOCK);
+	check(
+		"B4: aterrizar sobre un bloque de miel no hace daño",
+		conMiel === 20,
+		`health ${conMiel}`
+	);
+	const piedra = aterrizar(B.STONE);
+	check(
+		"B4: sobre piedra la misma caída sí daña (control)",
+		piedra < 20,
+		`health ${piedra}`
+	);
+}
+// Recetas: botella de vidrio, colmena y bloque de miel.
+{
+	const recipes = require("../recetas.json");
+	const gb = recipes.glass_bottle;
+	check(
+		"B4: receta botella de vidrio (3 vidrio → 3)",
+		!!gb &&
+			gb.shape?.join("") === "GGG" &&
+			gb.ingredients.G === B.GLASS &&
+			gb.result?.id === I.GLASS_BOTTLE &&
+			gb.result?.count === 3
+	);
+	const bh = recipes.bee_hive;
+	check(
+		"B4: receta colmena (6 tablones + 1 miel → 1)",
+		!!bh &&
+			bh.ingredients.X === B.PLANKS &&
+			bh.ingredients.H === I.HONEY &&
+			bh.result?.id === B.BEE_HIVE
+	);
+	const hb = recipes.honey_block;
+	check(
+		"B4: receta bloque de miel (4 botellas → 1)",
+		!!hb &&
+			hb.shape?.join("") === "HHHH" &&
+			hb.ingredients.H === I.HONEY_BOTTLE &&
+			hb.result?.id === B.HONEY_BLOCK
+	);
+}
+// Generación: nidos de abeja aparecen en los árboles (bosque/abedul) con
+// la semilla por defecto (buscar en varios chunks donde haya árboles).
+{
+	let nidos = 0;
+	for (let cx = -8; cx <= 8; cx += 2)
+		for (let cz = -8; cz <= 8; cz += 2) {
+			const ch = world.generateChunk(cx, cz);
+			if (!ch) continue;
+			for (let i = 0; i < ch.length; i++)
+				if (ch[i] === B.BEE_NEST) {
+					nidos++;
+					break;
+				}
+		}
+	check(
+		"B4: hay nidos de abeja generados en los árboles",
+		nidos > 0,
+		`${nidos}`
+	);
+}
+// Identidad y propiedades
+check(
+	"B5: CORAL_FAN 86, KELP 87, SEAGRASS 88",
+	B.CORAL_FAN === 86 && B.KELP === 87 && B.SEAGRASS === 88
+);
+check(
+	"B5: el coral y las algas no son sólidos (se atraviesan)",
+	!constants.isSolidBlock(B.CORAL_FAN) &&
+		!constants.isSolidBlock(B.KELP) &&
+		!constants.isSolidBlock(B.SEAGRASS)
+);
+for (const b of [B.CORAL_FAN, B.KELP, B.SEAGRASS]) {
+	check(
+		`B5: el bloque ${b} se rompe al instante`,
+		constants.BLOCK_HARDNESS[b] === 0.05
+	);
+	check(
+		`B5: el bloque ${b} se cosecha a mano`,
+		constants.canHarvest(0, b) === true
+	);
+}
+// Drop a sí mismo (breakPlant, como el bambú).
+{
+	const { createPlayer } = require("../server/players.js");
+	const p = createPlayer("p-b5", { x: 0, y: 50, z: 0 });
+	p.inventory = new Array(36).fill(null);
+	check(
+		"B5: canHarvest a mano cubre el drop (drop por finishMining)",
+		constants.canHarvest(0, B.CORAL_FAN) === true &&
+			constants.canHarvest(0, B.KELP) === true &&
+			constants.canHarvest(0, B.SEAGRASS) === true
+	);
+}
+// Generación determinista: con la semilla por defecto hay coral/alga en
+// los océanos (buscar en chunks de océano; el arrecife se genera en la
+// zona cálida y el kelp en el resto del océano).
+{
+	let fans = 0,
+		kelps = 0,
+		gras = 0;
+	for (let cx = -10; cx <= 10; cx += 2)
+		for (let cz = -10; cz <= 10; cz += 2) {
+			const ch = world.generateChunk(cx, cz);
+			if (!ch) continue;
+			for (let i = 0; i < ch.length; i++) {
+				if (ch[i] === B.CORAL_FAN) fans++;
+				else if (ch[i] === B.KELP) kelps++;
+				else if (ch[i] === B.SEAGRASS) gras++;
 			}
-		check("B5: hay abánico de coral generado en el océano cálido", fans > 0, `${fans}`);
-		check("B5: hay kelp generado en el océano", kelps > 0, `${kelps}`);
-		check("B5: hay pasto marino generado en el lecho", gras > 0, `${gras}`);
-	}
+		}
+	check(
+		"B5: hay abánico de coral generado en el océano cálido",
+		fans > 0,
+		`${fans}`
+	);
+	check("B5: hay kelp generado en el océano", kelps > 0, `${kelps}`);
+	check("B5: hay pasto marino generado en el lecho", gras > 0, `${gras}`);
 }
 
 // ============================================================
@@ -751,7 +943,10 @@ check(
 	const p1 = mkFighter();
 	p1.inventory[0] = new ItemStack(I.SHIELD);
 	actions.handleShieldBlock(p1, { blocking: true });
-	check("C2: con escudo en mano se puede activar el bloqueo", p1.blocking === true);
+	check(
+		"C2: con escudo en mano se puede activar el bloqueo",
+		p1.blocking === true
+	);
 	// El escudo nuevo empieza sin desgastar (durabilidad 336 en el HUD).
 	check(
 		"C2: el escudo recién crafteado no trae desgaste",
@@ -761,7 +956,10 @@ check(
 	// Sin escudo en la mano, el cliente no puede bloquear.
 	const p2 = mkFighter();
 	actions.handleShieldBlock(p2, { blocking: true });
-	check("C2: sin escudo en mano no se activa el bloqueo", p2.blocking === false);
+	check(
+		"C2: sin escudo en mano no se activa el bloqueo",
+		p2.blocking === false
+	);
 
 	// Daño de mob con bloqueo: 20 * SHIELD_BLOCK_FACTOR (0.4) = 8 → vida 92.
 	const p3 = mkFighter();
@@ -784,14 +982,22 @@ check(
 	const p4 = mkFighter();
 	p4.inventory[0] = new ItemStack(I.SHIELD);
 	combat.damagePlayer(p4, 20, { source: "mob", meta: { mobType: "zombie" } });
-	check("C2: sin bloquear no hay reducción (mismo golpe = 20)", p4.health === 80, `vida=${p4.health}`);
+	check(
+		"C2: sin bloquear no hay reducción (mismo golpe = 20)",
+		p4.health === 80,
+		`vida=${p4.health}`
+	);
 
 	// El daño ambiental (lava) NO se bloquea aunque estés con el escudo alto.
 	const p5 = mkFighter();
 	p5.inventory[0] = new ItemStack(I.SHIELD);
 	actions.handleShieldBlock(p5, { blocking: true });
 	combat.damagePlayer(p5, 10, { source: "lava" });
-	check("C2: el escudo no bloquea daño ambiental (lava)", p5.health === 90, `vida=${p5.health}`);
+	check(
+		"C2: el escudo no bloquea daño ambiental (lava)",
+		p5.health === 90,
+		`vida=${p5.health}`
+	);
 
 	// El escudo se rompe al agotarse: durabilidad 1 → último impacto lo rompe,
 	// se elimina de la mano y se desbloquea solo.
@@ -799,7 +1005,10 @@ check(
 	p6.inventory[0] = new ItemStack(I.SHIELD, 1, 1);
 	actions.handleShieldBlock(p6, { blocking: true });
 	combat.damagePlayer(p6, 20, { source: "mob", meta: { mobType: "zombie" } });
-	check("C2: al romperse el escudo se elimina de la mano", p6.inventory[0] === null);
+	check(
+		"C2: al romperse el escudo se elimina de la mano",
+		p6.inventory[0] === null
+	);
 	check("C2: al romperse el escudo se deja de bloquear", p6.blocking === false);
 }
 
@@ -839,7 +1048,11 @@ check(
 	const p1 = mkTotemFighter();
 	p1.inventory[0] = new ItemStack(I.TOTEM_OF_UNDYING);
 	combat.damagePlayer(p1, 20, { source: "mob", meta: { mobType: "zombie" } });
-	check("C3: con tótem en mano no se muere (vida 10)", p1.health === 10, `vida=${p1.health}`);
+	check(
+		"C3: con tótem en mano no se muere (vida 10)",
+		p1.health === 10,
+		`vida=${p1.health}`
+	);
 	check(
 		"C3: la absorción del tótem es TOTEM_ABSORPTION_HP (8)",
 		p1.absorption === constants.TOTEM_ABSORPTION_HP,
@@ -875,7 +1088,9 @@ check(
 	combat.damagePlayer(p3, 5, { source: "mob", meta: { mobType: "zombie" } });
 	check(
 		"C3: el daño no letal no consume el tótem (vida 15, sigue en la mano)",
-		p3.health === 15 && p3.inventory[0] && p3.inventory[0].id === I.TOTEM_OF_UNDYING,
+		p3.health === 15 &&
+			p3.inventory[0] &&
+			p3.inventory[0].id === I.TOTEM_OF_UNDYING,
 		`vida=${p3.health}`
 	);
 }
@@ -927,7 +1142,10 @@ check(
 		const snap = mobs.mobSnapshot(cow);
 		check("E1: el snapshot expone mob.variant", snap.variant === "cold");
 		const snap2 = mobs.mobSnapshot(mobs.createMob("cow", 0, 0, 0));
-		check("E1: sin variante → snapshot con '' (templado base)", snap2.variant === "");
+		check(
+			"E1: sin variante → snapshot con '' (templado base)",
+			snap2.variant === ""
+		);
 	}
 }
 
@@ -1240,8 +1458,7 @@ check(
 		let cobbleFloor = 0;
 		for (let dx = -4; dx <= 4; dx++) {
 			for (let dz = -4; dz <= 4; dz++) {
-				if (tBlk(wx0 + dx, wz0 + dz, floorY) === B.COBBLESTONE)
-					cobbleFloor++;
+				if (tBlk(wx0 + dx, wz0 + dz, floorY) === B.COBBLESTONE) cobbleFloor++;
 			}
 		}
 		// El piso queda bajo la superficie: la cámara completa (TRIAL_HEIGHT
@@ -1273,8 +1490,9 @@ check(
 			[-1, 0],
 			[0, 1],
 			[0, -1]
-		].filter(([a, b]) => tBlk(wx0 + a, wz0 + b, floorY) === B.HEAVY_CORE)
-			.length;
+		].filter(
+			([a, b]) => tBlk(wx0 + a, wz0 + b, floorY) === B.HEAVY_CORE
+		).length;
 		check(
 			"1-2 HEAVY_CORE flanquean el VAULT (fuente de la maza D3)",
 			cores >= 1 && cores <= 2,
@@ -1316,60 +1534,68 @@ check(
 // ============================================================
 {
 	// Bloque base y derivados registrados con dureza MC.
-	check("D4: cobre — dureza 3.0 (bloque/escalera/losa)", (
+	check(
+		"D4: cobre — dureza 3.0 (bloque/escalera/losa)",
 		B.COPPER_BLOCK === 182 &&
-		B.COPPER_STAIRS === 183 &&
-		B.COPPER_SLAB === 184 &&
-		constants.BLOCK_HARDNESS[182] === 3.0 &&
-		constants.BLOCK_HARDNESS[183] === 3.0 &&
-		constants.BLOCK_HARDNESS[184] === 3.0
-	));
-	check("D4: puerta de cobre es isDoor y dureza 5.0 (metálica)", (
+			B.COPPER_STAIRS === 183 &&
+			B.COPPER_SLAB === 184 &&
+			constants.BLOCK_HARDNESS[182] === 3.0 &&
+			constants.BLOCK_HARDNESS[183] === 3.0 &&
+			constants.BLOCK_HARDNESS[184] === 3.0
+	);
+	check(
+		"D4: puerta de cobre es isDoor y dureza 5.0 (metálica)",
 		B.COPPER_DOOR === 185 &&
-		constants.isDoor(B.COPPER_DOOR) === true &&
-		constants.BLOCK_HARDNESS[185] === 5.0
-	));
-	check("D4: tuff — dureza 1.5 (tuff/pulido/ladrillos)", (
+			constants.isDoor(B.COPPER_DOOR) === true &&
+			constants.BLOCK_HARDNESS[185] === 5.0
+	);
+	check(
+		"D4: tuff — dureza 1.5 (tuff/pulido/ladrillos)",
 		B.TUFF === 186 &&
-		B.POLISHED_TUFF === 187 &&
-		B.TUFF_BRICKS === 188 &&
-		constants.BLOCK_HARDNESS[186] === 1.5 &&
-		constants.BLOCK_HARDNESS[187] === 1.5 &&
-		constants.BLOCK_HARDNESS[188] === 1.5
-	));
+			B.POLISHED_TUFF === 187 &&
+			B.TUFF_BRICKS === 188 &&
+			constants.BLOCK_HARDNESS[186] === 1.5 &&
+			constants.BLOCK_HARDNESS[187] === 1.5 &&
+			constants.BLOCK_HARDNESS[188] === 1.5
+	);
 	// Losas/escaleras entran en el sólido en media caja/escalón.
-	check("D4: COPPER_SLAB/COPPER_STAIRS en SHAPED_SOLIDS", (
+	check(
+		"D4: COPPER_SLAB/COPPER_STAIRS en SHAPED_SOLIDS",
 		constants.SHAPED_SOLIDS.has(B.COPPER_SLAB) &&
-		constants.SHAPED_SOLIDS.has(B.COPPER_STAIRS)
-	));
+			constants.SHAPED_SOLIDS.has(B.COPPER_STAIRS)
+	);
 	// Necesitan pico (categoría stone).
-	check("D4: los 7 bloques requieren pico (canHarvest)", (
+	check(
+		"D4: los 7 bloques requieren pico (canHarvest)",
 		[182, 183, 184, 185, 186, 187, 188].every((id) =>
 			constants.canHarvest(id, "pickaxe")
 		)
-	));
+	);
 	// Todos aparecen en el creative.
-	check("D4: los 7 bloques están en CREATIVE_ITEMS", (
+	check(
+		"D4: los 7 bloques están en CREATIVE_ITEMS",
 		[182, 183, 184, 185, 186, 187, 188].every((id) =>
 			constants.CREATIVE_ITEMS.includes(id)
 		)
-	));
+	);
 	// Cadena de crafteo: escaleras/losa/puerta desde el bloque de cobre,
 	// pulido y ladrillos desde tuff. Los verifica unit-recetas (shape e
 	// ingredientes); aquí comprobamos que existen con resultado correcto.
 	const recetas = require("../recetas.json");
 	const res = (n) => recetas[n]?.result;
-	check("D4: recetas de cobre (escaleras/losa/puerta desde bloque)", (
+	check(
+		"D4: recetas de cobre (escaleras/losa/puerta desde bloque)",
 		res("copper_stairs")?.id === 183 &&
-		res("copper_slab")?.id === 184 &&
-		res("copper_door")?.id === 185
-	));
-	check("D4: recetas de tuff (pulido y ladrillos en cadena)", (
+			res("copper_slab")?.id === 184 &&
+			res("copper_door")?.id === 185
+	);
+	check(
+		"D4: recetas de tuff (pulido y ladrillos en cadena)",
 		res("polished_tuff")?.id === 187 &&
-		recetas["polished_tuff"]?.ingredients?.["#"] === 186 &&
-		res("tuff_bricks")?.id === 188 &&
-		recetas["tuff_bricks"]?.ingredients?.["#"] === 187
-	));
+			recetas["polished_tuff"]?.ingredients?.["#"] === 186 &&
+			res("tuff_bricks")?.id === 188 &&
+			recetas["tuff_bricks"]?.ingredients?.["#"] === 187
+	);
 }
 
 // ------------------------------------------------------------

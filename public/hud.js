@@ -10,12 +10,12 @@ import {
 	ARMOR_SLOT_NAMES,
 	BOW,
 	BOW_DURABILITY,
+	DURABILITY,
 	FISHING_ROD,
 	FISHING_ROD_DURABILITY,
+	itemLabel,
 	SHIELD,
-	SHIELD_DURABILITY,
-	DURABILITY,
-	itemLabel
+	SHIELD_DURABILITY
 } from "./constants.js";
 import { itemIconCss } from "./itemicons.js";
 import { controls, showBlocker } from "./scene.js";
@@ -107,9 +107,13 @@ function maxDurability(item) {
 		// Fase 21.5 (A1): la caña de pescar usa su propia durabilidad (igual
 		// que el arco: no desgasta al minar/atacar, su barra se descuenta al
 		// recoger un pez). Fase 21.5 (C2): el escudo usa la suya (336).
-		(item.id === BOW ? BOW_DURABILITY
-			: item.id === FISHING_ROD ? FISHING_ROD_DURABILITY
-			: item.id === SHIELD ? SHIELD_DURABILITY : 0)
+		(item.id === BOW
+			? BOW_DURABILITY
+			: item.id === FISHING_ROD
+				? FISHING_ROD_DURABILITY
+				: item.id === SHIELD
+					? SHIELD_DURABILITY
+					: 0)
 	);
 }
 

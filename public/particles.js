@@ -7,10 +7,10 @@
 // al recibir block_update (cubre al jugador local y a los demás).
 // ============================================================
 import * as THREE from "three";
-import { BLOCK_COLORS } from "./constants.js";
-import { scene } from "./scene.js";
 import { getClientBlock } from "./chunkstore.js";
+import { BLOCK_COLORS } from "./constants.js";
 import { findLeafPoint, leafParticleConfig } from "./leafparticles.js"; // Fase 21.5 (E4): hojas cayendo
+import { scene } from "./scene.js";
 
 // Pool de partículas vivas: cada una un cubito con estado de física.
 const cubeGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
@@ -56,7 +56,9 @@ function tickParticles() {
 			p.mesh.position.y += -p.vy * dt;
 			const wob = Math.sin(p.life * p.wobSpeed + p.phase) * p.wobAmp;
 			p.mesh.position.x = p.baseX + wob;
-			p.mesh.position.z = p.baseZ + Math.cos(p.life * p.wobSpeed * 0.8 + p.phase) * p.wobAmp * 0.7;
+			p.mesh.position.z =
+				p.baseZ +
+				Math.cos(p.life * p.wobSpeed * 0.8 + p.phase) * p.wobAmp * 0.7;
 			p.mesh.rotation.z += 1.5 * dt;
 			p.mesh.rotation.x += 0.8 * dt;
 			const k = 1 - p.life / p.ttl;
@@ -157,7 +159,8 @@ const leafAcc0 = { v: 0 };
 // Malla de hoja nueva (reutiliza una del pool si la hay). El material de
 // hoja es translúcido y NO emisivo: la vegetación no emite su propia luz.
 function spawnLeafMesh(colorHex) {
-	const mesh = freeLeaves.pop() || new THREE.Mesh(leafGeo, materialFor(colorHex));
+	const mesh =
+		freeLeaves.pop() || new THREE.Mesh(leafGeo, materialFor(colorHex));
 	mesh.geometry = leafGeo;
 	mesh.material = materialFor(colorHex);
 	mesh.material.transparent = true;
@@ -208,7 +211,8 @@ export function tickFallingLeaves(dt, px, py, pz, reduceMotion) {
 		const hit = findLeafPoint(px, pz, py, 12, getClientBlock, Math.random);
 		if (hit) {
 			const id = getClientBlock(hit.x, hit.y, hit.z);
-			if (Math.random() < full.chance) emitLeaf(hit.x, hit.y, hit.z, BLOCK_COLORS[id] ?? 0x3a7a2e, full);
+			if (Math.random() < full.chance)
+				emitLeaf(hit.x, hit.y, hit.z, BLOCK_COLORS[id] ?? 0x3a7a2e, full);
 		}
 	}
 }

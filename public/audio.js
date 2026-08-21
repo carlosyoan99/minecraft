@@ -764,7 +764,7 @@ export function updateAmbient() {
 // Cada disco tiene una paleta de notas diferente (cat: tonos cálidos,
 // 13: tonos fríos). El disco se repite en loop hasta que se extrae.
 // ============================================================
-let discOscillators = [];
+const discOscillators = [];
 let discIntervalId = null;
 const DISC_PALETTES = {
 	275: [261.63, 329.63, 392.0, 523.25, 349.23], // cat — Do mayor, cálido
@@ -805,7 +805,7 @@ export function playNote(note) {
 	const ctx = ensureCtx();
 	if (!ctx) return;
 	if (muted) return;
-	const freq = 440 * Math.pow(2, (note - 12) / 12); // 0→220Hz, 12→440Hz, 24→880Hz
+	const freq = 440 * 2 ** ((note - 12) / 12); // 0→220Hz, 12→440Hz, 24→880Hz
 	const osc = ctx.createOscillator();
 	const gain = ctx.createGain();
 	osc.type = "triangle";

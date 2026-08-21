@@ -467,7 +467,7 @@ function surfaceBlockFor(wx, wz, height, temp, mnt) {
 	}
 	// Fase 21.5 (F1): Pale Garden usa musgo pálido como superficie (en vez de césped).
 	// Se consulta getBiome SOLO en la banda de temperatura del bosque (> 0.2) para
-		// no pagar el coste de la caché en biomas que no pueden ser pale_garden.
+	// no pagar el coste de la caché en biomas que no pueden ser pale_garden.
 	if (temp > 0.2 && wx !== undefined) {
 		const biome = getBiome(wx, wz);
 		if (biome === "pale_garden") return B.PALE_MOSS_BLOCK;

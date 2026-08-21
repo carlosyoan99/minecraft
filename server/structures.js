@@ -560,7 +560,8 @@ function trialBlockAt(dx, dz, dy) {
 	if (dy === 0) return B.COBBLESTONE;
 	const inCore = Math.abs(dx) <= 1 && Math.abs(dz) <= 1;
 	const onCross = dx === 0 || dz === 0;
-	const onPerimeter = Math.abs(dx) === TRIAL_HALF - 1 || Math.abs(dz) === TRIAL_HALF - 1;
+	const onPerimeter =
+		Math.abs(dx) === TRIAL_HALF - 1 || Math.abs(dz) === TRIAL_HALF - 1;
 	// Interior: aire en la cámara central, los pasillos en cruz y el
 	// corredor perimetral; piedra en el resto (paredes entre pasillos).
 	if (inCore || onCross || onPerimeter) return B.AIR;
@@ -613,8 +614,7 @@ function placeTrialColumn(data, x, z, wx, wz, trial, height) {
 			) {
 				// Solo los 4 adyacentes ortogonales al VAULT son candidatos;
 				// el número de cores (1-2) los elige por hash (N/E primero).
-				const cores =
-					1 + Math.floor(structCellHash(cx, cz, 45) * 2);
+				const cores = 1 + Math.floor(structCellHash(cx, cz, 45) * 2);
 				const order = [
 					[1, 0],
 					[-1, 0],

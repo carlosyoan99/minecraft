@@ -653,16 +653,14 @@ function handleConnection(ws, req) {
 			}
 		}
 
-	// Fase 21.5 (B3): ¿el andamio colocado en (x,y,z) queda bajo los pies del
-	// jugador (la celda que ocupa)? Si es la misma celda donde se colocó, al
-	// colocarlo "desde dentro" el jugador se sube encima (escalar el andamio).
-	function placeLifts(p, x, y, z) {
-		return (
-			Math.floor(p.x) === x &&
-			Math.floor(p.y) === y &&
-			Math.floor(p.z) === z
-		);
-	}
+		// Fase 21.5 (B3): ¿el andamio colocado en (x,y,z) queda bajo los pies del
+		// jugador (la celda que ocupa)? Si es la misma celda donde se colocó, al
+		// colocarlo "desde dentro" el jugador se sube encima (escalar el andamio).
+		function placeLifts(p, x, y, z) {
+			return (
+				Math.floor(p.x) === x && Math.floor(p.y) === y && Math.floor(p.z) === z
+			);
+		}
 
 		try {
 			switch (event) {
@@ -959,33 +957,34 @@ function handleConnection(ws, req) {
 				case "chest_open": {
 					actions.handleChestOpen(p, ws, data);
 					break;
-				}					case "chest_action": {
-						actions.handleChestAction(p, ws, data);
-						break;
-					}
+				}
+				case "chest_action": {
+					actions.handleChestAction(p, ws, data);
+					break;
+				}
 
-					// Fase 21.5 (F4): mochila (Bundle) — abrir y operar.
-					case "bundle_open": {
-						actions.handleBundleOpen(p, ws);
-						break;
-					}
-					case "bundle_action": {
-						actions.handleBundleAction(p, ws, data);
-						break;
-					}
+				// Fase 21.5 (F4): mochila (Bundle) — abrir y operar.
+				case "bundle_open": {
+					actions.handleBundleOpen(p, ws);
+					break;
+				}
+				case "bundle_action": {
+					actions.handleBundleAction(p, ws, data);
+					break;
+				}
 
-					// Fase 21.5 (D6): jukebox — clic derecho para insertar/extraer disco.
-					case "jukebox_interact": {
-						actions.handleJukeboxInteract(p, ws, data);
-						break;
-					}
-					// Fase 21.5 (D6): note block — clic derecho emite un sonido.
-					case "note_block_click": {
-						actions.handleNoteBlockClick(p, ws, data);
-						break;
-					}
+				// Fase 21.5 (D6): jukebox — clic derecho para insertar/extraer disco.
+				case "jukebox_interact": {
+					actions.handleJukeboxInteract(p, ws, data);
+					break;
+				}
+				// Fase 21.5 (D6): note block — clic derecho emite un sonido.
+				case "note_block_click": {
+					actions.handleNoteBlockClick(p, ws, data);
+					break;
+				}
 
-					case "furnace_action": {
+				case "furnace_action": {
 					actions.handleFurnaceAction(p, ws, data, playerId);
 					break;
 				}
@@ -1220,11 +1219,17 @@ function handleConnection(ws, req) {
 		// limpio del cliente, error de socket, etc. Código 1006 = abnormal
 		// closure (típico de terminate() del heartbeat sin close frame).
 		const reasonStr = reason?.toString() || "";
-		const killSource = ws.killedByHeartbeat ? "heartbeat" : (code === 1000 ? "cliente" : code === 1006 ? "anómalo" : "otro");
+		const killSource = ws.killedByHeartbeat
+			? "heartbeat"
+			: code === 1000
+				? "cliente"
+				: code === 1006
+					? "anómalo"
+					: "otro";
 		log.info(
 			`🔴 Jugador desconectado: ${leaver ? leaver.name : playerId} ` +
-			`(${state.players.size} en línea) ` +
-			`code=${code} reason=${reasonStr || "(vacío)"} causa=${killSource}`
+				`(${state.players.size} en línea) ` +
+				`code=${code} reason=${reasonStr || "(vacío)"} causa=${killSource}`
 		);
 		// Si se desconecta a mitad de una mina, el bloque NO cambia (no llega
 		// block_update), así que los demás jugadores que veían las grietas se

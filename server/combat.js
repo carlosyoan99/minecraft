@@ -135,7 +135,9 @@ function sendFireState(player, on) {
 // daño lo integra tickPlayer (mismo patrón de intervalos que el fuego).
 function sendPoisonState(player, on) {
 	if (player.ws && player.ws.readyState === WebSocket.OPEN) {
-		player.ws.send(JSON.stringify({ event: "poison_state", data: { on: !!on } }));
+		player.ws.send(
+			JSON.stringify({ event: "poison_state", data: { on: !!on } })
+		);
 	}
 }
 
@@ -208,7 +210,9 @@ function applyFishingWear(player) {
 	const slot = player.inventory[player.selectedSlot];
 	if (!slot || !isFishingRod(slot.id)) return false;
 	const cur =
-		typeof slot.durability === "number" ? slot.durability : FISHING_ROD_DURABILITY;
+		typeof slot.durability === "number"
+			? slot.durability
+			: FISHING_ROD_DURABILITY;
 	const next = Math.max(0, cur - 1);
 	if (next <= 0) {
 		player.inventory[player.selectedSlot] = null;
@@ -447,9 +451,7 @@ function damagePlayer(player, amount, opts = {}) {
 	if (blocked && real >= 1) {
 		if (applyShieldWear(player)) {
 			if (player.ws.readyState === WebSocket.OPEN) {
-				player.ws.send(
-					JSON.stringify({ event: "shield_broke", data: {} })
-				);
+				player.ws.send(JSON.stringify({ event: "shield_broke", data: {} }));
 			}
 		}
 	}
@@ -472,9 +474,7 @@ function damagePlayer(player, amount, opts = {}) {
 		player.absorption = TOTEM_ABSORPTION_HP;
 		sendHealth(player);
 		if (player.ws.readyState === WebSocket.OPEN) {
-			player.ws.send(
-				JSON.stringify({ event: "totem_used", data: {} })
-			);
+			player.ws.send(JSON.stringify({ event: "totem_used", data: {} }));
 		}
 		// Fase 10 (B2): la causa de muerte viaja a la pantalla de muerte.
 	} else if (player.health <= 0) {

@@ -779,7 +779,9 @@ const CREAKING_VISION_RANGE = 24;
 const CREAKING_VISION_ANGLE = Math.PI / 4; // 45° a cada lado del eje de mira
 function _hasLineOfSight(px, py, pz, mx, my, mz, playerYaw, playerPitch) {
 	// Vector del jugador al mob.
-	const dx = mx - px, dy = my - py, dz = mz - pz;
+	const dx = mx - px,
+		dy = my - py,
+		dz = mz - pz;
 	const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 	if (dist > CREAKING_VISION_RANGE || dist < 0.5) return false;
 	// Ángulo horizontal: yaw del jugador en radianes (Three.js: 0 = −Z).
@@ -788,7 +790,9 @@ function _hasLineOfSight(px, py, pz, mx, my, mz, playerYaw, playerPitch) {
 	if (yawDiff > Math.PI) yawDiff = Math.PI * 2 - yawDiff;
 	// Ángulo vertical (pitch): simplificación — si el mob está a ±3 bloques
 	// de altura, se considera dentro del campo de visión vertical.
-	const pitchDiff = Math.abs(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)) - (playerPitch || 0));
+	const pitchDiff = Math.abs(
+		Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)) - (playerPitch || 0)
+	);
 	if (yawDiff > CREAKING_VISION_ANGLE) return false;
 	if (pitchDiff > CREAKING_VISION_ANGLE) return false;
 	// Línea de visión simple: muestrear 3 puntos entre el jugador y el mob.
@@ -805,7 +809,8 @@ function tickCreaking(mob, isNight, nearest, dist) {
 	let frozen = false;
 	for (const [, p] of players) {
 		if (!p.alive) continue;
-		const dx = mob.x - p.x, dz = mob.z - p.z;
+		const dx = mob.x - p.x,
+			dz = mob.z - p.z;
 		const d = Math.sqrt(dx * dx + dz * dz);
 		if (d > CREAKING_VISION_RANGE) continue;
 		if (_hasLineOfSight(p.x, p.y, p.z, mob.x, mob.y, mob.z, p.yaw, p.pitch)) {

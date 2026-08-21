@@ -248,9 +248,11 @@ function mainLoop() {
 	// "bobber") para que el cliente los dibuje con la misma maquinaria.
 	const arrows = mobs.tickArrows(TICK_MS);
 	const bobbers = fishing.tickBobbers(TICK_MS);
-	const projectileData = [...arrows.map(mobs.arrowSnapshot), ...bobbers.map(fishing.bobberSnapshot)];
-	if (projectileData.length)
-		netBroadcast("arrows_update", projectileData);
+	const projectileData = [
+		...arrows.map(mobs.arrowSnapshot),
+		...bobbers.map(fishing.bobberSnapshot)
+	];
+	if (projectileData.length) netBroadcast("arrows_update", projectileData);
 
 	// Fase 12 (Bloque B): trampa de los templos de jungla — al pisar el
 	// pasadizo se disparan flechas (con cooldown por templo).

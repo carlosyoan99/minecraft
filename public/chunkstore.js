@@ -7,8 +7,8 @@
 // ============================================================
 import {
 	CHUNK_SIZE,
-	TORCH,
 	LANTERN,
+	TORCH,
 	WORLD_HEIGHT,
 	WORLD_MAX_Y,
 	WORLD_MIN_Y

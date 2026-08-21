@@ -16,8 +16,14 @@ const state = require("./state.js");
 const world = require("./world.js");
 // players.js no importa mobs.js/projectiles.js, así que es seguro requerirlo
 // aquí (mismos imports que tenía el bloque en mobs.js).
-const { damagePlayer, applyPoison, POISON_DURATION_MS, addToInventory, removeFromInventory, addXp } =
-	require("./players.js");
+const {
+	damagePlayer,
+	applyPoison,
+	POISON_DURATION_MS,
+	addToInventory,
+	removeFromInventory,
+	addXp
+} = require("./players.js");
 
 const { players } = state;
 
@@ -249,7 +255,11 @@ function windBurst(bx, by, bz) {
 			p.ws.send(
 				JSON.stringify({
 					event: "knockback",
-					data: { vx: nx * WIND_KB_STRENGTH, vy: WIND_KB_UP, vz: nz * WIND_KB_STRENGTH }
+					data: {
+						vx: nx * WIND_KB_STRENGTH,
+						vy: WIND_KB_UP,
+						vz: nz * WIND_KB_STRENGTH
+					}
 				})
 			);
 		} catch {
@@ -495,7 +505,7 @@ module.exports = {
 	WIND_LIFE_MS,
 	WIND_HIT_DIST,
 	WIND_BURST_RADIUS,
-shootArrow,
+	shootArrow,
 	shootPoisonArrow, // Fase 21.5 (D2): flecha que envenena (Bogged)
 	shootTrident,
 	throwPlayerTrident,

@@ -84,7 +84,9 @@ function lootSlotsFrom(table) {
 		// serializar que los literales anteriores).
 		let durability;
 		if (durRange) {
-			durability = durRange[0] + Math.floor(Math.random() * (durRange[1] - durRange[0] + 1));
+			durability =
+				durRange[0] +
+				Math.floor(Math.random() * (durRange[1] - durRange[0] + 1));
 		}
 		slots[i] = new ItemStack(id, count, durability);
 	}

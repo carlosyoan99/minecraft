@@ -98,7 +98,10 @@ function reelBobber(player) {
 
 // Selecciona categoría (pescado/tesoro/basura) y ítem de la tabla por peso.
 function rollLootItem() {
-	const catTotal = LOOT_CATEGORY_WEIGHTS.fish + LOOT_CATEGORY_WEIGHTS.treasure + LOOT_CATEGORY_WEIGHTS.junk;
+	const catTotal =
+		LOOT_CATEGORY_WEIGHTS.fish +
+		LOOT_CATEGORY_WEIGHTS.treasure +
+		LOOT_CATEGORY_WEIGHTS.junk;
 	let r = Math.random() * catTotal;
 	let category = "fish";
 	for (const [cat, w] of Object.entries(LOOT_CATEGORY_WEIGHTS)) {

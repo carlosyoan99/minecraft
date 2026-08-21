@@ -152,15 +152,39 @@ export const BLOCK_COLORS = {
 	98: 0xe85a6a, // flor de cactus (rosa)
 	// Fase 21.5 (C5): concreto (142-157) — colores MC oficiales.
 	// Los IDs evitan el rango 100-277 (ítems: el namespace es compartido).
-	142: 0xf0f0f0, 143: 0xe87a2a, 144: 0xc93ac9, 145: 0x5a8ad9,
-	146: 0xe8d21a, 147: 0x6fd93a, 148: 0xe88ab0, 149: 0x8a8a8a,
-	150: 0xc0c0c0, 151: 0x2ab8c9, 152: 0x7a3ac9, 153: 0x3a5ac9,
-	154: 0x8a5a3a, 155: 0x3a9a3a, 156: 0xc0392b, 157: 0x2a2a2a,
+	142: 0xf0f0f0,
+	143: 0xe87a2a,
+	144: 0xc93ac9,
+	145: 0x5a8ad9,
+	146: 0xe8d21a,
+	147: 0x6fd93a,
+	148: 0xe88ab0,
+	149: 0x8a8a8a,
+	150: 0xc0c0c0,
+	151: 0x2ab8c9,
+	152: 0x7a3ac9,
+	153: 0x3a5ac9,
+	154: 0x8a5a3a,
+	155: 0x3a9a3a,
+	156: 0xc0392b,
+	157: 0x2a2a2a,
 	// Fase 21.5 (C5): polvo de concreto (158-173) — tonos más claros
-	158: 0xf8f8f8, 159: 0xf0a050, 160: 0xd86ad8, 161: 0x88b8e8,
-	162: 0xf0e060, 163: 0x98e870, 164: 0xf0b8c8, 165: 0xb0b0b0,
-	166: 0xd0d0d0, 167: 0x60d0d8, 168: 0x9868d8, 169: 0x6888d8,
-	170: 0xa87850, 171: 0x68b860, 172: 0xd86050, 173: 0x4a4a4a,
+	158: 0xf8f8f8,
+	159: 0xf0a050,
+	160: 0xd86ad8,
+	161: 0x88b8e8,
+	162: 0xf0e060,
+	163: 0x98e870,
+	164: 0xf0b8c8,
+	165: 0xb0b0b0,
+	166: 0xd0d0d0,
+	167: 0x60d0d8,
+	168: 0x9868d8,
+	169: 0x6888d8,
+	170: 0xa87850,
+	171: 0x68b860,
+	172: 0xd86050,
+	173: 0x4a4a4a,
 	// Fase 21.5 (D1/F1/F3/D3): bloques prospectivos
 	174: 0x6a6a7a, // vault
 	175: 0x8a6a40, // creaking heart
@@ -292,19 +316,48 @@ export const BLOCK_NAMES = {
 	97: "Hierba seca alta",
 	98: "Flor de cactus",
 	// Fase 21.5 (C5): concreto (142-157)
-	142: "Concreto blanco", 143: "Concreto naranja", 144: "Concreto magenta", 145: "Concreto azul claro",
-	146: "Concreto amarillo", 147: "Concreto verde lima", 148: "Concreto rosa", 149: "Concreto gris",
-	150: "Concreto gris claro", 151: "Concreto cian", 152: "Concreto púrpura", 153: "Concreto azul",
-	154: "Concreto marrón", 155: "Concreto verde", 156: "Concreto rojo", 157: "Concreto negro",
+	142: "Concreto blanco",
+	143: "Concreto naranja",
+	144: "Concreto magenta",
+	145: "Concreto azul claro",
+	146: "Concreto amarillo",
+	147: "Concreto verde lima",
+	148: "Concreto rosa",
+	149: "Concreto gris",
+	150: "Concreto gris claro",
+	151: "Concreto cian",
+	152: "Concreto púrpura",
+	153: "Concreto azul",
+	154: "Concreto marrón",
+	155: "Concreto verde",
+	156: "Concreto rojo",
+	157: "Concreto negro",
 	// Fase 21.5 (C5): polvo de concreto (158-173)
-	158: "Polvo de concreto blanco", 159: "Polvo de concreto naranja", 160: "Polvo de concreto magenta", 161: "Polvo de concreto azul claro",
-	162: "Polvo de concreto amarillo", 163: "Polvo de concreto verde lima", 164: "Polvo de concreto rosa", 165: "Polvo de concreto gris",
-	166: "Polvo de concreto gris claro", 167: "Polvo de concreto cian", 168: "Polvo de concreto púrpura", 169: "Polvo de concreto azul",
-	170: "Polvo de concreto marrón", 171: "Polvo de concreto verde", 172: "Polvo de concreto rojo", 173: "Polvo de concreto negro",
+	158: "Polvo de concreto blanco",
+	159: "Polvo de concreto naranja",
+	160: "Polvo de concreto magenta",
+	161: "Polvo de concreto azul claro",
+	162: "Polvo de concreto amarillo",
+	163: "Polvo de concreto verde lima",
+	164: "Polvo de concreto rosa",
+	165: "Polvo de concreto gris",
+	166: "Polvo de concreto gris claro",
+	167: "Polvo de concreto cian",
+	168: "Polvo de concreto púrpura",
+	169: "Polvo de concreto azul",
+	170: "Polvo de concreto marrón",
+	171: "Polvo de concreto verde",
+	172: "Polvo de concreto rojo",
+	173: "Polvo de concreto negro",
 	// Fase 21.5 (D1/F1/F3/D3): bloques prospectivos
-	174: "Bóveda", 175: "Corazón crujiente", 176: "Tronco de roble pálido",
-	177: "Hojas de roble pálido", 178: "Tablones de roble pálido",
-	179: "Bloque de musgo pálido", 180: "Musgo pálido", 181: "Núcleo pesado",
+	174: "Bóveda",
+	175: "Corazón crujiente",
+	176: "Tronco de roble pálido",
+	177: "Hojas de roble pálido",
+	178: "Tablones de roble pálido",
+	179: "Bloque de musgo pálido",
+	180: "Musgo pálido",
+	181: "Núcleo pesado",
 	// Fase 21.5 (D4): familia de cobre y tuff (1.21)
 	182: "Bloque de cobre",
 	183: "Escaleras de cobre",
@@ -371,7 +424,9 @@ export const TALL_DRY_GRASS = 97;
 export const CACTUS_FLOWER = 98;
 export const BED = 24; // Fase 7: dormir de noche fija el punto de reaparición
 // Fase 21.5 (C4): set de todas las camas (24 + 16 colores 44-65).
-export const BED_SET = new Set([24, 44, 45, 46, 47, 52, 53, 54, 55, 56, 57, 58, 59, 62, 63, 64, 65]);
+export const BED_SET = new Set([
+	24, 44, 45, 46, 47, 52, 53, 54, 55, 56, 57, 58, 59, 62, 63, 64, 65
+]);
 export const LAVA = 25; // Fase 7: pozos decorativos en superficie (no minable)
 export const FARMLAND = 26; // Fase 9 (C): tierra arada
 export const WHEAT = 27; // Fase 9 (C): cultivo de trigo (no sólido)
@@ -596,8 +651,9 @@ export const PLACEABLE_BLOCKS = new Set([
 	// Fase 21.5 (E3): bloques decorativos (cross-quad, no sólidos)
 	92, 93, 94, 95, 96, 97, 98,
 	// Fase 21.5 (C5): concreto sólido (142-157) y polvo (158-173).
-	142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157,
-	158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173,
+	142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156,
+	157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171,
+	172, 173,
 	// Fase 21.5 (D1/D3/F1/F3): bóveda, núcleo pesado y Pale Garden.
 	174, 175, 176, 177, 178, 179, 180, 181,
 	// Fase 21.5 (D4): familia de cobre y tuff (1.21)
@@ -606,7 +662,9 @@ export const PLACEABLE_BLOCKS = new Set([
 // Bloques NO sólidos que se rompen al instante (plantas y cultivos, Fase 9).
 // Fase 21.5 (B3): bambú (planta alta) y andamio (no sólido, escalable).
 // Fase 21.5 (B5): coral y algas bajo el agua (cross-quad).
-export const NON_SOLID_PLANTS = new Set([27, 33, 34, 35, 43, 80, 82, 86, 87, 88, 92, 93, 94, 95, 96, 97, 98, 180]); // 27/33/34/35/43 = flores/hierba/lianas (Fase 9/11); 180 = musgo pálido (F1)
+export const NON_SOLID_PLANTS = new Set([
+	27, 33, 34, 35, 43, 80, 82, 86, 87, 88, 92, 93, 94, 95, 96, 97, 98, 180
+]); // 27/33/34/35/43 = flores/hierba/lianas (Fase 9/11); 180 = musgo pálido (F1)
 // Armadura equipable (Fase 7): clic derecho con la pieza en mano la equipa.
 // No se apilan (cada pieza con su durabilidad, como las herramientas).
 export const ARMOR_ITEMS = new Set([
@@ -716,7 +774,8 @@ export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Fase 21.5 (B4): botella de miel (264).
 // OJO: este Set se parsea con regex en unit-sync — sin comentarios dentro.
 export const FOOD_ITEMS = new Set([
-	107, 108, 109, 110, 111, 112, 113, 114, 118, 119, 133, 134, 135, 116, 121, 122, 264
+	107, 108, 109, 110, 111, 112, 113, 114, 118, 119, 133, 134, 135, 116, 121,
+	122, 264
 ]);
 // Azadas (Fase 9, C): convierten tierra/césped en tierra arada (clic derecho).
 export const HOES = new Set([240, 241, 242, 243, 244]);

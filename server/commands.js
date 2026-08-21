@@ -309,7 +309,11 @@ function locateBiome(name, wx, wz) {
 	let best = null,
 		bestDist = Infinity;
 	const step = 8;
-	for (let r = step; r <= LOCATE_BIOME_RADIUS && r - step < bestDist; r += step) {
+	for (
+		let r = step;
+		r <= LOCATE_BIOME_RADIUS && r - step < bestDist;
+		r += step
+	) {
 		for (let i = -r; i <= r; i += step) {
 			const edges = [
 				[wx + i, wz - r],
@@ -318,7 +322,8 @@ function locateBiome(name, wx, wz) {
 				[wx + r, wz + i]
 			];
 			for (let e = 0; e < 4; e++) {
-				if (Math.hypot(edges[e][0] - wx, edges[e][1] - wz) >= bestDist) continue;
+				if (Math.hypot(edges[e][0] - wx, edges[e][1] - wz) >= bestDist)
+					continue;
 				if (biomes.getBiome(edges[e][0], edges[e][1]) !== target) continue;
 				const d = Math.hypot(edges[e][0] - wx, edges[e][1] - wz);
 				if (d < bestDist) {
@@ -399,8 +404,7 @@ function executeCommand(player, raw, ctx) {
 				ctx.playerHelpers.respawnPlayer(t, "kill");
 			}
 			const who =
-				resolved.players.length === 1 &&
-				resolved.players[0] === player
+				resolved.players.length === 1 && resolved.players[0] === player
 					? "Te has eliminado"
 					: `${resolved.players.map((t) => t.name).join(", ")} ${resolved.players.length === 1 ? "ha sido eliminado" : "han sido eliminados"}`;
 			systemMessage(player, `💀 ${who}.`);
@@ -413,7 +417,7 @@ function executeCommand(player, raw, ctx) {
 			// difunde a los clientes en el siguiente ciclo, igual que los spawns
 			// naturales. Solo acepta especies del MOB_CLASSES real.
 			const name = (args[0] || "").toLowerCase();
-			if (!Object.prototype.hasOwnProperty.call(mobs.MOB_CLASSES, name)) {
+			if (!Object.hasOwn(mobs.MOB_CLASSES, name)) {
 				systemMessage(
 					player,
 					`Mob desconocido: ${args[0] || ""}. Disponibles: ${Object.keys(mobs.MOB_CLASSES).join(", ")}`

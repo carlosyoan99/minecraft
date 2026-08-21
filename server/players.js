@@ -108,7 +108,16 @@ function breakPlant(player, x, y, z, block) {
 // (Fase 17, B4). Las lianas cuelgan del techo y no aplican.
 // Fase 21.5 (B3): el bambú es una planta alta con base en el suelo — al
 // romper el bloque de debajo se destruye el tallo (breakPlant lo dropea).
-const GROUND_PLANTS = new Set([B.TALL_GRASS, B.POPPY, B.DANDELION, B.WHEAT, B.BAMBOO, B.CORAL_FAN, B.KELP, B.SEAGRASS]);
+const GROUND_PLANTS = new Set([
+	B.TALL_GRASS,
+	B.POPPY,
+	B.DANDELION,
+	B.WHEAT,
+	B.BAMBOO,
+	B.CORAL_FAN,
+	B.KELP,
+	B.SEAGRASS
+]);
 
 function finishMining(player, x, y, z, block, opts = {}) {
 	world.setBlock(x, y, z, B.AIR);
@@ -152,7 +161,8 @@ function finishMining(player, x, y, z, block, opts = {}) {
 	// existen). Su contenido se pierde (no hay entidades de item en el
 	// suelo — misma simplificación que los drops sueltos).
 	// Fase 21.5 (C1): horno de fundición comparte la misma lógica de limpieza.
-	if (block === B.FURNACE || block === B.BLAST_FURNACE) state.furnaces.delete(`${x},${y},${z}`);
+	if (block === B.FURNACE || block === B.BLAST_FURNACE)
+		state.furnaces.delete(`${x},${y},${z}`);
 	// Cama rota: los jugadores que tenían ahí su punto de reaparición vuelven
 	// a reaparecer en el spawn inicial (como en Minecraft).
 	if (isBed(block)) {

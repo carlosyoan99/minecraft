@@ -197,11 +197,7 @@ for (let cx = -12; cx <= 12; cx++) {
 					// pasto marino (lecho del océano) y el kelp (columna de algas)
 					// ocupan celdas de agua — son plantas NO sólidas, no huecos.
 					const warm = world.oceanVariant(wx, wz) === "warm";
-					const aquatic = new Set([
-						B.CORAL_FAN,
-						B.KELP,
-						B.SEAGRASS
-					]);
+					const aquatic = new Set([B.CORAL_FAN, B.KELP, B.SEAGRASS]);
 					for (let y = floorW + 1; y < world.WORLD_SEA_LEVEL; y++) {
 						const b = data[idx(x, y, z)];
 						if (

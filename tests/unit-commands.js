@@ -598,8 +598,10 @@ check(
 	check(
 		"G1: /summon coloca el mob junto al jugador (hacia su mirada)",
 		mob.type === "zombie" &&
-			Math.hypot(mob.x - (h.player.x - Math.sin(0) * 2), mob.z - (h.player.z - Math.cos(0) * 2)) <
-				0.001
+			Math.hypot(
+				mob.x - (h.player.x - Math.sin(0) * 2),
+				mob.z - (h.player.z - Math.cos(0) * 2)
+			) < 0.001
 	);
 	// /summon con coordenadas explícitas
 	const b2 = state.mobs.length;
@@ -624,7 +626,15 @@ check(
 	state.players.clear();
 	const h = makeHarness();
 	state.players.set("p1", h.player);
-	state.players.set("p2", { ...h.player, id: "p2", name: "compa", x: 30, y: 10, z: 0.5, ws: h.player.ws });
+	state.players.set("p2", {
+		...h.player,
+		id: "p2",
+		name: "compa",
+		x: 30,
+		y: 10,
+		z: 0.5,
+		ws: h.player.ws
+	});
 	// @e mata criaturas
 	const mobsBefore = state.mobs.filter((m) => m.alive).length;
 	commands.executeCommand(h.player, "/kill @e", h.ctx);
@@ -665,7 +675,10 @@ check(
 		);
 		// Nombre por texto
 		const resN = commands.resolveTargets("LEJOS", self, { players: st });
-		check("G1: nombre sin distinguir mayúsculas resuelve al jugador", resN.players[0] === lejos);
+		check(
+			"G1: nombre sin distinguir mayúsculas resuelve al jugador",
+			resN.players[0] === lejos
+		);
 	}
 	// @a respawnea a todos los jugadores conectados
 	state.players.clear();
@@ -692,10 +705,16 @@ check(
 		}
 	}
 	if (target) {
-		commands.executeCommand(h.player, `/locate ${raw.getBiome(h.player.x + target, h.player.z)}`, h.ctx);
+		commands.executeCommand(
+			h.player,
+			`/locate ${raw.getBiome(h.player.x + target, h.player.z)}`,
+			h.ctx
+		);
 		check(
 			"G1: /locate <bioma> devuelve unas coordenadas (a N bloques)",
-			systemMsgs(h.sent).some((m) => m.includes("Bioma") && m.includes("bloques"))
+			systemMsgs(h.sent).some(
+				(m) => m.includes("Bioma") && m.includes("bloques")
+			)
 		);
 	} else {
 		check("G1: /locate <bioma> (sin bioma cercano en 512 bloques) avisa", true);
@@ -703,7 +722,9 @@ check(
 	commands.executeCommand(h.player, "/locate quimera", h.ctx);
 	check(
 		"G1: /locate inválido avisa del uso",
-		systemMsgs(h.sent).some((m) => m.includes("No encontré") || m.includes("/locate"))
+		systemMsgs(h.sent).some(
+			(m) => m.includes("No encontré") || m.includes("/locate")
+		)
 	);
 }
 
@@ -729,10 +750,7 @@ check(
 		`abs=${h.player.absorption} hp=${h.player.health}`
 	);
 	commands.executeCommand(h.player, "/effect clear @s", h.ctx);
-	check(
-		"G1: /effect clear quita la absorción",
-		h.player.absorption === 0
-	);
+	check("G1: /effect clear quita la absorción", h.player.absorption === 0);
 	commands.executeCommand(h.player, "/effect get @s", h.ctx);
 	check(
 		"G1: /effect get reporta el estado actual",

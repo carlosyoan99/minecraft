@@ -713,7 +713,12 @@ function handleFishing(p, ws) {
 		const { caught, broke } = fishing.reelBobber(p);
 		if (caught) {
 			// El cliente suena/notifica la captura (sonido de pop).
-			ws.send(JSON.stringify({ event: "fishing_catch", data: { id: caught.id, category: caught.category } }));
+			ws.send(
+				JSON.stringify({
+					event: "fishing_catch",
+					data: { id: caught.id, category: caught.category }
+				})
+			);
 			if (broke) ws.send(JSON.stringify({ event: "tool_broke", data: {} }));
 		}
 		playerHelpers.sendInventory(p);
@@ -911,7 +916,9 @@ function handleCreativePick(p, data) {
 			? (constants.TOOL_DURABILITY[id] ??
 					constants.ARMOR_DURABILITY[id] ??
 					constants.HOE_DURABILITY[id] ??
-					(constants.isFishingRod(id) ? constants.FISHING_ROD_DURABILITY : undefined))
+					(constants.isFishingRod(id)
+						? constants.FISHING_ROD_DURABILITY
+						: undefined))
 			: undefined
 	);
 	playerHelpers.sendInventory(p);
@@ -962,7 +969,11 @@ function handleBundleOpen(p, ws) {
 	ws.send(
 		JSON.stringify({
 			event: "bundle_state",
-			data: { slots: p.bundle.map((s) => (s ? { id: s.id, count: s.count, durability: s.durability } : null)) }
+			data: {
+				slots: p.bundle.map((s) =>
+					s ? { id: s.id, count: s.count, durability: s.durability } : null
+				)
+			}
 		})
 	);
 }
@@ -984,7 +995,12 @@ function handleBundleAction(p, ws, data) {
 			const dest = p.bundle[targetSlot];
 			if (dest && (dest.id !== item.id || constants.isTool(item.id))) return;
 			if (dest) dest.count += item.count;
-			else p.bundle[targetSlot] = { id: item.id, count: item.count, durability: item.durability };
+			else
+				p.bundle[targetSlot] = {
+					id: item.id,
+					count: item.count,
+					durability: item.durability
+				};
 			p.inventory[invSlot] = null;
 		} else {
 			// Buscar slot existente apilable o primer hueco.
@@ -1000,17 +1016,22 @@ function handleBundleAction(p, ws, data) {
 			if (!placed) {
 				for (let i = 0; i < 9; i++) {
 					if (!p.bundle[i]) {
-						p.bundle[i] = { id: item.id, count: item.count, durability: item.durability };
+						p.bundle[i] = {
+							id: item.id,
+							count: item.count,
+							durability: item.durability
+						};
 						placed = true;
 						break;
 					}
+				}
 			}
-		}
 			if (placed) p.inventory[invSlot] = null;
 		}
 	} else if (data.action === "take") {
 		const bundleSlot = data.bundleSlot;
-		if (!Number.isInteger(bundleSlot) || bundleSlot < 0 || bundleSlot > 8) return;
+		if (!Number.isInteger(bundleSlot) || bundleSlot < 0 || bundleSlot > 8)
+			return;
 		const item = p.bundle[bundleSlot];
 		if (!item) return;
 		if (data.invSlot !== undefined) {
@@ -1019,7 +1040,12 @@ function handleBundleAction(p, ws, data) {
 			const dest = p.inventory[invSlot];
 			if (dest && (dest.id !== item.id || constants.isTool(item.id))) return;
 			if (dest) dest.count += item.count;
-			else p.inventory[invSlot] = { id: item.id, count: item.count, durability: item.durability };
+			else
+				p.inventory[invSlot] = {
+					id: item.id,
+					count: item.count,
+					durability: item.durability
+				};
 		} else {
 			// Primer hueco del inventario.
 			let placed = false;
@@ -1034,12 +1060,16 @@ function handleBundleAction(p, ws, data) {
 			if (!placed) {
 				for (let i = 0; i < 36; i++) {
 					if (!p.inventory[i]) {
-						p.inventory[i] = { id: item.id, count: item.count, durability: item.durability };
+						p.inventory[i] = {
+							id: item.id,
+							count: item.count,
+							durability: item.durability
+						};
 						placed = true;
 						break;
 					}
+				}
 			}
-		}
 		}
 		if (placed !== false) p.bundle[bundleSlot] = null;
 	}
@@ -1064,16 +1094,27 @@ function handleJukeboxInteract(p, ws, data) {
 	if (slot && MUSIC_DISC_IDS.has(slot.id) && !jukeState) {
 		p.inventory[p.selectedSlot] = null;
 		state.jukeboxes.set(key, { disc: slot.id });
-		p.send(JSON.stringify({ event: "jukebox_state", data: { x, y, z, disc: slot.id } }));
+		p.send(
+			JSON.stringify({
+				event: "jukebox_state",
+				data: { x, y, z, disc: slot.id }
+			})
+		);
 		// Notificar a clientes cercanos.
 		_broadcastNear("jukebox_state", { x, y, z, disc: slot.id }, p.x, p.z);
 		return;
 	}
 	// Extraer disco: jukebox tiene disco y el jugador tiene hueco.
 	if (jukeState && !slot) {
-		p.inventory[p.selectedSlot] = { id: jukeState.disc, count: 1, durability: 0 };
+		p.inventory[p.selectedSlot] = {
+			id: jukeState.disc,
+			count: 1,
+			durability: 0
+		};
 		state.jukeboxes.delete(key);
-		p.send(JSON.stringify({ event: "jukebox_state", data: { x, y, z, disc: 0 } }));
+		p.send(
+			JSON.stringify({ event: "jukebox_state", data: { x, y, z, disc: 0 } })
+		);
 		_broadcastNear("jukebox_state", { x, y, z, disc: 0 }, p.x, p.z);
 		return;
 	}

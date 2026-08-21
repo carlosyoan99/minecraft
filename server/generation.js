@@ -203,8 +203,7 @@ function hangVines(data, lx, y, lz, height) {
 // — unos pocos miles de bloques por chunk de 16×16 en la franja).
 function polishedStoneAt(wx, y, wz) {
 	if (y < -8) return null;
-	const roll =
-		(noise.noise2D_ore(wx * 0.22 + y * 5.3, wz * 0.22) + 1) / 2;
+	const roll = (noise.noise2D_ore(wx * 0.22 + y * 5.3, wz * 0.22) + 1) / 2;
 	if (roll > 0.94) return B.GRANITE;
 	if (roll > 0.91) return B.DIORITE;
 	if (roll > 0.88) return B.ANDESITE;
@@ -343,7 +342,9 @@ function generateChunk(cx, cz) {
 			// océano (2-6 bloques, como en MC; determinista por columna). La
 			// base es SEAGRASS (floorY+1) y el tallo KELP hasta kelpTop.
 			const kelp = waterCol && ocean && !coralReef && kelpTallAt(wx, wz);
-			const kelpTop = kelp ? Math.max(floorY + 2, floorY + 1 + kelpHeightAt(wx, wz)) : floorY + 1;
+			const kelpTop = kelp
+				? Math.max(floorY + 2, floorY + 1 + kelpHeightAt(wx, wz))
+				: floorY + 1;
 			for (let y = WORLD_MIN_Y; y <= yEnd; y++) {
 				let block = B.AIR;
 				if (y === WORLD_MIN_Y) block = B.BEDROCK;
@@ -366,7 +367,8 @@ function generateChunk(cx, cz) {
 					// sube hasta kelpTop sin tocar el arrecife.
 					else if (y === floorY + 1 && coralReef) block = B.CORAL_BLOCK;
 					else if (y === floorY + 2 && coralReef) block = B.CORAL_FAN;
-					else if (y === floorY + 1 && ocean) block = kelp ? B.KELP : B.SEAGRASS;
+					else if (y === floorY + 1 && ocean)
+						block = kelp ? B.KELP : B.SEAGRASS;
 					else if (y > floorY + 1 && y <= kelpTop) block = B.KELP;
 					else if (y < biomes.WORLD_SEA_LEVEL) block = B.WATER;
 				} else if (y < height - 1) {
@@ -892,20 +894,20 @@ function generateChunk(cx, cz) {
 						data[core.idx(x, core.toLocal(height), z)] = B.DANDELION;
 				}
 			}
-				// Fase 21.5 (E3): hierba seca en desierto/badlands — corre fuera
-				// de canGrowTree (que exige GRASS); en estos biomas el suelo es
-				// arena/terracota, así que se coloca directamente sobre la superficie.
-				if (
-					(biome === "desert" || biome === "badlands") &&
-					data[core.idx(x, core.toLocal(height), z)] === B.AIR
-				) {
-					const dry = rand();
-					if (dry < 0.08)
-						data[core.idx(x, core.toLocal(height), z)] =
-							biome === "badlands" && dry < 0.03
-								? B.TALL_DRY_GRASS
-								: B.SHORT_DRY_GRASS;
-				}
+			// Fase 21.5 (E3): hierba seca en desierto/badlands — corre fuera
+			// de canGrowTree (que exige GRASS); en estos biomas el suelo es
+			// arena/terracota, así que se coloca directamente sobre la superficie.
+			if (
+				(biome === "desert" || biome === "badlands") &&
+				data[core.idx(x, core.toLocal(height), z)] === B.AIR
+			) {
+				const dry = rand();
+				if (dry < 0.08)
+					data[core.idx(x, core.toLocal(height), z)] =
+						biome === "badlands" && dry < 0.03
+							? B.TALL_DRY_GRASS
+							: B.SHORT_DRY_GRASS;
+			}
 			if (
 				canGrowTree &&
 				(biome === "plains" || biome === "forest") &&

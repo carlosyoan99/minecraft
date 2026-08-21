@@ -477,20 +477,45 @@ const B = {
 // Fase 21.5 (C4): 16 camas de colores + la cama base (24) comparten
 // comportamiento (dormir/respawn). isBed identifica todas.
 const BED_SET = new Set([
-	B.BED, B.BED_WHITE, B.BED_ORANGE, B.BED_MAGENTA, B.BED_LIGHT_BLUE,
-	B.BED_YELLOW, B.BED_LIME, B.BED_PINK, B.BED_GRAY, B.BED_LIGHT_GRAY,
-	B.BED_CYAN, B.BED_PURPLE, B.BED_BLUE, B.BED_BROWN, B.BED_GREEN,
-	B.BED_RED, B.BED_BLACK
+	B.BED,
+	B.BED_WHITE,
+	B.BED_ORANGE,
+	B.BED_MAGENTA,
+	B.BED_LIGHT_BLUE,
+	B.BED_YELLOW,
+	B.BED_LIME,
+	B.BED_PINK,
+	B.BED_GRAY,
+	B.BED_LIGHT_GRAY,
+	B.BED_CYAN,
+	B.BED_PURPLE,
+	B.BED_BLUE,
+	B.BED_BROWN,
+	B.BED_GREEN,
+	B.BED_RED,
+	B.BED_BLACK
 ]);
 const isBed = (id) => BED_SET.has(id);
 // Mapeo cama de color → ID del tinte correspondiente para crafteo.
 // No lo usamos server-side directamente (las recetas en recetas.json lo
 // manejan), pero sirve para referencia y tests.
 const BED_COLOR_IDS = [
-	B.BED_WHITE, B.BED_ORANGE, B.BED_MAGENTA, B.BED_LIGHT_BLUE,
-	B.BED_YELLOW, B.BED_LIME, B.BED_PINK, B.BED_GRAY,
-	B.BED_LIGHT_GRAY, B.BED_CYAN, B.BED_PURPLE, B.BED_BLUE,
-	B.BED_BROWN, B.BED_GREEN, B.BED_RED, B.BED_BLACK
+	B.BED_WHITE,
+	B.BED_ORANGE,
+	B.BED_MAGENTA,
+	B.BED_LIGHT_BLUE,
+	B.BED_YELLOW,
+	B.BED_LIME,
+	B.BED_PINK,
+	B.BED_GRAY,
+	B.BED_LIGHT_GRAY,
+	B.BED_CYAN,
+	B.BED_PURPLE,
+	B.BED_BLUE,
+	B.BED_BROWN,
+	B.BED_GREEN,
+	B.BED_RED,
+	B.BED_BLACK
 ];
 
 // Fase 21.5 (C1): horno y horno de fundición comparten el mismo handler de
@@ -516,8 +541,7 @@ for (let i = 0; i < 16; i++) {
 }
 const isConcretePowder = (id) =>
 	id >= B.CONCRETE_POWDER_WHITE && id <= B.CONCRETE_POWDER_BLACK;
-const isConcrete = (id) =>
-	id >= B.CONCRETE_WHITE && id <= B.CONCRETE_BLACK;
+const isConcrete = (id) => id >= B.CONCRETE_WHITE && id <= B.CONCRETE_BLACK;
 
 // Fase 10 (D2): TNT — mecha, radio del cráter y daño por explosión.
 const TNT_FUSE_MS = 1600; // ~1.6s de mecha (chisporroteo) antes de explotar
@@ -979,7 +1003,7 @@ const BLOCK_HARDNESS = {
 	[B.BAMBOO_PLANKS]: 2.0,
 	[B.SCAFFOLDING]: 0.05,
 	// Fase 21.5 (B4): colmenas y bloque de miel — dureza 1.5 (madera en MC;
-	// simplificación): 
+	// simplificación):
 	[B.BEE_NEST]: 1.5,
 	[B.BEE_HIVE]: 1.5,
 	[B.HONEY_BLOCK]: 1.5,
@@ -989,23 +1013,47 @@ const BLOCK_HARDNESS = {
 	[B.SEAGRASS]: 0.05,
 	// Fase 21.5 (C5): concreto sólido (1.8, MC) y polvo (0.5, como arena).
 	// El polvo cae con gravedad y se convierte en concreto al tocar agua.
-	[B.CONCRETE_WHITE]: 1.8, [B.CONCRETE_ORANGE]: 1.8, [B.CONCRETE_MAGENTA]: 1.8,
-	[B.CONCRETE_LIGHT_BLUE]: 1.8, [B.CONCRETE_YELLOW]: 1.8, [B.CONCRETE_LIME]: 1.8,
-	[B.CONCRETE_PINK]: 1.8, [B.CONCRETE_GRAY]: 1.8, [B.CONCRETE_LIGHT_GRAY]: 1.8,
-	[B.CONCRETE_CYAN]: 1.8, [B.CONCRETE_PURPLE]: 1.8, [B.CONCRETE_BLUE]: 1.8,
-	[B.CONCRETE_BROWN]: 1.8, [B.CONCRETE_GREEN]: 1.8, [B.CONCRETE_RED]: 1.8,
+	[B.CONCRETE_WHITE]: 1.8,
+	[B.CONCRETE_ORANGE]: 1.8,
+	[B.CONCRETE_MAGENTA]: 1.8,
+	[B.CONCRETE_LIGHT_BLUE]: 1.8,
+	[B.CONCRETE_YELLOW]: 1.8,
+	[B.CONCRETE_LIME]: 1.8,
+	[B.CONCRETE_PINK]: 1.8,
+	[B.CONCRETE_GRAY]: 1.8,
+	[B.CONCRETE_LIGHT_GRAY]: 1.8,
+	[B.CONCRETE_CYAN]: 1.8,
+	[B.CONCRETE_PURPLE]: 1.8,
+	[B.CONCRETE_BLUE]: 1.8,
+	[B.CONCRETE_BROWN]: 1.8,
+	[B.CONCRETE_GREEN]: 1.8,
+	[B.CONCRETE_RED]: 1.8,
 	[B.CONCRETE_BLACK]: 1.8,
-	[B.CONCRETE_POWDER_WHITE]: 0.5, [B.CONCRETE_POWDER_ORANGE]: 0.5, [B.CONCRETE_POWDER_MAGENTA]: 0.5,
-	[B.CONCRETE_POWDER_LIGHT_BLUE]: 0.5, [B.CONCRETE_POWDER_YELLOW]: 0.5, [B.CONCRETE_POWDER_LIME]: 0.5,
-	[B.CONCRETE_POWDER_PINK]: 0.5, [B.CONCRETE_POWDER_GRAY]: 0.5, [B.CONCRETE_POWDER_LIGHT_GRAY]: 0.5,
-	[B.CONCRETE_POWDER_CYAN]: 0.5, [B.CONCRETE_POWDER_PURPLE]: 0.5, [B.CONCRETE_POWDER_BLUE]: 0.5,
-	[B.CONCRETE_POWDER_BROWN]: 0.5, [B.CONCRETE_POWDER_GREEN]: 0.5, [B.CONCRETE_POWDER_RED]: 0.5,
+	[B.CONCRETE_POWDER_WHITE]: 0.5,
+	[B.CONCRETE_POWDER_ORANGE]: 0.5,
+	[B.CONCRETE_POWDER_MAGENTA]: 0.5,
+	[B.CONCRETE_POWDER_LIGHT_BLUE]: 0.5,
+	[B.CONCRETE_POWDER_YELLOW]: 0.5,
+	[B.CONCRETE_POWDER_LIME]: 0.5,
+	[B.CONCRETE_POWDER_PINK]: 0.5,
+	[B.CONCRETE_POWDER_GRAY]: 0.5,
+	[B.CONCRETE_POWDER_LIGHT_GRAY]: 0.5,
+	[B.CONCRETE_POWDER_CYAN]: 0.5,
+	[B.CONCRETE_POWDER_PURPLE]: 0.5,
+	[B.CONCRETE_POWDER_BLUE]: 0.5,
+	[B.CONCRETE_POWDER_BROWN]: 0.5,
+	[B.CONCRETE_POWDER_GREEN]: 0.5,
+	[B.CONCRETE_POWDER_RED]: 0.5,
 	[B.CONCRETE_POWDER_BLACK]: 0.5,
 	// Fase 21.5 (F1): Pale Garden — tronco y tablones (2.0, como roble),
 	// musgo bloque (0.1, suave como tierra), musgo planta (0.05, al instante),
 	// hojas (0.2, como hojas normales), corazón crujiente (2.0, madera dura).
-	[B.PALE_OAK_LOG]: 2.0, [B.PALE_OAK_LEAVES]: 0.2, [B.PALE_OAK_PLANKS]: 2.0,
-	[B.PALE_MOSS_BLOCK]: 0.1, [B.PALE_MOSS]: 0.05, [B.CREAKING_HEART]: 2.0,
+	[B.PALE_OAK_LOG]: 2.0,
+	[B.PALE_OAK_LEAVES]: 0.2,
+	[B.PALE_OAK_PLANKS]: 2.0,
+	[B.PALE_MOSS_BLOCK]: 0.1,
+	[B.PALE_MOSS]: 0.05,
+	[B.CREAKING_HEART]: 2.0,
 	// Fase 21.5 (D4): familia de cobre y tuff — durezas estilo MC (cobre 3.0,
 	// tuff 1.5). Las escaleras/losas/puerta de cobre comparten la dureza del
 	// bloque base; la puerta de cobre es metálica (5.0, como la de hierro).
@@ -1099,21 +1147,44 @@ const BLOCK_CATEGORY = {
 	// plantas → la espada no cosecha, el resto sí).
 	[B.BAMBOO_PLANKS]: "wood",
 	// Fase 21.5 (C5): concreto sólido → pico (stone), polvo → pala (sand, como arena).
-	[B.CONCRETE_WHITE]: "stone", [B.CONCRETE_ORANGE]: "stone", [B.CONCRETE_MAGENTA]: "stone",
-	[B.CONCRETE_LIGHT_BLUE]: "stone", [B.CONCRETE_YELLOW]: "stone", [B.CONCRETE_LIME]: "stone",
-	[B.CONCRETE_PINK]: "stone", [B.CONCRETE_GRAY]: "stone", [B.CONCRETE_LIGHT_GRAY]: "stone",
-	[B.CONCRETE_CYAN]: "stone", [B.CONCRETE_PURPLE]: "stone", [B.CONCRETE_BLUE]: "stone",
-	[B.CONCRETE_BROWN]: "stone", [B.CONCRETE_GREEN]: "stone", [B.CONCRETE_RED]: "stone",
+	[B.CONCRETE_WHITE]: "stone",
+	[B.CONCRETE_ORANGE]: "stone",
+	[B.CONCRETE_MAGENTA]: "stone",
+	[B.CONCRETE_LIGHT_BLUE]: "stone",
+	[B.CONCRETE_YELLOW]: "stone",
+	[B.CONCRETE_LIME]: "stone",
+	[B.CONCRETE_PINK]: "stone",
+	[B.CONCRETE_GRAY]: "stone",
+	[B.CONCRETE_LIGHT_GRAY]: "stone",
+	[B.CONCRETE_CYAN]: "stone",
+	[B.CONCRETE_PURPLE]: "stone",
+	[B.CONCRETE_BLUE]: "stone",
+	[B.CONCRETE_BROWN]: "stone",
+	[B.CONCRETE_GREEN]: "stone",
+	[B.CONCRETE_RED]: "stone",
 	[B.CONCRETE_BLACK]: "stone",
-	[B.CONCRETE_POWDER_WHITE]: "sand", [B.CONCRETE_POWDER_ORANGE]: "sand", [B.CONCRETE_POWDER_MAGENTA]: "sand",
-	[B.CONCRETE_POWDER_LIGHT_BLUE]: "sand", [B.CONCRETE_POWDER_YELLOW]: "sand", [B.CONCRETE_POWDER_LIME]: "sand",
-	[B.CONCRETE_POWDER_PINK]: "sand", [B.CONCRETE_POWDER_GRAY]: "sand", [B.CONCRETE_POWDER_LIGHT_GRAY]: "sand",
-	[B.CONCRETE_POWDER_CYAN]: "sand", [B.CONCRETE_POWDER_PURPLE]: "sand", [B.CONCRETE_POWDER_BLUE]: "sand",
-	[B.CONCRETE_POWDER_BROWN]: "sand", [B.CONCRETE_POWDER_GREEN]: "sand", [B.CONCRETE_POWDER_RED]: "sand",
+	[B.CONCRETE_POWDER_WHITE]: "sand",
+	[B.CONCRETE_POWDER_ORANGE]: "sand",
+	[B.CONCRETE_POWDER_MAGENTA]: "sand",
+	[B.CONCRETE_POWDER_LIGHT_BLUE]: "sand",
+	[B.CONCRETE_POWDER_YELLOW]: "sand",
+	[B.CONCRETE_POWDER_LIME]: "sand",
+	[B.CONCRETE_POWDER_PINK]: "sand",
+	[B.CONCRETE_POWDER_GRAY]: "sand",
+	[B.CONCRETE_POWDER_LIGHT_GRAY]: "sand",
+	[B.CONCRETE_POWDER_CYAN]: "sand",
+	[B.CONCRETE_POWDER_PURPLE]: "sand",
+	[B.CONCRETE_POWDER_BLUE]: "sand",
+	[B.CONCRETE_POWDER_BROWN]: "sand",
+	[B.CONCRETE_POWDER_GREEN]: "sand",
+	[B.CONCRETE_POWDER_RED]: "sand",
 	[B.CONCRETE_POWDER_BLACK]: "sand",
 	// Fase 21.5 (F1): Pale Garden — roble pálido y musgo.
-	[B.PALE_OAK_LOG]: "wood", [B.PALE_OAK_LEAVES]: null, [B.PALE_OAK_PLANKS]: "wood",
-	[B.PALE_MOSS_BLOCK]: "dirt", [B.PALE_MOSS]: null,
+	[B.PALE_OAK_LOG]: "wood",
+	[B.PALE_OAK_LEAVES]: null,
+	[B.PALE_OAK_PLANKS]: "wood",
+	[B.PALE_MOSS_BLOCK]: "dirt",
+	[B.PALE_MOSS]: null,
 	[B.CREAKING_HEART]: "wood",
 	[B.COPPER_BLOCK]: "stone",
 	[B.COPPER_STAIRS]: "stone",
@@ -1247,7 +1318,14 @@ const HOE_DURABILITY = TOOL_DURABILITY;
 // apila y lleva su durabilidad BOW_DURABILITY), pero su desgaste NO va por
 // applyToolWear al minar/atacar: lo gestiona applyBowWear al disparar
 // (players.js). Por eso no está en TOOL_DURABILITY.
-const isTool = (id) => !!TOOL_DURABILITY[id] || isHoe(id) || id === I.BOW || id === I.FISHING_ROD || id === I.SHIELD || id === I.TOTEM_OF_UNDYING || id === I.MACE;
+const isTool = (id) =>
+	!!TOOL_DURABILITY[id] ||
+	isHoe(id) ||
+	id === I.BOW ||
+	id === I.FISHING_ROD ||
+	id === I.SHIELD ||
+	id === I.TOTEM_OF_UNDYING ||
+	id === I.MACE;
 // Fase 21.5 (C1): el horno de fundición solo funde MINERALES (resultados de
 // recetas de horno que son lingotes). Lo audita crafting.js al seleccionar la
 // receta; se define aquí (después de I) frente a isFurnace.
@@ -1684,7 +1762,9 @@ const CREATIVE_ITEMS = [
 	B.BED_GREEN,
 	B.BED_RED,
 	B.BED_BLACK,
-	...Object.values(B).filter((v) => v >= B.CONCRETE_WHITE && v <= B.CONCRETE_BLACK), // 16 concreto
+	...Object.values(B).filter(
+		(v) => v >= B.CONCRETE_WHITE && v <= B.CONCRETE_BLACK
+	), // 16 concreto
 	...Object.values(B).filter(
 		(v) => v >= B.CONCRETE_POWDER_WHITE && v <= B.CONCRETE_POWDER_BLACK
 	), // 16 polvo de concreto

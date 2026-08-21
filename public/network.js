@@ -4,15 +4,18 @@
 
 import {
 	playCrack,
+	playDisc,
 	playHit,
 	playMobDeath,
+	playNote,
 	playSplash,
 	playTntExplode,
 	playTntFuse,
-	setMusicBiome
-} from "./audio.js"; // F10 (F1): música por contexto; F19.5 (A1): bioma real
+	setMusicBiome,
+	stopDisc
+} from "./audio.js"; // Fase 21.5 (D6): discos y note block
 import { setStoredName, socket } from "./connection.js";
-import { TORCH, LANTERN } from "./constants.js";
+import { LANTERN, TORCH } from "./constants.js";
 import { initDayNight } from "./daynight.js";
 // Fase 17 (B7): minar con el clic presionado — al romperse el bloque en
 // mina, input.js reinicia la mina sobre el siguiente bloque apuntado.
@@ -36,12 +39,11 @@ import { spawnBlockBreak, spawnBlockPlace } from "./particles.js"; // Fase 7: pa
 import { applyKnockback, teleport } from "./player.js"; // applyKnockback: F20 B3 (TNT)
 import { camera } from "./scene.js";
 import { applyStoredSettings } from "./settings.js";
-import { playDisc, stopDisc, playNote } from "./audio.js"; // Fase 21.5 (D6): discos y note block
 import {
 	addChatLine,
 	applyArmor,
-	applyChestState,
 	applyBundleState, // Fase 21.5 (F4): mochila
+	applyChestState,
 	applyCraftingGrid,
 	applyFood,
 	applyFurnaceState,

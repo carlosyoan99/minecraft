@@ -16,13 +16,15 @@ import {
 	BREED_FOOD,
 	BUCKET,
 	BUNDLE, // Fase 21.5 (F4): mochila
-	JUKEBOX, NOTE_BLOCK, // Fase 21.5 (D6): jukebox y note block
-	MUSIC_DISC_CAT, MUSIC_DISC_13, // Fase 21.5 (D6): discos de música
 	FARMLAND,
 	FISHING_ROD,
 	FOOD_ITEMS,
 	GLASS_BOTTLE,
 	HOES,
+	JUKEBOX,
+	MUSIC_DISC_13, // Fase 21.5 (D6): discos de música
+	MUSIC_DISC_CAT,
+	NOTE_BLOCK, // Fase 21.5 (D6): jukebox y note block
 	PLACEABLE_BLOCKS,
 	SHIELD,
 	TNT,
@@ -44,12 +46,12 @@ import { isTouchActive } from "./touch.js"; // Fase 18 (D-8): mousedown sintéti
 import {
 	getHeldItem,
 	getSelectedSlot,
+	isBundleOpen,
 	isTyping,
 	openCraftingFromBlock,
 	selectSlot,
-	toggleChestUI,
 	toggleBundleUI,
-	isBundleOpen,
+	toggleChestUI,
 	toggleFurnaceUI,
 	toggleInventory,
 	togglePicker,
@@ -563,7 +565,10 @@ renderer.domElement.addEventListener("mousedown", (e) => {
 		// entrega la HONEY_BOTTLE).
 		{
 			const hiveBlock = getClientBlock(x, y, z);
-			if ((hiveBlock === BEE_HIVE || hiveBlock === BEE_NEST) && getHeldItem()?.id === GLASS_BOTTLE) {
+			if (
+				(hiveBlock === BEE_HIVE || hiveBlock === BEE_NEST) &&
+				getHeldItem()?.id === GLASS_BOTTLE
+			) {
 				playDrink();
 				send("honey_bottle", { x, y, z });
 				return;

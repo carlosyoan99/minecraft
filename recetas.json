@@ -1,8 +1,6 @@
 {
 	"planks": {
-		"shape": [
-			"#"
-		],
+		"shape": ["#"],
 		"ingredients": {
 			"#": 4
 		},
@@ -12,10 +10,7 @@
 		}
 	},
 	"stick": {
-		"shape": [
-			"#",
-			"#"
-		],
+		"shape": ["#", "#"],
 		"ingredients": {
 			"#": 7
 		},
@@ -25,10 +20,7 @@
 		}
 	},
 	"crafting_table": {
-		"shape": [
-			"##",
-			"##"
-		],
+		"shape": ["##", "##"],
 		"ingredients": {
 			"#": 7
 		},
@@ -38,11 +30,7 @@
 		}
 	},
 	"furnace": {
-		"shape": [
-			"###",
-			"# #",
-			"###"
-		],
+		"shape": ["###", "# #", "###"],
 		"ingredients": {
 			"#": 8
 		},
@@ -52,11 +40,7 @@
 		}
 	},
 	"wooden_pickaxe": {
-		"shape": [
-			"###",
-			" I ",
-			" I "
-		],
+		"shape": ["###", " I ", " I "],
 		"ingredients": {
 			"#": 7,
 			"I": 100
@@ -67,11 +51,7 @@
 		}
 	},
 	"stone_pickaxe": {
-		"shape": [
-			"###",
-			" I ",
-			" I "
-		],
+		"shape": ["###", " I ", " I "],
 		"ingredients": {
 			"#": 8,
 			"I": 100
@@ -82,11 +62,7 @@
 		}
 	},
 	"iron_pickaxe": {
-		"shape": [
-			"###",
-			" I ",
-			" I "
-		],
+		"shape": ["###", " I ", " I "],
 		"ingredients": {
 			"#": 102,
 			"I": 100
@@ -97,11 +73,7 @@
 		}
 	},
 	"golden_pickaxe": {
-		"shape": [
-			"###",
-			" I ",
-			" I "
-		],
+		"shape": ["###", " I ", " I "],
 		"ingredients": {
 			"#": 103,
 			"I": 100
@@ -112,11 +84,7 @@
 		}
 	},
 	"diamond_pickaxe": {
-		"shape": [
-			"###",
-			" I ",
-			" I "
-		],
+		"shape": ["###", " I ", " I "],
 		"ingredients": {
 			"#": 104,
 			"I": 100
@@ -127,11 +95,7 @@
 		}
 	},
 	"wooden_axe": {
-		"shape": [
-			"##",
-			"#I",
-			" I"
-		],
+		"shape": ["##", "#I", " I"],
 		"ingredients": {
 			"#": 7,
 			"I": 100
@@ -142,11 +106,7 @@
 		}
 	},
 	"stone_axe": {
-		"shape": [
-			"##",
-			"#I",
-			" I"
-		],
+		"shape": ["##", "#I", " I"],
 		"ingredients": {
 			"#": 8,
 			"I": 100
@@ -157,11 +117,7 @@
 		}
 	},
 	"iron_axe": {
-		"shape": [
-			"##",
-			"#I",
-			" I"
-		],
+		"shape": ["##", "#I", " I"],
 		"ingredients": {
 			"#": 102,
 			"I": 100
@@ -172,11 +128,7 @@
 		}
 	},
 	"golden_axe": {
-		"shape": [
-			"##",
-			"#I",
-			" I"
-		],
+		"shape": ["##", "#I", " I"],
 		"ingredients": {
 			"#": 103,
 			"I": 100
@@ -187,11 +139,7 @@
 		}
 	},
 	"diamond_axe": {
-		"shape": [
-			"##",
-			"#I",
-			" I"
-		],
+		"shape": ["##", "#I", " I"],
 		"ingredients": {
 			"#": 104,
 			"I": 100
@@ -202,11 +150,7 @@
 		}
 	},
 	"wooden_shovel": {
-		"shape": [
-			"#",
-			"I",
-			"I"
-		],
+		"shape": ["#", "I", "I"],
 		"ingredients": {
 			"#": 7,
 			"I": 100
@@ -217,11 +161,7 @@
 		}
 	},
 	"stone_shovel": {
-		"shape": [
-			"#",
-			"I",
-			"I"
-		],
+		"shape": ["#", "I", "I"],
 		"ingredients": {
 			"#": 8,
 			"I": 100
@@ -232,11 +172,7 @@
 		}
 	},
 	"iron_shovel": {
-		"shape": [
-			"#",
-			"I",
-			"I"
-		],
+		"shape": ["#", "I", "I"],
 		"ingredients": {
 			"#": 102,
 			"I": 100
@@ -247,11 +183,7 @@
 		}
 	},
 	"golden_shovel": {
-		"shape": [
-			"#",
-			"I",
-			"I"
-		],
+		"shape": ["#", "I", "I"],
 		"ingredients": {
 			"#": 103,
 			"I": 100
@@ -262,11 +194,7 @@
 		}
 	},
 	"diamond_shovel": {
-		"shape": [
-			"#",
-			"I",
-			"I"
-		],
+		"shape": ["#", "I", "I"],
 		"ingredients": {
 			"#": 104,
 			"I": 100
@@ -277,11 +205,7 @@
 		}
 	},
 	"wooden_sword": {
-		"shape": [
-			"#",
-			"#",
-			"I"
-		],
+		"shape": ["#", "#", "I"],
 		"ingredients": {
 			"#": 7,
 			"I": 100
@@ -292,11 +216,7 @@
 		}
 	},
 	"stone_sword": {
-		"shape": [
-			"#",
-			"#",
-			"I"
-		],
+		"shape": ["#", "#", "I"],
 		"ingredients": {
 			"#": 8,
 			"I": 100
@@ -307,11 +227,7 @@
 		}
 	},
 	"iron_sword": {
-		"shape": [
-			"#",
-			"#",
-			"I"
-		],
+		"shape": ["#", "#", "I"],
 		"ingredients": {
 			"#": 102,
 			"I": 100
@@ -322,11 +238,7 @@
 		}
 	},
 	"golden_sword": {
-		"shape": [
-			"#",
-			"#",
-			"I"
-		],
+		"shape": ["#", "#", "I"],
 		"ingredients": {
 			"#": 103,
 			"I": 100
@@ -337,11 +249,7 @@
 		}
 	},
 	"diamond_sword": {
-		"shape": [
-			"#",
-			"#",
-			"I"
-		],
+		"shape": ["#", "#", "I"],
 		"ingredients": {
 			"#": 104,
 			"I": 100
@@ -352,9 +260,7 @@
 		}
 	},
 	"glass": {
-		"shape": [
-			"#"
-		],
+		"shape": ["#"],
 		"ingredients": {
 			"#": 6
 		},
@@ -364,9 +270,7 @@
 		}
 	},
 	"planks_birch": {
-		"shape": [
-			"#"
-		],
+		"shape": ["#"],
 		"ingredients": {
 			"#": 28
 		},
@@ -376,9 +280,7 @@
 		}
 	},
 	"planks_spruce": {
-		"shape": [
-			"#"
-		],
+		"shape": ["#"],
 		"ingredients": {
 			"#": 30
 		},
@@ -388,11 +290,7 @@
 		}
 	},
 	"wooden_hoe": {
-		"shape": [
-			"##",
-			" I",
-			" I"
-		],
+		"shape": ["##", " I", " I"],
 		"ingredients": {
 			"#": 7,
 			"I": 100
@@ -403,11 +301,7 @@
 		}
 	},
 	"stone_hoe": {
-		"shape": [
-			"##",
-			" I",
-			" I"
-		],
+		"shape": ["##", " I", " I"],
 		"ingredients": {
 			"#": 8,
 			"I": 100
@@ -418,11 +312,7 @@
 		}
 	},
 	"iron_hoe": {
-		"shape": [
-			"##",
-			" I",
-			" I"
-		],
+		"shape": ["##", " I", " I"],
 		"ingredients": {
 			"#": 102,
 			"I": 100
@@ -433,11 +323,7 @@
 		}
 	},
 	"golden_hoe": {
-		"shape": [
-			"##",
-			" I",
-			" I"
-		],
+		"shape": ["##", " I", " I"],
 		"ingredients": {
 			"#": 103,
 			"I": 100
@@ -448,11 +334,7 @@
 		}
 	},
 	"diamond_hoe": {
-		"shape": [
-			"##",
-			" I",
-			" I"
-		],
+		"shape": ["##", " I", " I"],
 		"ingredients": {
 			"#": 104,
 			"I": 100
@@ -463,9 +345,7 @@
 		}
 	},
 	"bread": {
-		"shape": [
-			"###"
-		],
+		"shape": ["###"],
 		"ingredients": {
 			"#": 115
 		},
@@ -475,9 +355,7 @@
 		}
 	},
 	"bone_meal": {
-		"shape": [
-			"#"
-		],
+		"shape": ["#"],
 		"ingredients": {
 			"#": 136
 		},
@@ -487,9 +365,7 @@
 		}
 	},
 	"red_dye": {
-		"shape": [
-			"#"
-		],
+		"shape": ["#"],
 		"ingredients": {
 			"#": 34
 		},
@@ -499,9 +375,7 @@
 		}
 	},
 	"yellow_dye": {
-		"shape": [
-			"#"
-		],
+		"shape": ["#"],
 		"ingredients": {
 			"#": 35
 		},
@@ -511,9 +385,7 @@
 		}
 	},
 	"red_wool": {
-		"shape": [
-			"#X"
-		],
+		"shape": ["#X"],
 		"ingredients": {
 			"#": 18,
 			"X": 137
@@ -524,9 +396,7 @@
 		}
 	},
 	"yellow_wool": {
-		"shape": [
-			"#X"
-		],
+		"shape": ["#X"],
 		"ingredients": {
 			"#": 18,
 			"X": 138
@@ -537,9 +407,7 @@
 		}
 	},
 	"white_wool": {
-		"shape": [
-			"#X"
-		],
+		"shape": ["#X"],
 		"ingredients": {
 			"#": 18,
 			"X": 139
@@ -550,10 +418,7 @@
 		}
 	},
 	"hilo_a_lana": {
-		"shape": [
-			"##",
-			"##"
-		],
+		"shape": ["##", "##"],
 		"ingredients": {
 			"#": 120
 		},
@@ -563,11 +428,7 @@
 		}
 	},
 	"chest": {
-		"shape": [
-			"###",
-			"# #",
-			"###"
-		],
+		"shape": ["###", "# #", "###"],
 		"ingredients": {
 			"#": 7
 		},
@@ -577,10 +438,7 @@
 		}
 	},
 	"torch": {
-		"shape": [
-			"#",
-			"I"
-		],
+		"shape": ["#", "I"],
 		"ingredients": {
 			"#": 101,
 			"I": 100
@@ -591,11 +449,7 @@
 		}
 	},
 	"lantern": {
-		"shape": [
-			" I ",
-			"ITI",
-			" I "
-		],
+		"shape": [" I ", "ITI", " I "],
 		"ingredients": {
 			"I": 102,
 			"T": 23
@@ -606,10 +460,7 @@
 		}
 	},
 	"bamboo_planks": {
-		"shape": [
-			"BB",
-			"BB"
-		],
+		"shape": ["BB", "BB"],
 		"ingredients": {
 			"B": 80
 		},
@@ -619,11 +470,7 @@
 		}
 	},
 	"scaffolding": {
-		"shape": [
-			"B B",
-			"B B",
-			"B B"
-		],
+		"shape": ["B B", "B B", "B B"],
 		"ingredients": {
 			"B": 80
 		},
@@ -633,11 +480,7 @@
 		}
 	},
 	"glass_bottle": {
-		"shape": [
-			"G",
-			"G",
-			"G"
-		],
+		"shape": ["G", "G", "G"],
 		"ingredients": {
 			"G": 17
 		},
@@ -647,11 +490,7 @@
 		}
 	},
 	"bee_hive": {
-		"shape": [
-			"XXX",
-			"XHX",
-			"XXX"
-		],
+		"shape": ["XXX", "XHX", "XXX"],
 		"ingredients": {
 			"X": 7,
 			"H": 140
@@ -662,10 +501,7 @@
 		}
 	},
 	"honey_block": {
-		"shape": [
-			"HH",
-			"HH"
-		],
+		"shape": ["HH", "HH"],
 		"ingredients": {
 			"H": 264
 		},
@@ -675,10 +511,7 @@
 		}
 	},
 	"bed": {
-		"shape": [
-			"###",
-			"XXX"
-		],
+		"shape": ["###", "XXX"],
 		"ingredients": {
 			"#": 18,
 			"X": 7
@@ -689,10 +522,7 @@
 		}
 	},
 	"leather_helmet": {
-		"shape": [
-			"###",
-			"# #"
-		],
+		"shape": ["###", "# #"],
 		"ingredients": {
 			"#": 132
 		},
@@ -702,11 +532,7 @@
 		}
 	},
 	"leather_chestplate": {
-		"shape": [
-			"# #",
-			"###",
-			"###"
-		],
+		"shape": ["# #", "###", "###"],
 		"ingredients": {
 			"#": 132
 		},
@@ -716,11 +542,7 @@
 		}
 	},
 	"leather_leggings": {
-		"shape": [
-			"###",
-			"# #",
-			"# #"
-		],
+		"shape": ["###", "# #", "# #"],
 		"ingredients": {
 			"#": 132
 		},
@@ -730,10 +552,7 @@
 		}
 	},
 	"leather_boots": {
-		"shape": [
-			"# #",
-			"# #"
-		],
+		"shape": ["# #", "# #"],
 		"ingredients": {
 			"#": 132
 		},
@@ -743,10 +562,7 @@
 		}
 	},
 	"iron_helmet": {
-		"shape": [
-			"###",
-			"# #"
-		],
+		"shape": ["###", "# #"],
 		"ingredients": {
 			"#": 102
 		},
@@ -756,11 +572,7 @@
 		}
 	},
 	"iron_chestplate": {
-		"shape": [
-			"# #",
-			"###",
-			"###"
-		],
+		"shape": ["# #", "###", "###"],
 		"ingredients": {
 			"#": 102
 		},
@@ -770,11 +582,7 @@
 		}
 	},
 	"iron_leggings": {
-		"shape": [
-			"###",
-			"# #",
-			"# #"
-		],
+		"shape": ["###", "# #", "# #"],
 		"ingredients": {
 			"#": 102
 		},
@@ -784,10 +592,7 @@
 		}
 	},
 	"iron_boots": {
-		"shape": [
-			"# #",
-			"# #"
-		],
+		"shape": ["# #", "# #"],
 		"ingredients": {
 			"#": 102
 		},
@@ -797,10 +602,7 @@
 		}
 	},
 	"diamond_helmet": {
-		"shape": [
-			"###",
-			"# #"
-		],
+		"shape": ["###", "# #"],
 		"ingredients": {
 			"#": 104
 		},
@@ -810,11 +612,7 @@
 		}
 	},
 	"diamond_chestplate": {
-		"shape": [
-			"# #",
-			"###",
-			"###"
-		],
+		"shape": ["# #", "###", "###"],
 		"ingredients": {
 			"#": 104
 		},
@@ -824,11 +622,7 @@
 		}
 	},
 	"diamond_leggings": {
-		"shape": [
-			"###",
-			"# #",
-			"# #"
-		],
+		"shape": ["###", "# #", "# #"],
 		"ingredients": {
 			"#": 104
 		},
@@ -838,10 +632,7 @@
 		}
 	},
 	"diamond_boots": {
-		"shape": [
-			"# #",
-			"# #"
-		],
+		"shape": ["# #", "# #"],
 		"ingredients": {
 			"#": 104
 		},
@@ -851,10 +642,7 @@
 		}
 	},
 	"shears": {
-		"shape": [
-			" #",
-			"# "
-		],
+		"shape": [" #", "# "],
 		"ingredients": {
 			"#": 102
 		},
@@ -864,11 +652,7 @@
 		}
 	},
 	"fishing_rod": {
-		"shape": [
-			"#I ",
-			" #I",
-			"  #"
-		],
+		"shape": ["#I ", " #I", "  #"],
 		"ingredients": {
 			"#": 100,
 			"I": 120
@@ -879,11 +663,7 @@
 		}
 	},
 	"bow": {
-		"shape": [
-			" #I",
-			"# I",
-			" #I"
-		],
+		"shape": [" #I", "# I", " #I"],
 		"ingredients": {
 			"#": 100,
 			"I": 120
@@ -894,11 +674,7 @@
 		}
 	},
 	"shield": {
-		"shape": [
-			" I ",
-			"###",
-			"###"
-		],
+		"shape": [" I ", "###", "###"],
 		"ingredients": {
 			"#": 7,
 			"I": 120
@@ -909,11 +685,7 @@
 		}
 	},
 	"arrow": {
-		"shape": [
-			"#",
-			"I",
-			"F"
-		],
+		"shape": ["#", "I", "F"],
 		"ingredients": {
 			"#": 252,
 			"I": 100,
@@ -925,11 +697,7 @@
 		}
 	},
 	"oak_door": {
-		"shape": [
-			"##",
-			"##",
-			"##"
-		],
+		"shape": ["##", "##", "##"],
 		"ingredients": {
 			"#": 7
 		},
@@ -939,11 +707,7 @@
 		}
 	},
 	"iron_door": {
-		"shape": [
-			"##",
-			"##",
-			"##"
-		],
+		"shape": ["##", "##", "##"],
 		"ingredients": {
 			"#": 102
 		},
@@ -953,11 +717,7 @@
 		}
 	},
 	"tnt": {
-		"shape": [
-			"SGS",
-			"GSG",
-			"SGS"
-		],
+		"shape": ["SGS", "GSG", "SGS"],
 		"ingredients": {
 			"S": 6,
 			"G": 256
@@ -968,11 +728,7 @@
 		}
 	},
 	"oak_stairs": {
-		"shape": [
-			"#  ",
-			"## ",
-			"###"
-		],
+		"shape": ["#  ", "## ", "###"],
 		"ingredients": {
 			"#": 7
 		},
@@ -982,11 +738,7 @@
 		}
 	},
 	"stone_stairs": {
-		"shape": [
-			"#  ",
-			"## ",
-			"###"
-		],
+		"shape": ["#  ", "## ", "###"],
 		"ingredients": {
 			"#": 8
 		},
@@ -996,9 +748,7 @@
 		}
 	},
 	"oak_slab": {
-		"shape": [
-			"###"
-		],
+		"shape": ["###"],
 		"ingredients": {
 			"#": 7
 		},
@@ -1008,9 +758,7 @@
 		}
 	},
 	"stone_slab": {
-		"shape": [
-			"###"
-		],
+		"shape": ["###"],
 		"ingredients": {
 			"#": 8
 		},
@@ -1020,11 +768,7 @@
 		}
 	},
 	"copper_stairs": {
-		"shape": [
-			"#  ",
-			"## ",
-			"###"
-		],
+		"shape": ["#  ", "## ", "###"],
 		"ingredients": {
 			"#": 182
 		},
@@ -1034,9 +778,7 @@
 		}
 	},
 	"copper_slab": {
-		"shape": [
-			"###"
-		],
+		"shape": ["###"],
 		"ingredients": {
 			"#": 182
 		},
@@ -1046,11 +788,7 @@
 		}
 	},
 	"copper_door": {
-		"shape": [
-			"##",
-			"##",
-			"##"
-		],
+		"shape": ["##", "##", "##"],
 		"ingredients": {
 			"#": 182
 		},
@@ -1060,10 +798,7 @@
 		}
 	},
 	"polished_tuff": {
-		"shape": [
-			"##",
-			"##"
-		],
+		"shape": ["##", "##"],
 		"ingredients": {
 			"#": 186
 		},
@@ -1073,10 +808,7 @@
 		}
 	},
 	"tuff_bricks": {
-		"shape": [
-			"##",
-			"##"
-		],
+		"shape": ["##", "##"],
 		"ingredients": {
 			"#": 187
 		},
@@ -1086,10 +818,7 @@
 		}
 	},
 	"oak_fence": {
-		"shape": [
-			"#I#",
-			"#I#"
-		],
+		"shape": ["#I#", "#I#"],
 		"ingredients": {
 			"#": 7,
 			"I": 100
@@ -1100,10 +829,7 @@
 		}
 	},
 	"oak_fence_gate": {
-		"shape": [
-			"I#I",
-			"I#I"
-		],
+		"shape": ["I#I", "I#I"],
 		"ingredients": {
 			"#": 7,
 			"I": 100
@@ -1114,10 +840,7 @@
 		}
 	},
 	"bucket": {
-		"shape": [
-			"# #",
-			" # "
-		],
+		"shape": ["# #", " # "],
 		"ingredients": {
 			"#": 102
 		},
@@ -1127,10 +850,7 @@
 		}
 	},
 	"golden_helmet": {
-		"shape": [
-			"###",
-			"# #"
-		],
+		"shape": ["###", "# #"],
 		"ingredients": {
 			"#": 103
 		},
@@ -1140,11 +860,7 @@
 		}
 	},
 	"golden_chestplate": {
-		"shape": [
-			"# #",
-			"###",
-			"###"
-		],
+		"shape": ["# #", "###", "###"],
 		"ingredients": {
 			"#": 103
 		},
@@ -1154,11 +870,7 @@
 		}
 	},
 	"golden_leggings": {
-		"shape": [
-			"###",
-			"# #",
-			"# #"
-		],
+		"shape": ["###", "# #", "# #"],
 		"ingredients": {
 			"#": 103
 		},
@@ -1168,10 +880,7 @@
 		}
 	},
 	"golden_boots": {
-		"shape": [
-			"# #",
-			"# #"
-		],
+		"shape": ["# #", "# #"],
 		"ingredients": {
 			"#": 103
 		},
@@ -1181,11 +890,7 @@
 		}
 	},
 	"compass": {
-		"shape": [
-			" # ",
-			"#R#",
-			" # "
-		],
+		"shape": [" # ", "#R#", " # "],
 		"ingredients": {
 			"#": 102,
 			"R": 105
@@ -1196,10 +901,7 @@
 		}
 	},
 	"polished_granite": {
-		"shape": [
-			"##",
-			"##"
-		],
+		"shape": ["##", "##"],
 		"ingredients": {
 			"#": 73
 		},
@@ -1209,10 +911,7 @@
 		}
 	},
 	"polished_diorite": {
-		"shape": [
-			"##",
-			"##"
-		],
+		"shape": ["##", "##"],
 		"ingredients": {
 			"#": 74
 		},
@@ -1222,10 +921,7 @@
 		}
 	},
 	"polished_andesite": {
-		"shape": [
-			"##",
-			"##"
-		],
+		"shape": ["##", "##"],
 		"ingredients": {
 			"#": 75
 		},
@@ -1235,10 +931,7 @@
 		}
 	},
 	"bed_white": {
-		"shape": [
-			"###",
-			"XXX"
-		],
+		"shape": ["###", "XXX"],
 		"ingredients": {
 			"#": 38,
 			"X": 7
@@ -1249,10 +942,7 @@
 		}
 	},
 	"bed_red": {
-		"shape": [
-			"###",
-			"XXX"
-		],
+		"shape": ["###", "XXX"],
 		"ingredients": {
 			"#": 36,
 			"X": 7
@@ -1263,10 +953,7 @@
 		}
 	},
 	"bed_yellow": {
-		"shape": [
-			"###",
-			"XXX"
-		],
+		"shape": ["###", "XXX"],
 		"ingredients": {
 			"#": 37,
 			"X": 7
@@ -1277,10 +964,7 @@
 		}
 	},
 	"bed_gray": {
-		"shape": [
-			"###",
-			"XXX"
-		],
+		"shape": ["###", "XXX"],
 		"ingredients": {
 			"#": 66,
 			"X": 7
@@ -1291,10 +975,7 @@
 		}
 	},
 	"bed_black": {
-		"shape": [
-			"###",
-			"XXX"
-		],
+		"shape": ["###", "XXX"],
 		"ingredients": {
 			"#": 89,
 			"X": 7
@@ -1305,10 +986,7 @@
 		}
 	},
 	"bed_brown": {
-		"shape": [
-			"###",
-			"XXX"
-		],
+		"shape": ["###", "XXX"],
 		"ingredients": {
 			"#": 90,
 			"X": 7
@@ -1319,11 +997,7 @@
 		}
 	},
 	"blast_furnace": {
-		"shape": [
-			"###",
-			"# #",
-			" F "
-		],
+		"shape": ["###", "# #", " F "],
 		"ingredients": {
 			"#": 102,
 			"F": 16
@@ -1334,10 +1008,7 @@
 		}
 	},
 	"mace": {
-		"shape": [
-			"C",
-			"R"
-		],
+		"shape": ["C", "R"],
 		"ingredients": {
 			"C": 181,
 			"R": 271
@@ -1348,9 +1019,7 @@
 		}
 	},
 	"wind_charge": {
-		"shape": [
-			"R"
-		],
+		"shape": ["R"],
 		"ingredients": {
 			"R": 271
 		},
@@ -1360,11 +1029,7 @@
 		}
 	},
 	"concrete_powder_white": {
-		"shape": [
-			"SGS",
-			"GDG",
-			"SGS"
-		],
+		"shape": ["SGS", "GDG", "SGS"],
 		"ingredients": {
 			"S": 6,
 			"G": 39,
@@ -1376,11 +1041,7 @@
 		}
 	},
 	"concrete_powder_yellow": {
-		"shape": [
-			"SGS",
-			"GDG",
-			"SGS"
-		],
+		"shape": ["SGS", "GDG", "SGS"],
 		"ingredients": {
 			"S": 6,
 			"G": 39,
@@ -1392,11 +1053,7 @@
 		}
 	},
 	"concrete_powder_gray": {
-		"shape": [
-			"SGS",
-			"GDG",
-			"SGS"
-		],
+		"shape": ["SGS", "GDG", "SGS"],
 		"ingredients": {
 			"S": 6,
 			"G": 39,
@@ -1408,11 +1065,7 @@
 		}
 	},
 	"concrete_powder_brown": {
-		"shape": [
-			"SGS",
-			"GDG",
-			"SGS"
-		],
+		"shape": ["SGS", "GDG", "SGS"],
 		"ingredients": {
 			"S": 6,
 			"G": 39,
@@ -1424,11 +1077,7 @@
 		}
 	},
 	"concrete_powder_red": {
-		"shape": [
-			"SGS",
-			"GDG",
-			"SGS"
-		],
+		"shape": ["SGS", "GDG", "SGS"],
 		"ingredients": {
 			"S": 6,
 			"G": 39,
@@ -1440,11 +1089,7 @@
 		}
 	},
 	"concrete_powder_black": {
-		"shape": [
-			"SGS",
-			"GDG",
-			"SGS"
-		],
+		"shape": ["SGS", "GDG", "SGS"],
 		"ingredients": {
 			"S": 6,
 			"G": 39,
@@ -1456,9 +1101,7 @@
 		}
 	},
 	"pale_oak_planks": {
-		"shape": [
-			"#"
-		],
+		"shape": ["#"],
 		"ingredients": {
 			"#": 176
 		},
