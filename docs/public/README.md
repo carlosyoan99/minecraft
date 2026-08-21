@@ -7,7 +7,8 @@
 > independientes por mecánica** (cómo funciona, por qué, mejoras a futuro
 > y constantes/cambios esperados) — índice en
 > [`mecanicas.md`](./mecanicas.md). Guía práctica del jugador:
-> [`help.md`](./help.md).
+> [`help.md`](./help.md). Sistema de diseño visual (fuentes, tokens,
+> animaciones, responsive): [`diseno.md`](./diseno.md).
 
 ## Qué es el cliente
 

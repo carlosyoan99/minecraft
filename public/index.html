@@ -3,8 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mi Minecraft — Node.js + Three.js</title>
+<title>Mi Minecraft — Clon de Minecraft en el navegador con Three.js</title>
+<meta name="description" content="Clon educativo de Minecraft en el navegador: mundo procedural, survival/creative, crafteo, mobs, biomas y más. Node.js autoritativo + Three.js sin build step. Juega gratis en LAN.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#6f4e2e">
+<!-- Open Graph (Facebook, LinkedIn, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mi Minecraft — Clon de Minecraft en el navegador">
+<meta property="og:description" content="Mundo procedural, survival/creative, crafteo 3x3, mobs con IA, biomas, armadura, minerales y más. Node.js + Three.js, sin build step.">
+<meta property="og:locale" content="es_ES">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Mi Minecraft — Clon de Minecraft en el navegador">
+<meta name="twitter:description" content="Mundo procedural, survival/creative, crafteo 3x3, mobs con IA, biomas y más. Node.js + Three.js.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛏️</text></svg>">
+<!-- Structured Data: WebApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Mi Minecraft",
+  "description": "Clon educativo de Minecraft en el navegador con mundo procedural, survival/creative, crafteo, mobs y biomas.",
+  "applicationCategory": "GameApplication",
+  "operatingSystem": "Web Browser",
+  "url": "https://github.com/carlosyoan99/minecraft",
+  "license": "https://opensource.org/licenses/MIT",
+  "author": {
+    "@type": "Person",
+    "name": "Carlos"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="estilo.css">
 <link rel="manifest" href="manifest.webmanifest">
 <script type="importmap">
@@ -21,7 +58,7 @@
     <div class="loading-panel">
       <div class="loading-title">⛏️ MI MINECRAFT</div>
       <div id="loading-message">Cargando mundo...</div>
-      <div class="loading-bar"><div id="loading-fill"></div></div>
+      <div class="loading-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Progreso de carga"><div id="loading-fill"></div></div>
       <div id="loading-status">Conectando al servidor...</div>
       <div id="loading-tip"></div>
       <div id="loading-error" class="hidden">Conexión perdida con el servidor.<button type="button" id="loading-retry">Reintentar</button></div>
@@ -113,10 +150,10 @@
       <!-- Ajustes en pestañas estilo Minecraft (Fase 17, A4): Video / Audio / Controles -->
       <div class="menu-screen hidden" id="menu-settings">
         <h2 class="mc-title">Ajustes</h2>
-        <div class="settings-tabs">
-          <button type="button" class="st-tab active" data-tab="video">🎬 Video</button>
-          <button type="button" class="st-tab" data-tab="audio">🔊 Audio</button>
-          <button type="button" class="st-tab" data-tab="controls">🎮 Controles</button>
+        <div class="settings-tabs" role="tablist" aria-label="Categorías de ajustes">
+          <button type="button" class="st-tab active" data-tab="video" role="tab" aria-selected="true">🎬 Video</button>
+          <button type="button" class="st-tab" data-tab="audio" role="tab" aria-selected="false">🔊 Audio</button>
+          <button type="button" class="st-tab" data-tab="controls-settings" role="tab" aria-selected="false">🎮 Controles</button>
         </div>
         <div class="settings-pane" id="pane-video">
           <label class="menu-field">Distancia de render
@@ -183,7 +220,7 @@
             </span>
           </label>
         </div>
-        <div class="settings-pane hidden" id="pane-controls">
+        <div class="settings-pane hidden" id="pane-controls-settings">
           <label class="menu-field">Sensibilidad del ratón
             <span class="rd-row">
               <input id="sens-slider" type="range" min="20" max="300" step="5">
@@ -206,13 +243,13 @@
            controles, mecánicas, comandos y solución de problemas -->
       <div class="menu-screen hidden" id="menu-help">
         <h2 class="mc-title">❓ Ayuda</h2>
-        <div class="settings-tabs">
-          <button type="button" class="st-tab active" data-tab="controls">🎮 Controles</button>
-          <button type="button" class="st-tab" data-tab="mecanicas">⛏️ Mecánicas</button>
-          <button type="button" class="st-tab" data-tab="comandos">💬 Comandos</button>
-          <button type="button" class="st-tab" data-tab="problemas">🛠️ Problemas</button>
+        <div class="settings-tabs" role="tablist" aria-label="Secciones de ayuda">
+          <button type="button" class="st-tab active" data-tab="controls-help" role="tab" aria-selected="true">🎮 Controles</button>
+          <button type="button" class="st-tab" data-tab="mecanicas" role="tab" aria-selected="false">⛏️ Mecánicas</button>
+          <button type="button" class="st-tab" data-tab="comandos" role="tab" aria-selected="false">💬 Comandos</button>
+          <button type="button" class="st-tab" data-tab="problemas" role="tab" aria-selected="false">🛠️ Problemas</button>
         </div>
-        <div class="help-pane" id="pane-controls">
+        <div class="help-pane" id="pane-controls-help">
           <p class="menu-sub">WASD mover · Ratón mirar · Espacio saltar · Shift agacharse</p>
           <p class="menu-sub">Click izq romper/atacar · Click der colocar/usar · Mantener izq: minar</p>
           <p class="menu-sub">1-9 hotbar · E inventario/crafteo · B recetas · F11 pantalla completa</p>
@@ -277,22 +314,24 @@
     <div id="touch-joystick"><div id="touch-stick"></div></div>
     <div id="touch-look"></div>
     <div id="touch-buttons">
-      <button type="button" id="touch-sneak" class="tbtn" title="Agacharse">⬇</button>
-      <button type="button" id="touch-jump" class="tbtn" title="Saltar">⤒</button>
-      <button type="button" id="touch-break" class="tbtn" title="Romper">⛏</button>
-      <button type="button" id="touch-use" class="tbtn" title="Usar/Colocar">✋</button>
-      <button type="button" id="touch-inv" class="tbtn" title="Inventario">🎒</button>
-      <button type="button" id="touch-pause" class="tbtn" title="Menú">⏸</button>
+      <button type="button" id="touch-sneak" class="tbtn" title="Agacharse" aria-label="Agacharse">⬇</button>
+      <button type="button" id="touch-jump" class="tbtn" title="Saltar" aria-label="Saltar">⤒</button>
+      <button type="button" id="touch-break" class="tbtn" title="Romper" aria-label="Romper">⛏</button>
+      <button type="button" id="touch-use" class="tbtn" title="Usar/Colocar" aria-label="Usar o colocar">✋</button>
+      <button type="button" id="touch-inv" class="tbtn" title="Inventario" aria-label="Inventario">🎒</button>
+      <button type="button" id="touch-pause" class="tbtn" title="Menú" aria-label="Menú de pausa">⏸</button>
     </div>
   </div>
 
-  <div id="crosshair">+</div>
+  <div id="crosshair" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="presentation"><title>Mira</title><path d="M11 2h2v8h8v2h-8v8h-2v-8H3v-2h8V2z" fill="white"/><path d="M11 2h2v8h8v2h-8v8h-2v-8H3v-2h8V2z" stroke="black" stroke-width="1"/></svg></div>
   <!-- Fase 21.5 (C2): pose del escudo — viñeta sutil mientras se bloquea -->
-  <div id="shield-block" class="hidden"></div>
+  <div id="shield-block" class="hidden" aria-hidden="true"></div>
   <!-- Fase 10 (A2): llamarada al arder (quemadura residual de lava) -->
-  <div id="fire-overlay" class="hidden"></div>
+  <div id="fire-overlay" class="hidden" aria-hidden="true"></div>
   <!-- Fase 21.5 (D2): veneno del Bogged — viñeta verde mientras dure -->
-  <div id="poison-overlay" class="hidden"></div>
+  <div id="poison-overlay" class="hidden" aria-hidden="true"></div>
+  <!-- Fase 21.5: fondo difuminado detrás de los paneles de inventario -->
+  <div id="panel-backdrop" class="hidden" aria-hidden="true"></div>
   <!-- Fase 10 (B2): pantalla de muerte con la causa (mob, caída, lava...) -->
   <div id="death-screen" class="hidden">
     <div class="death-card">
@@ -302,7 +341,7 @@
     </div>
   </div>
   <div id="coords-hud" class="hidden"></div>
-  <div id="info">
+  <div id="info" role="status" aria-live="polite" aria-label="Estado del jugador">
     <div class="stat">❤️ <span id="hp">20</span>/<span id="maxhp">20</span><span id="abs" class="abs" hidden></span></div>
     <div class="stat">🍗 <span class="bar"><span id="food-fill" class="fill"></span><span id="sat-fill" class="fill sat"></span></span> <span id="food">20</span>/20</div>
     <div class="stat">⭐ <span class="bar"><span id="xp-fill" class="fill xp"></span></span> Nv <span id="level">0</span></div>
@@ -369,7 +408,7 @@
   </div>
 
   <div id="chat-log"></div>
-  <input id="chat-input" type="text" placeholder="Pulsa Enter para chatear..." maxlength="200">
+  <input id="chat-input" type="text" placeholder="Pulsa Enter para chatear..." maxlength="200" aria-label="Chat del juego">
 
   <script src="client.js" type="module"></script>
   <!-- Cliente offline (localhost/HTTPS): cachea los estáticos en SW para

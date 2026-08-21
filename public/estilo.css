@@ -1,12 +1,32 @@
 * {
 	box-sizing: border-box;
 }
+
+/* Accesibilidad: respetar preferencia de movimiento reducido (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+/* Accesibilidad: foco visible solo con teclado (WCAG 2.4.7) */
+:focus-visible {
+	outline: 2px solid var(--mc-focus);
+	outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+	outline: none;
+}
 body {
 	margin: 0;
 	overflow: hidden;
-	/* Fase 7 (estética MC): tipografía pixel con fallbacks; sin assets externos */
-	font-family: "Courier New", "Segoe UI", monospace;
-	background: #1a1a2e;
+	/* Fase 7 (estética MC): JetBrains Mono para legibilidad pixel, fallbacks */
+	font-family: var(--font-ui);
+	background: var(--mc-screen-bg);
 	user-select: none;
 	image-rendering: pixelated;
 }
@@ -71,6 +91,17 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
 	}
 }
 
+/* Entrada animada del panel de carga: fade + scale */
+@keyframes panelEntrance {
+	from {
+		opacity: 0;
+		transform: scale(0.94) translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
+}
 .loading-panel {
 	width: 430px;
 	max-width: 92vw;
@@ -82,20 +113,31 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
 		0 0 0 3px #333,
 		0 12px 40px rgba(0, 0, 0, 0.5);
 	text-align: center;
+	animation: panelEntrance 0.4s ease both;
 }
 .loading-title {
 	color: #2a2a2a;
-	font-weight: bold;
-	font-size: 13px;
-	letter-spacing: 2px;
-	margin-bottom: 12px;
+	font-family: var(--font-pixel);
+	font-weight: 400;
+	font-size: 10px;
+	letter-spacing: 3px;
+	margin-bottom: 14px;
 }
 #loading-message {
 	color: #1f1f1f;
-	font-size: 21px;
-	font-weight: bold;
-	margin-bottom: 14px;
+	font-family: var(--font-pixel);
+	font-size: 14px;
+	margin-bottom: 16px;
 	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.6);
+	animation: msgPulse 2.5s ease-in-out infinite alternate;
+}
+@keyframes msgPulse {
+	from {
+		opacity: 0.85;
+	}
+	to {
+		opacity: 1;
+	}
 }
 .loading-bar {
 	height: 18px;
@@ -124,28 +166,56 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
 	);
 	animation: fillSlide 0.8s linear infinite;
 }
+/* Sweep brillante que recorre la barra de progreso */
+#loading-fill::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		105deg,
+		transparent 0%,
+		transparent 35%,
+		rgba(255, 255, 255, 0.35) 45%,
+		rgba(255, 255, 255, 0.5) 50%,
+		rgba(255, 255, 255, 0.35) 55%,
+		transparent 65%,
+		transparent 100%
+	);
+	animation: barSweep 2s ease-in-out infinite;
+}
 @keyframes fillSlide {
 	to {
 		background-position: 16px 0;
 	}
 }
+@keyframes barSweep {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(250%);
+	}
+}
 #loading-status {
 	margin-top: 12px;
 	color: #1f1f1f;
-	font-size: 13px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	font-weight: 600;
 }
 #loading-tip {
-	margin-top: 8px;
+	margin-top: 10px;
 	color: #3a3a3a;
-	font-size: 12px;
+	font-family: var(--font-ui);
+	font-size: 11px;
 	font-style: italic;
 	min-height: 16px;
 }
 #loading-error {
 	margin-top: 12px;
 	color: #8a1f1f;
-	font-size: 13px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	font-weight: 600;
 }
 #loading-error.hidden {
@@ -157,8 +227,9 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
 	cursor: pointer;
 	background: #555;
 	color: #fff;
+	font-family: var(--font-ui);
 	font-weight: bold;
-	font-size: 13px;
+	font-size: 12px;
 	border: 2px solid;
 	border-color: #999 #222 #222 #999;
 }
@@ -194,15 +265,17 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
 }
 #menu h1 {
 	margin-top: 0;
+	font-family: var(--font-pixel);
 	color: #2b2b2b;
-	font-size: 26px;
+	font-size: 16px;
 	letter-spacing: 2px;
 	text-shadow:
 		2px 2px 0 rgba(255, 255, 255, 0.65),
 		-1px -1px 0 rgba(0, 0, 0, 0.25);
 }
 #menu p {
-	font-size: 13px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	color: #4a4a4a;
 	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
 }
@@ -211,10 +284,9 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
 #seed-create-btn,
 #craft-clear-btn {
 	margin-top: 14px;
-	padding: 9px 22px;
-	font-family: inherit;
-	font-size: 14px;
-	font-weight: bold;
+	padding: 10px 24px;
+	font-family: var(--font-pixel);
+	font-size: 11px;
 	letter-spacing: 1px;
 	background: #7d7d7d;
 	background-image: linear-gradient(
@@ -226,22 +298,27 @@ Oculta por defecto: si el JS no arranca, el menú funciona igual.
 	border: 3px solid;
 	border-color: #fff #3d3d3d #3d3d3d #fff;
 	cursor: pointer;
-	transition: filter 0.1s;
+	transition:
+		filter 0.12s,
+		transform 0.12s;
 }
 #start-btn:hover,
 #seed-create-btn:hover,
 #craft-clear-btn:hover {
 	filter: brightness(1.18);
+	transform: translateY(-1px);
 }
 #start-btn:active,
 #seed-create-btn:active,
 #craft-clear-btn:active {
 	border-color: #3d3d3d #fff #fff #3d3d3d; /* bisel invertido: se "pulsa" */
 	filter: brightness(0.92);
+	transform: translateY(1px);
 }
 /* ============================================================
 MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 #menu actúa de contenedor; cada pantalla es un .menu-screen.
+Transiciones fade+slide entre pantallas (Fase 21.5).
 ============================================================ */
 .menu-screen {
 	display: flex;
@@ -251,6 +328,20 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 }
 .menu-screen.hidden {
 	display: none;
+}
+/* Entrada animada: fade + slide-up al aparecer cada pantalla */
+@keyframes menuSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.menu-screen:not(.hidden) {
+	animation: menuSlideIn 0.3s ease both;
 }
 .menu-screen h2 {
 	margin: 0;
@@ -263,7 +354,8 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 .menu-field {
 	display: block;
 	width: 100%;
-	font-size: 13px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	color: #3f3f3f;
 	text-align: left;
 	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
@@ -273,12 +365,12 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	width: 100%;
 	margin-top: 6px;
 	padding: 8px 10px;
-	background: #1b1b22;
+	background: var(--mc-surface);
 	color: #fff;
 	border: 2px solid;
 	border-color: #3a3a3a #8d8d8d #8d8d8d #3a3a3a;
-	font-family: inherit;
-	font-size: 14px;
+	font-family: var(--font-ui);
+	font-size: 13px;
 	text-align: center;
 	outline: none;
 	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
@@ -287,7 +379,10 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	color: #777;
 }
 .menu-field input[type="text"]:focus {
-	border-color: #6f6 #6f6 #6f6 #6f6;
+	border-color: var(--mc-accent);
+	box-shadow:
+		inset 0 2px 4px rgba(0, 0, 0, 0.4),
+		0 0 0 1px var(--mc-accent);
 }
 /* Fila del slider de render: range + valor numérico */
 .rd-row {
@@ -298,7 +393,7 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 }
 .rd-row input[type="range"] {
 	flex: 1;
-	accent-color: #4caf50;
+	accent-color: var(--mc-accent);
 }
 #rd-value,
 #fov-value,
@@ -309,10 +404,10 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	min-width: 30px;
 	text-align: center;
 	color: #fff;
-	font-size: 14px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	font-weight: bold;
-	font-family: inherit;
-	background: #1b1b22;
+	background: var(--mc-surface);
 	border: 2px solid;
 	border-color: #3a3a3a #8d8d8d #8d8d8d #3a3a3a;
 	padding: 4px 6px;
@@ -322,12 +417,12 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 .quality-select {
 	flex: 1;
 	padding: 8px 10px;
-	background: #1b1b22;
+	background: var(--mc-surface);
 	color: #fff;
-	font-family: inherit;
+	font-family: var(--font-ui);
 	border: 2px solid;
 	border-color: #3a3a3a #8d8d8d #8d8d8d #3a3a3a;
-	font-size: 14px;
+	font-size: 13px;
 	outline: none;
 	cursor: pointer;
 }
@@ -341,14 +436,15 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	justify-content: space-between;
 	width: 100%;
 	padding: 6px 0;
-	font-size: 14px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	color: #3f3f3f;
 	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
 }
 .menu-field.toggle input {
 	width: 18px;
 	height: 18px;
-	accent-color: #4caf50;
+	accent-color: var(--mc-accent);
 }
 /* Botones secundarios (Mundos / Ajustes / Volver) */
 .menu-actions {
@@ -359,10 +455,10 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 .menu-actions button,
 .menu-secondary {
 	padding: 8px 18px;
-	font-size: 13px;
-	font-weight: bold;
-	font-family: inherit;
-	letter-spacing: 1px;
+	font-family: var(--font-ui);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.5px;
 	cursor: pointer;
 	background: #7d7d7d;
 	background-image: linear-gradient(
@@ -373,16 +469,20 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
 	border: 3px solid;
 	border-color: #fff #3d3d3d #3d3d3d #fff;
-	transition: filter 0.1s;
+	transition:
+		filter 0.12s,
+		transform 0.12s;
 }
 .menu-actions button:hover,
 .menu-secondary:hover {
 	filter: brightness(1.18);
+	transform: translateY(-1px);
 }
 .menu-actions button:active,
 .menu-secondary:active {
 	border-color: #3d3d3d #fff #fff #3d3d3d;
 	filter: brightness(0.92);
+	transform: translateY(1px);
 }
 /* Lista de mundos guardados */
 .worlds-list {
@@ -421,12 +521,14 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	filter: brightness(1.2);
 }
 .world-item .wi-name {
-	font-weight: bold;
-	color: #ffd75f;
+	font-family: var(--font-ui);
+	font-weight: 700;
+	color: var(--mc-gold);
 }
 .world-item .wi-meta {
+	font-family: var(--font-ui);
 	color: #cfcfcf;
-	font-size: 11px;
+	font-size: 10px;
 }
 .world-item.empty {
 	cursor: default;
@@ -442,19 +544,24 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	width: 100%;
 	margin-top: 6px;
 	padding: 8px 10px;
-	background: #14141f;
+	background: var(--mc-surface);
 	color: #fff;
-	border: 1px solid #555;
-	border-radius: 6px;
-	font-size: 14px;
+	border: 2px solid;
+	border-color: #3a3a3a #8d8d8d #8d8d8d #3a3a3a;
+	font-family: var(--font-ui);
+	font-size: 13px;
 	text-align: center;
 	outline: none;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 #seed-input::placeholder {
 	color: #777;
 }
 #seed-input:focus {
-	border-color: #4caf50;
+	border-color: var(--mc-accent);
+	box-shadow:
+		inset 0 2px 4px rgba(0, 0, 0, 0.4),
+		0 0 0 1px var(--mc-accent);
 }
 /* Fila de semilla: input + botón 🎲 (crear mundo con semilla aleatoria, Fase 7) */
 .seed-row {
@@ -499,16 +606,18 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	min-width: 0;
 }
 .world-item .wi-seed {
+	font-family: var(--font-ui);
 	color: #cfcfcf;
-	font-size: 11px;
+	font-size: 10px;
 	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
 }
 /* Fase 9 (Bloque B): badge del modo de juego en la lista de mundos */
 .mode-badge {
 	display: inline-block;
 	align-self: flex-start;
-	font-size: 10px;
-	font-weight: bold;
+	font-family: var(--font-ui);
+	font-size: 9px;
+	font-weight: 600;
 	letter-spacing: 0.5px;
 	padding: 1px 7px;
 	border-radius: 8px;
@@ -517,10 +626,10 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 	border: 1px solid rgba(255, 255, 255, 0.35);
 }
 .mode-badge.survival {
-	background: #4a8a2e;
+	background: var(--mc-success);
 }
 .mode-badge.creative {
-	background: #8a5ac0;
+	background: var(--mc-creative);
 }
 /* Botón 🗑️ de borrar mundo (no abre el mundo al pulsarlo) */
 .world-delete {
@@ -539,7 +648,7 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 		transform 0.12s;
 }
 .world-delete:hover {
-	background: #c0392b;
+	background: var(--mc-danger);
 	transform: scale(1.12);
 }
 .world-delete:active {
@@ -570,6 +679,7 @@ MENÚ EN PANTALLAS (Fase 7): principal, mundos y ajustes.
 #gamemode-badge:not(.creative) {
 	background: rgba(74, 138, 46, 0.75);
 }
+/* Los badges usan rgba por transparencia, pero apuntan a los tokens */
 #gamemode-badge small {
 	font-weight: normal;
 	opacity: 0.85;
@@ -591,9 +701,9 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 }
 .recipe-tab {
 	padding: 6px 12px;
-	font-family: inherit;
-	font-size: 12px;
-	font-weight: bold;
+	font-family: var(--font-ui);
+	font-size: 11px;
+	font-weight: 600;
 	letter-spacing: 0.5px;
 	cursor: pointer;
 	background: #7d7d7d;
@@ -611,8 +721,9 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	filter: brightness(1.18);
 }
 .recipe-tab.active {
-	background: #4caf50;
-	border-color: #dfffdf #2a5a2a #2a5a2a #dfffdf;
+	background: var(--mc-accent);
+	border-color: var(--mc-accent-light) var(--mc-accent-dark)
+		var(--mc-accent-dark) var(--mc-accent-light);
 }
 .recipe-list {
 	display: flex;
@@ -649,7 +760,8 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	flex-direction: column;
 	flex: 1;
 	gap: 2px;
-	font-size: 12px;
+	font-family: var(--font-ui);
+	font-size: 11px;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: sección distinta (libro de recetas); no compite con #gamemode-badge small */
 .recipe-info small {
@@ -700,6 +812,31 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 #death-screen.hidden {
 	display: none;
 }
+/* Shake al aparecer la pantalla de muerte */
+@keyframes deathShake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	10% {
+		transform: translateX(-6px) rotate(-0.5deg);
+	}
+	20% {
+		transform: translateX(5px) rotate(0.4deg);
+	}
+	30% {
+		transform: translateX(-4px) rotate(-0.3deg);
+	}
+	40% {
+		transform: translateX(3px) rotate(0.2deg);
+	}
+	50% {
+		transform: translateX(-2px);
+	}
+	60% {
+		transform: translateX(1px);
+	}
+}
 .death-card {
 	text-align: center;
 	padding: 28px 44px;
@@ -708,19 +845,23 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	border-radius: 6px;
 	box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
 	color: #ffd7d7;
+	animation: deathShake 0.5s ease-out;
 }
 .death-card h2 {
 	margin: 0 0 10px;
-	font-size: 30px;
-	color: #ff6b6b;
+	font-family: var(--font-pixel);
+	font-size: 18px;
+	color: var(--mc-danger-light);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: sección distinta (pantalla de muerte); no compite con #menu p */
 .death-card p {
 	margin: 4px 0;
-	font-size: 18px;
+	font-family: var(--font-ui);
+	font-size: 14px;
 }
 .death-card .death-hint {
-	font-size: 14px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	opacity: 0.7;
 	margin-top: 12px;
 }
@@ -775,6 +916,27 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	}
 }
 
+/* Fase 21.5: fondo difuminado detrás de los paneles de inventario.
+   Sustituye al bloqueador opaco para paneles: el mundo se ve borroso
+   pero legible, igual que en Minecraft real. */
+#panel-backdrop {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 190; /* sobre el HUD (90), bajo los paneles (200) */
+	background: rgba(0, 0, 0, 0.35);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	opacity: 0;
+	transition: opacity 0.25s ease;
+}
+#panel-backdrop.visible {
+	opacity: 1;
+}
+#panel-backdrop.hidden {
+	opacity: 0;
+}
+
 /* Fase 21.5 (C2): pose del escudo — viñeta cerrada MÁS CLAVE cuando el
    jugador bloquea (clic derecho mantenido con el escudo en mano). No es un
    modelo 3D de brazo (fuera de alcance): la señal visual es la viñeta + la
@@ -798,17 +960,13 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	color: white;
-	font-size: 22px;
 	z-index: 90;
-	/* Sombra dura en las 4 direcciones: cruz MC legible sobre cualquier fondo */
-	text-shadow:
-		-2px 0 0 #000,
-		2px 0 0 #000,
-		0 -2px 0 #000,
-		0 2px 0 #000;
 	pointer-events: none;
 	line-height: 1;
+	filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.6));
+}
+#crosshair svg {
+	display: block;
 }
 /* Capa de coordenadas (Fase 7): posición + dirección, oculta por defecto */
 #coords-hud {
@@ -821,9 +979,7 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	padding: 4px 12px;
 	border-radius: 6px;
 	z-index: 90;
-	font:
-		12px "Courier New",
-		monospace;
+	font: 11px var(--font-ui);
 	text-shadow: 0 0 2px black;
 	pointer-events: none;
 	text-align: center;
@@ -837,6 +993,7 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	left: 16px;
 	color: white;
 	background: rgba(0, 0, 0, 0.55);
+	font-family: var(--font-ui);
 	/* F19.5 (B2): contorno oscuro en las 4 direcciones — legible sobre
 	   fondos claros (nieve/desierto) y oscuros (cueva/lava) por igual. */
 	text-shadow:
@@ -906,7 +1063,7 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	border: 1px solid #555;
 	border-radius: 8px;
 	z-index: 310;
-	font-size: 18px;
+	font-size: 16px;
 	cursor: pointer;
 	transition:
 		background 0.15s,
@@ -928,9 +1085,7 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	padding: 4px 10px;
 	border-radius: 6px;
 	z-index: 90;
-	font:
-		12px "Courier New",
-		monospace;
+	font: 11px var(--font-ui);
 	pointer-events: none;
 }
 /* Panel de depuración estilo F3 de Minecraft (visualizador de chunks) */
@@ -944,9 +1099,7 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	padding: 10px 14px;
 	border: 1px solid #3a3;
 	border-radius: 6px;
-	font:
-		12px "Courier New",
-		monospace;
+	font: 11px var(--font-ui);
 	line-height: 1.55;
 	pointer-events: none;
 	white-space: nowrap;
@@ -986,12 +1139,14 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	align-items: center;
 	justify-content: center;
 	color: #fff;
-	font-size: 10px;
+	font-family: var(--font-ui);
+	font-size: 9px;
 	position: relative;
 	cursor: pointer;
 }
 .hotbar-slot.selected {
-	border-color: #ffd75f #8a5a00 #8a5a00 #ffd75f; /* slot activo dorado, estilo MC */
+	border-color: var(--mc-gold) var(--mc-gold-dark) var(--mc-gold-dark)
+		var(--mc-gold); /* slot activo dorado, estilo MC */
 	background: #a3a3a3;
 }
 .hotbar-slot .count {
@@ -1015,7 +1170,8 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 }
 /* Fallback de texto si un ítem aún no tiene icono */
 .item-txt {
-	font-size: 9px;
+	font-family: var(--font-ui);
+	font-size: 8px;
 	color: #ddd;
 	text-align: center;
 	line-height: 1.2;
@@ -1026,6 +1182,10 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
    de lo que F19 dejó en los paneles). Fuente única: el CSS de los paneles
    usa estas variables; el código nuevo no repite valores sueltos. */
 :root {
+	/* Fuentes */
+	--font-pixel: "Press Start 2P", "Courier New", monospace;
+	--font-ui: "JetBrains Mono", "Courier New", monospace;
+	/* Colores MC — paneles y biseles */
 	--mc-bg: #c6c6c6; /* fondo base de paneles (lo sustituye la textura) */
 	--mc-bg-dark: #8f8f8f; /* fondo de slot */
 	--mc-border-light: #fff; /* bisel claro (luz desde arriba-izquierda) */
@@ -1033,6 +1193,27 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	--mc-border-dark: #3a3a3a; /* bisel oscuro del slot (sombra abajo-dcha) */
 	--mc-ink: #2b2b2b; /* texto sobre paneles */
 	--mc-focus: #ffd454; /* foco de navegación por teclado (F19.5 B1) */
+	/* Semánticos */
+	--mc-accent: #4caf50; /* verde principal: tabs activos, checkbox, focus inputs */
+	--mc-accent-light: #dfffdf; /* borde claro del accent (tabs, skins) */
+	--mc-accent-dark: #2a5a2a; /* borde oscuro del accent */
+	--mc-danger: #c0392b; /* rojo: borrar mundo, errores */
+	--mc-danger-light: #ff6b6b; /* rojo claro: título pantalla muerte */
+	--mc-gold: #ffd75f; /* dorado: slot seleccionado, nombres de mundo */
+	--mc-gold-dark: #8a5a00; /* dorado oscuro: borde slot seleccionado */
+	--mc-success: #4a8a2e; /* verde oscuro: badge survival, skins seleccionadas */
+	--mc-creative: #8a5ac0; /* púrpura: badge creativo */
+	/* Superficies */
+	--mc-surface: #1b1b22; /* fondo de inputs, selects, valores */
+	--mc-surface-deep: #14141f; /* fondo más oscuro (seed input) */
+	--mc-screen-bg: #1a1a2e; /* fondo de body / pantalla */
+	/* Barras de HUD */
+	--mc-health-fill: #e8544f; /* vida baja */
+	--mc-health-mid: #e8b93f; /* vida media */
+	--mc-health-high: #5fd34f; /* vida alta */
+	--mc-food-fill: #c08040; /* comida */
+	--mc-sat-fill: #ffb300; /* saturación dorada */
+	--mc-xp-fill: #3fae2a; /* barra de XP */
 }
 
 /* Fase 19 (D): fantasma del ítem arrastrado — sigue al cursor sin bloquear
@@ -1129,7 +1310,8 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 		inset 0 0 0 2px rgba(0, 0, 0, 0.22),
 		0 0 0 2px #1a1a1f,
 		0 6px 18px rgba(0, 0, 0, 0.5);
-	font-size: 13px;
+	font-family: var(--font-ui);
+	font-size: 11px;
 	pointer-events: none;
 	z-index: 50;
 	white-space: nowrap;
@@ -1139,11 +1321,11 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	display: none;
 }
 #tooltip .tt-name {
-	font-weight: bold;
+	font-weight: 700;
 }
 #tooltip .tt-dur {
 	margin-left: 8px;
-	font-size: 11px;
+	font-size: 10px;
 	color: #5a4a2a;
 }
 
@@ -1176,11 +1358,14 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 }
 .panel h3 {
 	margin-top: 0;
+	font-family: var(--font-pixel);
+	font-size: 11px;
 	letter-spacing: 1px;
 	text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.6);
 }
 .hint {
-	font-size: 11px;
+	font-family: var(--font-ui);
+	font-size: 10px;
 	color: #555;
 	margin-top: 10px;
 	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.45);
@@ -1244,8 +1429,9 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	position: absolute;
 	bottom: 1px;
 	right: 3px;
-	font-size: 10px;
-	font-weight: bold;
+	font-family: var(--font-ui);
+	font-size: 9px;
+	font-weight: 700;
 } /* Fase 7: columna de armadura equipada (4 slots, clic para quitar) */
 .armor-col {
 	display: flex;
@@ -1263,7 +1449,8 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	border-color: #8f8;
 }
 .armor-slot .armor-empty {
-	font-size: 9px;
+	font-family: var(--font-ui);
+	font-size: 8px;
 	color: #888;
 	text-align: center;
 	line-height: 38px;
@@ -1302,7 +1489,8 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	max-height: 140px;
 	overflow-y: auto;
 	color: white;
-	font-size: 13px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	text-shadow:
 		-1px 0 0 #000,
 		1px 0 0 #000,
@@ -1324,7 +1512,7 @@ LIBRO DE RECETAS (Fase 9, Bloque F): pestañas por categoría + lista.
 	border-color: #8d8d8d #2a2a2a #2a2a2a #8d8d8d;
 	background: rgba(0, 0, 0, 0.6);
 	color: white;
-	font-family: inherit;
+	font-family: var(--font-ui);
 	display: none;
 }
 #chat-input.active {
@@ -1394,9 +1582,10 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 }
 .logo-big {
 	display: block;
-	font-size: 46px;
-	font-weight: 900;
-	letter-spacing: 4px;
+	font-family: var(--font-pixel);
+	font-size: 22px;
+	font-weight: 400;
+	letter-spacing: 3px;
 	color: #fff;
 	text-shadow:
 		3px 3px 0 #3d3d3d,
@@ -1408,23 +1597,27 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 }
 /* Títulos de pantalla (Fase 17) */
 .mc-title {
-	margin: 0 0 6px;
+	margin: 0 0 8px;
+	font-family: var(--font-pixel);
 	color: #2b2b2b;
-	font-size: 22px;
+	font-size: 14px;
 	letter-spacing: 2px;
 	text-shadow:
 		2px 2px 0 rgba(255, 255, 255, 0.65),
 		-1px -1px 0 rgba(0, 0, 0, 0.2);
 }
 .menu-sub {
-	font-size: 12px;
+	font-family: var(--font-ui);
+	font-size: 11px;
 	color: #4a4a4a;
 	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
-	margin: 2px 0;
+	margin: 3px 0;
+	line-height: 1.45;
 }
 .menu-credit {
 	margin-top: 14px;
-	font-size: 11px;
+	font-family: var(--font-ui);
+	font-size: 10px;
 	color: #777;
 	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
 }
@@ -1442,9 +1635,9 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 .st-tab {
 	flex: 1;
 	padding: 6px 10px;
-	font-family: inherit;
-	font-size: 12px;
-	font-weight: bold;
+	font-family: var(--font-ui);
+	font-size: 11px;
+	font-weight: 600;
 	letter-spacing: 0.5px;
 	cursor: pointer;
 	background: var(--mc-bg-dark);
@@ -1476,21 +1669,23 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 .help-pane {
 	min-width: 300px;
 	text-align: left;
-	padding: 4px 2px;
+	padding: 6px 8px;
 	border: 2px solid;
 	border-color: var(--mc-border-light) var(--mc-border-dark)
 		var(--mc-border-dark) var(--mc-border-light);
 	background: rgba(0, 0, 0, 0.12);
 	margin: 0 0 8px;
+	font-family: var(--font-ui);
+	font-size: 11px;
+	line-height: 1.5;
 }
 /* Botones grandes de pausa (Fase 17, C1) — mismo aspecto que Jugar */
 #pause-resume-btn,
 #new-world-btn {
 	margin-top: 8px;
-	padding: 9px 22px;
-	font-family: inherit;
-	font-size: 14px;
-	font-weight: bold;
+	padding: 10px 24px;
+	font-family: var(--font-pixel);
+	font-size: 11px;
 	letter-spacing: 1px;
 	background: #7d7d7d;
 	background-image: linear-gradient(
@@ -1502,16 +1697,20 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 	border: 3px solid;
 	border-color: #fff #3d3d3d #3d3d3d #fff;
 	cursor: pointer;
-	transition: filter 0.1s;
+	transition:
+		filter 0.12s,
+		transform 0.12s;
 }
 #pause-resume-btn:hover,
 #new-world-btn:hover {
 	filter: brightness(1.18);
+	transform: translateY(-1px);
 }
 #pause-resume-btn:active,
 #new-world-btn:active {
 	border-color: #3d3d3d #fff #fff #3d3d3d;
 	filter: brightness(0.92);
+	transform: translateY(1px);
 }
 #menu-pause button {
 	width: 240px;
@@ -1525,7 +1724,7 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 .world-action {
 	width: 26px;
 	height: 26px;
-	font-size: 13px;
+	font-size: 12px;
 	line-height: 1;
 	padding: 0;
 	cursor: pointer;
@@ -1539,7 +1738,7 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 		transform 0.12s;
 }
 .world-action:hover {
-	background: #4a8a2e;
+	background: var(--mc-success);
 	transform: scale(1.12);
 }
 .world-action:active {
@@ -1551,7 +1750,8 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 }
 .skin-field-title {
 	display: block;
-	font-size: 13px;
+	font-family: var(--font-ui);
+	font-size: 12px;
 	color: #3f3f3f;
 	text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
 	margin-bottom: 6px;
@@ -1577,10 +1777,10 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 	border-color: var(--mc-border-light) var(--mc-border-dark)
 		var(--mc-border-dark) var(--mc-border-light);
 	color: #fff;
-	font-family: inherit;
-	font-size: 10px;
-	font-weight: bold;
-	letter-spacing: 0.5px;
+	font-family: var(--font-ui);
+	font-size: 9px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
 	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
 	transition:
 		filter 0.1s,
@@ -1602,8 +1802,9 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 	transform: scale(0.95);
 }
 .skin-card.selected {
-	background: #4a8a2e;
-	border-color: #dfffdf #2a5a2a #2a5a2a #dfffdf;
+	background: var(--mc-success);
+	border-color: var(--mc-accent-light) var(--mc-accent-dark)
+		var(--mc-accent-dark) var(--mc-accent-light);
 	box-shadow: 0 0 10px rgba(120, 220, 80, 0.55);
 }
 /* Vista previa 3D del personaje (Fase 17): viewport propio con fondo suave
@@ -1631,6 +1832,38 @@ logo pixel, títulos MC y navegación coherente entre pantallas.
 #skin-preview canvas {
 	display: block;
 }
+/* ============================================================
+RESPONSIVE TABLET (≤768px): ajustes intermedios entre desktop y móvil.
+============================================================ */
+@media (max-width: 768px) {
+	#menu {
+		padding: 24px 28px;
+		max-width: 92vw;
+	}
+	.logo-big {
+		font-size: 18px;
+	}
+	.mc-title {
+		font-size: 13px;
+	}
+	.settings-pane,
+	.help-pane {
+		min-width: 0;
+		width: 80vw;
+	}
+	.skin-grid {
+		grid-template-columns: repeat(5, 1fr);
+	}
+	#menu-pause button {
+		width: 220px;
+	}
+	.worlds-list {
+		max-height: 160px;
+	}
+}
+/* ============================================================
+RESPONSIVE MÓVIL (≤640px): menú compacto, skins en grid 3 columnas.
+============================================================ */
 @media (max-width: 640px) {
 	.skin-grid {
 		grid-template-columns: repeat(3, 1fr);
@@ -1739,7 +1972,10 @@ FASE 17 (D1): RESPONSIVE — menú compacto en pantallas pequeñas.
 		max-width: 94vw;
 	}
 	.logo-big {
-		font-size: 30px;
+		font-size: 16px;
+	}
+	.mc-title {
+		font-size: 12px;
 	}
 	.settings-pane,
 	.help-pane {

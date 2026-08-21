@@ -55,7 +55,11 @@ tipTimer = setInterval(() => {
 }, 2500);
 
 export function setProgress(pct) {
-	fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+	const clamped = Math.max(0, Math.min(100, pct));
+	fill.style.width = `${clamped}%`;
+	// Accesibilidad: sincronizar aria-valuenow con el progreso visual
+	const bar = fill.parentElement;
+	if (bar) bar.setAttribute("aria-valuenow", Math.round(clamped));
 }
 export function setStatus(text) {
 	statusEl.textContent = text;

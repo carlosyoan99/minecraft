@@ -1,0 +1,12 @@
+# robots.txt — Mi Minecraft (clon de Minecraft en el navegador)
+# https://github.com/carlosyoan99/minecraft
+
+User-agent: *
+Allow: /
+Disallow: /vendor/
+Disallow: /world/
+
+# El juego es una SPA; no hay subpáginas que rastrear.
+# Los recursos estáticos (JS, CSS, texturas) deben ser accesibles
+# para la renderización (no bloquear CSS/JS).
+Sitemap: https://github.com/carlosyoan99/minecraft

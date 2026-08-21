@@ -22,6 +22,21 @@ let openChestKey = null; // Fase 6: cofre abierto ("x,y,z")
 export let chestSlots = new Array(27).fill(null);
 let craftingGrid = new Array(9).fill(null);
 let openFurnaceKey = null;
+
+// Fase 21.5: fondo difuminado detrás de los paneles.
+// Se muestra/oculta con una transición de opacidad (CSS transition).
+const backdropEl = document.getElementById("panel-backdrop");
+function updateBackdrop() {
+	const anyOpen =
+		inventoryOpen ||
+		pickerOpen ||
+		openFurnaceKey !== null ||
+		openChestKey !== null ||
+		bundleOpen ||
+		isRecipeBookOpen();
+	backdropEl.classList.toggle("visible", anyOpen);
+	backdropEl.classList.toggle("hidden", !anyOpen);
+}
 // Fase 7: armadura equipada (fuente de verdad: el servidor; llega en init e
 // inventory_update). Cada pieza con su durabilidad.
 let armor = { helmet: null, chestplate: null, leggings: null, boots: null };
@@ -138,6 +153,7 @@ function toggleCraftingUI(show) {
 		showBlocker(false); // quitar el menú para poder clicar los slots (bug inventario)
 		controls.unlock();
 	}
+	updateBackdrop();
 }
 
 // Enviar el grid para intentar craftear cada vez que cambie (auto-craft al llenar el patrón)
@@ -219,6 +235,7 @@ export function toggleFurnaceUI(show, coords) {
 		send("furnace_action", { action: "close" });
 		openFurnaceKey = null;
 	}
+	updateBackdrop();
 }
 
 // ============================================================
@@ -303,6 +320,7 @@ export function toggleChestUI(show, coords) {
 		openChestKey = null;
 		playChestClose(); // Fase 10 (F2): tapa que se cierra
 	}
+	updateBackdrop();
 }
 
 // ============================================================
@@ -368,6 +386,7 @@ export function toggleBundleUI(show) {
 		send("bundle_action", { action: "close" });
 		bundleOpen = false;
 	}
+	updateBackdrop();
 }
 
 // ============================================================
@@ -409,6 +428,7 @@ export function togglePicker() {
 	} else {
 		controls.lock();
 	}
+	updateBackdrop();
 }
 
 function renderPickerGrid() {
@@ -446,5 +466,6 @@ export function closePanels() {
 	if (pickerOpen) togglePicker();
 	inventoryOpen = false;
 	if (isRecipeBookOpen()) toggleRecipeBook();
+	updateBackdrop(); // Fase 21.5: ocultar backdrop al cerrar todos los paneles
 	if (hadPanel) controls.lock(); // Escape cierra el panel y reanuda el juego
 }
