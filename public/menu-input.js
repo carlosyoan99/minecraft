@@ -36,12 +36,19 @@ document.addEventListener("pointerlockchange", () => {
 	if (document.pointerLockElement) return; // se bloqueó, nada que hacer
 	if (inMenu) return; // estamos en el menú principal, no en juego
 	if (isPauseOpen()) return; // la pausa ya está visible
-	// Verificar que no haya un panel abierto (inventario, cofre, horno, chat):
-	// si hay panel, el bloqueador se queda oculto (patrón de scene.js).
+	// Verificar que no haya un panel abierto (inventario, cofre, horno,
+	// chat, libro de recetas, picker creativo o mochila): si hay panel, el
+	// bloqueador se queda oculto (patrón de scene.js). Fase 21.5 (Z1): el
+	// libro/picker/mochila también liberan el puntero al abrirse — sin este
+	// matiz, abrirlos disparaba showPause() encima (fallaba B5 de
+	// audit-fase7: Escape "cerraba" la pausa, no el libro).
 	const panelOpen =
 		!document.getElementById("crafting-ui").classList.contains("hidden") ||
 		!document.getElementById("furnace-ui").classList.contains("hidden") ||
 		!document.getElementById("chest-ui").classList.contains("hidden") ||
+		!document.getElementById("recipe-book").classList.contains("hidden") ||
+		!document.getElementById("picker-ui").classList.contains("hidden") ||
+		!document.getElementById("bundle-ui").classList.contains("hidden") ||
 		document.getElementById("chat-input").classList.contains("active");
 	if (panelOpen) return;
 	showPause();

@@ -61,9 +61,14 @@ const r = new Reporter();
 		// Barrido de celdas PYRAMID_CELL hasta encontrar el centro de una
 		// pirámide en desierto firme (la semilla determinista la garantiza; la
 		// validación por bioma requiere probar varias filas/columnas de celdas).
+		// Fase 21.5 (Z1): ventana ampliada de ±8 a ±12 — el sub-bioma badlands
+		// (E5, legítimo: en MC las badlands no generan pirámides) consume
+		// territorio desert y la única pirámide determinista de esta semilla
+		// quedó en la celda (-1,-10). La garantía que verifica el check no
+		// cambia: "existe al menos una pirámide determinista en desierto".
 		let p = null;
-		for (let ci = -8; ci <= 8 && !p; ci++)
-			for (let cj = -8; cj <= 8 && !p; cj++) {
+		for (let ci = -12; ci <= 12 && !p; ci++)
+			for (let cj = -12; cj <= 12 && !p; cj++) {
 				const c = structures.pyramidCenterAt(ci, cj);
 				if (c && biomes.getBiome(c.cx, c.cz) === "desert") p = c;
 			}

@@ -875,16 +875,26 @@ function drawBlastFurnace(ctx, rng) {
 // Fase 21.5 (E3): bloques decorativos — arbustos, hojarasca, flores secas.
 function drawFireflyBush(ctx, rng) {
 	fill(ctx, "#2a4a1a");
-	for (const [x, y] of [[3, 4], [6, 2], [9, 5], [5, 8], [10, 7], [2, 9]])
+	for (const [x, y] of [
+		[3, 4],
+		[6, 2],
+		[9, 5],
+		[5, 8],
+		[10, 7],
+		[2, 9]
+	])
 		rect(ctx, x, y, 3, 3, "#3a6a2a");
 	// Luciérnagas: puntos amarillos brillantes
-	px(ctx, 5, 5, "#f5e84a"); px(ctx, 10, 4, "#f5e84a");
-	px(ctx, 7, 9, "#f5e84a"); px(ctx, 3, 7, "#f5e84a");
+	px(ctx, 5, 5, "#f5e84a");
+	px(ctx, 10, 4, "#f5e84a");
+	px(ctx, 7, 9, "#f5e84a");
+	px(ctx, 3, 7, "#f5e84a");
 }
 function drawLeafLitter(ctx, rng) {
 	fill(ctx, "#6a8a3a");
 	for (let i = 0; i < 8; i++) {
-		const x = 1 + rng() * 12, y = 5 + rng() * 8;
+		const x = 1 + rng() * 12,
+			y = 5 + rng() * 8;
 		rect(ctx, Math.floor(x), Math.floor(y), 3, 2, "#5a7a2a");
 	}
 	speckle(ctx, rng, "#7a9a4a", 0.15);
@@ -894,12 +904,21 @@ function drawWildflowers(ctx, rng) {
 	// Tallos
 	for (const x of [3, 6, 9, 12]) rect(ctx, x, 6, 1, 6, "#4a7a2a");
 	// Flores amarillas
-	for (const [x, y] of [[2, 3], [5, 2], [8, 4], [11, 3]])
+	for (const [x, y] of [
+		[2, 3],
+		[5, 2],
+		[8, 4],
+		[11, 3]
+	])
 		rect(ctx, x, y, 2, 2, "#f5d040");
 }
 function drawBush(ctx, rng) {
 	fill(ctx, "#3a6a2a");
-	for (const [x, y, w, h] of [[2, 3, 5, 5], [7, 2, 6, 6], [4, 6, 5, 4]])
+	for (const [x, y, w, h] of [
+		[2, 3, 5, 5],
+		[7, 2, 6, 6],
+		[4, 6, 5, 4]
+	])
 		rect(ctx, x, y, w, h, "#2a5a1a");
 	speckle(ctx, rng, "#4a8a3a", 0.12);
 }
@@ -922,7 +941,13 @@ function drawCactusFlower(ctx, rng) {
 	// Tallo del cactus
 	rect(ctx, 6, 5, 4, 9, "#2a7a1a");
 	// Flor rosa
-	for (const [x, y] of [[4, 1], [6, 0], [8, 1], [5, 2], [7, 2]])
+	for (const [x, y] of [
+		[4, 1],
+		[6, 0],
+		[8, 1],
+		[5, 2],
+		[7, 2]
+	])
 		rect(ctx, x, y, 2, 2, "#e85a6a");
 	px(ctx, 6, 1, "#f5c84a"); // centro
 }
@@ -936,7 +961,12 @@ function drawBeeNest(ctx, rng) {
 	rect(ctx, 4, 8, 8, 4, "#6b4c22");
 	// Panal dorado alrededor de la entrada
 	for (const [x, y] of [
-		[3, 3], [12, 3], [3, 12], [12, 12], [2, 7], [13, 7]
+		[3, 3],
+		[12, 3],
+		[3, 12],
+		[12, 12],
+		[2, 7],
+		[13, 7]
 	]) {
 		rect(ctx, x, y, 2, 2, "#e8a520");
 	}
@@ -1023,7 +1053,11 @@ function drawPaleLogSide(ctx, rng) {
 }
 function drawPaleLogTop(ctx, rng) {
 	fill(ctx, "#f0ecdf");
-	for (const [x, y, w, h] of [[3, 4, 4, 3], [9, 8, 4, 3], [6, 1, 3, 3]])
+	for (const [x, y, w, h] of [
+		[3, 4, 4, 3],
+		[9, 8, 4, 3],
+		[6, 1, 3, 3]
+	])
 		rect(ctx, x, y, w, h, "#ddd6c4");
 	speckle(ctx, rng, "#d8d0c0", 0.08);
 }
@@ -1051,7 +1085,12 @@ function drawPaleMossBlock(ctx, rng) {
 function drawPaleMoss(ctx, rng) {
 	fill(ctx, "#0a0a0a00");
 	// Alfombra: guirnaldas claras apelotonadas (transparente alrededor)
-	for (const [x, y, w, h] of [[2, 6, 4, 3], [7, 6, 4, 3], [11, 8, 3, 2], [4, 9, 3, 3]])
+	for (const [x, y, w, h] of [
+		[2, 6, 4, 3],
+		[7, 6, 4, 3],
+		[11, 8, 3, 2],
+		[4, 9, 3, 3]
+	])
 		rect(ctx, x, y, w, h, "#a5c398");
 	speckle(ctx, rng, "#8fae84", 0.12);
 }
@@ -1073,7 +1112,12 @@ function drawHeavyCore(ctx, rng) {
 function drawCopperBlock(ctx, rng) {
 	fill(ctx, "#e8855a");
 	speckle(ctx, rng, "#c96a42", 0.18);
-	for (const [x, y, w, h] of [[2, 2, 4, 3], [9, 5, 4, 3], [4, 9, 4, 4], [11, 11, 3, 3]])
+	for (const [x, y, w, h] of [
+		[2, 2, 4, 3],
+		[9, 5, 4, 3],
+		[4, 9, 4, 4],
+		[11, 11, 3, 3]
+	])
 		rect(ctx, x, y, w, h, "#f0a07a");
 	rect(ctx, 0, 0, 16, 1, "#a84f33");
 	rect(ctx, 0, 15, 16, 1, "#a84f33");
@@ -1115,7 +1159,12 @@ function drawPolishedTuff(ctx, rng) {
 function drawTuffBricks(ctx, rng) {
 	fill(ctx, "#b8b0a8");
 	for (let y = 0; y < 16; y += 4) rect(ctx, 0, y, 16, 1, "#a49c94");
-	for (let [x, y] of [[0, 0], [8, 0], [0, 8], [8, 8]]) {
+	for (const [x, y] of [
+		[0, 0],
+		[8, 0],
+		[0, 8],
+		[8, 8]
+	]) {
 		rect(ctx, x, y, 1, 8, "#a49c94");
 	}
 	rect(ctx, 4, 4, 1, 8, "#a49c94");
@@ -1150,7 +1199,7 @@ function drawNoteBlock(ctx, _rng) {
 	// Parche circular.
 	for (let dy = -3; dy <= 3; dy++) {
 		for (let dx = -3; dx <= 3; dx++) {
-			if (dx * dx + dy * dy <= 9) set(ctx, 8 + dx, 8 + dy, "#c8a878");
+			if (dx * dx + dy * dy <= 9) px(ctx, 8 + dx, 8 + dy, "#c8a878");
 		}
 	}
 	speckle(ctx, _rng, "#9c7c5c", 0.03);
@@ -1229,8 +1278,7 @@ const TILES = [
 	drawPolishedGranite, // 67 granito pulido
 	drawPolishedDiorite, // 68 diorita pulida
 	drawPolishedAndesite, // 69 andesita pulida
-	drawLantern // 70 linterna (Fase 21.5, B2)
-	,
+	drawLantern, // 70 linterna (Fase 21.5, B2)
 	// Fase 21.5 (B3): bambú, tablones de bambú y andamio
 	drawBamboo, // 71
 	drawBambooPlanks, // 72
@@ -1311,8 +1359,7 @@ const TILES = [
 	// Negra (65)
 	makeBedTop("#2a2a2a"), // 128
 	makeBedSide("#2a2a2a"), // 129
-	makeBedFront("#2a2a2a") // 130
-	,
+	makeBedFront("#2a2a2a"), // 130
 	// Fase 21.5 (C1): horno de fundición — piedra oscura con reja naranja (frente)
 	drawBlastFurnace, // 131
 	// Fase 21.5 (E3): bloques decorativos (cross-quads)

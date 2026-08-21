@@ -479,9 +479,16 @@ async function auditCdp() {
 
 		// B5 — libro de recetas: abre con el mouse liberado (pointer lock OFF),
 		// muestra las recetas con iconos y se cierra con Escape.
+		// Fase 21.5 (Z1): el cierre del inventario (B4-close) pide pointer
+		// lock; en headless esa petición puede aterrizar DESPUÉS de abrir el
+		// libro y el sondeo ve puntero bloqueado con libro abierto (carrera,
+		// no bug del cliente: un usuario real no encadena ambas teclas en el
+		// mismo frame). Se difiere la apertura ~600 ms para que cualquier
+		// lock pendiente se asiente; toggleRecipeBook además libera el
+		// puntero al abrir, y el unlock extra es no-op si ya está libre.
 		await uiEval(
 			"B5-open",
-			"(() => { window.__mcMods.ui.toggleRecipeBook(); return true; })()"
+			"(() => { const c = window.__mcMods.scene.controls; try { c.unlock(); } catch {} setTimeout(() => { try { window.__mcMods.ui.toggleRecipeBook(); } catch {} try { c.unlock(); } catch {} }, 600); return true; })()"
 		);
 		const bookState = await waitDom(
 			"B5-state",
