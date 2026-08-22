@@ -460,13 +460,13 @@
 		}
 	},
 	"bamboo_planks": {
-		"shape": ["BB", "BB"],
+		"shape": ["B", "B"],
 		"ingredients": {
 			"B": 80
 		},
 		"result": {
 			"id": 81,
-			"count": 1
+			"count": 2
 		}
 	},
 	"scaffolding": {

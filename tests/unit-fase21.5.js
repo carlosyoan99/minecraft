@@ -623,13 +623,14 @@ check(
 {
 	const recipes = require("../recetas.json");
 	const plans = recipes.bamboo_planks;
+	// Fase 21.6 P5: ratio MC 1:1 (2 bambú → 2 tablones)
 	check(
-		"B3: receta tablones de bambú (2×2 bambú → 1)",
+		"B3: receta tablones de bambú (2 bambú → 2 tablones)",
 		!!plans &&
-			plans.shape?.join("") === "BBBB" &&
+			plans.shape?.join("") === "BB" &&
 			plans.ingredients.B === B.BAMBOO &&
 			plans.result?.id === B.BAMBOO_PLANKS &&
-			plans.result?.count === 1
+			plans.result?.count === 2
 	);
 	const scaf = recipes.scaffolding;
 	check(
@@ -707,12 +708,12 @@ check(
 		constants.isSolidBlock(B.BEE_HIVE) &&
 		constants.isSolidBlock(B.HONEY_BLOCK)
 );
-// Comida: botella de miel restaura 6/1.2 (FOOD_VALUES).
+// Comida: botella de miel restaura 6/2.4 (Fase 21.6 P4, MC real).
 {
 	const food = constants.FOOD_VALUES?.[I.HONEY_BOTTLE];
 	check(
-		"B4: la botella de miel es comida 6/1.2",
-		!!food && food.food === 6 && food.saturation === 1.2,
+		"B4: la botella de miel es comida 6/2.4",
+		!!food && food.food === 6 && food.saturation === 2.4,
 		JSON.stringify(food)
 	);
 	const { canEat, eatFood } = require("../server/combat.js");
@@ -961,14 +962,14 @@ for (const b of [B.CORAL_FAN, B.KELP, B.SEAGRASS]) {
 		p2.blocking === false
 	);
 
-	// Daño de mob con bloqueo: 20 * SHIELD_BLOCK_FACTOR (0.4) = 8 → vida 92.
+	// Fase 21.6 P1: escudo a bloqueo total (factor 0.0) — 20 → 0.
 	const p3 = mkFighter();
 	p3.inventory[0] = new ItemStack(I.SHIELD);
 	actions.handleShieldBlock(p3, { blocking: true });
 	combat.damagePlayer(p3, 20, { source: "mob", meta: { mobType: "zombie" } });
 	check(
-		"C2: bloqueando, el daño de un mob se reduce (20 → 8)",
-		p3.health === 100 - 8,
+		"C2: bloqueando, el daño de un mob se reduce (20 → 0)",
+		p3.health === 100,
 		`vida=${p3.health}`
 	);
 	// El escudo se desgastó un punto al absorber el impacto.

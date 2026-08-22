@@ -748,6 +748,8 @@ function handleAttackMob(p, ws, data) {
 		const fallBlocks = Math.max(0, p.fallFromY - p.y);
 		if (fallBlocks >= constants.MACE_FALL_MIN_BLOCKS) {
 			dmg += Math.floor(fallBlocks) * constants.MACE_FALL_DAMAGE_PER_BLOCK;
+			// Fase 21.6 P6: la caída se consume al impactar (MC Java).
+			p.fallFromY = null;
 		}
 	}
 	mob.health -= dmg;

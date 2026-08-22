@@ -21,8 +21,8 @@ const { addToInventory, applyFishingWear } = require("./players.js");
 const FISHING_SPEED = 12; // bloques/s (más lento que la flecha 14)
 const FISHING_GRAVITY = 16; // bloques/s² (la misma que las flechas)
 const FISHING_LIFE_MS = 15000; // la línea se retira sola si no se recoge
-const BITE_MIN_MS = 1500; // pica entre 1.5 y 5 s tras aterrizar en agua
-const BITE_RANGE_MS = 3500;
+const BITE_MIN_MS = 5000; // Fase 21.6 P2: pica entre 5 y 30 s (MC real)
+const BITE_RANGE_MS = 25000;
 
 // ============================================================
 // TABLA DE LOOT DE PESCA (aproximación 1.7/1.13 sin encantamientos ni ítems
@@ -32,14 +32,14 @@ const BITE_RANGE_MS = 3500;
 // unit-itemicons siguen en verde sin tocar el universo B/I.
 // ============================================================
 const FISHING_LOOT = {
+	// Fase 21.6 P3: sin COOKED_COD (MC suelta solo crudos al pescar).
 	fish: [
-		{ id: I.COD, weight: 60 },
-		{ id: I.COOKED_COD, weight: 25 }
+		{ id: I.COD, weight: 85 }
 	],
+	// Fase 21.6 P3: sin FLINT (no es tesoro de pesca en MC real).
 	treasure: [
 		{ id: I.BOW, weight: 1 },
-		{ id: I.COMPASS, weight: 1 },
-		{ id: I.FLINT, weight: 1 }
+		{ id: I.COMPASS, weight: 1 }
 	],
 	junk: [
 		{ id: I.STICK, weight: 20 },

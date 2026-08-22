@@ -446,9 +446,9 @@ function damagePlayer(player, amount, opts = {}) {
 		real = applyArmorDamageReduction(player, real);
 		sendInventory(player); // la durabilidad de la armadura pudo cambiar
 	}
-	// Desgaste del escudo: SOLO si hubo un impacto bloqueado que de verdad
-	// dolió (y tras la reducción). Si se rompe, se desbloquea automáticamente.
-	if (blocked && real >= 1) {
+	// Desgaste del escudo: si hubo un impacto bloqueado. Si se rompe,
+	// se desbloquea automáticamente (real >= 1 verificado en applyShieldWear).
+	if (blocked) {
 		if (applyShieldWear(player)) {
 			if (player.ws.readyState === WebSocket.OPEN) {
 				player.ws.send(JSON.stringify({ event: "shield_broke", data: {} }));

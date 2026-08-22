@@ -471,7 +471,13 @@ const B = {
 	// Fase 21.5 (D6): bloques decorativos/auditivos.
 	JUKEBOX: 189, // bloque musical: clic derecho con disco para reproducir
 	PAINTING: 190, // cuadro decorativo en pared (wall-mounted)
-	NOTE_BLOCK: 191 // bloque de notas: clic derecho emite un sonido
+	NOTE_BLOCK: 191, // bloque de notas: clic derecho emite un sonido
+	// ============================================================
+	// Fase 22 (A3): deepslate — piedra profunda bajo Y=0.
+	// ============================================================
+	DEEPSLATE: 192,
+	// Fase 22 (A5): mena de cobre — distribución por altura ~Y 0..16.
+	COPPER_ORE: 193
 };
 
 // Fase 21.5 (C4): 16 camas de colores + la cama base (24) comparten
@@ -725,7 +731,13 @@ const I = {
 	// suena) y pintura (cuadro decorativo colocable).
 	MUSIC_DISC_CAT: 275,
 	MUSIC_DISC_13: 276,
-	PAINTING: 277
+	PAINTING: 277,
+	// ============================================================
+	// Fase 22 (A4): minerales en bruto — se funden en el horno.
+	// ============================================================
+	RAW_COPPER: 278,
+	// Fase 22 (A5): lingote de cobre — resultado de fundir RAW_COPPER.
+	COPPER_INGOT: 279
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -881,7 +893,7 @@ const FOOD_VALUES = {
 	[I.POTATO]: { food: 1, saturation: 0.6 },
 	[I.BAKED_POTATO]: { food: 5, saturation: 6 },
 	// Fase 21.5 (B4): botella de miel 6/1.2 (paridad MC Java).
-	[I.HONEY_BOTTLE]: { food: 6, saturation: 1.2 }
+	[I.HONEY_BOTTLE]: { food: 6, saturation: 2.4 } // Fase 21.6 P4: MC real
 };
 const isFood = (id) => !!FOOD_VALUES[id];
 const isPickaxe = (id) => id >= 200 && id <= 204;
@@ -987,6 +999,10 @@ const BLOCK_HARDNESS = {
 	[B.REDSTONE_ORE]: 3.0,
 	[B.EMERALD_ORE]: 3.0,
 	[B.DIAMOND_ORE]: 3.0,
+	// Fase 22 (A3): deepslate — dureza 3.0 (MC), pico de piedra+ para minar.
+	[B.DEEPSLATE]: 3.0,
+	// Fase 22 (A5): mena de cobre — dureza 3.0 (como otras menas).
+	[B.COPPER_ORE]: 3.0,
 	// Fase 13 (L2/L3): durezas estilo MC — puertas 3 (madera) / 5 (hierro),
 	// escaleras 2 (madera) / 2 (piedra), losas 2, vallas 2, portón 2.
 	[B.OAK_DOOR]: 3.0,
@@ -1329,7 +1345,9 @@ const isTool = (id) =>
 // Fase 21.5 (C1): el horno de fundición solo funde MINERALES (resultados de
 // recetas de horno que son lingotes). Lo audita crafting.js al seleccionar la
 // receta; se define aquí (después de I) frente a isFurnace.
-const BLAST_SMELT_RESULTS = new Set([I.IRON_INGOT, I.GOLD_INGOT]);
+// Fase 21.6 P7: cobre entra en blast furnace cuando F22 A5 exista
+// (RAW_COPPER → COPPER_INGOT ×2, como MC). La lista es data-driven.
+const BLAST_SMELT_RESULTS = new Set([I.IRON_INGOT, I.GOLD_INGOT, I.COPPER_INGOT]);
 const isBlastSmelt = (resultId) => BLAST_SMELT_RESULTS.has(resultId);
 
 // ============================================================
@@ -1418,11 +1436,12 @@ const isFishingRod = (id) => id === I.FISHING_ROD;
 // al minar/atacar); su desgaste lo aplica applyShieldWear solo al absorber
 // un impacto bloqueado. Durabilidad oficial MC Java: 336.
 // SHIELD_BLOCK_FACTOR: fracción de daño entrante que PASA cuando el jugador
-// bloquea (0.4 → el escudo absorbe el 60 % del daño de mobs/proyectiles;
-// se aplica antes de la armadura, como en Minecraft). Diseño simplificado
-// documentado en la spec F21.5 (C2): sin ángulo/off-hand ni encantamientos.
+// bloquea (0.0 → el escudo absorbe el 100 % del daño melee/proyectil,
+// como MC Java; se aplica antes de la armadura). Revoca la decisión 0.4
+// de F21.5 C2 (paridad con MC real, Fase 21.6 P1). Daño ambiental
+// (lava/fuego/caída/inanición) NO se bloquea.
 const SHIELD_DURABILITY = 336;
-const SHIELD_BLOCK_FACTOR = 0.4;
+const SHIELD_BLOCK_FACTOR = 0.0;
 const isShield = (id) => id === I.SHIELD;
 // Fase 21.5 (C3): tótem de la inmortalidad (1.11) — sin receta: solo llega
 // por loot de cofres. Al recibir daño letal con el tótem en la mano activa
@@ -1589,6 +1608,7 @@ const ORE_DROP = {
 	[B.COAL_ORE]: I.COAL,
 	[B.IRON_ORE]: I.RAW_IRON,
 	[B.GOLD_ORE]: I.RAW_GOLD,
+	[B.COPPER_ORE]: I.RAW_COPPER, // Fase 22 (A4/A5): cobre suelta el raw
 	[B.DIAMOND_ORE]: I.DIAMOND,
 	[B.REDSTONE_ORE]: I.REDSTONE,
 	[B.EMERALD_ORE]: I.EMERALD
@@ -1600,6 +1620,7 @@ const ORE_TIER = {
 	[B.COAL_ORE]: 1,
 	[B.IRON_ORE]: 2,
 	[B.GOLD_ORE]: 2,
+	[B.COPPER_ORE]: 2, // Fase 22 (A5): pico de piedra+ (como hierro/oro)
 	[B.REDSTONE_ORE]: 3,
 	[B.DIAMOND_ORE]: 3,
 	[B.EMERALD_ORE]: 3
