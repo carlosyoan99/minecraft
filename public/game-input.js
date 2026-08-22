@@ -22,8 +22,6 @@ import {
 	GLASS_BOTTLE,
 	HOES,
 	JUKEBOX,
-	MUSIC_DISC_13, // Fase 21.5 (D6): discos de música
-	MUSIC_DISC_CAT,
 	NOTE_BLOCK, // Fase 21.5 (D6): jukebox y note block
 	PLACEABLE_BLOCKS,
 	SHIELD,

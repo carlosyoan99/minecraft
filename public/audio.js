@@ -764,7 +764,6 @@ export function updateAmbient() {
 // Cada disco tiene una paleta de notas diferente (cat: tonos cálidos,
 // 13: tonos fríos). El disco se repite en loop hasta que se extrae.
 // ============================================================
-const discOscillators = [];
 let discIntervalId = null;
 const DISC_PALETTES = {
 	275: [261.63, 329.63, 392.0, 523.25, 349.23], // cat — Do mayor, cálido

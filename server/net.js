@@ -608,6 +608,12 @@ function handleConnection(ws, req) {
 		const p = state.players.get(playerId);
 		if (!p) return;
 
+		// CL-4: keepalive del cliente — cualquier mensaje entrante demuestra que
+		// la conexión está viva. Resetear isAlive evita que el heartbeat del
+		// servidor (timers.js) termine la conexión cuando el navegador throttlea
+		// los pong de WebSocket en pestañas de fondo.
+		ws.isAlive = true;
+
 		// Auditoría 2026-08-09 (§3.1): rate-limit por conexión (solo sockets
 		// reales — los fakes de los tests reutilizan el mismo objeto con decenas
 		// de mensajes en milisegundos y no son un flood). El juego normal emite

@@ -103,3 +103,35 @@ export function send(event, data = {}) {
 	if (socket.readyState === WebSocket.OPEN)
 		socket.send(JSON.stringify({ event, data }));
 }
+
+// CL-4: keepalive del cliente — envía un heartbeat cada 10 s para que el
+// servidor sepa que la conexión sigue viva. Esto evita que el heartbeat
+// del servidor (timers.js, 15 s) termine la conexión cuando el navegador
+// throttlea los pong de WebSocket en pestañas de fondo (Chrome/Firefox
+// reducen la frecuencia de timers a ~1 Hz tras ~5 min de inactividad).
+// Además, al volver la pestaña a primer plano se envía un keepalive
+// inmediato para cubrir la ventana en la que el tab estaba throttled.
+const KEEPALIVE_MS = 10_000;
+let keepaliveId = null;
+function startKeepalive() {
+	if (keepaliveId) return;
+	keepaliveId = setInterval(() => {
+		if (socket.readyState === WebSocket.OPEN)
+			send("keepalive");
+	}, KEEPALIVE_MS);
+}
+function stopKeepalive() {
+	if (keepaliveId) {
+		clearInterval(keepaliveId);
+		keepaliveId = null;
+	}
+}
+socket.addEventListener("open", () => startKeepalive());
+socket.addEventListener("close", () => stopKeepalive());
+
+// Al volver de background, enviar un keepalive inmediato para cubrir la
+// ventana throttled (el tab estaba a ~1 Hz, los pong podían estar retrasados).
+document.addEventListener("visibilitychange", () => {
+	if (!document.hidden && socket.readyState === WebSocket.OPEN)
+		send("keepalive");
+});

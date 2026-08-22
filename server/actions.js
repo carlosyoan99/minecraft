@@ -1034,6 +1034,7 @@ function handleBundleAction(p, ws, data) {
 			return;
 		const item = p.bundle[bundleSlot];
 		if (!item) return;
+		let placed = false;
 		if (data.invSlot !== undefined) {
 			const invSlot = data.invSlot;
 			if (!Number.isInteger(invSlot) || invSlot < 0 || invSlot > 35) return;
@@ -1046,9 +1047,9 @@ function handleBundleAction(p, ws, data) {
 					count: item.count,
 					durability: item.durability
 				};
+			placed = true;
 		} else {
 			// Primer hueco del inventario.
-			let placed = false;
 			for (let i = 0; i < 36; i++) {
 				const dest = p.inventory[i];
 				if (dest && dest.id === item.id && !constants.isTool(item.id)) {
