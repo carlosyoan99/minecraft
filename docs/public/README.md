@@ -73,7 +73,7 @@ carga.
 | `materialstyle.js` | Material compartido del mundo (`worldMaterial`) y toggle toon lambert↔`MeshToonMaterial` con swap en caliente (F19.6 B) | THREE |
 | `torchlogic.js` | Antorchas a encender por cercanía: `selectTorchLights` + `TORCH_LIGHT_BUDGET` | **puro** |
 | `torchlights.js` | Luz puntual real de antorchas cercanas (pool de `PointLight`) (F19.6 A2) | THREE |
-| `connection.js` | Socket WS, `send()`, nombre de jugador (localStorage) | DOM |
+| `connection.js` | Socket WS, `send()`, nombre de jugador (localStorage), **keepalive 10 s + visibilitychange** (CL-4, anti-desconexión en background) | DOM |
 | `world.js` | Ciclo de vida de mallas de chunks: mapas `chunkMeshes`/`lodMeshes`, tier LOD, frustum culling, carga/descarga, grietas y resaltado (Fase 18 D-7) | THREE |
 | `chunkstore.js` | Datos de chunks en cliente: `Uint8Array`→bloques, swap en `chunks_add`/`chunks_unload`, `torchSet` (Fase 18 D-7) | **puro** |
 | `lightclient.js` | Luz de antorcha horneada en el cliente: `bakeChunkLight`/`hasTorchNear` (Fase 18 D-7) | **puro** |

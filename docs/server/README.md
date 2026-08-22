@@ -208,7 +208,7 @@ Eventos **cliente → servidor**: `move`, `block_action`, `attack_mob`,
 `inventory_select`, `eat`, `sleep`, `till`, `plant`, `feed_mob`,
 `shear_mob`, `bonemeal`, `equip/unequip_armor`, `chat`, `set_name`,
 `set_seed`, `settings`, `recipe_book`, `worlds_list`, `world_delete`,
-`creative_fly`, `creative_pick`, `sit_pet`, `throw_trident`.
+`creative_fly`, `creative_pick`, `sit_pet`, `throw_trident`, **`keepalive`**.
 
 Eventos **servidor → cliente**: `init`, `chunks_add`, `chunks_unload`,
 `block_update`, `block_break_progress`, `mobs_update`, `arrows_update`,
@@ -224,6 +224,27 @@ Eventos **servidor → cliente**: `init`, `chunks_add`, `chunks_unload`,
 **Convenciones:** nombres en `snake_case`; el servidor **sanitiza todo**
 (nombres, semillas, mensajes) antes de usarlo; `WS_MAX_PAYLOAD` limita el
 tamaño de los mensajes entrantes (anti-DoS).
+
+### Heartbeat y keepalive (CL-4)
+
+El servidor envía `ws.ping()` a todos los sockets cada **15 s** (`timers.js`).
+Si el cliente no responde con `pong` en la siguiente ronda (30 s total), el
+servidor termina la conexión con `ws.terminate()` (code=1006, causa
+`heartbeat`). Esto detecta conexiones muertas y mantiene vivas las que pasan
+por proxies con timeout de inactividad.
+
+**Problema:** los navegadores modernos (Chrome/Firefox) throttlean los frames
+ping/pong de WebSocket en pestañas de fondo (~1 Hz tras ~5 min de
+inactividad), causando desconexiones periódicas code=1006.
+
+**Fix (CL-4, 2026-08-22):** doble mecanismo:
+1. **Servidor** (`net.js`): al recibir **cualquier** mensaje del cliente, se
+   resetea `ws.isAlive = true`. Así los keepalives y el tráfico normal
+   (moves, chat) mantienen la conexión viva aunque el pong se retrase.
+2. **Cliente** (`connection.js`): envía `{ event: "keepalive" }` cada **10 s**
+   (`setInterval`) y un keepalive inmediato al volver la pestaña a primer
+   plano (`visibilitychange`). Incluso throttled a ~1 Hz, 1 s < 15 s → la
+   conexión nunca expira.
 
 ## Verificación
 

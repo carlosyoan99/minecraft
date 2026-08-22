@@ -120,6 +120,12 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
 5. Una receta que no funciona → `node tests/unit-recetas.js`.
 6. Chunks que no guardan/cargan → key `cx,cz` consistente entre
    `world.js` y `save.js`, y que `world/<semilla>/chunks/` existe.
+7. Desconexión periódica code=1006 `causa=heartbeat`: el navegador
+   throttlea los pong de WebSocket en pestañas de fondo (Chrome/Firefox
+   ~1 Hz tras 5 min). Fix CL-4: keepalive del cliente cada 10 s
+   (`connection.js`) + `ws.isAlive = true` al recibir cualquier mensaje
+   (`net.js`). Si se modifica el heartbeat, verificar que el intervalo
+   del keepalive sea menor que el del servidor.
 
 ## Fuera de alcance (no hacer sin preguntar)
 
@@ -193,9 +199,9 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   (biomas/estructuras/mobs), 22
   (profundidad, minerales y fauna 1.17–1.21), 23 (diferidos de la 22:
   Lush Caves/Breeze/trims/Tuff-Caliza), 24 (Nether Update) y 25 (End
-  Update, sin dragón) y **21.5 (contenido y paridad ampliados: pesca,
-  bloques 1.8-1.15, combate y Trial Chambers, insertada entre 21 y 22) son
-  prospectivas** (`fase21-spec.md`,
+  Update, sin dragón) y  **21.5 (contenido y paridad ampliados: pesca,
+  bloques 1.8-1.15, combate y Trial Chambers, insertada entre 21 y 22)
+  está cerrada y auditada** (`fase21-spec.md`,
   `fase21.5-spec.md`, `fase22-spec.md`, `fase23-spec.md`, `fase24-spec.md`,
   `fase25-spec.md`): la 19.6 exige la 19.5; la **Fase 20 está cerrada
   (v20.2 con etiqueta `v20.2`, ver `docs/v20.2.md`) y exigía la 18**; la
@@ -206,8 +212,9 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   neutral, C3 IA (zombi convoca, esqueleto strafe, araña día/noche, creeper
   huye de gatos) y D1 ríos al nivel del mar (v21.2); suite 61/61,
   `--audit` 8/8; **D2/D3 (océanos/montañas) diferidos a la 21.5**; la
-  **Fase 21.5 está EN CURSO (fase activa)** y exige la 21; la 22 exige la
-  21.5; la 23 exige la 22; la 24 exige la 23;
+  **Fase 21.5 está cerrada y auditada (2026-08-20, spec
+  `fase21.5-spec.md`)**: suite 62/62, E2E 7/7, --audit 8/8, biome 0;
+  la 22 exige la 21.5; la 23 exige la 22; la 24 exige la 23;
   la 25 exige la 24. La
   19.5 adelantó a la 19.6 el motor 3D y a la F21 el audio por bioma; la F22
   aporta los bloques de amatista que la geoda de la F21 reusa y confirma

@@ -6,7 +6,7 @@
 > Este archivo se actualiza al **abrir**, **cerrar** o **cambiar de rumbo**
 > una fase (no es un log histórico: es un panel de control).
 
-**Última actualización:** 2026-08-20
+**Última actualización:** 2026-08-22
 
 ---
 
@@ -14,12 +14,15 @@
 
 | | |
 | --- | --- |
-| **Fase** | **21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers (abierta 2026-08-17)** [`[EN CURSO]`](docs/spec/fase21.5-spec.md) |
-| **Prerrequisito cumplido** | Fase 21 cerrada (v21.2 con D1, suite 61/61, E2E 7/7, `--audit` 8/8, biome 0) ✅ |
-| **Trabajo en curso** | **Fase 21.5 en curso** (abierta 2026-08-17). Implementados: **A1/A8** (pesca), **B1-B5** (piedra pulida, linternas, bambú/andamios, colmenas/miel, coral/algas), **C1-C5** (horno de fundición, escudo, tótem, camas de colores, concreto), **D2-D5** (Bogged, maza, cobre/tuff, carga de viento/breeze rod/mapa), **D6** (discos musicales/JUKEBOX procedurales, pinturas/PAINTING, note blocks/NOTE_BLOCK), **E1-E3** (variantes animales, lana oveja, bloques decorativos), **E5** (sonidos desierto/badlands), **F1-F4** (Pale Garden bioma + roble pálido, Creaking mob IA visión, Creaking Heart vínculo mob↔bloque, Mochila/Bundle 9 slots persistido), **G1** (comandos `/summon /locate /effect /kill` con selectores). Pendientes: **D1** Trial Chambers, **E4** partículas hojas, **Z1** cierre/auditoría. Suite `--unit` 62+ en verde. |
-| **Diferidos de F21 (P1)** | Los siguientes ítems de la F21 quedaron **diferidos deliberadamente** al cierre (spec F21 §1.4, confirmado en TODO.md): **pulpo** (tinta al morir → tinte negro, requiere ítem sincronizado), **refinamiento de oveja** (comer pasto para regenerar lana) y **huevo lanzable** (1/8 pollito al lanzar). No están en la F21.5; se planificarán en una fase posterior según prioridad. |
+| **Fase** | **22 — Profundidad, minerales y fauna 1.17–1.21** [`[PROSPECTIVA]`](docs/spec/fase22-spec.md) |
+| **Prerrequisito** | Fase 21.5 cerrada ✅ |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Continuar con el siguiente bloque de la F21.5 (C3 tótem, C4 camas de colores, E1/E2 animales y lana, G1 comandos, C1 horno de fundición — ver `TODO.md`); cerrar la fase con auditoría y commit |
+| **Próximo paso** | Abrir F22 cuando el usuario lo solicite |
+
+> **Fase 21.5 cerrada y auditada** (2026-08-20): suite **62/62** unitarios,
+> **E2E 7/7**, `--audit` **8/8**, biome 0 errores, `SCHEMA_VERSION` 6
+> intacto. Fixes de auditoría: atlas roto por `drawNoteBlock`, pausa
+> espuria sobre paneles, `audit-fase21` B2 ventana ±12.
 
 ## Implementado (fases cerradas y auditadas)
 
@@ -51,16 +54,14 @@
 | 20 — Rolling release (ciclo de estabilización y paridad) | [`fase20-spec.md`](docs/spec/fase20-spec.md) | ✅ **Cerrada (v20.2, etiqueta `v20.2`)** — v20.1 + v20.2 (D1/D2, backlog B6, `audit-fase20`, `--audit` 7/7) |
 | 21 — Biomas ampliados, estructuras y más mobs | [`fase21-spec.md`](docs/spec/fase21-spec.md) | ✅ **Cerrada y auditada (2026-08-17, etiqueta `v21.2`)** — A1/A2/B1/B2/C1/C2/C3 + D1 (ríos al nivel del mar); suite 61/61, `--audit` 8/8 (nueva `audit-fase21.js`); D2/D3 diferidos a la F21.5 |
 
-**Línea base de la fase activa (F21.5):** suite **61/61 unitarios**, **E2E
-7/7**, `biome` 0 errores, `node --check` limpio, `npm run audit` 0
-vulnerabilidades. Auditorías `--audit` verdes: fase3 (umbrales ampliados, CI
-19), fase4/5/6 + altura + fase20 + **fase21 (nueva)**; `audit-fase7`
-(render CDP) depende de CPU baja (SwiftShader; ventanas ampliadas en CI 19
-— ver `docs/tests.md`).
+**Línea base de la fase activa (F22):** suite **62/62 unitarios**, **E2E
+7/7**, `biome` 0 errores, `node --check` limpio. Auditorías `--audit` 8/8
+verdes (fase3/4/5/6/7 + altura + fase20 + fase21); `audit-fase7`
+(render CDP) depende de CPU baja (SwiftShader).
 
 ## En revisión
 
-- Sin fases en revisión (Fase 21 cerrada 2026-08-17; **Fase 21.5 en curso**).
+- Sin fases en revisión. F21.5 cerrada 2026-08-20; F22 prospectiva.
 
 ## Prospectiva (planificadas, sin implementar)
 
