@@ -35,7 +35,9 @@ graph LR
     F20[Fase 20 · Rolling release] --> F18
     F21[Fase 21 · Biomas/estructuras/mobs] --> F20
     F21_5[Fase 21.5 · Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate, Trial Chambers] --> F21
-    F22[Fase 22 · Profundidad 1.17-1.21] --> F21_5
+    F21_6[Fase 21.6 · Correcciones auditoría + paridad MC (pre-F22)] --> F21_5
+    F22[Fase 22 · Profundidad 1.17-1.21] --> F21_6
+    F22_1[Fase 22.1 · Correcciones y paridad diferidas (borrador)] --> F22
     F23[Fase 23 · Diferidos F22] --> F22
     F24[Fase 24 · Nether Update] --> F23
     F25[Fase 25 · End Update] --> F24
@@ -49,9 +51,9 @@ graph LR
     classDef done fill:#2d6a4f,stroke:#1b4332,color:#fff;
     classDef active fill:#e9c46a,stroke:#b98a00,color:#222;
     classDef planned fill:#6a6a6a,stroke:#444,color:#fff;
-    class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5,F19_6,F20,F21 done;
-    class F21_5 active;
-    class F22,F23,F24,F25,F26,F26_5,F27,F27_5,F28,F29 planned;
+    class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5,F19_6,F20,F21,F21_5 done;
+    class F21_6 active;
+    class F22,F22_1,F23,F24,F25,F26,F26_5,F27,F27_5,F28,F29 planned;
 ```
 
 ## Tabla de prerrequisitos
@@ -83,8 +85,10 @@ graph LR
 | 19.6 | [`fase19.6-spec.md`](docs/spec/fase19.6-spec.md) | F19.5 cerrada | ✅ Completada (2026-08-16) |
 | 20 | [`fase20-spec.md`](docs/spec/fase20-spec.md) | F18 cerrada | ✅ **Cerrada (v20.2, etiqueta `v20.2`)** |
 | 21 | [`fase21-spec.md`](docs/spec/fase21-spec.md) | F20 cerrada | ✅ **Cerrada y auditada (v21.2)** |
-| 21.5 | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada | 🟠 **En curso** |
-| 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | F21.5 cerrada | 📝 Prospectiva |
+| 21.5 | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada | ✅ **Cerrada y auditada (2026-08-20)** — la auditoría 2026-08-22 deriva sus fixes a la F21.6 |
+| 21.6 | [`fase21.6-spec.md`](docs/spec/fase21.6-spec.md) | F21.5 cerrada | 🟠 **En curso (abierta 2026-08-22)** |
+| 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | **F21.6 cerrada** | 📝 Prospectiva |
+| 22.1 | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | F21.6 cerrada (se abre tras la F22) | 📝 Borrador prospectivo |
 | 23 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada | 📝 Prospectiva |
 | 24 | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada | 📝 Prospectiva |
 | 25 | [`fase25-spec.md`](docs/spec/fase25-spec.md) | F24 cerrada | 📝 Prospectiva |
@@ -106,6 +110,12 @@ graph LR
   Chambers, 1.21.5 y 1.22 viables, comandos) reusando lo planificado en
   F21-23; **F22 pasa a exigir F21.5** en vez de F21. La serie en cadena
   21→21.5→22→23→24→25 no renumerar la 21-25 existente.
+- **F21.6 se inserta entre F21.5 y F22** (creada 2026-08-22 desde la
+  auditoría consolidada de cierre de la F21.5): fixes 1-7 + higiene +
+  bloque de paridad MC aparte (escudo total, pesca 5-30 s…); **F22 pasa a
+  exigir F21.6**. Sus diferidos (linterna/luz, bug cabezas de mobs,
+  perfilado, pase servidor interno, residuos CL-*) viven en el borrador
+  **F22.1**, que se abriría tras la F22.
 - **F24/F25 desbloquean** el Won't "dimensiones" (Nether/End) al abrirse.
 - **F20** (rolling release) solo exige la **F18 cerrada** (depende de 16/17,
   pero no de la 19 en curso).

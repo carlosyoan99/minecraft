@@ -71,18 +71,20 @@ function chunkRngFor(cx, cz) {
 		: mulberry32(hashCoord(seed, cx, cz));
 }
 
-const CAVE_FREQ = 0.032; // escala horizontal: túneles ~2x más largos/anchas
-const CAVE_FREQ_Y = 0.045; // túneles más horizontales (se exploran en plano)
-const CAVE_FINE_FREQ = 0.09; // desvíos amplios (no fragmentan el túnel)
-const CAVE_THRESHOLD = 0.86; // solo pasajes fuertes excavan: menos cuevas,
-// cada una con más volumen (calibrado por barrido: ~7-9% del subsuelo)
+const CAVE_FREQ = 0.025; // Fase 22 (A2): cuevas 1.18 — más grandes y
+// conectadas; frecuencia más baja = túneles más largos/anchos
+const CAVE_FREQ_Y = 0.035; // túneles más horizontales (se exploran en plano)
+const CAVE_FINE_FREQ = 0.07; // desvíos amplios (conectan túneles vecinos)
+const CAVE_THRESHOLD = 0.84; // Fase 22 (A2): umbral bajado de 0.86 a 0.84
+// → cuevas más voluminosas (~10-12% del subsuelo, pocas pero grandes y
+// largas como pidió el usuario: "pocas cuevas pero largas y grandes")
 // Fase 15 (cierre): el muestreo fino se salta cuando la octava GRUESA no
 // puede alcanzar el umbral: caveStrength = base*0.6 + fine*0.4 con fine ≤ 1,
 // así que si base*0.6 + 0.4 ≤ 0.84 (= CAVE_THRESHOLD) ningún fine llega al
 // umbral (ni al de superficie 0.91) → la celda NO es cueva. Evita el noise3D
 // fino en ~73% de las celdas de piedra (26K muestras por chunk); el resultado
 // es bit-idéntico (solo se omite un cálculo que no podía cambiar la decisión).
-const CAVE_FINE_MAX_BASE = (CAVE_THRESHOLD - 0.4) / 0.6; // ≈ 0.833
+const CAVE_FINE_MAX_BASE = (CAVE_THRESHOLD - 0.4) / 0.6; // ≈ 0.733
 function caveStrength(wx, wy, wz) {
 	const base =
 		1 -
@@ -356,7 +358,7 @@ function generateChunk(cx, cz) {
 					if (y < floorY) {
 						if (y > WORLD_MIN_Y + 1 && isCaveBlock(wx, y, wz, false))
 							block = B.WATER;
-						else block = B.STONE;
+						else block = y < 0 ? B.DEEPSLATE : B.STONE;
 					} else if (y === floorY) block = B.SAND;
 					// Fase 21.5 (D2): coral del arrecife sobre el lecho (la primera
 					// celda de agua) — el resto de la columna sigue siendo agua.
@@ -388,7 +390,7 @@ function generateChunk(cx, cz) {
 							// prioridad por estar más arriba en la cadena; si el roll de
 							// veta coincide con el de mineral, manda el mineral, como en
 							// MC donde las vetas de piedra y las menas son independientes).
-							block = polishedStoneAt(wx, y, wz) ?? B.STONE;
+							block = polishedStoneAt(wx, y, wz) ?? (y < 0 ? B.DEEPSLATE : B.STONE);
 							// Fase 18 (C-2): minerales por PROFUNDIDAD mapeados al mundo
 							// v6 (−64..+63, 128 bloques). Distribución MC 1.18 (mundo
 							// −64..+320, 384 bloques) mapeada POR PERCENTIL de columna:
@@ -423,8 +425,10 @@ function generateChunk(cx, cz) {
 								if (y < -38 && roll > 0.965) block = B.DIAMOND_ORE;
 								else if (y < -32 && roll > 0.955) block = B.REDSTONE_ORE;
 								else if (y < -20 && roll > 0.955) block = B.EMERALD_ORE;
-								else if (y < -16 && roll > 0.945) block = B.GOLD_ORE;
-								else if (y < 42 && roll > 0.9) block = B.IRON_ORE;
+								else if (y < -16 && roll > 0.945) block = B.GOLD_ORE;									else if (y < 42 && roll > 0.9) block = B.IRON_ORE;
+								// Fase 22 (A5): cobre — banda ~Y 0..16, frecuencia media
+								// (más común que el oro, menos que el hierro).
+								else if (y >= 0 && y <= 16 && roll > 0.92) block = B.COPPER_ORE;
 								else if (y > -42 && y < 42 && roll > 0.86) block = B.COAL_ORE;
 							}
 						}
@@ -501,7 +505,9 @@ function generateChunk(cx, cz) {
 					y < depth + structures.MS_TUNNEL_H && y < height - 1;
 					y++
 				) {
-					if (data[core.idx(x, core.toLocal(y), z)] === B.STONE)
+					const bl = data[core.idx(x, core.toLocal(y), z)];
+					// Fase 22 (A3): excavar también deepslate (bajo Y=0).
+					if (bl === B.STONE || bl === B.DEEPSLATE)
 						data[core.idx(x, core.toLocal(y), z)] = B.AIR;
 				}
 				if (
@@ -708,9 +714,8 @@ function generateChunk(cx, cz) {
 				}
 			} else if (
 				canGrowTree &&
-				treeFits &&
-				biome === "giant_taiga" &&
-				treeRoll < 0.02
+				treeFits &&					biome === "giant_taiga" &&
+					treeRoll < 0.03
 			) {
 				// Taiga de árboles gigantes (Fase 21, A2: abeto 2×2 con copa cónica
 				// amplia). El tronco ocupa un cuadrado de 2×2 (como Montenegro);

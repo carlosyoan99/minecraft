@@ -62,6 +62,7 @@ function releaseWorld() {
 	state.furnaces.clear();
 	state.chests.clear();
 	state.crops.clear();
+	state.jukeboxes.clear(); // Fase 21.6 (D3): los discos no viajan entre mundos
 	state.arrows = [];
 	state.doors.clear();
 	constants.setWorldSeed(null, null);
@@ -192,6 +193,18 @@ function loadWorld() {
 			// Fase 9 (Bloque C): cultivos (los mundos v3 sin el campo → sin cultivos).
 			state.crops.clear();
 			for (const [k, v] of meta.crops || []) state.crops.set(k, v);
+			// Fase 21.6 (D3): discos insertados en jukeboxes (lectura defensiva:
+			// claves string y disc con id numérico; el resto se descarta).
+			state.jukeboxes.clear();
+			for (const [k, v] of meta.jukeboxes || []) {
+				if (
+					typeof k === "string" &&
+					v &&
+					typeof v === "object" &&
+					Number.isInteger(v.disc)
+				)
+					state.jukeboxes.set(k, { disc: v.disc });
+			}
 			// Fase 10 (nota del usuario): restaurar la hora del mundo (los mundos
 			// viejos sin el campo siguen con el reloj real, retrocompatible).
 			state.timeOffset =
@@ -202,6 +215,8 @@ function loadWorld() {
 			log.warn(
 				"⚠️  world.json no encontrado: mobs, hornos y cofres se reinician (chunks intactos)"
 			);
+			// Fase 21.6 (D3): sin metadatos no hay discos insertados que restaurar.
+			state.jukeboxes.clear();
 			// Hora desconocida (sin metadatos): amanecer, como en un mundo nuevo.
 			state.timeOffset = dawnOffsetMs();
 		}
@@ -265,6 +280,7 @@ function switchWorld(newSeed, newName, newGamemode, newSize) {
 	state.furnaces.clear();
 	state.chests.clear();
 	state.crops.clear(); // Fase 9 (Bloque C): los cultivos no viajan entre mundos
+	state.jukeboxes.clear(); // Fase 21.6 (D3): los discos tampoco
 
 	constants.setWorldSeed(
 		newSeed,

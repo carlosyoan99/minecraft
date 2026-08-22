@@ -619,8 +619,33 @@ renderer.domElement.addEventListener("mouseup", (e) => {
 		miningMouseDown = false;
 		stopMining();
 	}
-	// Fase 21.5 (C2): soltar el clic derecho deja de bloquear con el escudo.
+	// Fase 21.5 (C2): soltar el clic derecho deja de bloquear con el escudo
+	// (el caso "fuera del canvas" lo cubre el listener de document de abajo,
+	// Fase 21.6 B2).
 	if (e.button === 2 && shieldBlocking) {
+		shieldBlocking = false;
+		setShieldPose(false);
+		send("shield_block", { blocking: false });
+	}
+});
+
+// Fase 21.6 (B2): soltar el bloqueo aunque el mouseup ocurra FUERA del
+// canvas — antes el listener colgaba de renderer.domElement y soltar fuera
+// dejaba el escudo activo hasta un pointerlockchange.
+document.addEventListener("mouseup", (e) => {
+	if (e.button === 2 && shieldBlocking) {
+		shieldBlocking = false;
+		setShieldPose(false);
+		send("shield_block", { blocking: false });
+	}
+});
+
+// Fase 21.6 (B2): al cambiar de slot con el escudo bloqueando, soltar la
+// pose y avisar al servidor (hud.selectSlot emite el evento; el servidor
+// además limpia p.blocking al recibir inventory_select). Evita la viñeta
+// fantasma con otro ítem en mano.
+window.addEventListener("mc-slot-change", () => {
+	if (shieldBlocking) {
 		shieldBlocking = false;
 		setShieldPose(false);
 		send("shield_block", { blocking: false });

@@ -54,6 +54,10 @@ function setSpawnSafeRadius(r) {
 // Devuelve los mobs creados (para tests) o [].
 // ============================================================
 const SPAWN_MIN_PLAYER_DIST = 24; // bloques: hostiles nunca a menos de esto
+// Fase 21.6 (E1): cuota GLOBAL de mobs viva (spawn natural, cría M2 y ahora
+// también /summon comparten el mismo tope). Antes era un 30 literal repetido
+// en mob-spawn.js/mob-species.js; la constante auditable evita desincronizar.
+const MOB_TOTAL = 30;
 // Mobs por bioma (Fase 12, Bloque C — E7): además de la tabla base, cada
 // bioma tiene su mob propio. El lobo (antes hostil genérico de la noche)
 // pasa a ser EXCLUSIVO de taiga (deja de spawnear en el resto de biomas).
@@ -287,6 +291,7 @@ module.exports = {
 	getSafeSpawn,
 	setSpawnSafeRadius,
 	SPAWN_MIN_PLAYER_DIST,
+	MOB_TOTAL, // Fase 21.6 (E1): cuota global compartida (spawn, cría y summon)
 	SPAWN_TYPES,
 	BIOME_SPAWN,
 	WATER_SPAWN,

@@ -313,6 +313,10 @@ export function applyFood(f, s) {
 	updateFoodUI();
 }
 export function selectSlot(i) {
+	// Fase 21.6 (B2): avisar del cambio para que game-input suelte el bloqueo
+	// del escudo (viñeta) antes de que el servidor reciba el nuevo slot.
+	if (i !== selectedSlot)
+		window.dispatchEvent(new CustomEvent("mc-slot-change"));
 	selectedSlot = i;
 	send("inventory_select", { slot: i });
 	updateHotbarUI();
@@ -364,6 +368,7 @@ const deathScreen = document.getElementById("death-screen");
 const deathCauseEl = document.getElementById("death-cause");
 const DEATH_CAUSES = {
 	mob: "Te ha matado un mob (o una explosión).",
+	projectile: "Te ha alcanzado un proyectil.", // Fase 21.6 (B1): flechas/tridentes
 	fall: "Has caído desde muy alto.",
 	lava: "Has ardido en la lava.",
 	starve: "Has muerto de inanición.",

@@ -303,6 +303,16 @@ function flatBaseHeight(temp) {
 	return num / den;
 }
 
+// Fase 22 (A2): valles profundos — el ruido de valley crea depresiones
+// orgánicas en el terreno (máx −4 bloques en diseño para mantener el
+// salto ≤ 4 entre columnas adyacentes, presupuesto de audit-altura/D1).
+function valleyDepth(wx, wz) {
+	const v = noise.noise2D(wx * 0.015, wz * 0.015);
+	// Solo depresiones (v < -0.2 → valle; v > -0.2 → sin efecto)
+	// v ∈ [-1, -0.2] → (v+0.2) ∈ [-0.8, 0] → factor 5 → [-4, 0]
+	return v < -0.2 ? Math.floor((v + 0.2) * 5) : 0;
+}
+
 // Fase 11 (Bloque B): 5 biomas → 8. Bandas de temperatura re-ajustadas y
 // dos biomas por puerta de ruido independiente:
 //   temp < -0.3      → snow (tundra)
@@ -415,13 +425,10 @@ function heightFrom(temp, wMnt, wx, wz) {
 	const flat = flatBaseHeight(temp) + h * 8 + detail;
 	// Crestas: octava adicional de mayor amplitud para picos pronunciados.
 	const crest = noise.noise2D_mountain(wx * 0.05, wz * 0.05) * 0.5 + 0.5;
-	// Fase 21.5 (D3): montañas ALTAS — la base sube de 12 a 16 (el bug de
-	// las Notas: "las montañas son bajas"; v21.1 máx diseño 20, cumbres 12).
-	// Se mantiene la amplitud del crest (14) para no aumentar la pendiente
-	// por bloque (el salto global del terreno queda ≤ 4, presupuesto de
-	// audit-altura/D1) y el techo real queda en diseño ~31 (mundo ~23, bajo
-	// el presupuesto de audit-altura máx ≤ 24). Más cumbres pasan la línea
-	// de nieve (MOUNTAIN_SNOW_LINE 18 diseño): ~14 % → ~55-65 % de columnas.
+	// Fase 22 (A2): montañas 1.18 — base 16, crest amplitud 14
+	// (cumbres hasta diseño ~31 → mundo ~23, dentro del rango −64..+63).
+	// El desnivel llanura→cima se mantiene ≤ 4 por bloque (presupuesto de
+	// audit-altura/D1): la rampa se amplía para repartir el salto.
 	const mountainH = 16 + crest * 14 + detail;
 	// Interpolación lineal entre la altura plana y la de cordillera según la
 	// rampa: los pies de montaña crecen gradualmente en vez de saltar.

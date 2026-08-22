@@ -1,6 +1,16 @@
 # Fase 22 — Profundidad, minerales y fauna 1.17–1.21 (Spec)
 
-> **Estado:** `[PROSPECTIVA]`
+> **Estado:** `[EN CURSO]` (abierta 2026-08-22 — Fase 21.5 cerrada)
+>
+> **A1 — Veredicto (2026-08-22):** se mantiene **128 bloques** (Y −64..+63,
+> `SCHEMA_VERSION` 6 intacto). Benchmark con 25 chunks (5×5, semilla
+> miSemilla2026): generación 98.8 ms/chunk (128) vs 89.9 ms/chunk (256) —
+> tiempo similar; pero tamaño de chunk: 32 KB (128) vs 65 KB (256) —
+> **+100% memoria por chunk**. Con 169 chunks cargados (radio 6) serían
+> ~11 MB vs ~5.5 MB, impacto significativo en dispositivos con poca RAM.
+> Beneficio de montañas más altas se logra dentro del rango −64..+63 con
+> A2 (recalibración de ruido). Decisión: **no sube**. Los bloques A2–A5
+> se ciñen al rango vigente.
 
 > Documento creado a partir de: la nueva sección "Actualizaciones Minecraft
 > 1.17 → 1.21" de `docs/Notas del usuario.md` (plan del usuario, 2026-08-15),

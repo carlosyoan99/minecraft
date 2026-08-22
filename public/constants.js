@@ -206,7 +206,11 @@ export const BLOCK_COLORS = {
 	// colorido), note block (marrón con parche).
 	189: 0x7c5a3c, // jukebox
 	190: 0xd8d0c0, // pintura (lienzo base)
-	191: 0x8b6b4a // note block
+	191: 0x8b6b4a, // note block
+	// Fase 22 (A3): deepslate — piedra profunda (gris oscuro).
+	192: 0x505050,
+	// Fase 22 (A5): mena de cobre (tono cobrizo sobre piedra).
+	193: 0xb87333
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -369,7 +373,11 @@ export const BLOCK_NAMES = {
 	// Fase 21.5 (D6): jukebox, pintura, note block.
 	189: "Jukebox",
 	190: "Pintura",
-	191: "Note Block"
+	191: "Note Block",
+	// Fase 22 (A3): deepslate — piedra profunda.
+	192: "Deepslate",
+	// Fase 22 (A5): mena de cobre.
+	193: "Mena de cobre"
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
@@ -615,7 +623,11 @@ export const ITEM_NAMES = {
 	// Fase 21.5 (D6): discos y pintura
 	275: "Disco musical (cat)",
 	276: "Disco musical (13)",
-	277: "Pintura"
+	277: "Pintura",
+	// Fase 22 (A4): minerales en bruto
+	278: "Cobre crudo",
+	// Fase 22 (A5): lingote de cobre
+	279: "Lingote de cobre"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -764,8 +776,16 @@ export const BUNDLE = 274;
 export const JUKEBOX = 189;
 export const PAINTING_BLOCK = 190;
 export const NOTE_BLOCK = 191;
+// Fase 22 (A3): deepslate — piedra profunda bajo Y=0.
+export const DEEPSLATE = 192;
+// Fase 22 (A5): mena de cobre — distribución por altura ~Y 0..16.
+export const COPPER_ORE = 193;
 export const MUSIC_DISC_CAT = 275;
 export const MUSIC_DISC_13 = 276;
+// Fase 22 (A4): minerales en bruto — se funden en el horno.
+export const RAW_COPPER = 278;
+// Fase 22 (A5): lingote de cobre — resultado de fundir RAW_COPPER.
+export const COPPER_INGOT = 279;
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)

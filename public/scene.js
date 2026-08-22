@@ -35,7 +35,13 @@ export const camera = new THREE.PerspectiveCamera(
 	0.1,
 	300
 );
-export const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Fase 21.6 (F1): powerPreference "high-performance" — sugiere al navegador
+// la GPU discreta (trivial, cero riesgo; recomendación de la auditoría
+// 2026-08-22, notas del usuario).
+export const renderer = new THREE.WebGLRenderer({
+	antialias: true,
+	powerPreference: "high-performance"
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 

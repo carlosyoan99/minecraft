@@ -1565,6 +1565,9 @@ for (let id = 182; id <= 188; id++)
 // Fase 21.5 (D6): jukebox, pintura y note block (189-191) — cubo con su color.
 for (const id of [189, 190, 191])
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 22 (A3/A5): deepslate y mena de cobre (192-193) — cubo con su tesela.
+for (const id of [192, 193])
+	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Fase 21.5 (E3): bloques decorativos (92-98)
 for (const id of [92, 93, 94, 95, 96, 97, 98])
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
@@ -1576,6 +1579,10 @@ ICONS[103] = (g) => drawIngot(g, C.gold.m, C.gold.light, C.gold.dark);
 // Fase 20 B3: mena cruda — hierro/oro se minan así y se funden al lingote.
 ICONS[258] = (g) => drawRaw(g, "#cfc8c0", "#8a8378", "#f2ede4");
 ICONS[259] = (g) => drawRaw(g, "#e0c23a", "#9c7c14", "#f7e58a");
+// Fase 22 (A4): cobre crudo — tono cobrizo.
+ICONS[278] = (g) => drawRaw(g, "#b87333", "#8b5a2b", "#d4956a");
+// Fase 22 (A5): lingote de cobre — brillo metálico cobrizo.
+ICONS[279] = (g) => drawIngot(g, "#b87333", "#d4956a", "#8b5a2b");
 ICONS[104] = (g) => drawGem(g, C.diamond.m, C.diamond.light, C.diamond.dark);
 ICONS[105] = drawRedstone;
 ICONS[106] = (g) => drawGem(g, "#2ed06a", "#8ff0b0", "#1a9a4a");

@@ -1,8 +1,9 @@
 # Fase 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers (Spec)
 
-> **Estado:** `[EN CURSO]` (abierta 2026-08-17 — Fase 21 cerrada; es la
-> fase activa del proyecto). Hereda los **diferidos de generación D2/D3 de
-> la F21** (océanos profundos/cálidos con coral y montañas altas — §4.5).
+> **Estado:** `[COMPLETADA]` (cerrada y auditada 2026-08-20; abierta
+> 2026-08-17 — Fase 21 cerrada). Hereda los **diferidos de generación
+> D2/D3 de la F21** (océanos profundos/cálidos con coral y montañas altas
+> — §4.5).
 
 > Documento creado a partir de: la lista de mejoras del usuario "Alta
 > prioridad / Bajo esfuerzo", "Prioridad media / Esfuerzo medio", "1.21
@@ -678,6 +679,33 @@ Resumen de lo nuevo (regla `AGENTS.md`: añadir bloque/ítem → AMBOS
 ---
 
 ## 12. Cierre y auditoría de la Fase 21.5 (tarea obligatoria)
+
+> **✅ CERRADA (2026-08-20):** suite **62/62** unitarios, **E2E 7/7**,
+> `--audit` **8/8**, `biome check` 0 errores (formateo repo-wide aplicado),
+> `SCHEMA_VERSION` 6 intacto (la mochila persiste retrocompatible, sin
+> migración). Fixes descubiertos por la auditoría Z1:
+> 1. **Atlas roto desde D6:** `drawNoteBlock` usaba `set()` (inexistente;
+>    el helper es `px()`) y `buildTerrainAtlas` lanzaba una excepción que
+>    dejaba al cliente sin mundo ni conexión — invisible para los tests de
+>    servidor, detectado por el CDP de `audit-fase7`.
+> 2. **Pausa espuria sobre paneles:** el handler `pointerlockchange`
+>    añadido por el fix del bug usuario #4 no consideraba libro de
+>    recetas/picker/mochila como "panel abierto": abrirlos (liberan el
+>    puntero) disparaba `showPause()` encima y Escape ya no cerraba el
+>    libro (fallaba B5 de `audit-fase7`).
+> 3. **`audit-fase21` B2:** ventana de búsqueda de pirámide ampliada de ±8
+>    a ±12 celdas — el sub-bioma badlands (E5, legítimo: en MC las
+>    badlands no generan pirámides) consume territorio desert y la única
+>    pirámide determinista de la semilla quedó en la celda (−1,−10).
+> 4. **B5-open diferido** en `audit-fase7`: carrera del pointer lock
+>    pendiente del cierre del inventario en headless (artefacto del flujo
+>    sintético, no del cliente).
+>
+> Verificación manual en navegador cubierta por los checks CDP de
+> `audit-fase7` (carga del mundo, métricas, inventario con iconos, libro
+> de recetas, calidad/niebla) + verificación runtime de Trial Chambers
+> (VAULT central, HEAVY_CORE, cofres con botín a TRIAL_DEPTH bajo terreno
+> firme).
 
 1. Suite unitaria completa en verde (incluido `unit-fase21.5.js`,
    `unit-sync`, `unit-recetas`, `unit-itemicons`, `unit-commands`,

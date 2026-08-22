@@ -25,6 +25,7 @@ const {
 	TOOL_DURABILITY,
 	isTool,
 	SWORD_DAMAGE,
+	I,
 	applyArmorDamageReduction,
 	HOE_DURABILITY,
 	BOW_DURABILITY,
@@ -163,7 +164,9 @@ function applyToolWear(player, onlySwords = false) {
 	// inventario), pero NO se desgasta al minar/atacar con ella — solo al
 	// recoger una captura (applyFishingWear). Misma convención que el arco.
 	if (isFishingRod(slot.id)) return false;
-	if (onlySwords && !SWORD_DAMAGE[slot.id]) return false;
+	// Fase 21.6 (B3): al ATACAR desgastan las espadas Y la maza (250 usos);
+	// el resto de herramientas no se desgasta golpeando (solo minando).
+	if (onlySwords && !SWORD_DAMAGE[slot.id] && slot.id !== I.MACE) return false;
 	const cur =
 		typeof slot.durability === "number"
 			? slot.durability
@@ -433,8 +436,14 @@ function damagePlayer(player, amount, opts = {}) {
 	// en Minecraft. Aplicar el descuento ANTES de la armadura (paridad MC: el
 	// orden bloque→armadura es el real), y desgastar el escudo.
 	let blocked = false;
+	// Fase 21.6 (B2): el servidor reválida la mano activa en cada impacto —
+	// confiar solo en p.blocking permitía cambiar de slot tras activar el
+	// bloqueo y conservar la mitigación sin escudo (auditoría 2026-08-22 #2).
+	const held = player.inventory?.[player.selectedSlot];
 	if (
 		player.blocking &&
+		held &&
+		isShield(held.id) &&
 		(opts.source === "mob" || opts.source === "projectile") &&
 		real > 0
 	) {
@@ -446,8 +455,9 @@ function damagePlayer(player, amount, opts = {}) {
 		real = applyArmorDamageReduction(player, real);
 		sendInventory(player); // la durabilidad de la armadura pudo cambiar
 	}
-	// Desgaste del escudo: si hubo un impacto bloqueado. Si se rompe,
-	// se desbloquea automáticamente (real >= 1 verificado en applyShieldWear).
+	// Desgaste del escudo: por cada impacto bloqueado (el bloqueo se decide
+	// ANTES de la armadura, así que cuenta aunque la armadura coma el resto).
+	// Si se rompe, se desbloquea automáticamente.
 	if (blocked) {
 		if (applyShieldWear(player)) {
 			if (player.ws.readyState === WebSocket.OPEN) {

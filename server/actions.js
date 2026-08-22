@@ -17,6 +17,7 @@ const constants = require("./constants.js");
 const {
 	B,
 	I,
+	MAX_STACK,
 	FUEL_ITEMS,
 	isTool,
 	isArmor,
@@ -776,6 +777,7 @@ function handleAttackMob(p, ws, data) {
 	// Fase 5: las espadas se desgastan al golpear (se rompen al llegar a 0)
 	const broke = playerHelpers.applyToolWear(p, true);
 	const isSword = !!SWORD_DAMAGE[tool];
+	const isMaceHit = tool === constants.I.MACE; // Fase 21.6 (B3): refresco HUD
 	// Fase 9 (Bloque D): al golpear, los PASAVOS huyen del atacante (~4s,
 	// dirección contraria) — ver mobs.js mobHit().
 	mobs.Mob.prototype.mobHit.call(mob, p);
@@ -794,9 +796,9 @@ function handleAttackMob(p, ws, data) {
 		// Fase 5: XP por matar mobs (auditoría §4.1: mobXp, slime por tamaño)
 		playerHelpers.addXp(p, mobs.mobXp(mob));
 		playerHelpers.sendInventory(p);
-	} else if (isSword) {
-		// Cada golpe de espada desgasta aunque el mob sobreviva: sincronizar la
-		// durabilidad del HUD
+	} else if (isSword || isMaceHit) {
+		// Cada golpe de espada/maza desgasta aunque el mob sobreviva:
+		// sincronizar la durabilidad del HUD
 		playerHelpers.sendInventory(p);
 	}
 	if (broke) {
@@ -986,97 +988,120 @@ function handleBundleAction(p, ws, data) {
 		p.openBundle = false;
 		return;
 	}
+	// Fase 21.6 (C3): las fusiones NUNCA superan MAX_STACK y el excedente NO
+	// se destruye: se transfiere lo que cabe y el resto se queda en el slot
+	// de origen (mismo espíritu que addToInventory SV-5, sin stacks >64 ni
+	// pérdida de ítems — la versión anterior clampeaba y perdía el excedente).
 	if (data.action === "put") {
 		const invSlot = data.invSlot;
 		if (!Number.isInteger(invSlot) || invSlot < 0 || invSlot > 35) return;
 		const item = p.inventory[invSlot];
 		if (!item) return;
-		// Slot destino explícito o primer hueco.
+		// Cantidad viva del origen: baja al transferir; 0 → slot libre.
+		let restante = item.count;
 		const targetSlot = Number.isInteger(data.bundleSlot) ? data.bundleSlot : -1;
 		if (targetSlot >= 0 && targetSlot < 9) {
 			const dest = p.bundle[targetSlot];
-			if (dest && (dest.id !== item.id || constants.isTool(item.id))) return;
-			if (dest) dest.count += item.count;
-			else
+			if (dest && (dest.id !== item.id || isTool(item.id))) return;
+			if (dest) {
+				// Fusión parcial: mover solo lo que cabe hasta MAX_STACK.
+				const espacio = Math.max(0, MAX_STACK - dest.count);
+				const mover = Math.min(espacio, restante);
+				dest.count += mover;
+				restante -= mover;
+			} else {
 				p.bundle[targetSlot] = {
 					id: item.id,
-					count: item.count,
+					count: restante,
 					durability: item.durability
 				};
-			p.inventory[invSlot] = null;
+				restante = 0;
+			}
 		} else {
-			// Buscar slot existente apilable o primer hueco.
-			let placed = false;
-			for (let i = 0; i < 9; i++) {
+			// Automático: completar stacks existentes y el resto al 1er hueco.
+			for (let i = 0; i < 9 && restante > 0; i++) {
 				const dest = p.bundle[i];
-				if (dest && dest.id === item.id && !constants.isTool(item.id)) {
-					dest.count += item.count;
-					placed = true;
-					break;
+				if (dest && dest.id === item.id && !isTool(item.id)) {
+					const mover = Math.min(Math.max(0, MAX_STACK - dest.count), restante);
+					dest.count += mover;
+					restante -= mover;
 				}
 			}
-			if (!placed) {
+			if (restante > 0) {
 				for (let i = 0; i < 9; i++) {
 					if (!p.bundle[i]) {
 						p.bundle[i] = {
 							id: item.id,
-							count: item.count,
+							count: restante,
 							durability: item.durability
 						};
-						placed = true;
+						restante = 0;
 						break;
 					}
 				}
 			}
-			if (placed) p.inventory[invSlot] = null;
 		}
+		// El excedente permanece en la mano (split); nada se pierde.
+		if (restante <= 0) p.inventory[invSlot] = null;
+		else item.count = restante;
+		playerHelpers.sendInventory(p);
 	} else if (data.action === "take") {
 		const bundleSlot = data.bundleSlot;
 		if (!Number.isInteger(bundleSlot) || bundleSlot < 0 || bundleSlot > 8)
 			return;
 		const item = p.bundle[bundleSlot];
 		if (!item) return;
-		let placed = false;
+		let restante = item.count;
 		if (data.invSlot !== undefined) {
 			const invSlot = data.invSlot;
 			if (!Number.isInteger(invSlot) || invSlot < 0 || invSlot > 35) return;
 			const dest = p.inventory[invSlot];
-			if (dest && (dest.id !== item.id || constants.isTool(item.id))) return;
-			if (dest) dest.count += item.count;
-			else
+			if (dest && (dest.id !== item.id || isTool(item.id))) return;
+			if (dest) {
+				// Fusión parcial hacia el inventario: el excedente se queda
+				// en la mochila (nunca >MAX_STACK, nunca perdido).
+				const espacio = Math.max(0, MAX_STACK - dest.count);
+				const mover = Math.min(espacio, restante);
+				dest.count += mover;
+				restante -= mover;
+			} else {
 				p.inventory[invSlot] = {
 					id: item.id,
-					count: item.count,
+					count: restante,
 					durability: item.durability
 				};
-			placed = true;
+				restante = 0;
+			}
 		} else {
-			// Primer hueco del inventario.
-			for (let i = 0; i < 36; i++) {
+			// Automático: completar stacks del inventario y el resto al hueco.
+			for (let i = 0; i < 36 && restante > 0; i++) {
 				const dest = p.inventory[i];
-				if (dest && dest.id === item.id && !constants.isTool(item.id)) {
-					dest.count += item.count;
-					placed = true;
-					break;
+				if (dest && dest.id === item.id && !isTool(item.id)) {
+					const mover = Math.min(Math.max(0, MAX_STACK - dest.count), restante);
+					dest.count += mover;
+					restante -= mover;
 				}
 			}
-			if (!placed) {
+			if (restante > 0) {
 				for (let i = 0; i < 36; i++) {
 					if (!p.inventory[i]) {
 						p.inventory[i] = {
 							id: item.id,
-							count: item.count,
+							count: restante,
 							durability: item.durability
 						};
-						placed = true;
+						restante = 0;
 						break;
 					}
 				}
 			}
 		}
-		if (placed !== false) p.bundle[bundleSlot] = null;
+		// Lo que no cupo sigue en la mochila (con su durabilidad original).
+		if (restante <= 0) p.bundle[bundleSlot] = null;
+		else item.count = restante;
+		playerHelpers.sendInventory(p);
 	}
-	// Responder con el estado actualizado.
+	// Responder con el estado actualizado de la mochila.
 	handleBundleOpen(p, ws);
 }
 
@@ -1086,10 +1111,27 @@ function handleBundleAction(p, ws, data) {
 // (qué disco hay) y lo difunde a los clientes cercanos.
 // ============================================================
 const MUSIC_DISC_IDS = new Set([275, 276]); // cat y 13
-function handleJukeboxInteract(p, ws, data) {
+// Fase 21.6 (D1): validación server-side completa de los handlers de bloque
+// musical (auditoría 2026-08-22 #3). Antes: coords sin `Number.isFinite`
+// (NaN/strings construían claves raras), la distancia con NaN comparaba
+// false-fail-open (`NaN > 6` es false → pasaba) y no se comprobaba que el
+// bloque objetivo fuera realmente un jukebox/note block.
+function musicaCoordsValidas(p, data) {
 	const { x, y, z } = data;
-	if (x === undefined || y === undefined || z === undefined) return;
-	if (Math.hypot(x - p.x, y - p.y, z - p.z) > 6) return;
+	if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z))
+		return false;
+	// NaN-safe por construcción: las coords ya son finitas aquí.
+	if (Math.hypot(x - p.x, y - p.y, z - p.z) > 6) return false;
+	return true;
+}
+
+function handleJukeboxInteract(p, ws, data) {
+	if (!musicaCoordsValidas(p, data)) return;
+	const { x, y, z } = data;
+	// El bloque objetivo debe ser un jukebox real del mundo (no basta con
+	// que el cliente lo diga: la clave del estado se deriva de estas coords).
+	if (world.getBlock(Math.floor(x), Math.floor(y), Math.floor(z)) !== B.JUKEBOX)
+		return;
 	const key = `${x},${y},${z}`;
 	const slot = p.inventory[p.selectedSlot];
 	const jukeState = state.jukeboxes.get(key);
@@ -1128,9 +1170,12 @@ function handleJukeboxInteract(p, ws, data) {
 // aleatorio (0-24, como MC). No requiere estado persistente.
 // ============================================================
 function handleNoteBlockClick(p, ws, data) {
+	if (!musicaCoordsValidas(p, data)) return;
 	const { x, y, z } = data;
-	if (x === undefined || y === undefined || z === undefined) return;
-	if (Math.hypot(x - p.x, y - p.y, z - p.z) > 6) return;
+	if (
+		world.getBlock(Math.floor(x), Math.floor(y), Math.floor(z)) !== B.NOTE_BLOCK
+	)
+		return; // Fase 21.6 (D1): solo note blocks reales emiten nota
 	const note = Math.floor(Math.random() * 25); // 0-24
 	_broadcastNear("note_play", { x, y, z, note }, p.x, p.z);
 }

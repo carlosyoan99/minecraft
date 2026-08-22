@@ -3,6 +3,8 @@
 // ajustes en pestañas / pausa, nombre de jugador, skins y semilla.
 // Extraído de ui.js; ui.js es el orquestador que re-exporta esta fachada.
 // ============================================================
+
+import { stopDisc } from "./audio.js"; // Fase 21.6 (D2): parar el disco al salir
 import {
 	defaultName,
 	defaultSkin,
@@ -119,6 +121,10 @@ export function isTouchDevice() {
 // deja el bloqueador visible. `worlds` opcional refresca la lista.
 export function showMenu(worlds) {
 	inMenu = true;
+	// Fase 21.6 (D2): volver al menú (leave_world → menu_state) para el
+	// intervalo de notas del disco — antes la música seguía sonando sobre el
+	// menú (setInterval huérfano, auditoría 2026-08-22 cliente #3).
+	stopDisc();
 	setTouchVisible(false);
 	if (worlds) renderWorldsList(worlds);
 	showMenuScreen(menuMain);

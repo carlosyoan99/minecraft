@@ -189,7 +189,11 @@ const BLOCK_TEX = {
 	// Fase 21.5 (D6): jukebox, pintura, note block.
 	189: { all: 186 }, // jukebox
 	190: { all: 187 }, // pintura (cross, en pared)
-	191: { all: 188 } // note block
+	191: { all: 188 }, // note block
+	// Fase 22 (A3): deepslate — piedra profunda (misma tesela que piedra, tono más oscuro).
+	192: { all: 189 },
+	// Fase 22 (A5): mena de cobre (tesela propia con vetas cobrizas).
+	193: { all: 190 }
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

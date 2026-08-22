@@ -15,6 +15,9 @@ const constants = require("./constants.js");
 // ciclo: estructuras/mobs no requieren commands.js (lo carga actions.js).
 const structures = require("./structures.js");
 const mobs = require("./mobs.js");
+// Fase 21.6 (E1): cuota global de mobs para /summon. Directo a mob-spawn.js
+// (módulo hoja: no requiere ni commands.js ni mobs.js — sin ciclos).
+const mobSpawn = require("./mob-spawn.js");
 const {
 	B,
 	I,
@@ -281,9 +284,18 @@ function locateStructure(type, wx, wz) {
 	return best;
 }
 
-// Bioma más cercano: escanea una cuadrícula de puntos (paso 8 bloques, media
-// celda de chunk) en espiral alrededor del jugador. getBiome es determinista
-// (solo ruido + umbrales), así que el resultado es estable entre reinicios.
+// Bioma más cercano (Fase 21.6, A1): escaneo INCREMENTAL con presupuesto.
+// Antes el barrido era síncrono hasta 1024 bloques (~66k llamadas getBiome
+// en el peor caso: bioma ausente) y bloqueaba el event loop ~100-300 ms por
+// invocación — spameable desde el chat sin ser OP (auditoría 2026-08-22,
+// seguridad #1 + rendimiento #2). Ahora:
+//   · radio máximo 256 bloques,
+//   · `createBiomeScan` es un stepper puro que evalúa ≤ BUDGET puntos por
+//     llamada (determinista y testeable),
+//   · `/locate <bioma>` reparte los tramos con setTimeout(0): el tick del
+//     servidor nunca espera al barrido completo,
+//   · caché por jugador+bioma con TTL corto: repetir la misma búsqueda es
+//     O(1); world-session.js la invalida al cambiar de semilla/mundo.
 const LOCATE_BIOMES = [
 	"plains",
 	"forest",
@@ -299,41 +311,140 @@ const LOCATE_BIOMES = [
 	"mountain",
 	"pale_garden"
 ];
-const LOCATE_BIOME_RADIUS = 1024; // bloques
+const LOCATE_BIOME_RADIUS = 256; // bloques (antes 1024)
+const LOCATE_BIOME_STEP = 8; // paso de la cuadrícula (media celda de chunk)
+const LOCATE_BIOME_BUDGET = 256; // evaluaciones getBiome por tramo (<1 ms típico)
+const LOCATE_BIOME_CACHE_TTL_MS = 30_000;
 
 const biomes = require("./biomes.js");
 
-function locateBiome(name, wx, wz) {
-	const target = name.toLowerCase();
-	if (!LOCATE_BIOMES.includes(target)) return null;
-	let best = null,
-		bestDist = Infinity;
-	const step = 8;
-	for (
-		let r = step;
-		r <= LOCATE_BIOME_RADIUS && r - step < bestDist;
-		r += step
-	) {
-		for (let i = -r; i <= r; i += step) {
-			const edges = [
-				[wx + i, wz - r],
-				[wx + i, wz + r],
-				[wx - r, wz + i],
-				[wx + r, wz + i]
-			];
-			for (let e = 0; e < 4; e++) {
-				if (Math.hypot(edges[e][0] - wx, edges[e][1] - wz) >= bestDist)
-					continue;
-				if (biomes.getBiome(edges[e][0], edges[e][1]) !== target) continue;
-				const d = Math.hypot(edges[e][0] - wx, edges[e][1] - wz);
-				if (d < bestDist) {
-					bestDist = d;
-					best = { x: edges[e][0], z: edges[e][1] };
+// Escáner puro del bioma `target` alrededor de (wx, wz). Cada step(budget)
+// evalúa como mucho `budget` puntos de la espiral y devuelve {done, used};
+// mantiene el early-exit clásico (un anillo a distancia r no puede contener
+// nada más cerca que bestDist − paso).
+function createBiomeScan(target, wx, wz) {
+	let r = LOCATE_BIOME_STEP;
+	let curI = -LOCATE_BIOME_STEP; // columna dentro del anillo actual
+	let curE = 0; // borde del anillo actual (0..3)
+	let best = null;
+	let bestDist = Infinity;
+	let done = false;
+	return {
+		get done() {
+			return done;
+		},
+		get best() {
+			return best;
+		},
+		evals: 0,
+		step(budget) {
+			if (done) return { done: true, used: 0 };
+			let used = 0;
+			while (true) {
+				if (r > LOCATE_BIOME_RADIUS || r - LOCATE_BIOME_STEP >= bestDist) {
+					done = true;
+					return { done: true, used };
 				}
+				if (curI > r) {
+					r += LOCATE_BIOME_STEP;
+					curI = -r;
+					curE = 0;
+					continue;
+				}
+				// Los cuatro puntos de la columna curI en el anillo r.
+				const pts = [
+					wx + curI,
+					wz - r, // borde norte
+					wx + curI,
+					wz + r, // borde sur
+					wx - r,
+					wz + curI, // borde oeste
+					wx + r,
+					wz + curI // borde este
+				];
+				for (; curE < 4; curE++) {
+					if (used >= budget) return { done: false, used };
+					this.evals++;
+					used++;
+					const ex = pts[curE * 2];
+					const ez = pts[curE * 2 + 1];
+					if (Math.hypot(ex - wx, ez - wz) >= bestDist) continue;
+					if (biomes.getBiome(ex, ez) !== target) continue;
+					const d = Math.hypot(ex - wx, ez - wz);
+					if (d < bestDist) {
+						bestDist = d;
+						best = { x: ex, z: ez };
+					}
+				}
+				curE = 0;
+				curI += LOCATE_BIOME_STEP;
 			}
 		}
+	};
+}
+
+// Caché anti-spam: clave "bioma|jugador" -> {x, z, at}. El TTL corto cubre
+// al jugador que se ha movido poco; cambiar de mundo/semilla la vacía.
+const _biomeScanCache = new Map();
+
+function invalidateBiomeScanCache() {
+	_biomeScanCache.clear();
+}
+
+function getCachedBiome(name, playerName) {
+	const key = `${name}|${playerName}`;
+	const hit = _biomeScanCache.get(key);
+	if (!hit) return null;
+	if (Date.now() - hit.at > LOCATE_BIOME_CACHE_TTL_MS) {
+		_biomeScanCache.delete(key);
+		return null;
 	}
-	return best;
+	return hit;
+}
+
+function replyBiomeFound(player, name, pos) {
+	const d = Math.round(Math.hypot(pos.x - player.x, pos.z - player.z));
+	systemMessage(
+		player,
+		`🌍 Bioma ${name}: ${Math.round(pos.x)}, ${Math.round(pos.z)} (a ${d} bloques)`
+	);
+}
+
+// Driver del comando (Fase 21.6 A1): respuesta O(1) con caché; si no,
+// aviso «Buscando…» y tramos con setTimeout(0). Si el jugador desconecta a
+// mitad, systemMessage deja de enviar (readyState) y el escáner termina solo.
+function runLocateBiome(player, name) {
+	const cached = getCachedBiome(name, player.name);
+	if (cached) {
+		replyBiomeFound(player, name, cached);
+		return;
+	}
+	systemMessage(player, `Buscando bioma «${name}»…`);
+	const scan = createBiomeScan(
+		name.toLowerCase(),
+		Math.floor(player.x),
+		Math.floor(player.z)
+	);
+	(function pump() {
+		const res = scan.step(LOCATE_BIOME_BUDGET);
+		if (!res.done) {
+			setTimeout(pump, 0);
+			return;
+		}
+		if (scan.best) {
+			_biomeScanCache.set(`${name}|${player.name}`, {
+				x: scan.best.x,
+				z: scan.best.z,
+				at: Date.now()
+			});
+			replyBiomeFound(player, name, scan.best);
+		} else {
+			systemMessage(
+				player,
+				`No encontré bioma «${name}» en ${LOCATE_BIOME_RADIUS} bloques. Prueba /locate lista`
+			);
+		}
+	})();
 }
 
 // Devuelve true si `raw` era un comando (se procesó) y false si es chat
@@ -442,6 +553,22 @@ function executeCommand(player, raw, ctx) {
 				x = player.x + dx * 2;
 				z = player.z + dz * 2;
 			}
+			// Fase 21.6 (E1): clamp de coords a los bordes del mundo (mismo
+			// helper que /tp, SV-6) — antes un summon a ±1e9 creaba mobs fuera
+			// del mapa imposibles de alcanzar (y persistidos en world.json).
+			const half = constants.worldHalfExtent();
+			x = Math.max(-half + 0.6, Math.min(half - 0.6, x));
+			z = Math.max(-half + 0.6, Math.min(half - 0.6, z));
+			y = Math.max(WORLD_MIN_Y + 1, Math.min(WORLD_MAX_Y, y));
+			// Fase 21.6 (E1): cuota global de mobs (la misma del spawn natural
+			// y de la cría, MOB_TOTAL): si está llena, el excedente se rechaza.
+			if (state.mobs.length >= mobSpawn.MOB_TOTAL) {
+				systemMessage(
+					player,
+					`🧟 Cuota de mobs llena (${state.mobs.length}/${mobSpawn.MOB_TOTAL}). Elimina alguno con /kill @e`
+				);
+				break;
+			}
 			const mob = mobs.createMob(name, x, y, z);
 			state.mobs.push(mob);
 			systemMessage(
@@ -463,13 +590,7 @@ function executeCommand(player, raw, ctx) {
 				break;
 			}
 			if (what.startsWith("b") || LOCATE_BIOMES.includes(what)) {
-				const found = locateBiome(what, player.x, player.z);
-				systemMessage(
-					player,
-					found
-						? `🌍 Bioma ${what}: ${Math.round(found.x)}, ${Math.round(found.z)} (a ${Math.round(Math.hypot(found.x - player.x, found.z - player.z))} bloques)`
-						: `No encontré bioma «${what}». Prueba /locate lista`
-				);
+				runLocateBiome(player, what); // Fase 21.6 (A1): incremental + caché
 				break;
 			}
 			const found = locateStructure(what, player.x, player.z);
@@ -778,4 +899,19 @@ function executeCommand(player, raw, ctx) {
 	return true;
 }
 
-module.exports = { executeCommand, worldTime, moonTime, resolveTargets };
+module.exports = {
+	executeCommand,
+	worldTime,
+	moonTime,
+	resolveTargets,
+	// Fase 21.6 (A1): escaneo incremental de biomas para /locate
+	createBiomeScan,
+	runLocateBiome,
+	getCachedBiome,
+	invalidateBiomeScanCache,
+	_biomeScanCache,
+	LOCATE_BIOME_RADIUS,
+	LOCATE_BIOME_STEP,
+	LOCATE_BIOME_BUDGET,
+	LOCATE_BIOME_CACHE_TTL_MS
+};

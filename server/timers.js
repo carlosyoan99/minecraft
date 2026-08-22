@@ -393,19 +393,33 @@ const CHUNK_FILL_PER_TICK = 6;
 // loopback; se rechaza un Host con puerto distinto al nuestro tras el proxy.
 function originAllowed(origin) {
 	if (!origin) return true; // WS sin navegador (tests/E2E): sin origen
-	const OUR_HOST = `localhost:${PORT}`;
 	const hostname = origin.replace(/^https?:\/\//i, "").split("/")[0];
-	if (!hostname || hostname.indexOf(":") === -1) return true; // origen relativo/raro
-	// Interfaces LAN (192.168/10./172.16-/172.31) cualquier puerto, y
-	// localhost/nuestro puerto exacto.
-	const hostOnly = hostname.split(":")[0];
+	// Fase 21.6 (A2): un Origin SIN puerto ya no cuela automáticamente
+	// (auditoría 2026-08-22 #2: `http://evil.com` devolvía true). Se asume
+	// el puerto por defecto del esquema (80 http / 443 https) y se compara
+	// contra la allowlist igual que un origen con puerto explícito.
+	if (!hostname) return false;
+	const schemePort = /^https:/i.test(origin) ? 443 : 80;
+	// IPv6 entre corchetes ([::1] / [::1]:3000): el puerto va tras `]`, así
+	// que el split ingenuo por ":" lo rompería (bug latente que este fix
+	// aprovecha para cerrar).
+	let hostOnly = hostname;
+	let port = schemePort;
+	const col = hostname.lastIndexOf(":");
+	const bracket = hostname.indexOf("]");
+	if (col !== -1 && (bracket === -1 || col > bracket)) {
+		hostOnly = hostname.slice(0, col);
+		port = Number(hostname.slice(col + 1));
+	}
+	if (!port) return false;
+	// Interfaces LAN (192.168/10./172.16-/172.31) y loopback: cualquier
+	// puerto (con o sin él), igual que antes del fix.
 	if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(hostOnly)) return true;
-	if (
-		/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostOnly) ||
-		hostname === OUR_HOST
-	)
+	if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostOnly))
 		return true;
-	return false;
+	// Resto de hosts: solo el nuestro exacto (host localhost + nuestro
+	// puerto; los dominios externos quedan fuera con o sin puerto).
+	return hostOnly === "localhost" && port === PORT;
 }
 
 // Arranque del servidor HTTP + WebSocket. `handleConnection` y `app` se

@@ -378,7 +378,6 @@ function tickArrows(dtMs) {
 		for (const p of players.values()) {
 			if (a.from === p.id) continue; // el lanzador no se golpea a sí mismo
 			if (Math.hypot(p.x - a.x, p.y - a.y, p.z - a.z) < ARROW_HIT_DIST) {
-				const lanzador = players.get(a.from);
 				// Fase 21.5 (D2): la flecha del Bogged envenena al impacto. El
 				// estado `poisonUntil` lo integra tickPlayer (combat.js) con el
 				// patrón del fuego: daño periódico y replicación al HUD con
@@ -388,9 +387,13 @@ function tickArrows(dtMs) {
 					applyPoison(p, POISON_DURATION_MS);
 				}
 				damagePlayer(p, a.damage || ARROW_DAMAGE, {
-					source: lanzador ? "player" : "mob",
-					meta: lanzador
-						? { playerName: lanzador.name, projectile: true }
+					// Fase 21.6 (B1): todo proyectil se etiqueta "projectile" para
+					// que la rama del escudo (mob|projectile) cubra también las
+					// flechas PvP (antes quedaba en código muerto: auditoría
+					// 2026-08-22 #1). La atribución real viaja en meta.
+					source: "projectile",
+					meta: lanzadorJugador
+						? { playerName: players.get(a.from)?.name, projectile: true }
 						: {
 								mobType: a.kind === "trident" ? "drowned" : "skeleton",
 								projectile: true

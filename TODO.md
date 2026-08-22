@@ -1084,10 +1084,11 @@
 
 ---
 
-## Fase 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers (EN CURSO)
+## Fase 21.5 — Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate y Trial Chambers (CERRADA)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase21.5-spec.md`](docs/spec/fase21.5-spec.md)
-> **En curso — abierta 2026-08-17** (Fase 21 cerrada). NUEVA desde la lista
+> **Cerrada y auditada 2026-08-20** (abierta 2026-08-17; Fase 21 cerrada).
+> NUEVA desde la lista
 > de mejoras del usuario (2026-08-15): alta/media prioridad + 1.21 Tricky
 > Trials + 1.21.5 Spring to Life + 1.22/26.1 + comandos. Se inserta **entre
 > F21 y F22** (no renumerar F21-25). **CERRADOS Y AUDITADOS:** los diferidos
@@ -1185,18 +1186,62 @@
       clear/get de absorción), `/kill` generalizado con `@s/@p/@a/@e/@r` y
       nombres; selectores resueltos en el handler (`resolveTargets`);
       `/weather` diferido (necesita lluvia/clima visual en el cliente)
-- [ ] Z1 Cierre y auditoría de Fase 21.5: suite + E2E + `--audit` +
+- [x] Z1 Cierre y auditoría de Fase 21.5: suite + E2E + `--audit` +
       `unit-fase21.5.js` en verde + manual (pesca, linterna, andamio, miel,
       arrecife, escudo/maza/tótem, Trial, variantes, Pale Garden, mochila,
       comandos); `SCHEMA_VERSION` 6 intacto salvo mochila/concreto (7 +
       migración + test si sube); docs y tracker al día; Won't documentado
+      (2026-08-20: unit 62/62, E2E 7/7, `--audit` 8/8, biome 0 errores;
+      `SCHEMA_VERSION` 6 intacto — la mochila persiste retrocompatible.
+      Fixes de la auditoría: atlas roto por `drawNoteBlock` (`set`→`px`,
+      el cliente no cargaba mundo desde D6), `pointerlockchange` abría la
+      pausa sobre libro/picker/mochila (fix #4 incompleto), ventana B2 de
+      `audit-fase21` ±12 (badlands E5 consume desierto) y lint repo-wide)
+
+---
+
+## Fase 21.6 — Correcciones de la auditoría 2026-08-22 y paridad MC (pre-F22)
+
+> Especificación (la verdad de la fase): [`docs/spec/fase21.6-spec.md`](docs/spec/fase21.6-spec.md)
+> **EN CURSO** (abierta 2026-08-22; creada ese día desde la auditoría
+> consolidada y la entrevista del planificador). Prerrequisito: F21.5
+> cerrada ✅.
+> **La F22 pasa a exigir esta fase.** Diferidos → borrador
+> [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md). Sin B/I nuevos,
+> `SCHEMA_VERSION` 6 intacto.
+
+- [x] A1 `/locate <bioma>` sin bloqueo del event loop (2026-08-22: radio 1024→256, stepper puro `createBiomeScan` con presupuesto 256 evaluaciones/tramo repartidas por setTimeout(0), caché TTL 30 s por jugador+bioma invalidada en world-session al cambiar de mundo; `unit-fase21.6.js` en verde)
+- [x] A2 Allowlist de Origin sin bypass cuando no hay puerto (2026-08-22: se asume puerto 80/443 del esquema y se aplica la misma allowlist; de paso se cierra el bug latente de IPv6 `[::1]` con split ingenuo; `unit-fase21.6.js` en verde)
+- [x] B1 Daño de proyectil con `source: "projectile"` (la rama del escudo deja de estar muerta; flechas PvP se bloquean) — test (2026-08-22: `projectiles.js` usa `source: "projectile"` para todos los proyectiles; test B1 en `unit-fase21.6.js`)
+- [x] B2 Autoridad del escudo: servidor limpia/reválida `blocking` al cambiar slot y comprueba mano activa; cliente resetea viñeta al cambiar slot y suelta con mouseup a nivel documento — tests + manual (2026-08-22: `net.js` limpia `p.blocking` en `inventory_select`; `combat.js` reválida `isShield(held.id)`; cliente: `mc-slot-change` + document mouseup + pose reset; test B2 en `unit-fase21.6.js`)
+- [x] B3 Desgaste de la maza al golpear (250 usos) — test numérico (2026-08-22: `applyToolWear` cubre `I.MACE` con `onlySwords=true`; test B3 en `unit-fase21.6.js`)
+- [x] B4 Desgaste del escudo 1 por impacto bloqueado calculado ANTES de armadura — test (2026-08-22: `blocked` se decide antes de `applyArmorDamageReduction`; test B4 en `unit-fase21.6.js` — golpe débil con escudo activo = desgaste 1; sin bloqueo = sin desgaste)
+- [x] C1 Mochila envía `bundle_action close` al cerrarse (Escape incluido, exactamente una vez) — test (2026-08-22: fix en `toggleBundleUI` — capturar `wasOpen` antes de asignar `bundleOpen`; test C1 bug-demo + fix + doble-cierre en `unit-fase21.6.js`)
+- [x] C2 Repintar columna de inventario del bundle abierto (`applyInventory`/`repaintIcons`) — manual/test (2026-08-22: export `updateBundleInventoryUI` +rama `isBundleOpen()` en `applyInventory`/`repaintIcons` de `ui.js`)
+- [x] C3 Clamp de `MAX_STACK` en put/take de mochila (sin counts >64 persistidos) — test (2026-08-22: remainder-split en `handleBundleAction` — split sin pérdida de ítems; 11 checks en `unit-fase21.6.js`)
+- [x] D1 Validación server-side jukebox/note block: `Number.isFinite`, NaN-safe, tipo de bloque objetivo — test (2026-08-22: `musicaCoordsValidas` en `actions.js` valida coords finitas + distancia + tipo de bloque; test D1 en `unit-fase21.6.js`)
+- [x] D2 `stopDisc()` en showMenu/muerte/reconexión/init (adiós a la música fantasma) — test lógica pura + manual (2026-08-22: `stopDisc()` en `menus.js` (showMenu), `network.js` (init/reinit, player_die, leave_world); tripwires regex en `unit-fase21.6.js`)
+- [x] D3 Persistencia de discos insertados en `world.json` (campo aditivo, patrón cofres/hornos) — test round-trip (2026-08-22: `save-meta.js` guarda/carga `jukeboxes` aditivo; `save.js` limpia al cambiar de mundo; test D3 round-trip en `unit-fase21.6.js`)
+- [x] E1 `/summon` con cuota global de mobs y clamp de coords a bordes (solo-OP intacto) — test (2026-08-22: `commands.js` usa `MOB_TOTAL` de `mob-spawn.js` + clamp coords con helper SV-6; tests E1 en `unit-fase21.6.js`)
+- [x] F1 `powerPreference: "high-performance"` en el renderer (trivial) — arranque + CDP sin regresión (2026-08-22: `scene.js` línea 43; tripwire regex en `unit-fase21.6.js`)
+- [x] P1 Paridad: escudo a bloqueo total estilo MC (`SHIELD_BLOCK_FACTOR` 0.0 = 0% pasa; ambientales excluidos) — recalibrar asserts de `unit-fase21.5` (2026-08-22: factor 0.0 en `constants.js`; tests mob/lava/proyectil en `unit-fase21.6.js`)
+- [x] P2 Paridad: picada de pesca 5-30 s (era 1,5-5 s) — recalibrar tests de pesca (2026-08-22: `BITE_MIN_MS=5000`, `BITE_RANGE_MS=25000`; tests en `unit-fase21.6.js`)
+- [x] P3 Paridad: loot de pesca fiel (sin `COOKED_COD` crudo ni `FLINT`; pesos 85/10/5) — test estadístico determinista (2026-08-22: `fishing.js` sin COOKED_COD/FLINT; tests en `unit-fase21.6.js`)
+- [x] P4 Paridad: saturación de la botella de miel 2,4 en AMBOS constants — `unit-sync` (2026-08-22: `FOOD_VALUES.HONEY_BOTTLE` = {food:6, saturation:2.4}; tests en `unit-fase21.6.js`)
+- [x] P5 Paridad: tablones de bambú 2 bambú → 2 tablones (ratio MC) — `unit-recetas` (2026-08-22: `recetas.json` 2×1 columna → 2; tests en `unit-fase21.6.js` y `unit-fase21.5.js`)
+- [x] P6 Paridad: bonus de caída de la maza consumido al primer impacto — test (2026-08-22: `p.fallFromY = null` tras bonus en `actions.js:753`; tests en `unit-fase21.6.js`)
+- [x] P7 Paridad: elegibilidad del blast furnace data-driven + nota cruzada F22 A5 (cobre entrará cuando exista raw copper) (2026-08-22: `isBlastCookable` en `crafting.js` lista extensible; nota F22 A5 en `TODO.md`)
+- [ ] G1 Higiene de docs: STATUS/DEPENDENCIAS coherentes al cierre; G2 `AGENTS.md`, `docs/tests.md`, mecánicas servidor/cliente
+- [ ] Z1 Cierre y auditoría de Fase 21.6: suite + E2E + `--audit` en verde, verificación manual mínima acordada (spam `/locate`, flecha PvP, viñeta, mochila close, disco tras reinicio), auditoría final obligatoria sin regresiones vs 2026-08-22
 
 ---
 
 ## Fase 22 — Profundidad, minerales y fauna 1.17–1.21 (Spec)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase22-spec.md`](docs/spec/fase22-spec.md)
-> **Prospectiva (sin implementar)** — prerrequisito: Fase 21.5 cerrada.
+> **PAUSADA** — se abrió el 2026-08-22 pero los fixes pre-22 (**Fase 21.6**)
+> van primero; su Bloque A se retoma al cerrar la 21.6.
+> **Prerrequisito actualizado: F21.6 cerrada** (antes F21.5).
 > Creada desde el plan del usuario "Actualizaciones Minecraft 1.17 → 1.21"
 > (2026-08-15, nueva sección en `Notas del usuario.md`): **minerales en
 > bruto (se funden todos), deepslate bajo Y=0, cobre (solo el bloque),

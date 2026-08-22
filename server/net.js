@@ -1040,8 +1040,18 @@ function handleConnection(ws, req) {
 				}
 
 				case "inventory_select": {
-					if (typeof data.slot === "number" && data.slot >= 0 && data.slot < 9)
+					if (
+						typeof data.slot === "number" &&
+						data.slot >= 0 &&
+						data.slot < 9
+					) {
 						p.selectedSlot = data.slot;
+						// Fase 21.6 (B2): cambiar de slot suelta el bloqueo del
+						// escudo en el servidor — antes el flag persistía y un
+						// cliente conservaba la mitigación sin escudo en mano
+						// (combat.js además reválida la mano en cada impacto).
+						p.blocking = false;
+					}
 					break;
 				}
 

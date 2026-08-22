@@ -93,6 +93,10 @@ function buildMeta() {
 			})),
 		furnaces: Array.from(furnaces.entries()),
 		chests: Array.from(chests.entries()),
+		// Fase 21.6 (D3): discos insertados en jukeboxes ("x,y,z" → {disc}) —
+		// campo aditivo como cofres/hornos: los world.json viejos sin el
+		// campo abren sin jukeboxes activos (SCHEMA_VERSION intacto).
+		jukeboxes: Array.from(state.jukeboxes.entries()),
 		// Fase 9 (Bloque C): estado de crecimiento de los cultivos ("x,y,z" → stage).
 		crops: Array.from(state.crops.entries()),
 		// Fase 10 (nota del usuario): hora del mundo (timeOffset) persistida —

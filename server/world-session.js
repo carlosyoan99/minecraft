@@ -10,7 +10,12 @@
 // Cada handler recibe un ctx inyectado desde net.js (evita ciclos de
 // require): { state, save, world, constants, broadcast, enterWorld,
 // sendInit } y devuelve void (el case del switch hace break).
-// ============================================================
+//
+// Fase 21.6 (A1): commands.js NO llega aquí por ningún camino (su grafo es
+// structures/mobs/biomes/log/constants), así que requerirlo directo no crea
+// ciclo — lo usamos para invalidar la caché de /locate bioma al cambiar de
+// mundo/semilla.
+const commands = require("./commands.js");
 
 // Rechazo con la cuota anti-spam (10 s, F16 C4/SEC-2): join_world y
 // set_seed comparten el mismo cooldown (ambos re-ejecutan switchWorld,
@@ -82,6 +87,7 @@ function handleJoinWorld(ctx, p, ws, data, playerId) {
 		ws.send(JSON.stringify({ event: "seed_rejected", data: { reason: r } }));
 		return;
 	}
+	commands.invalidateBiomeScanCache(); // Fase 21.6 (A1): mundo nuevo → caduca la caché de /locate bioma
 	p.inMenu = false;
 	enterWorld(p);
 	sendInit(p); // confirmación: el cliente la usa para cerrar la carga
@@ -135,6 +141,7 @@ function handleSetSeed(ctx, p, ws, data) {
 		ws.send(JSON.stringify({ event: "seed_rejected", data: { reason: r } }));
 		return;
 	}
+	commands.invalidateBiomeScanCache(); // Fase 21.6 (A1): mundo nuevo → caduca la caché de /locate bioma
 	if (r === true) enterWorld(p); // mundo nuevo: entrar de cero
 	sendInit(p); // confirmación: el cliente la usa para cerrar la carga
 }

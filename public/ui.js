@@ -12,7 +12,9 @@
 // ============================================================
 import { inventory, setInventory } from "./hud.js";
 import {
+	isBundleOpen,
 	isChestOpen,
+	updateBundleInventoryUI,
 	updateChestInventoryUI,
 	updateCraftInventoryUI,
 	updateFurnaceInventoryUI
@@ -102,6 +104,8 @@ export function applyInventory(inv) {
 	updateCraftInventoryUI();
 	updateFurnaceInventoryUI();
 	if (isChestOpen()) updateChestInventoryUI();
+	// Fase 21.6 (C2): refrescar la columna de inventario del bundle abierto.
+	if (isBundleOpen()) updateBundleInventoryUI();
 }
 
 // Fase 19 (E): tras recargar el atlas de iconos (hot-reload), repintar todo
@@ -112,4 +116,6 @@ export function repaintIcons() {
 	updateCraftInventoryUI();
 	updateFurnaceInventoryUI();
 	if (isChestOpen()) updateChestInventoryUI();
+	// Fase 21.6 (C2): refrescar la columna de inventario del bundle abierto.
+	if (isBundleOpen()) updateBundleInventoryUI();
 }

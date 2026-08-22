@@ -119,6 +119,9 @@ socket.addEventListener("message", (e) => {
 		const { event, data } = parsed;
 		switch (event) {
 			case "init": {
+				// Fase 21.6 (D2): reconexión/reinit para el disco que pudiera
+				// seguir sonando de la sesión anterior (setInterval huérfano).
+				stopDisc();
 				playerId = data.playerId;
 				playerName = data.name || playerName;
 				setStoredName(playerName);
@@ -333,6 +336,9 @@ socket.addEventListener("message", (e) => {
 				// Fase 7: lostInventory distingue la pérdida según gamemode (survival
 				// pierde el inventario al morir; creative lo conserva).
 				if (data.id === playerId) {
+					// Fase 21.6 (D2): la muerte del jugador local también para el
+					// disco — el respawn puede ser lejos del jukebox que sonaba.
+					stopDisc();
 					flashMessage(
 						data.lostInventory
 							? "💀 Has muerto — inventario perdido, reapareciendo..."

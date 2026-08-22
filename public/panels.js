@@ -348,7 +348,7 @@ function updateBundleSlotsUI() {
 	});
 }
 
-function updateBundleInventoryUI() {
+export function updateBundleInventoryUI() {
 	bundleInventoryEl.innerHTML = "";
 	inventory.forEach((item, i) => {
 		const el = document.createElement("div");
@@ -374,6 +374,10 @@ export function isBundleOpen() {
 }
 
 export function toggleBundleUI(show) {
+	// Fase 21.6 (C1): capturar el estado ANTES de asignar — antes, el
+	// `bundleOpen = show` pisaba la condición del else-if y el close nunca
+	// se enviaba (ni por Escape→closePanels ni por clic exterior).
+	const wasOpen = bundleOpen;
 	bundleUI.classList.toggle("hidden", !show);
 	bundleOpen = show;
 	if (show) {
@@ -382,9 +386,8 @@ export function toggleBundleUI(show) {
 		send("bundle_open");
 		showBlocker(false);
 		controls.unlock();
-	} else if (bundleOpen) {
+	} else if (wasOpen) {
 		send("bundle_action", { action: "close" });
-		bundleOpen = false;
 	}
 	updateBackdrop();
 }

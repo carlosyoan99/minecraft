@@ -75,7 +75,8 @@ const UNIT = [
 	"unit-fase19.6.js", // Fase 19.6: motor 3D — toon (materialstyle), viento por celda (chunkGeometry), ants-pool (geopool) y luz de antorcha (torchlogic)
 	"unit-fase20.js", // Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — showMenuBg solo en el menú principal
 	"unit-fase21.js", // Fase 21 (A1): biomas más grandes — coherencia de rachas (BIOME_FREQ 0.003) + determinismo de etiquetas
-	"unit-fase21.5.js" // Fase 21.5 (A1/A8): pesca — caña, bobber picando en agua, loot y cañas rotas en cofres
+	"unit-fase21.5.js", // Fase 21.5 (A1/A8): pesca — caña, bobber picando en agua, loot y cañas rotas en cofres
+	"unit-fase21.6.js" // Fase 21.6 (A1/A2): /locate bioma incremental con presupuesto+caché y allowlist de Origin sin bypass de puerto
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
@@ -102,6 +103,34 @@ const AUDIT = [
 	"audit-fase21.js" // Fase 21: pirámide end-to-end (B2), ríos D1, enderman radianes (C2), IA C3
 ];
 const args = process.argv.slice(2);
+
+// `--help` / `-h`: uso del runner sin ejecutar ningún test (exit 0).
+function printHelp() {
+	console.log(`Uso: node tests/run.js [modo] [opciones]
+
+Modos:
+  (sin modo)         unitarios + E2E si hay un servidor vivo en WS_URL
+  --unit             solo suite unitaria
+  --e2e              solo E2E contra el servidor de WS_URL
+  --audit            solo auditorías por fase standalone (lento, sin servidor ni navegador)
+
+Opciones:
+  --filter <regex>   solo los tests cuyo nombre de archivo coincide (con tiempo por test)
+  --help, -h         muestra esta ayuda y sale
+
+Variables de entorno:
+  SEED=<semilla>     semilla que reciben los unitarios (defecto: miSemilla2026)
+  WS_URL=<ws://…>    servidor al que se conecta el E2E (defecto: ws://localhost:3998;
+                     sin SEED el servidor arranca en modo menú y los E2E clásicos no aplican)
+
+La salida de cada test se captura en tests/last-run/<test>.log y el resultado
+de la última ejecución queda resumido en tests/test.log.`);
+}
+
+if (args.includes("--help") || args.includes("-h")) {
+	printHelp();
+	process.exit(0);
+}
 
 let failed = 0;
 // Fase 10 (C1): resultado por test para el test.log (saber qué falló sin
