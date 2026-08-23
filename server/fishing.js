@@ -33,9 +33,7 @@ const BITE_RANGE_MS = 25000;
 // ============================================================
 const FISHING_LOOT = {
 	// Fase 21.6 P3: sin COOKED_COD (MC suelta solo crudos al pescar).
-	fish: [
-		{ id: I.COD, weight: 85 }
-	],
+	fish: [{ id: I.COD, weight: 85 }],
 	// Fase 21.6 P3: sin FLINT (no es tesoro de pesca en MC real).
 	treasure: [
 		{ id: I.BOW, weight: 1 },

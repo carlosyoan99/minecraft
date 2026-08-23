@@ -116,8 +116,7 @@ let keepaliveId = null;
 function startKeepalive() {
 	if (keepaliveId) return;
 	keepaliveId = setInterval(() => {
-		if (socket.readyState === WebSocket.OPEN)
-			send("keepalive");
+		if (socket.readyState === WebSocket.OPEN) send("keepalive");
 	}, KEEPALIVE_MS);
 }
 function stopKeepalive() {

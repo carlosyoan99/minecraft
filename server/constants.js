@@ -1347,7 +1347,11 @@ const isTool = (id) =>
 // receta; se define aquí (después de I) frente a isFurnace.
 // Fase 21.6 P7: cobre entra en blast furnace cuando F22 A5 exista
 // (RAW_COPPER → COPPER_INGOT ×2, como MC). La lista es data-driven.
-const BLAST_SMELT_RESULTS = new Set([I.IRON_INGOT, I.GOLD_INGOT, I.COPPER_INGOT]);
+const BLAST_SMELT_RESULTS = new Set([
+	I.IRON_INGOT,
+	I.GOLD_INGOT,
+	I.COPPER_INGOT
+]);
 const isBlastSmelt = (resultId) => BLAST_SMELT_RESULTS.has(resultId);
 
 // ============================================================

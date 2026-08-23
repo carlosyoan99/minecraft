@@ -390,7 +390,8 @@ function generateChunk(cx, cz) {
 							// prioridad por estar más arriba en la cadena; si el roll de
 							// veta coincide con el de mineral, manda el mineral, como en
 							// MC donde las vetas de piedra y las menas son independientes).
-							block = polishedStoneAt(wx, y, wz) ?? (y < 0 ? B.DEEPSLATE : B.STONE);
+							block =
+								polishedStoneAt(wx, y, wz) ?? (y < 0 ? B.DEEPSLATE : B.STONE);
 							// Fase 18 (C-2): minerales por PROFUNDIDAD mapeados al mundo
 							// v6 (−64..+63, 128 bloques). Distribución MC 1.18 (mundo
 							// −64..+320, 384 bloques) mapeada POR PERCENTIL de columna:
@@ -425,7 +426,8 @@ function generateChunk(cx, cz) {
 								if (y < -38 && roll > 0.965) block = B.DIAMOND_ORE;
 								else if (y < -32 && roll > 0.955) block = B.REDSTONE_ORE;
 								else if (y < -20 && roll > 0.955) block = B.EMERALD_ORE;
-								else if (y < -16 && roll > 0.945) block = B.GOLD_ORE;									else if (y < 42 && roll > 0.9) block = B.IRON_ORE;
+								else if (y < -16 && roll > 0.945) block = B.GOLD_ORE;
+								else if (y < 42 && roll > 0.9) block = B.IRON_ORE;
 								// Fase 22 (A5): cobre — banda ~Y 0..16, frecuencia media
 								// (más común que el oro, menos que el hierro).
 								else if (y >= 0 && y <= 16 && roll > 0.92) block = B.COPPER_ORE;
@@ -714,8 +716,9 @@ function generateChunk(cx, cz) {
 				}
 			} else if (
 				canGrowTree &&
-				treeFits &&					biome === "giant_taiga" &&
-					treeRoll < 0.03
+				treeFits &&
+				biome === "giant_taiga" &&
+				treeRoll < 0.03
 			) {
 				// Taiga de árboles gigantes (Fase 21, A2: abeto 2×2 con copa cónica
 				// amplia). El tronco ocupa un cuadrado de 2×2 (como Montenegro);

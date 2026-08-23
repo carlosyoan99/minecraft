@@ -1566,8 +1566,7 @@ for (let id = 182; id <= 188; id++)
 for (const id of [189, 190, 191])
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Fase 22 (A3/A5): deepslate y mena de cobre (192-193) — cubo con su tesela.
-for (const id of [192, 193])
-	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+for (const id of [192, 193]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Fase 21.5 (E3): bloques decorativos (92-98)
 for (const id of [92, 93, 94, 95, 96, 97, 98])
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
