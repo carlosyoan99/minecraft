@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -30,8 +31,11 @@ const {
 	isNightTime, // C-1: noche estricta (fase ≥ duskEnd) — spawn hostil y dormir
 	isDayTime // C-1: día estricto (sin crepúsculos) — quema solar
 } = constants;
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
+/** @type {any} — Player class with Object.assign constructor (not inferred) */
 const playerHelpers = require("./players.js");
 const crafting = require("./crafting.js");
 const mobs = require("./mobs.js");
@@ -45,22 +49,29 @@ const chunkFill = require("./chunk-fill.js"); // Fase 18 (D-1): relleno progresi
 // ============================================================
 // Reloj del mundo ajustable (/time set): el día/noche, el ambiente y la IA
 // de mobs siguen al mismo reloj (worldTime), así que el comando afecta a todo.
+/** @type {() => number} */
 let worldTime = () => 0;
-function setWorldTimeFn(fn) {
+function setWorldTimeFn(/** @type {() => number} */ fn) {
 	worldTime = fn;
 }
 
 // broadcast a todos los jugadores conectados (definido en net.js).
+/** @type {(event: string, data: object) => void} */
 let netBroadcast = () => {};
-function setBroadcastFn(fn) {
+function setBroadcastFn(
+	/** @type {(event: string, data: object) => void} */ fn
+) {
 	netBroadcast = fn;
 }
 
 // sendFn de minería (mining.js lo llama como (player, event, data)): en vez
 // de enviar solo al minero, hace broadcast de las grietas a todos los que
 // vean el bloque (definido en net.js, usa broadcastNear).
+/** @type {(player: any, event: string, data: object) => void} */
 let netBroadcastMining = () => {};
-function setBroadcastMiningFn(fn) {
+function setBroadcastMiningFn(
+	/** @type {(player: any, event: string, data: object) => void} */ fn
+) {
 	netBroadcastMining = fn;
 }
 

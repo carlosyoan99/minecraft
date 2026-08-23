@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -16,7 +17,9 @@ const {
 	SCHEMA_VERSION,
 	DAY_CYCLE_MS // Fase 10: amanecer de los mundos nuevos (nota del usuario)
 } = constants;
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 const { restoreMobs } = require("./mobs.js");
 const { restoreFurnaces } = require("./crafting.js");

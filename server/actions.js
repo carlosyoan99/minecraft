@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -29,8 +30,11 @@ const {
 	DAY_CYCLE_MS,
 	isNightTime // C-1: noche estricta (fase ≥ duskEnd) — dormir
 } = constants;
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
+/** @type {any} — Player class with Object.assign constructor (not inferred) */
 const playerHelpers = require("./players.js");
 const { ItemStack } = require("./items.js"); // Fase 13 (C3): slots como clase
 const crafting = require("./crafting.js");
@@ -44,13 +48,16 @@ const { validCoords } = require("./anticheat.js");
 
 // Reloj del mundo ajustable (/time set): mismo que net.js (commands.worldTime
 // sobre el estado); se inyecta para no duplicar la definición.
+/** @type {() => number} */
 let worldTime = () => 0;
-function setWorldTimeFn(fn) {
+function setWorldTimeFn(/** @type {() => number} */ fn) {
 	worldTime = fn;
 }
 
 // Broadcasts definidos en net.js (a todos / a los que ven el bloque).
+/** @type {(event: string, data: object) => void} */
 let broadcast = () => {};
+/** @type {(event: string, data: object, x: number, z: number) => void} */
 let _broadcastNear = () => {};
 function setBroadcastFn(fn) {
 	broadcast = fn;
@@ -663,6 +670,20 @@ function handleSitPet(p, data) {
 // Fase 12 (A4/E8): el jugador lanza su tridente (clic derecho) — se retira
 // del inventario, vuela con la física de proyectiles y vuelve al inventario
 // al impactar o expirar (mobs.tickArrows).
+// S1 (Fase 22.3, hallazgo 1.2): la carga de viento tiene cooldown por jugador
+// de 500 ms (el mismo que en MC): sin él, un cliente automatizado spameaba
+// `throw_wind_charge` y mantenía a otros jugadores en el aire con knockback
+// reiterado (griefing). Arco y tridente NO lo necesitan: se auto-limitan por
+// consumo (flechas/desgaste) e inventario (el tridente sale de la mano), y
+// el flood genérico ya lo corta MAX_ACTION_RATE (20 acciones/s, G1).
+const THROW_COOLDOWN_MS = 500;
+function throwCooldownActivo(p) {
+	const now = Date.now();
+	if (now - (p.lastThrowAt || 0) < THROW_COOLDOWN_MS) return true;
+	p.lastThrowAt = now;
+	return false;
+}
+
 function handleThrowTrident(p) {
 	if (mobs.throwPlayerTrident(p)) playerHelpers.sendInventory(p);
 }
@@ -687,16 +708,24 @@ function handleShootBow(p, ws) {
 // inventario y lanza el proyectil que empuja (kind "wind"). No vuelve al
 // inventario (un solo uso, paridad MC).
 function handleThrowWindCharge(p) {
+	if (throwCooldownActivo(p)) return;
 	if (mobs.throwWindCharge(p)) playerHelpers.sendInventory(p);
 }
 
 // Fase 21.5 (B4): recoger miel — clic derecho con una botella de vidrio sobre
-// una colmena/nido (a 4 bloques) la consume y devuelve una botella de miel
+// una colmena/nido (a 5 bloques) la consume y devuelve una botella de miel
 // (comida 6/1.2, como en Minecraft). Simplificación: la colmena no se agota.
 function handleHoneyBottle(p, data) {
-	const block = world.getBlock(data.x, data.y, data.z);
+	// S1 (Fase 22.3): mismos guardas que los demás handlers de bloque
+	// (patrón H1): coords finitas y FLOOR antes de leer el mundo.
+	const { x, y, z } = data;
+	if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return;
+	const bx = Math.floor(x),
+		by = Math.floor(y),
+		bz = Math.floor(z);
+	const block = world.getBlock(bx, by, bz);
 	if (block !== B.BEE_NEST && block !== B.BEE_HIVE) return;
-	if (Math.hypot(data.x - p.x, data.y - p.y, data.z - p.z) > 5) return;
+	if (Math.hypot(bx - p.x, by - p.y, bz - p.z) > 5) return;
 	const held = p.inventory[p.selectedSlot];
 	if (!held || held.id !== I.GLASS_BOTTLE) return;
 	if (!playerHelpers.removeFromInventory(p, I.GLASS_BOTTLE, 1)) return;
@@ -1132,25 +1161,31 @@ function musicaCoordsValidas(p, data) {
 function handleJukeboxInteract(p, ws, data) {
 	if (!musicaCoordsValidas(p, data)) return;
 	const { x, y, z } = data;
+	// S1 (Fase 22.3): la clave del estado usa las coords FLOOR (bloque real).
+	// Antes viajaban crudas y dos mensajes con decimales distintos sobre el
+	// mismo bloque creaban jukeboxes fantasma con discos duplicados.
+	const bx = Math.floor(x),
+		by = Math.floor(y),
+		bz = Math.floor(z);
 	// El bloque objetivo debe ser un jukebox real del mundo (no basta con
 	// que el cliente lo diga: la clave del estado se deriva de estas coords).
-	if (world.getBlock(Math.floor(x), Math.floor(y), Math.floor(z)) !== B.JUKEBOX)
-		return;
-	const key = `${x},${y},${z}`;
+	if (world.getBlock(bx, by, bz) !== B.JUKEBOX) return;
+	const key = `${bx},${by},${bz}`;
 	const slot = p.inventory[p.selectedSlot];
 	const jukeState = state.jukeboxes.get(key);
 	// Insertar disco: el slot seleccionado es un disco y el jukebox está vacío.
 	if (slot && MUSIC_DISC_IDS.has(slot.id) && !jukeState) {
 		p.inventory[p.selectedSlot] = null;
 		state.jukeboxes.set(key, { disc: slot.id });
-		p.send(
-			JSON.stringify({
-				event: "jukebox_state",
-				data: { x, y, z, disc: slot.id }
-			})
+		// S1 (Fase 22.3): notificación vía _broadcastNear (incluye al actor,
+		// que está a ≤6 bloques). Antes `p.send(...)` — Player NO tiene send —
+		// lanzaba TypeError y ni el actor ni los cercanos recibían el estado.
+		_broadcastNear(
+			"jukebox_state",
+			{ x: bx, y: by, z: bz, disc: slot.id },
+			p.x,
+			p.z
 		);
-		// Notificar a clientes cercanos.
-		_broadcastNear("jukebox_state", { x, y, z, disc: slot.id }, p.x, p.z);
 		return;
 	}
 	// Extraer disco: jukebox tiene disco y el jugador tiene hueco.
@@ -1161,10 +1196,7 @@ function handleJukeboxInteract(p, ws, data) {
 			durability: 0
 		};
 		state.jukeboxes.delete(key);
-		p.send(
-			JSON.stringify({ event: "jukebox_state", data: { x, y, z, disc: 0 } })
-		);
-		_broadcastNear("jukebox_state", { x, y, z, disc: 0 }, p.x, p.z);
+		_broadcastNear("jukebox_state", { x: bx, y: by, z: bz, disc: 0 }, p.x, p.z);
 		return;
 	}
 }

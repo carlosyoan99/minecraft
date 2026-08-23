@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -12,7 +13,9 @@
 // commands.js, tnt.js, projectiles.js, mobs.js y la suite usan
 // players.* y no deben cambiar (fachadas intactas, convención D-1..D-4).
 // ============================================================
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
 const {
 	B,
@@ -300,6 +303,7 @@ class Player {
 		return damagePlayer(this, amount, opts);
 	}
 	heal(amount) {
+		// @ts-ignore — maxHealth se asigna vía Object.assign en el constructor (net.js)
 		const max = this.maxHealth || 20;
 		if (this.health >= max) return false;
 		this.health = Math.min(max, this.health + amount);

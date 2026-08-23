@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 // ============================================================
 // ANTI-CHEAT DE MOVIMIENTO (Fase 18, D-1 — extraído de server/net.js)

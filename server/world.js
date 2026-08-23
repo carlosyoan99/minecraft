@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -23,6 +24,7 @@ const {
 	isConcretePowder,
 	CONCRETE_SOLID_FOR_POWDER
 } = constants;
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
 const _chests = require("./chests.js"); // cofres de loot de las minas abandonadas (Fase 7)
 

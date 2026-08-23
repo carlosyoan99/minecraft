@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -15,6 +16,7 @@ const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const path = require("node:path");
 const constants = require("./constants.js");
 const state = require("./state.js");
+/** @type {any} world — clase World (prototype dinámico, no inferido por tsc) */
 const world = require("./world.js"); // atomicWrite (swap atómico tmp+rename)
 
 // REN-1 (v20.2): el autosave de jugadores va por la MISMA estrategia que los
@@ -44,7 +46,9 @@ function sanitizePlayerFile(name) {
 
 // Snapshot de los campos del jugador que se persisten (null si no aplica:
 // en menú o jugador fantasma). El wire del jugador es el mismo JSON plano.
-function playerSnapshot(player) {
+function playerSnapshot(
+	/** @type {import('./types.js').Player|null} */ player
+) {
 	if (!player || player.inMenu || !P.currentSeed) return null;
 	return {
 		name: player.name,
@@ -90,7 +94,7 @@ function writePlayerData(f, data) {
 		log.warn(`⚠️  No se pudo guardar el jugador ${data.name}: ${e.message}`);
 	}
 }
-function savePlayer(player) {
+function savePlayer(/** @type {import('./types.js').Player} */ player) {
 	writePlayerData(playerFilePath(player.name), playerSnapshot(player));
 }
 
@@ -126,11 +130,26 @@ function savePlayersAsync() {
 	setImmediate(processBatch);
 }
 
+// S1 (Fase 22.3): saneamiento de ItemStack al restaurar — un archivo
+// players/<nombre>.json manipulado no debe inyectar ids fuera de catálogo,
+// counts gigantes (1e9 rompe la aritmética de stacks) ni slots no-objeto.
+const MAX_STACK = constants.MAX_STACK || 64;
+function stackSana(/** @type {any} */ s) {
+	if (!s || typeof s !== "object") return null;
+	if (!Number.isInteger(s.id) || s.id < 1) return null;
+	const count = Math.floor(Number(s.count));
+	if (!Number.isFinite(count) || count < 1) return null;
+	const out = { id: s.id, count: Math.min(count, MAX_STACK) };
+	// La durabilidad solo se conserva si es un número válido (herramientas).
+	if (Number.isFinite(s.durability)) out.durability = Math.max(0, s.durability);
+	return out;
+}
+
 // Restaura el estado persistido del jugador (por nombre) en la instancia
 // recién creada. Lectura defensiva: campos inválidos se ignoran (los
 // archivos son locales, pero nunca se confía en el formato). Devuelve true
 // si había datos y se aplicaron (posiblemente en parte).
-function restorePlayer(player) {
+function restorePlayer(/** @type {import('./types.js').Player} */ player) {
 	if (!player || player.inMenu || !P.currentSeed) return false;
 	let data;
 	try {
@@ -144,13 +163,13 @@ function restorePlayer(player) {
 		return false;
 	}
 	if (Array.isArray(data.inventory) && data.inventory.length === 36)
-		player.inventory = data.inventory;
+		player.inventory = data.inventory.map(stackSana);
 	if (data.armor && typeof data.armor === "object")
 		player.armor = {
-			helmet: data.armor.helmet ?? null,
-			chestplate: data.armor.chestplate ?? null,
-			leggings: data.armor.leggings ?? null,
-			boots: data.armor.boots ?? null
+			helmet: stackSana(data.armor.helmet),
+			chestplate: stackSana(data.armor.chestplate),
+			leggings: stackSana(data.armor.leggings),
+			boots: stackSana(data.armor.boots)
 		};
 	if (
 		typeof data.selectedSlot === "number" &&
@@ -182,11 +201,22 @@ function restorePlayer(player) {
 	}
 	if (typeof data.yaw === "number") player.yaw = data.yaw;
 	if (typeof data.pitch === "number") player.pitch = data.pitch;
-	if (data.respawnPoint && typeof data.respawnPoint === "object")
-		player.respawnPoint = data.respawnPoint;
-	// Fase 21.5 (F4): restaurar la mochila (Bundle) — array de 9 slots.
+	// S1 (Fase 22.3): el punto de reaparición se valida campo a campo.
+	if (
+		data.respawnPoint &&
+		typeof data.respawnPoint === "object" &&
+		Number.isFinite(data.respawnPoint.x) &&
+		Number.isFinite(data.respawnPoint.y) &&
+		Number.isFinite(data.respawnPoint.z)
+	)
+		player.respawnPoint = {
+			x: data.respawnPoint.x,
+			y: data.respawnPoint.y,
+			z: data.respawnPoint.z
+		};
+	// Fase 21.5 (F4): restaurar la mochila (Bundle) — array de 9 slots saneados.
 	if (Array.isArray(data.bundle) && data.bundle.length === 9)
-		player.bundle = data.bundle;
+		player.bundle = data.bundle.map(stackSana);
 	return true;
 }
 

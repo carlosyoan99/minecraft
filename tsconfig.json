@@ -1,17 +1,18 @@
 {
-  "compilerOptions": {
-    "allowJs": true,
-    "checkJs": false,
-    "noEmit": true,
-    "strict": false,
-    "module": "commonjs",
-    "target": "es2020",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": {}
-  },
-  "include": ["server/**/*.js", "public/**/*.js"],
-  "exclude": ["node_modules", "public/vendor", "tests"]
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": false,
+		"noEmit": true,
+		"strict": false,
+		"module": "commonjs",
+		"target": "es2020",
+		"lib": ["es2022", "dom"],
+		"moduleResolution": "node",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"baseUrl": ".",
+		"paths": {}
+	},
+	"include": ["server/**/*.js", "public/**/*.js", "public/*.d.ts"],
+	"exclude": ["node_modules", "public/vendor", "tests"]
 }

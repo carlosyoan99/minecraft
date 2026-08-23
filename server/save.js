@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -16,7 +17,9 @@ const path = require("node:path");
 const constants = require("./constants.js");
 const { SCHEMA_VERSION, UNLOAD_DISTANCE_CHUNKS, CHUNK_SIZE } = constants;
 const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 const { restoreMobs } = require("./mobs.js");
 const { restoreFurnaces } = require("./crafting.js");
@@ -64,7 +67,13 @@ function releaseWorld() {
 	state.crops.clear();
 	state.jukeboxes.clear(); // Fase 21.6 (D3): los discos no viajan entre mundos
 	state.arrows = [];
+	// S1 (Fase 22.3): mismo reset completo que switchWorld — antes quedaban
+	// bobbers, watchers de horno y cooldowns de trampas vivos en modo menú.
+	state.bobbers = [];
 	state.doors.clear();
+	state.openFurnaceWatchers.clear();
+	state.templeTrapCooldowns.clear();
+	state.pyramidTrapCooldowns.clear();
 	constants.setWorldSeed(null, null);
 	world.reinitNoise("menu");
 	log.info("🗂️ Modo menú: mundo liberado (sin jugadores).");
@@ -281,6 +290,16 @@ function switchWorld(newSeed, newName, newGamemode, newSize) {
 	state.chests.clear();
 	state.crops.clear(); // Fase 9 (Bloque C): los cultivos no viajan entre mundos
 	state.jukeboxes.clear(); // Fase 21.6 (D3): los discos tampoco
+	// S1 (Fase 22.3): el resto del estado efímero tampoco viaja — antes
+	// flechas/bobbers/puertas/watchers de horno/cooldowns de trampas cruzaban
+	// al mundo nuevo (un bobber "biting" daba pez en otra semilla; un watcher
+	// viejo recibía furnace_state del horno homónimo nuevo).
+	state.arrows = [];
+	state.bobbers = [];
+	state.doors.clear();
+	state.openFurnaceWatchers.clear();
+	state.templeTrapCooldowns.clear();
+	state.pyramidTrapCooldowns.clear();
 
 	constants.setWorldSeed(
 		newSeed,

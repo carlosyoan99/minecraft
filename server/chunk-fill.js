@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 // ============================================================
 // RELLENO PROGRESIVO DE CHUNKS (Fase 18, D-1 — extraído de server/net.js)

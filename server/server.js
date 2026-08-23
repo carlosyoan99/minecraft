@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -15,13 +16,19 @@ const {
 	// SEED arranca directo al mundo (indispensable para los E2E).
 	MENU_MODE
 } = require("./constants.js");
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 const save = require("./save.js");
 const mobs = require("./mobs.js");
 const crafting = require("./crafting.js");
+/** @type {any} — Player class with Object.assign constructor (not inferred) */
 const playerHelpers = require("./players.js");
 const tnt = require("./tnt.js"); // Fase 10 (D2)
+// S1 (Fase 22.3): hooks de broadcast para muertes por proyectil/IA.
+const projectiles = require("./projectiles.js");
+const mobSpecies = require("./mob-species.js");
 const net = require("./net.js");
 
 // Hooks de broadcast (dependencia world/save/players -> net, rota aquí)
@@ -37,6 +44,10 @@ playerHelpers.setXpDropHandler((player, xp) =>
 );
 // Fase 10 (D2): TNT (mecha/explosión) → broadcast a todos los clientes.
 tnt.setBroadcastHandler((event, data) => net.broadcast(event, data));
+// S1 (Fase 22.3): muertes por proyectil y por IA (bocado de rana) también
+// sincronizan mob_death con los clientes.
+projectiles.setBroadcastHandler((event, data) => net.broadcast(event, data));
+mobSpecies.setBroadcastHandler((event, data) => net.broadcast(event, data));
 
 crafting.loadRecipes();
 

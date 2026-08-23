@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -15,7 +16,9 @@ const fs = require("node:fs");
 const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
 const _path = require("node:path");
 const constants = require("./constants.js");
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 const { buildMeta } = require("./save-meta.js");
 

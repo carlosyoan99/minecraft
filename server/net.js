@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -23,9 +24,12 @@ const {
 	xpToNext,
 	xpIntoLevel
 } = constants;
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 const save = require("./save.js");
+/** @type {any} — Player class with Object.assign constructor (not inferred) */
 const playerHelpers = require("./players.js");
 const mobs = require("./mobs.js");
 const commands = require("./commands.js");

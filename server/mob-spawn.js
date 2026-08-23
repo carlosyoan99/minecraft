@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -11,7 +12,9 @@
 // ============================================================
 const { CHUNK_SIZE, HOSTILE, worldPaths, B } = require("./constants.js");
 const constants = require("./constants.js");
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 
 const { players } = state;
@@ -143,6 +146,7 @@ const WATER_SPAWN = ["drowned"];
 // Hook inyectable: createMob vive en mob-species.js (fábrica cableada en
 // mobs.js). Este módulo NO requiere mobs.js para no crear ciclos; mobs.js
 // llama a setCreateMob(createMob) en su cargue.
+/** @type {(type: string, x: number, y: number, z: number) => any} */
 let createMobFn = () => {
 	throw new Error("mob-spawn: createMob sin inyectar (setCreateMob)");
 };
@@ -153,9 +157,20 @@ function setCreateMob(fn) {
 // Intento de spawn de hasta 3 mobs por llamada (cuota global: >30 vivos no
 // se spawnea). Ver cabecera del módulo para las reglas de posición.
 function spawnMobs(isNight) {
-	if (state.mobs.length > 30 || players.size === 0) return [];
+	// S1 (Fase 22.3): la cuota usa MOB_TOTAL (antes un literal 30 se
+	// desincronizaría si la constante cambiara).
+	if (state.mobs.length >= MOB_TOTAL || players.size === 0) return [];
 	const types = SPAWN_TYPES[isNight ? "night" : "day"];
-	const anyPlayer = players.values().next().value;
+	// S1 (Fase 22.3): el centro de spawn no puede ser un jugador fantasma del
+	// menú (leave_world lo aparca en (0,0,0)) — primer player NO en menú.
+	let anyPlayer = null;
+	for (const p of players.values()) {
+		if (!p.inMenu) {
+			anyPlayer = p;
+			break;
+		}
+	}
+	if (!anyPlayer) return [];
 	const created = [];
 	for (let i = 0; i < 3; i++) {
 		// Buscar una posición en el mapa cargado: un chunk dentro del radio de

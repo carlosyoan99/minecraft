@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -18,6 +19,7 @@
 // ============================================================
 const constants = require("./constants.js");
 const { B } = constants;
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 
 // Bloques que el sculk puede "devorar": tierra/césped y piedra profunda

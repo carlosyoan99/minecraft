@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -9,7 +10,9 @@
 // El broadcast de `tnt_explode`/`tnt_fuse` lo cablea server.js (hook, igual
 // que el resto: evita ciclos de require con net).
 // ============================================================
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 const { damagePlayer } = require("./players.js");
 const {

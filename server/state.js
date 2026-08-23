@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -28,6 +29,7 @@ const arrows = [];
 // aleatorio y "pica". Se replican en arrows_update con kind "bobber".
 const bobbers = [];
 const dirtyChunks = new Set(); // claves "cx,cz" modificadas, pendientes de escribir
+/** @type {number} desplazamiento del reloj del mundo (ms) */
 const timeOffset = 0; // Fase 6: desplazamiento del reloj del mundo (ms) para /time set.
 // Fase 10 (nota del usuario): AHORA SÍ se persiste en world.json (save.js
 // buildMeta/loadWorld) para que la hora del mundo continúe entre sesiones, y

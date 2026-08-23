@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -12,7 +13,9 @@
 // re-exportan desde mobs.js para no cambiar el wire ni los imports.
 // ============================================================
 const { I, BOW_DAMAGE, isSolidBlock } = require("./constants.js");
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 // Fase 22 (C1): propagación de sculk al morir un mob por proyectil
 const sculk = require("./sculk.js");
@@ -28,6 +31,14 @@ const {
 } = require("./players.js");
 
 const { players } = state;
+
+// S1 (Fase 22.3): hook de broadcast — mismo patrón que tnt.js. La muerte de
+// un mob por proyectil debe notificar `mob_death` como el camino melee
+// (actions.js), o los clientes ven el mob evaporarse sin animación/sonido.
+let broadcastFn = null;
+function setBroadcastHandler(fn) {
+	broadcastFn = fn;
+}
 
 // ============================================================
 // FLECHAS DEL ESQUELETO (Fase 9, Bloque D)
@@ -64,12 +75,14 @@ const WIND_KB_TTL_TICKS = 10; // duración del impulso de los mobs
 // Hooks inyectables: mobDrops/mobXp viven en mobs.js (que requiere este
 // módulo). Para no crear un ciclo de require, mobs.js los inyecta al
 // cargar (projectiles.setMobDrops/setMobXp).
+/** @type {(type: string) => any[]} */
 let mobDropsFn = () => null;
+/** @type {(type: string) => number} */
 let mobXpFn = () => 0;
-function setMobDrops(fn) {
+function setMobDrops(/** @type {(type: string) => any[]} */ fn) {
 	mobDropsFn = fn;
 }
-function setMobXp(fn) {
+function setMobXp(/** @type {(type: string) => number} */ fn) {
 	mobXpFn = fn;
 }
 
@@ -434,6 +447,9 @@ function tickArrows(dtMs) {
 						// El slime se divide antes de morir (como en attack_mob).
 						m.onDeath(); // C2: el slime se divide (hook por especie)
 						m.alive = false;
+						// S1 (Fase 22.3): sincronizar la muerte con los clientes
+						// (flash/sonido), igual que el camino melee en actions.js.
+						if (broadcastFn) broadcastFn("mob_death", { id: m.id });
 						// Fase 22 (C1): muerte sobre sculk → propagación Deep Dark
 						sculk.onMobDeath(m);
 						// Si el lanzador es un jugador que está conectado, recibe los
@@ -495,7 +511,10 @@ function arrowSnapshot(a) {
 		vy: a.vy,
 		vz: a.vz,
 		// Fase 12: kind distingue flecha de tridente para el dibujo del cliente.
-		kind: a.kind || "arrow"
+		kind: a.kind || "arrow",
+		// S1 (Fase 22.3): la flecha envenenada del Bogged viaja marcada (el
+		// snapshot antes la omitía y el canal no podía transmitirla).
+		poison: !!a.poison
 	};
 }
 
@@ -524,5 +543,6 @@ module.exports = {
 	tickArrows,
 	arrowSnapshot,
 	setMobDrops,
-	setMobXp
+	setMobXp,
+	setBroadcastHandler // S1 (Fase 22.3): mob_death en muertes por proyectil
 };

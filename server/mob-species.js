@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -22,10 +23,25 @@ const constants = require("./constants.js");
 const { I, isSolidBlock, HOSTILE, TICK_MS, BREED_FOOD } = constants;
 // WebSocket global: p.ws.readyState (conexión abierta del jugador).
 const WebSocket = require("ws");
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 const projectiles = require("./projectiles.js");
+// S1 (Fase 22.3): cuota global compartida (MOB_TOTAL vive en mob-spawn.js;
+// no hay ciclo: mob-spawn no requiere este módulo).
+const { MOB_TOTAL } = require("./mob-spawn.js");
+// Fase 22 (C1) + S1 (Fase 22.3): propagación sculk en el bocado de la rana.
+const sculk = require("./sculk.js");
 const { players } = state;
+
+// S1 (Fase 22.3): hook de broadcast para las muertes causadas por IA
+// (bocado de la rana) — mismo patrón que tnt.js/projectiles.js; server.js
+// lo cablea a net.broadcast. Sin ciclo: net no requiere este módulo.
+let frogBroadcastFn = null;
+function setBroadcastHandler(fn) {
+	frogBroadcastFn = fn;
+}
 // Fase 21 (C1): la gallina pone huevos DIRECTOS al jugador cercano (no hay
 // entidades de ítem en el suelo — decisión del proyecto). inventory.js no
 // requiere este módulo (ni mobs.js), así que no hay ciclo.
@@ -36,6 +52,7 @@ const SLIME_HEALTH = { 2: 16, 1: 4, 0: 1 };
 
 // Fábrica tipo→clase (asignada dentro de createSpecies; los helpers que
 // crean mobs — splitSlime, applyFeed — la resuelven en runtime).
+/** @type {(type: string, x: number, y: number, z: number) => any} */
 let createMob = () => null;
 // Daño del slime por tamaño (MC real): grande 3, mediano 2, pequeño 0.
 const SLIME_DAMAGE = { 2: 3, 1: 2, 0: 0 };
@@ -548,10 +565,15 @@ function tickFrog(mob, isNight) {
 	//    La caza manda salvo que la rana esté huyendo (mobHit activa flee).
 	if (presa && Date.now() >= (mob.fleeUntil || 0)) {
 		if (mejorD < FROG_EAT_DIST) {
-			// Bocado: el slime pequeño desaparece (el snapshot de mobs_update
-			// lo quita del cliente); la rana recupera 2 HP como "comida".
+			// Bocado: el slime pequeño muere por el camino COMPLETO (S1, Fase
+			// 22.3): hook de especie (splitSlime no aplica a tamaño 0), broadcast
+			// mob_death y propagación sculk — antes desaparecía en silencio y el
+			// Deep Dark no se enteraba.
+			presa.onDeath();
 			presa.alive = false;
 			presa.health = 0;
+			if (frogBroadcastFn) frogBroadcastFn("mob_death", { id: presa.id });
+			sculk.onMobDeath(presa);
 			mob.state = "eat";
 			mob.frogEatAt = Date.now();
 			if (typeof mob.maxHealth === "number")
@@ -768,11 +790,12 @@ function applyFeed(mob, mobs) {
 			Math.hypot(m.x - mob.x, m.z - mob.z) < BREED_RANGE
 	);
 	// Auditoría 2026-08-15 (M2): la cría respeta la MISMA cuota global de
-	// mobs que el spawn natural (MOB_CAP = 30). Antes solo el spawn la
+	// mobs que el spawn natural (MOB_TOTAL). Antes solo el spawn la
 	// consultaba: un jugador alimentando podía multiplicar los animales sin
 	// tope (memoria + persistencia del meta engordando). Si la cuota está
 	// llena, los padres entran en cooldown y no se crea el bebé.
-	if (state.mobs.length >= 30) {
+	// S1 (Fase 22.3): usa la constante exportada (antes un literal 30).
+	if (state.mobs.length >= MOB_TOTAL) {
 		mob.loveUntil = 0;
 		return null;
 	}
@@ -854,8 +877,10 @@ function _hasLineOfSight(px, py, pz, mx, my, mz, playerYaw, playerPitch) {
 	);
 	if (yawDiff > CREAKING_VISION_ANGLE) return false;
 	if (pitchDiff > CREAKING_VISION_ANGLE) return false;
-	// Línea de visión simple: muestrear 3 puntos entre el jugador y el mob.
-	for (let t = 0.3; t < 1; t += 0.35) {
+	// Línea de visión: muestreo denso del segmento (paso 0.25) — S1 (Fase
+	// 22.3): con solo t=0.3/0.65 una pared pegada al jugador o al mob no
+	// bloqueaba la "visión" y se congelaba a través de muros contiguos.
+	for (let t = 0.25; t < 1; t += 0.25) {
 		const sx = Math.floor(px + dx * t);
 		const sy = Math.floor(py + dy * t + 1.6); // cámara a 1.6
 		const sz = Math.floor(pz + dz * t);
@@ -867,7 +892,11 @@ function tickCreaking(mob, isNight, nearest, dist) {
 	// El creaking se congela si algún jugador lo está mirando.
 	let frozen = false;
 	for (const [, p] of players) {
-		if (!p.alive) continue;
+		// S1 (Fase 22.3): mismos guardas que el enderman (isEndermanWatched).
+		// Antes `if (!p.alive)` — los JUGADORES no tienen `alive` — saltaba a
+		// TODO el mundo y el creaking NUNCA se congelaba al ser observado.
+		if (!p || p.inMenu || p.ws.readyState !== WebSocket.OPEN) continue;
+		if (p.gamemode === "creative") continue; // B6: los creativos no observan
 		const dx = mob.x - p.x,
 			dz = mob.z - p.z;
 		const d = Math.sqrt(dx * dx + dz * dz);
@@ -1244,4 +1273,4 @@ function createSpecies(Mob) {
 	};
 }
 
-module.exports = { createSpecies };
+module.exports = { createSpecies, setBroadcastHandler };

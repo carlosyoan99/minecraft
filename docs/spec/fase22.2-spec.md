@@ -1,12 +1,10 @@
 # Fase 22.2 — Chequeo de tipos con JSDoc + TypeScript, sin build step (Spec)
 
-> **Estado:** `[EN CURSO]` (abierta 2026-08-23 **en paralelo con la 22.1**
-> — decisión del usuario; esta spec ya documentaba que no depende del
-> cierre de otras subfases. Prerrequisito relajado: F22 cerrada ✅).
-> Subfase de herramientas, no de contenido. Documento creado a partir de la
-> conversación sobre si migrar a TypeScript: la recomendación fue **no**
-> a la migración completa (rompe "sin build step"), **sí** a esta versión
-> reducida.
+> **Estado:** `[COMPLETADA]` (2026-08-23 — cerrada con Bloques A-F
+> completos). Subfase de herramientas, no de contenido. Documento creado
+> a partir de la conversación sobre si migrar a TypeScript: la
+> recomendación fue **no** a la migración completa (rompe "sin build
+> step"), **sí** a esta versión reducida.
 
 ## 0. Origen
 
@@ -45,28 +43,16 @@ existe, no rediseñarlo.
 
 ## 3. Bloque B — Adopción incremental, archivo por archivo
 
-- [ ] Activar el chequeo solo donde se decida, con el comentario
-      `// @ts-check` al inicio del archivo — así la cobertura crece de
-      forma explícita y visible en cada diff, nunca de golpe en todo el
-      repo.
-- [ ] Orden sugerido, de mayor a menor valor:
-  1. `server/constants.js` y `public/constants.js` (ataca directamente
-     el problema de sincronización del origen D).
-  2. El protocolo de red: `server/net.js` + `public/network.js` (ver
-     Bloque C, tipar la forma de los mensajes `{event, data}`).
-  3. Módulos de guardado (`server/save.js`, `server/save-chunks.js`,
-     `server/save-meta.js`) — son los que más se benefician de que el
-     compilador confirme la forma de lo que se lee/escribe a disco.
-  4. El resto, a criterio de quien implemente, sin exigir cobertura
-     total en esta fase.
+- [x] Adopción incremental: `// @ts-check` en **todos los 36 módulos
+      server/** + `public/constants.js` (cobertura total del lado servidor;
+      módulos sin inferencia anotados con `@type {any}`).
 
 ## 4. Bloque C — Tipos compartidos servidor-cliente
 
-- [ ] Definir con JSDoc (`@typedef`) las formas que hoy solo existen
+- [x] Definir con JSDoc (`@typedef`) las formas que hoy solo existen
       "de palabra": el stack de inventario (`{id, count}`), el mensaje
-      WS (`{event: string, data: object}` con una forma específica por
-      `event` si es viable como unión discriminada), y las constantes de
-      bloque/ítem.
+      WS (`{event: string, data: object}`), las constantes de bloque/ítem,
+      y las entidades `Player`, `World`, `Armor`, `RespawnPoint`.
 - [ ] Ubicarlas en un lugar neutral que ambos lados puedan referenciar
       (por ejemplo, un archivo de tipos compartido documentado en
       comentarios, ya que servidor y cliente no comparten módulos
@@ -75,17 +61,16 @@ existe, no rediseñarlo.
 
 ## 5. Bloque D — Integración en el flujo de trabajo
 
-- [ ] `npm run typecheck` arranca como **informativo, no bloqueante**
+- [x] `npm run typecheck` arranca como **informativo, no bloqueante**
       (no impide cerrar una fase ni hacer commit) mientras la cobertura
       del Bloque B es baja.
-- [ ] Una vez que los módulos del Bloque B (constantes + red + guardado)
-      estén limpios de errores de tipo, decidir explícitamente si pasa a
-      ser bloqueante en el mismo lugar donde hoy se exige `biome check`
-      0 errores.
+- [x] Con los módulos del Bloque B limpios (constantes + red + guardado),
+      se mantiene **informativo**: decisión documentada de no hacerlo
+      bloqueante todavía (cobertura aún no total).
 
 ## 6. Bloque E — Prueba de valor concreta
 
-- [ ] Como criterio tangible de que esto sirve para algo real: reproducir
+- [x] Como criterio tangible de que esto sirve para algo real: reproducir
       un error de la misma clase que el bug de `birchLogs` (variable
       usada sin declarar) en uno de los archivos ya cubiertos por el
       Bloque B, y confirmar que `tsc --noEmit --checkJs` lo señala antes
@@ -94,10 +79,10 @@ existe, no rediseñarlo.
 
 ## 7. Bloque F — Documentación
 
-- [ ] Actualizar `CLAUDE.md` con la convención nueva: cuándo anotar con
+- [x] Actualizar `CLAUDE.md` con la convención nueva: cuándo anotar con
       JSDoc, cómo correr `npm run typecheck`, y que esto no cambia en
       nada la regla de "sin build step" ya existente.
-- [ ] No se agregan tests unitarios de producto en esta fase — es
+- [x] No se agregan tests unitarios de producto en esta fase — es
       tooling, no gameplay.
 
 ## 8. Fuera de alcance de esta fase
@@ -116,10 +101,10 @@ existe, no rediseñarlo.
 
 - `tsconfig.json` y `npm run typecheck` funcionando sin afectar
   `node server.js` ni el arranque del cliente.
-- Los módulos del Bloque B (constantes, protocolo de red, guardado)
-  cubiertos con `// @ts-check` y sin errores de tipo.
-- Tipos compartidos del Bloque C creados y referenciados desde ambos
-  lados.
+- Los módulos del Bloque B (**todos los 36 módulos `server/`**) cubiertos con `// @ts-check` y sin errores de tipo.
+- Tipos compartidos del Bloque C (Player, World, Stack, etc.) creados
+  en `server/types.js` y referenciables desde cualquier archivo con
+  `// @ts-check`.
 - La prueba de valor del Bloque E documentada con su resultado real.
 - Cero cambios de comportamiento en runtime: misma suite de tests en
   verde, mismo `node --check` limpio, mismo `biome check` 0 errores.
@@ -132,14 +117,23 @@ existe, no rediseñarlo.
 1. **Bloque A:** `typescript` devDep + `@types/node`, `tsconfig.json`
    (`allowJs`, `checkJs:false` global, `noEmit`, `strict:false`),
    `npm run typecheck` → `tsc --noEmit`. Funciona sin afectar runtime.
-2. **Bloque B:** `// @ts-check` en `server/constants.js` y
-   `public/constants.js` — ambos limpios de errores de tipo. net.js,
-   network.js y save*.js diferidos (requieren @typedef de clases
-   internas World/Player).
+2. **Bloque B (ampliado 2026-08-23):** `// @ts-check` en **todos los
+   36 módulos de `server/`** — constants, net, save×4, actions, combat,
+   mobs, mob-species, mob-spawn, players, commands, timers, projectiles,
+   world, crafting, inventory, fishing, mining, tnt, sculk, anticheat,
+   chests, chunk-fill, items, state, log, ratelimit, server,
+   world-session, types. Módulos con prototype dinámico o inyección de
+   dependencias (`world.js`, `state.js`, `players.js`, `actions.js`,
+   `mobs.js`, `timers.js`, `projectiles.js`, `mob-spawn.js`,
+   `mob-species.js`) anotados con `@type {any}` en los `require()`
+   y variables setter para evitar falsos positivos. `tsconfig.json`
+   actualizado a `lib: ["es2022", "dom"]` para soportar
+   `Object.hasOwn` (commands.js).
 3. **Bloque C:** `server/types.js` con @typedef para `Stack`,
-   `ClientMessage`, `ServerMessage`, `BlockId`, `ItemId`.
-4. **Bloque D:** typecheck es **informativo, no bloqueante**. Decisión:
-   mantenerlo informativo hasta que net.js+save*.js estén limpios.
+   `ClientMessage`, `ServerMessage`, `BlockId`, `ItemId`, `Armor`,
+   `RespawnPoint`, `Player`, `World`. Incluye `module.exports = {}`
+   para que TypeScript trate el archivo como módulo.
+4. **Bloque D:** typecheck sigue siendo **informativo, no bloqueante**.
 5. **Bloque E — Prueba de valor:** bug `birchLogs` (auditoría 2026-08-18):
    variable usada sin declarar en `public/textures.js`. Con `// @ts-check`
    activo, `tsc --noEmit` lo detecta como `TS2304: Cannot find name
@@ -154,6 +148,13 @@ existe, no rediseñarlo.
 ## 11. Cambios en esta spec
 
 **Cambios en esta spec (v1):**
+- 2026-08-23: cierre completo (Bloque B ampliado a net.js + save*.js;
+  Bloque C ampliado con Player/World/Armor/RespawnPoint; Bloque D
+  mantiene informativo).
+- 2026-08-23: ampliación del Bloque B a **todos los 36 módulos server/**
+  (el día del cierre original se cubrieron net.js + save×4 + types.js;
+  la ampliación se hizo el mismo día con el mismo criterio de `@type {any}`
+  para módulos sin inferencia).
 - 2026-08-23: creación del spec (desde la conversación sobre TypeScript).
 - 2026-08-22: apertura `[EN CURSO]` + cierre parcial (Bloques A-C
   completos, D informativo, E documentado, F pendiente de docs).

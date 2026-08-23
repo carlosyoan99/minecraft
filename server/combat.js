@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -10,7 +11,9 @@
 // ============================================================
 const WebSocket = require("ws");
 const log = require("./log.js"); // Fase 19.5 (E2): niveles uniformes
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
 const { findSpawn } = world;
 const {

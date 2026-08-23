@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -32,7 +33,9 @@ const {
 	TNT_DAMAGE,
 	TICK_MS
 } = constants;
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 // Fase 22 (C1): propagación de sculk en muertes ambientales (quemadura)
 const sculk = require("./sculk.js");
@@ -52,23 +55,25 @@ const projectiles = require("./projectiles.js");
 // caso de los pasivos. Se asignan tras createSpecies(Mob) al final del
 // archivo; el switch de compatibilidad de la clase base las llama en runtime.
 // ============================================================
-let tickZombie = () => {};
-let tickSpider = () => {};
-let tickWolf = () => {};
-let tickCreeper = () => {};
-let tickSkeleton = () => {};
-let tickEnderman = () => {};
-let tickPassive = () => {};
-let isPlayerLookingAt = () => false; // Fase 21 (C2): neutralidad del enderman
-let isEndermanWatched = () => null; // ¿alguien mira a este enderman?
-let tickOcelot = () => {};
-let tickCat = () => {};
-let _tickPet = () => {};
-let tickSlime = () => {};
-let tickDrowned = () => {};
-let tickBee = () => {};
-let tickBogged = () => {}; // Fase 21.5 (D2): Bogged (esqueleto de pantano)
-let splitSlime = () => [];
+// Tick functions — inyectadas desde mob-species.js; tipo any porque se
+// asignan con set* y su forma real depende de la especie.
+/** @type {any} */ let tickZombie = () => {};
+/** @type {any} */ let tickSpider = () => {};
+/** @type {any} */ let tickWolf = () => {};
+/** @type {any} */ let tickCreeper = () => {};
+/** @type {any} */ let tickSkeleton = () => {};
+/** @type {any} */ let tickEnderman = () => {};
+/** @type {any} */ let tickPassive = () => {};
+/** @type {any} */ let isPlayerLookingAt = () => false; // Fase 21 (C2): neutralidad del enderman
+/** @type {any} */ let isEndermanWatched = () => null; // ¿alguien mira a este enderman?
+/** @type {any} */ let tickOcelot = () => {};
+/** @type {any} */ let tickCat = () => {};
+/** @type {any} */ let _tickPet = () => {};
+/** @type {any} */ let tickSlime = () => {};
+/** @type {any} */ let tickDrowned = () => {};
+/** @type {any} */ let tickBee = () => {};
+/** @type {any} */ let tickBogged = () => {}; // Fase 21.5 (D2): Bogged (esqueleto de pantano)
+/** @type {any} */ let splitSlime = () => [];
 
 // Clases y fábricas (asignadas tras createSpecies(Mob) al final del archivo).
 let Zombie,
@@ -244,7 +249,9 @@ class Mob {
 			best = Infinity;
 		const safe = mobSpawn.spawnSafeRadius > 0 ? mobSpawn.getSafeSpawn() : null;
 		for (const p of players.values()) {
-			if (p.gamemode === "creative") continue; // B6: sin aggro a creativos
+			// B6: sin aggro a creativos; S1 (Fase 22.3): tampoco al fantasma
+			// del menú (leave_world lo aparca en (0,0,0) sin mundo).
+			if (p.gamemode === "creative" || p.inMenu) continue;
 			// B2: los hostiles no targetean a jugadores dentro de la zona segura
 			// del spawn (el recién llegado se orienta; al salir del radio vuelven
 			// a ser objetivo).

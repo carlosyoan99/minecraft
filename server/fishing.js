@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 // ============================================================
@@ -14,13 +15,18 @@
 // mismo `arrows_update` del bucle principal (timers.js) con kind "bobber".
 // ============================================================
 const { I, B, EYE_HEIGHT, isSolidBlock } = require("./constants.js");
+/** @type {any} state — imported from unchecked module */
 const state = require("./state.js");
+/** @type {any} — World prototype methods added dynamically (not inferred by tsc) */
 const world = require("./world.js");
 const { addToInventory, applyFishingWear } = require("./players.js");
 
 const FISHING_SPEED = 12; // bloques/s (más lento que la flecha 14)
 const FISHING_GRAVITY = 16; // bloques/s² (la misma que las flechas)
-const FISHING_LIFE_MS = 15000; // la línea se retira sola si no se recoge
+// S1 (Fase 22.3): la vida de la línea debe cubrir el PEOR caso de picada
+// (BITE_MIN_MS+BITE_RANGE_MS = 30 s) más el vuelo; antes expiraba a 15 s y
+// ~60 % de los lanzamientos se retiraban solos ANTES de programar el bocado.
+const FISHING_LIFE_MS = 32000;
 const BITE_MIN_MS = 5000; // Fase 21.6 P2: pica entre 5 y 30 s (MC real)
 const BITE_RANGE_MS = 25000;
 
@@ -84,12 +90,18 @@ function reelBobber(player) {
 	const idx = state.bobbers.findIndex((b) => b.playerId === player.id);
 	if (idx === -1) return { caught: null, broke: false };
 	const b = state.bobbers[idx];
-	state.bobbers.splice(idx, 1);
-	if (!b.biting) return { caught: null, broke: false };
+	if (!b || !b.biting) {
+		state.bobbers.splice(idx, 1);
+		return { caught: null, broke: false };
+	}
 	const item = rollLootItem();
+	// S1 (Fase 22.3): con el inventario lleno la línea SIGUE en el agua
+	// (antes se retiraba antes de intentar entregar, contradiciendo el
+	// contrato del comentario). El jugador libera hueco y vuelve a recoger.
 	if (!addToInventory(player, item.id, item.count)) {
 		return { caught: null, broke: false };
 	}
+	state.bobbers.splice(idx, 1);
 	const broke = applyFishingWear(player);
 	return { caught: item, broke };
 }
