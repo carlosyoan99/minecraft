@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 // CONSTANTES COMPARTIDAS (IDs de bloques/items, nombres, colores)
 // Nota: los IDs deben mantenerse sincronizados con server.js (B e I).
@@ -643,7 +644,9 @@ export const ITEM_NAMES = {
 	// Fase 22 (B1): shard de amatista — drop del cluster (romper con pico).
 	280: "Fragmento de amatista",
 	// Fase 22 (B2): catalejo — zoom al sostenerlo con clic derecho.
-	281: "Catalejo"
+	281: "Catalejo",
+	// Fase 22.3 (L1): nugget de hierro — receta fiel de la linterna (8 + antorcha).
+	282: "Nugget de hierro"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -812,6 +815,8 @@ export const COPPER_INGOT = 279;
 export const AMETHYST_SHARD = 280;
 // Fase 22 (B2): catalejo — zoom al sostenerlo con clic derecho.
 export const SPYGLASS = 281;
+// Fase 22.3 (L1): nugget de hierro — linterna fiel (8 nuggets + antorcha).
+export const IRON_NUGGET = 282;
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)

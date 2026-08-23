@@ -31,7 +31,8 @@
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
 		"graph": "madge --circular server/ public/",
-		"deadcode": "knip"
+		"deadcode": "knip",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"express": "^4.19.2",
@@ -41,9 +42,11 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",
+		"@types/node": "^26.2.0",
 		"c8": "^12.0.0",
 		"knip": "^6.32.2",
 		"madge": "^8.0.0",
-		"three": "^0.160.0"
+		"three": "^0.160.0",
+		"typescript": "^5.9.3"
 	}
 }

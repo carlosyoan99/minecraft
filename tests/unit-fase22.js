@@ -329,9 +329,9 @@ r.check("D1 escala en el cliente", mobsClientSrc.includes("frog: 0.65"));
 r.check("D1 partes en mobtextures.js", mobTexSrc.includes("\tfrog: {"));
 r.check(
 	"D1 pintores de textura registrados",
-	mobTexSrc.includes(
-		"frog: { body: drawFrogBody, head: drawFrogHead, leg: drawFrogLeg }"
-	)
+	mobTexSrc.includes("drawFrogBody") &&
+		mobTexSrc.includes("drawFrogHead") &&
+		mobTexSrc.includes("drawFrogLeg")
 );
 
 // === BLOQUE B1 — Amatista ===

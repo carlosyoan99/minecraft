@@ -14,12 +14,12 @@
 
 | | |
 | --- | --- |
-| **Fase** | **22.2 — JSDoc + `tsc --noEmit`** [`[EN CURSO]`](docs/spec/fase22.2-spec.md) + **22.3 — Correcciones diferidas** [`[EN CURSO]`](docs/spec/fase22.3-spec.md) (22.1 cerrada ✅) |
+| **Fase** | **22.2 — JSDoc + `tsc --noEmit`** [`[EN CURSO]`](docs/spec/fase22.2-spec.md) (A-C completos, D informativo) + **22.3 — Correcciones diferidas** [`[EN CURSO]`](docs/spec/fase22.3-spec.md) (22.1 cerrada ✅) |
 | **Prerrequisito** | **F22 cerrada ✅** (suite 64/64, E2E 7/7, `--audit` 8/8, biome 0). 22.2 exige 22.1 ✅; 22.3 exige F21.6 ✅ |
-| **Trabajo en curso** | 22.2: tsconfig+typecheck (A), @ts-check incremental (B), tipos compartidos (C) · 22.3: linterna luz 15 (L1), bug cabezas (B1), perfilado (V1), pase servidor (S1), residuos CL-* (R1) |
+| **Trabajo en curso** | 22.2: A (typescript+tsconfig ✅), B (@ts-check constants ✅, net/save diferidos), C (types.js ✅), D (informativo), E (prueba valor ✅), F (CLAUDE.md ✅) · 22.3: linterna luz 15 (L1), bug cabezas (B1), perfilado (V1), pase servidor (S1), residuos CL-* (R1) |
 | **Diferidos F21.6 → 22.3** | Linterna/luz nivel 15, bug cabezas de mobs, perfilado en vivo, pase interno de servidor y residuos CL-* → **[Fase 22.3](docs/spec/fase22.3-spec.md)** |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Implementar bloques de 22.2 y 22.3 (commits por fase) y cerrar cada una |
+| **Próximo paso** | Cerrar 22.2 (net/save con @ts-check) o continuar con 22.3 |
 
 > **Fase 22 cerrada (2026-08-22)** — profundidad, minerales y fauna
 > 1.17–1.21: A1 veredicto altura (**se mantienen 128 bloques**, `SCHEMA_VERSION`

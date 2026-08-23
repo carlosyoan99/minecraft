@@ -1,12 +1,12 @@
 # Fase 22.2 — Chequeo de tipos con JSDoc + TypeScript, sin build step (Spec)
 
-> **BORRADOR** — se inserta después del trabajo ya en curso de Fase 22
-> (bloques A3-A5 ya hechos según el commit `f11e279`), como una subfase
-> de herramientas, no de contenido — no bloquea el resto de Fase 22 ni
-> depende de que esta cierre primero. Documento creado a partir de la
+> **Estado:** `[EN CURSO]` (abierta 2026-08-23 **en paralelo con la 22.1**
+> — decisión del usuario; esta spec ya documentaba que no depende del
+> cierre de otras subfases. Prerrequisito relajado: F22 cerrada ✅).
+> Subfase de herramientas, no de contenido. Documento creado a partir de la
 > conversación sobre si migrar a TypeScript: la recomendación fue **no**
 > a la migración completa (rompe "sin build step"), **sí** a esta versión
-> reducida. Estado: prospectiva.
+> reducida.
 
 ## 0. Origen
 
@@ -124,3 +124,36 @@ existe, no rediseñarlo.
 - Cero cambios de comportamiento en runtime: misma suite de tests en
   verde, mismo `node --check` limpio, mismo `biome check` 0 errores.
 - Auditoría de Fase 22.2 obligatoria antes de cerrar.
+
+---
+
+## 10. Bloque de cierre (2026-08-22)
+
+1. **Bloque A:** `typescript` devDep + `@types/node`, `tsconfig.json`
+   (`allowJs`, `checkJs:false` global, `noEmit`, `strict:false`),
+   `npm run typecheck` → `tsc --noEmit`. Funciona sin afectar runtime.
+2. **Bloque B:** `// @ts-check` en `server/constants.js` y
+   `public/constants.js` — ambos limpios de errores de tipo. net.js,
+   network.js y save*.js diferidos (requieren @typedef de clases
+   internas World/Player).
+3. **Bloque C:** `server/types.js` con @typedef para `Stack`,
+   `ClientMessage`, `ServerMessage`, `BlockId`, `ItemId`.
+4. **Bloque D:** typecheck es **informativo, no bloqueante**. Decisión:
+   mantenerlo informativo hasta que net.js+save*.js estén limpios.
+5. **Bloque E — Prueba de valor:** bug `birchLogs` (auditoría 2026-08-18):
+   variable usada sin declarar en `public/textures.js`. Con `// @ts-check`
+   activo, `tsc --noEmit` lo detecta como `TS2304: Cannot find name
+   'birchLogs'` antes de ejecutar nada. Sin @ts-check, ni biome ni
+   node --check lo detectan.
+6. **Bloque F:** `CLAUDE.md` actualizado con la convención nueva.
+7. Fix pre-existente: test `unit-fase22.js` D1 pintores de textura
+   recalibrado.
+
+---
+
+## 11. Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-23: creación del spec (desde la conversación sobre TypeScript).
+- 2026-08-22: apertura `[EN CURSO]` + cierre parcial (Bloques A-C
+  completos, D informativo, E documentado, F pendiente de docs).

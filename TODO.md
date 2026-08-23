@@ -1314,22 +1314,18 @@
 > ningún `.ts`, ningún build step; TypeScript solo como devDependency de
 > verificación (`tsc --noEmit`).
 
-- [ ] A `typescript` devDep + `tsconfig.json` raíz (`allowJs`,
-      `checkJs:false` global, `noEmit`, `strict:false`) + script
-      `npm run typecheck`
-- [ ] B Adopción incremental por archivo con `// @ts-check`: 1º constants
-      (ambos lados), 2º protocolo red (`net.js`/`network.js`), 3º guardado
-      (`save*.js`), resto a criterio — sin exigir cobertura total
-- [ ] C Tipos compartidos con `@typedef` (stack `{id,count}`, mensaje WS
-      `{event,data}`, constantes B/I) en lugar neutral referenciable desde
-      ambos lados
-- [ ] D `typecheck` informativo mientras la cobertura sea baja; cuando
-      constants+red+guardado estén limpios, decidir explícitamente si pasa a
-      bloqueante junto al criterio de biome
-- [ ] E Prueba de valor tangible: reproducir un error clase `birchLogs`
-      (variable sin declarar) en archivo cubierto y documentar que `tsc`
-      lo detecta antes de ejecutar
-- [ ] F `CLAUDE.md` con la convención nueva; auditoría final obligatoria
+- [x] A `typescript` devDep + `@types/node` + `tsconfig.json` raíz
+      (`allowJs`, `checkJs:false` global, `noEmit`, `strict:false`) +
+      script `npm run typecheck` → `tsc --noEmit`
+- [x] B Adopción incremental: `// @ts-check` en `server/constants.js` y
+      `public/constants.js` (ambos limpios). net.js/save*.js diferidos
+      (requieren @typedef de World/Player)
+- [x] C `server/types.js` con `@typedef` para `Stack`, `ClientMessage`,
+      `ServerMessage`, `BlockId`, `ItemId`
+- [x] D `typecheck` informativo, no bloqueante — decisión documentada
+- [x] E Prueba de valor: bug `birchLogs` detectado por `tsc` antes de
+      ejecutar (documentado en spec §10 bloque E)
+- [x] F `CLAUDE.md` actualizado (scripts + convención JSDoc)
 
 ---
 

@@ -51,6 +51,9 @@ tocar código.
    **CI en GitHub Actions (F22.1):** cada push/PR pasa por
    `npm ci` → `node --check` → `npm run lint` → `npm run test:coverage`
    → `node tests/run.js --audit`. No fusionar a `main` sin CI verde.
+   **Chequeo de tipos (F22.2):** `npm run typecheck` es informativo,
+   no bloqueante. Los archivos con `// @ts-check` se verifican;
+   tipos compartidos en `server/types.js` (Stack, ClientMessage, etc.).
 4. **Nunca rompas lo que ya funciona.** Antes de refactorizar algo
    central (formato de chunk, protocolo WebSocket, formato de
    inventario), revisa qué otras partes del código dependen de
@@ -82,6 +85,7 @@ node tests/audit-fase5.js
 node tests/audit-fase6.js
 npm run graph                     # F22.1: madge — verificar ausencia de dependencias circulares
 npm run deadcode                  # F22.1: knip — detectar código muerto (informativo, no bloqueante)
+npm run typecheck                 # F22.2: tsc --noEmit — chequeo de tipos (informativo, no bloqueante)
 node tests/audit-fase7.js
 ```
 
