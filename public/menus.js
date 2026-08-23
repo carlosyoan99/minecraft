@@ -90,6 +90,7 @@ const reduceMotionToggle = document.getElementById("reduce-motion-toggle");
 const toonToggle = document.getElementById("toon-toggle");
 const torchLightToggle = document.getElementById("torch-light-toggle");
 const mipmapsToggle = document.getElementById("mipmaps-toggle");
+const statsToggle = document.getElementById("stats-toggle");
 let _currentSeed = null; // semilla activa (la trae el init del servidor)
 let seedPending = null; // semilla pedida en el menú, pendiente de confirmar
 // Fase 17 (A5): el cliente empieza EN EL MENÚ hasta recibir el init de un
@@ -248,6 +249,7 @@ function refreshSettingsUI() {
 	toonToggle.checked = !!s.toon; // F19.6 (B)
 	torchLightToggle.checked = !!s.torchLight; // F19.6 (A2)
 	mipmapsToggle.checked = !!s.mipmaps; // F19.6 (E)
+	statsToggle.checked = !!s.stats; // F22.1 (E)
 	// Fase 7: rellenar los nuevos controles con los valores guardados
 	fovSlider.value = s.fov;
 	fovValue.textContent = `${s.fov}°`;
@@ -381,6 +383,10 @@ torchLightToggle.addEventListener("change", () =>
 // F19.6 (E): mipmaps/anisotropía del atlas.
 mipmapsToggle.addEventListener("change", () =>
 	setSetting("mipmaps", mipmapsToggle.checked)
+);
+// Fase 22.1 (E): stats.js de Three.js (HUD de rendimiento).
+statsToggle.addEventListener("change", () =>
+	setSetting("stats", statsToggle.checked)
 );
 
 // Fase 17 (A5): entrar a un mundo (existente o nuevo) desde el menú — envía

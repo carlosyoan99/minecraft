@@ -1,13 +1,9 @@
 # Fase 22.1 — Herramientas de calidad y automatización (Spec)
 
-> **BORRADOR** — se inserta antes de la Fase 22.2, después del trabajo ya
-> en curso de Fase 22 (bloques A3-A5 ya hechos según el commit
-> `f11e279`). Es una subfase de herramientas puntuales, no una
-> reescritura de nada — surge de la conversación sobre qué tooling
-> ayudaría al proyecto, y de descartar explícitamente la idea de
-> reescribir el juego con dependencias nuevas de Three.js: la conclusión
-> fue quedarnos con herramientas acotadas de calidad/automatización, no
-> con un cambio de arquitectura. Estado: prospectiva.
+> **Estado:** `[EN CURSO]` (abierta 2026-08-22 tras cerrar la F22).
+> Tooling ALREDEDOR del juego — ninguna herramienta reemplaza sistemas
+> propios ni cambia el comportamiento para quien juega. Prerrequisito:
+> F22 cerrada ✅.
 
 ## 0. Origen
 
@@ -110,3 +106,13 @@ Verificado antes de escribir esta spec: hoy no existe ningún workflow en
 - `stats.js` visible solo tras activar el toggle correspondiente.
 - Documentación (`CLAUDE.md`, `README.md`) actualizada.
 - Auditoría de Fase 22.1 obligatoria antes de cerrar.
+
+---
+
+## 10. Cambios en esta spec
+
+**Cambios en esta spec (v1):**
+- 2026-08-22: creación del spec (borrador desde la conversación sobre
+  tooling).
+- 2026-08-22: apertura — estado `[EN CURSO]`, todos los bloques A-F
+  implementados; spec pendiente de cierre formal.

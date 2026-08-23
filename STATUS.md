@@ -14,12 +14,12 @@
 
 | | |
 | --- | --- |
-| **Fase** | **23 — Diferidos de la F22: Lush Caves, Breeze, trims, Tuff/Caliza** [`[PROSPECTIVA]`](docs/spec/fase23-spec.md) |
-| **Prerrequisito** | **F22 cerrada ✅** (suite 64/64, E2E 7/7, `--audit` 8/8, biome 0)
-| **Trabajo en curso** | Ninguno — fase prospectiva, sin abrir aún |
+| **Fase** | **22.1 + 22.2 + 22.3 EN PARALELO** (decisión del usuario 2026-08-23): [22.1 Tooling](docs/spec/fase22.1-spec.md) · [22.2 JSDoc+tsc](docs/spec/fase22.2-spec.md) · [22.3 Correcciones diferidas](docs/spec/fase22.3-spec.md) |
+| **Prerrequisito** | **F22 cerrada ✅** (suite 64/64, E2E 7/7, `--audit` 8/8, biome 0). Prerrequisitos relajados: 22.2 ya no exige 22.1 (su spec decía no depender del cierre); 22.3 exige su prerrequisito duro F21.6 ✅ (ver [`DEPENDENCIAS.md`](DEPENDENCIAS.md)) |
+| **Trabajo en curso** | 22.1: CI Actions (bloque A, WIP con fix de glob pendiente), Dependabot (B), madge/knip (C/D), stats.js (E), docs+badge (F) · 22.2: tsconfig+typecheck (A), @ts-check incremental (B), tipos compartidos (C) · 22.3: linterna luz 15 (L1), bug cabezas (B1), perfilado (V1), pase servidor (S1), residuos CL-* (R1) |
 | **Diferidos F21.6 → 22.3** | Linterna/luz nivel 15, bug cabezas de mobs, perfilado en vivo, pase interno de servidor y residuos CL-* → **borrador [Fase 22.3](docs/spec/fase22.3-spec.md)** (22.1 tooling / 22.2 JSDoc+tsc se abren antes si el usuario lo decide) |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Abrir la F23 cuando el usuario lo decida (prerrequisito duro: F22 cerrada ✅) |
+| **Próximo paso** | Implementar los bloques de las tres subfases (commits por fase) y cerrar cada una con su auditoría |
 
 > **Fase 22 cerrada (2026-08-22)** — profundidad, minerales y fauna
 > 1.17–1.21: A1 veredicto altura (**se mantienen 128 bloques**, `SCHEMA_VERSION`
@@ -76,9 +76,9 @@ suite **64/64 unitarios**, **E2E 7/7**, `--audit` 8/8 verdes, biome
 
 | Fase | Spec | Prerrequisito |
 | --- | --- | --- |
-| 22.1 — Tooling: CI, Dependabot, madge/knip, stats.js | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | F22 cerrada |
-| 22.2 — JSDoc + `tsc --noEmit` (sin build step) | [`fase22.2-spec.md`](docs/spec/fase22.2-spec.md) | 22.1 cerrada |
-| 22.3 — Correcciones y paridad diferidas (borrador; era la antigua 22.1) | [`fase22.3-spec.md`](docs/spec/fase22.3-spec.md) | 22.2 cerrada |
+| 22.1 — Tooling: CI, Dependabot, madge/knip, stats.js | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | **F22 cerrada ✅** | 🟠 **En curso** |
+| 22.2 — JSDoc + `tsc --noEmit` (sin build step) | [`fase22.2-spec.md`](docs/spec/fase22.2-spec.md) | F22 cerrada ✅ (paralela con 22.1) | 🟠 **En curso** |
+| 22.3 — Correcciones y paridad diferidas (borrador; era la antigua 22.1) | [`fase22.3-spec.md`](docs/spec/fase22.3-spec.md) | F21.6 cerrada ✅ (paralela con 22.1/22.2) | 🟠 **En curso** |
 | 23 — Diferidos de la F22 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada |
 | 24 — Nether Update | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada |
 | 25 — End Update (sin dragón) | [`fase25-spec.md`](docs/spec/fase25-spec.md) | F24 cerrada |

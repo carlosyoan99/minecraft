@@ -1,7 +1,8 @@
 # Mi Minecraft — Clon Node.js + Three.js
 
+[![CI](https://github.com/carlosyoan99/minecraft/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosyoan99/minecraft/actions/workflows/ci.yml)
 ![Estado de desarrollo](https://img.shields.io/badge/estado-en%20desarrollo-yellow)
-![Fases completadas](https://img.shields.io/badge/fases-0-19.5%20completadas-blue)
+![Fases completadas](https://img.shields.io/badge/fases-22%20completadas-blue)
 
 Copia jugable de Minecraft, no idéntica pero fiel a sus mecánicas
 distintivas: mundo por chunks, biomas, cuevas, día/noche, mobs con IA,

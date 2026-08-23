@@ -29,7 +29,9 @@
 		"audit": "npm audit --audit-level=moderate",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
-		"format": "biome format --write ."
+		"format": "biome format --write .",
+		"graph": "madge --circular server/ public/",
+		"deadcode": "knip"
 	},
 	"dependencies": {
 		"express": "^4.19.2",
@@ -40,6 +42,8 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.5.6",
 		"c8": "^12.0.0",
+		"knip": "^6.32.2",
+		"madge": "^8.0.0",
 		"three": "^0.160.0"
 	}
 }

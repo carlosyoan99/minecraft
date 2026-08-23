@@ -11,13 +11,25 @@
 // está activo.
 // ============================================================
 import * as THREE from "three";
+import Stats from "three/addons/stats.module.js";
 import { CHUNK_SIZE, WATER, WORLD_MAX_Y, WORLD_MIN_Y } from "./constants.js";
 import { camera, scene } from "./scene.js";
+import { getSetting } from "./settings.js";
 import { getGamemode } from "./ui.js";
 import { chunkMeshes, getClientBlock, lodMeshes } from "./world.js";
 
 const hudEl = document.getElementById("debug-hud");
 let enabled = false;
+
+// Fase 22.1 (E): stats.js de Three.js — panel de rendimiento en desarrollo.
+// Se muestra solo cuando el ajuste "stats" está activado Y el F3 está
+// encendido. OFF por defecto (settings.stats = false).
+const stats = new Stats();
+stats.dom.style.position = "absolute";
+stats.dom.style.top = "0px";
+stats.dom.style.left = "0px";
+stats.dom.style.zIndex = "100";
+let statsVisible = false;
 
 // ============================================================
 // GRID DE BORDES DE CHUNK (sobre el terreno)
@@ -151,6 +163,16 @@ export function toggleDebug() {
 	enabled = !enabled;
 	hudEl.classList.toggle("hidden", !enabled);
 	borderGroup.visible = enabled;
+	// Fase 22.1 (E): mostrar/ocultar stats.js según el ajuste.
+	if (enabled && getSetting("stats")) {
+		if (!statsVisible) {
+			document.body.appendChild(stats.dom);
+			statsVisible = true;
+		}
+	} else if (statsVisible) {
+		stats.dom.remove();
+		statsVisible = false;
+	}
 	if (enabled) {
 		rebuildBorders();
 		updateHud();
@@ -161,4 +183,6 @@ setInterval(() => {
 	if (!enabled) return;
 	rebuildBorders(); // barato: chunks nuevos/descargas y ediciones de bloques
 	updateHud();
+	// Fase 22.1 (E): actualizar stats.js si está visible.
+	if (statsVisible) stats.update();
 }, 1000);

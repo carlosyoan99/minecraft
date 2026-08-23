@@ -60,7 +60,11 @@ const DEFAULTS = {
 	// Fase 19.6 (E): mipmaps + filtrado lineal en el atlas de terreno.
 	// OFF por defecto: el look pixel-art crisp (NearestFilter) es la marca
 	// del proyecto; el toggle lo da a quien quiera nitidez a distancia.
-	mipmaps: false
+	mipmaps: false,
+	// Fase 22.1 (E): stats.js de Three.js para HUD de rendimiento en
+	// desarrollo. OFF por defecto — solo visible cuando se activa
+	// explícitamente (F3 + este toggle).
+	stats: false
 };
 
 let settings = { ...DEFAULTS };
@@ -150,6 +154,9 @@ export function setSetting(key, value) {
 		// geometría).
 		settings.mipmaps = !!value;
 		setWorldMipmaps(settings.mipmaps);
+	} else if (key === "stats") {
+		// Fase 22.1 (E): stats.js de Three.js (HUD de rendimiento).
+		settings.stats = !!value;
 	}
 	save();
 }

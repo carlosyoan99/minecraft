@@ -1,0 +1,16 @@
+# Fase 22.1 (Bloque B): Dependabot — revisión semanal de dependencias npm
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "carlosyoan99"
+    labels:
+      - "dependencies"
+      - "automated"
+    # Los PRs que abra pasan por el CI del Bloque A antes de fusionarse.
+    # No se mergean a ciegas — ver spec fase22.1 §3.

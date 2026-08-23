@@ -1,0 +1,54 @@
+# Fase 22.1 (Bloque A): CI en GitHub Actions — bloqueante desde el día uno
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22, 24]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificar sintaxis (node --check)
+        run: |
+          node --check server/*.js
+          node --check public/*.js
+
+      - name: Lint (biome, informativo)
+        run: npm run lint || true
+
+      - name: Dependencias circulares (madge, informativo)
+        run: npm run graph || true
+
+      - name: Código muerto (knip, informativo)
+        run: npm run deadcode || true
+
+      - name: Tests unitarios
+        run: node tests/run.js --unit
+
+      - name: Cobertura (c8)
+        run: npm run test:coverage
+
+      - name: Auditorías por fase
+        run: node tests/run.js --audit

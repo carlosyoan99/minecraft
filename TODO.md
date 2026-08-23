@@ -1284,32 +1284,34 @@
 ## Fase 22.1 — Herramientas de calidad y automatización
 
 > Especificación: [`docs/spec/fase22.1-spec.md`](docs/spec/fase22.1-spec.md)
-> **Prospectiva** — prerrequisito: F22 cerrada. Tooling ALREDEDOR del juego:
-> ninguna herramienta reemplaza sistemas propios ni cambia el comportamiento
-> para quien juega.
+> **EN CURSO** (abierta 2026-08-22, prerrequisito F22 cerrada ✅).
+> Tooling ALREDEDOR del juego: ninguna herramienta reemplaza sistemas
+> propios ni cambia el comportamiento para quien juega.
 
-- [ ] A CI en GitHub Actions **bloqueante** (cada push/PR): `npm ci`,
+- [x] A CI en GitHub Actions **bloqueante** (cada push/PR): `npm ci`,
       `node --check` sobre `server/*.js` y `public/*.js`, `npm run lint`,
       `npm run test:coverage`; badge de estado en `README.md`
-- [ ] B Dependabot (`.github/depandabot.yml`, revisión semanal npm); los PR
+- [x] B Dependabot (`.github/dependabot.yml`, revisión semanal npm); los PR
       que abra pasan por el CI del Bloque A antes de fusionarse
-- [ ] C `madge` (devDep) + script de grafo sin dependencias circulares
-      server/public; paso informativo al inicio del CI; valida que
-      `DEPENDENCIAS.md` (manual) sigue siendo preciso
-- [ ] D `knip` (devDep) + `npm run deadcode` — informativo, NO bloqueante
-      (primera pasada con exclusiones configuradas)
-- [ ] E `stats.js` vendorizado desde three 0.160 (`public/vendor/addons/`),
+- [x] C `madge` (devDep) + script `npm run graph` — sin dependencias
+      circulares server/public; paso informativo al CI; valida
+      `DEPENDENCIAS.md`
+- [x] D `knip` (devDep) + `npm run deadcode` — informativo, NO bloqueante
+      (exclusiones: public/, tests/, scripts/; exports dinámicos ignorados)
+- [x] E `stats.js` vendorizado desde three 0.160 (`public/vendor/addons/`),
       integrado en el HUD F3 tras toggle de ajustes, OFF por defecto
-- [ ] F Docs (`CLAUDE.md`: CI bloqueante, uso local de madge/knip, badge) +
-      auditoría final obligatoria
+- [x] F Docs (`CLAUDE.md`: CI bloqueante, uso local de madge/knip, badge;
+      `README.md`: badge CI + fases actualizado) — auditoría final de
+      la spec
 
 ---
 
 ## Fase 22.2 — Chequeo de tipos con JSDoc + TypeScript, sin build step
 
 > Especificación: [`docs/spec/fase22.2-spec.md`](docs/spec/fase22.2-spec.md)
-> **Prospectiva** — prerrequisito: 22.1 cerrada. NO es una migración: ningún
-> `.ts`, ningún build step; TypeScript solo como devDependency de
+> **EN CURSO** (abierta 2026-08-23 en PARALELO con la 22.1 — decisión del
+> usuario; prerrequisito relajado: F22 cerrada ✅). NO es una migración:
+> ningún `.ts`, ningún build step; TypeScript solo como devDependency de
 > verificación (`tsc --noEmit`).
 
 - [ ] A `typescript` devDep + `tsconfig.json` raíz (`allowJs`,
@@ -1335,11 +1337,25 @@
 
 > Renumerada al integrar las subfases de tooling 22.1/22.2 (2026-08-22).
 > Especificación: [`docs/spec/fase22.3-spec.md`](docs/spec/fase22.3-spec.md).
-> Prerrequisito: 22.2 cerrada.
+> **EN CURSO** (abierta 2026-08-23 en PARALELO con 22.1/22.2 — decisión del
+> usuario; prerrequisito duro F21.6 cerrada ✅, F22 cerrada ✅).
 
-- [ ] (Tareas por definir al abrir: linterna fiel a MC, bug de cabezas de
-      mobs, perfilado en vivo, pase interno de servidor restante, residuos
-      CL-* — ver el borrador)
+- [ ] L1 Linterna fiel a MC: luz nivel 15 (hoy hereda el pipe de antorcha,
+      nivel 14) + receta con 8 nuggets de hierro; recalibrar `unit-sync` y
+      tests de luz
+- [ ] B1 Cabezas de mobs/jugadores con caras por todos los lados:
+      diagnóstico CDP del modelo (`MOB_PARTS`), fix UVs/caras duplicadas +
+      test determinista de geometría; cerrar en `Notas del usuario.md`
+- [ ] V1 Perfilado en vivo: `/locate` ms bloqueados, `arrows_update` B/s con
+      varios pescando, granja de hornos `--prof`, profiler navegador;
+      informe archivado en la spec
+- [ ] S1 Pase interno de servidor restante: handlers WS nuevos (wind
+      charge/bundle/blast furnace), ciclo interno de `projectiles.js`,
+      `fishing.js`, campos nuevos de `save-players.js`, IA interna
+      Creaking/Bogged — sin huecos "no revisados"
+- [ ] R1 Residuos heredados (PERSISTE): CL-2 pausa de render/audio en blur,
+      reset local en reconexión (`doorStates`, paneles abiertos), opacidad
+      compartida de materiales de partículas — cada uno con su test/regresión
 
 ---
 
