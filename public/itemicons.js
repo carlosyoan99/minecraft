@@ -1601,6 +1601,18 @@ ICONS[281] = (g) => {
 	// Reflejo de la lente
 	set(g, 4, 2, "#c0f0ff");
 };
+
+// Fase 22.3 (L1): nugget de hierro — pepita pequeña metálica (MC).
+ICONS[282] = (g) => {
+	// Pepita central irregular con brillo y sombra
+	rect(g, 5, 5, 6, 6, "#d8d8d8");
+	set(g, 4, 6, "#d8d8d8");
+	set(g, 11, 9, "#d8d8d8");
+	rect(g, 6, 6, 2, 2, "#f5f5f5");
+	set(g, 10, 10, "#9a9a9a");
+	set(g, 9, 11, "#9a9a9a");
+	set(g, 5, 10, "#9a9a9a");
+};
 ICONS[104] = (g) => drawGem(g, C.diamond.m, C.diamond.light, C.diamond.dark);
 ICONS[105] = drawRedstone;
 ICONS[106] = (g) => drawGem(g, "#2ed06a", "#8ff0b0", "#1a9a4a");

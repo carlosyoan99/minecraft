@@ -18,7 +18,6 @@ const cubeGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
 // con balanceo. Geometría aparte del pool de cubos: las mallas se reutilizan
 // por tipo (una malla de cubo nunca se recicla como hoja ni al revés).
 const leafGeo = new THREE.BoxGeometry(0.34, 0.02, 0.34);
-const materials = new Map(); // colorHex -> material compartido
 const alive = []; // { mesh, kind, vx, vy, vz, life, ttl, ... }
 const freeLeaves = []; // hoja muerta reutilizable (par de freeMeshes)
 // Auditoría 2026-08-15 (CL-8): pool de meshes MUERTOS reutilizables (P6 en
@@ -30,13 +29,15 @@ const freeMeshes = [];
 const MAX_ALIVE = 200;
 let loopActive = false;
 
-function materialFor(colorHex) {
-	let m = materials.get(colorHex);
-	if (!m) {
-		m = new THREE.MeshLambertMaterial({ color: colorHex });
-		materials.set(colorHex, m);
-	}
-	return m;
+// Fase 22.3 (R1): cada MALLA del pool posee SU PROPIO material (antes había
+// un material COMPARTIDO por color y cada partícula mutaba su `opacity`
+// al desvanecerse: dos partículas del mismo color vivas a la vez se
+// peleaban la opacidad — parpadeo/desaparición prematura del grupo entero,
+// hallazgo #7 de la auditoría 2026-08-22 §3). Con material propio el coste
+// sigue acotado: los materiales nacen con la malla (pool con tope) y el
+// reciclaje solo reasigna el COLOR, sin allocar nada.
+function nuevoMaterial() {
+	return new THREE.MeshLambertMaterial({ transparent: true });
 }
 
 // Bucle de física: se detiene solo cuando no quedan partículas (evita un
@@ -100,12 +101,10 @@ function ensureLoop() {
 }
 
 // Cubito nuevo: reutiliza una malla del pool si la hay (reciclar el objeto
-// evita allocs y GC por ráfaga); el material se reasigna por color.
+// evita allocs y GC por ráfaga); el color se reasigna en su material propio.
 function spawnCube(x, y, z, colorHex) {
-	const mesh =
-		freeMeshes.pop() || new THREE.Mesh(cubeGeo, materialFor(colorHex));
-	mesh.material = materialFor(colorHex);
-	mesh.material.transparent = true;
+	const mesh = freeMeshes.pop() || new THREE.Mesh(cubeGeo, nuevoMaterial());
+	mesh.material.color.setHex(colorHex);
 	mesh.position.set(x, y, z);
 	mesh.rotation.set(0, 0, 0);
 	mesh.castShadow = false;
@@ -146,6 +145,20 @@ export function spawnBlockPlace(x, y, z, blockId) {
 	burst(x, y, z, blockId, 4, 0.55);
 }
 
+// Fase 22.3 (R1): gancho de diagnóstico para auditorías CDP y F3. Expone el
+// CONTRATO del fix de opacidad: cada partícula viva tiene SU PROPIO
+// material (antes compartían uno por color y se peleaban la opacidad).
+export function __particlesDebug() {
+	const mats = new Set();
+	for (const p of alive) mats.add(p.mesh.material);
+	return {
+		vivas: alive.length,
+		materiales: mats.size,
+		// El fix exige un material distinto por partícula viva.
+		independientes: mats.size === alive.length
+	};
+}
+
 // ------------------------------------------------------------
 // Fase 21.5 (E4): partículas de hojas cayendo bajo los árboles.
 // Puramente visual (el servidor no las conoce): el bucle muestrea
@@ -156,14 +169,12 @@ export function spawnBlockPlace(x, y, z, blockId) {
 // ------------------------------------------------------------
 const leafAcc0 = { v: 0 };
 
-// Malla de hoja nueva (reutiliza una del pool si la hay). El material de
-// hoja es translúcido y NO emisivo: la vegetación no emite su propia luz.
+// Malla de hoja nueva (reutiliza una del pool si la hay). Material propio
+// por malla (R1), translúcido y NO emisivo: la vegetación no emite luz.
 function spawnLeafMesh(colorHex) {
-	const mesh =
-		freeLeaves.pop() || new THREE.Mesh(leafGeo, materialFor(colorHex));
+	const mesh = freeLeaves.pop() || new THREE.Mesh(leafGeo, nuevoMaterial());
 	mesh.geometry = leafGeo;
-	mesh.material = materialFor(colorHex);
-	mesh.material.transparent = true;
+	mesh.material.color.setHex(colorHex);
 	mesh.castShadow = false;
 	scene.add(mesh);
 	return mesh;

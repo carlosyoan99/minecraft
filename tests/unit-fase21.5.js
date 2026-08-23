@@ -586,15 +586,17 @@ check(
 		luzProbe?.radio?.max === 1,
 		JSON.stringify(luzProbe?.radio)
 	);
-	// Receta: 4 lingotes (102) en cruz + antorcha (23) en el centro → 1.
+	// Receta fiel a MC (F22.3 L1): 8 nuggets (282) rodeando la antorcha (23) → 1.
 	{
 		const recipes = require("../recetas.json");
 		const r = recipes.lantern;
+		const shape = r ? r.shape.join("") : "";
 		check(
-			"B2: receta linterna existe (4 lingotes + antorcha → 1)",
+			"B2: receta linterna existe (8 nuggets + antorcha → 1)",
 			!!r &&
-				r.shape?.join("|") === " I |ITI| I " &&
-				r.ingredients["I"] === I.IRON_INGOT &&
+				shape.split("N").length - 1 === 8 &&
+				shape.split("T").length - 1 === 1 &&
+				r.ingredients["N"] === I.IRON_NUGGET &&
 				r.ingredients["T"] === B.TORCH &&
 				r.result?.id === B.LANTERN &&
 				r.result?.count === 1,

@@ -2,6 +2,7 @@
 // FÍSICA Y MOVIMIENTO DEL JUGADOR LOCAL
 // ============================================================
 import * as THREE from "three";
+import * as TWEEN from "three/addons/tween.module.js";
 import {
 	playSplash,
 	playStep,
@@ -29,7 +30,6 @@ import { tickFallingLeaves } from "./particles.js"; // F21.5 (E4)
 import { camera, controls, renderer, scene, sun } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
 import { updateTorchLights } from "./torchlights.js"; // Fase 19.6 (A2)
-import * as TWEEN from "three/addons/tween.module.js";
 import { shouldUnderwaterFog } from "./waterfog.js"; // Fase 16 (B1): niebla con inmersión real
 import {
 	applyFrustumCulling,

@@ -33,6 +33,7 @@ secciones de abajo.
   nevados de la F21 A2 existen como sub-bioma, pero las montañas base
   siguen bajas para el gusto del usuario).
 - Las cabezas de los mobs y jugadores muestran caras por todos sus lados.
+- Todo por debajo de coordenada Y = 0 es deepslate, lo cal es así en Minecraft original, pero en este solo tenemos 128 bloques de altura y el nivel base del mundo es en Y = 0. Hay que bajar donde se genera el deepslate.
 
 ---
 

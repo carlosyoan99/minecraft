@@ -11,11 +11,11 @@
 // está activo.
 // ============================================================
 import * as THREE from "three";
-import Stats from "three/addons/stats.module.js";
 import { GPUStatsPanel } from "three/addons/GPUStatsPanel.js";
-import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+import Stats from "three/addons/stats.module.js";
 import { CHUNK_SIZE, WATER, WORLD_MAX_Y, WORLD_MIN_Y } from "./constants.js";
 import { camera, renderer, scene } from "./scene.js";
 import { getSetting } from "./settings.js";
@@ -180,8 +180,10 @@ function updateHud() {
 		`Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
 		`Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : "--"}`,
 		`Tick servidor: ${Number.isFinite(srvTick) ? srvTick.toFixed(2) : "--"} ms · Gen chunk: ${Number.isFinite(srvGen) ? srvGen.toFixed(2) : "--"} ms`,
-	// Fase 22.1+GPUStats: GPU render time (panel overlay + línea en HUD)
-	gpuPanel ? `GPU: ${gpuVisible ? "activo (overlay)" : "inactivo"} · Draw calls: ${renderer.info.render.calls}` : `GPU: no disponible`,
+		// Fase 22.1+GPUStats: GPU render time (panel overlay + línea en HUD)
+		gpuPanel
+			? `GPU: ${gpuVisible ? "activo (overlay)" : "inactivo"} · Draw calls: ${renderer.info.render.calls}`
+			: `GPU: no disponible`,
 		`Daño: ${lastDmg ? `${lastDmg.source} ${lastDmg.amount}→${lastDmg.realAmount} @ ${lastDmg.x.toFixed(0)},${lastDmg.y.toFixed(0)},${lastDmg.z.toFixed(0)}` : "--"}`,
 		`Fallos cliente: ${lastErr ? `${window.__mcClientErrors.length} (${new Date(lastErr.t).toLocaleTimeString()} ${lastErr.text.slice(0, 60)})` : "ninguno"}`
 	].join("<br>");

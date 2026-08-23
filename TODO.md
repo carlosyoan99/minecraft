@@ -1309,19 +1309,23 @@
 ## Fase 22.2 — Chequeo de tipos con JSDoc + TypeScript, sin build step
 
 > Especificación: [`docs/spec/fase22.2-spec.md`](docs/spec/fase22.2-spec.md)
-> **EN CURSO** (abierta 2026-08-23 en PARALELO con la 22.1 — decisión del
-> usuario; prerrequisito relajado: F22 cerrada ✅). NO es una migración:
-> ningún `.ts`, ningún build step; TypeScript solo como devDependency de
-> verificación (`tsc --noEmit`).
+> **CERRADA** (2026-08-23). NO es una migración: ningún `.ts`, ningún
+> build step; TypeScript solo como devDependency de verificación
+> (`tsc --noEmit`).
 
 - [x] A `typescript` devDep + `@types/node` + `tsconfig.json` raíz
       (`allowJs`, `checkJs:false` global, `noEmit`, `strict:false`) +
       script `npm run typecheck` → `tsc --noEmit`
-- [x] B Adopción incremental: `// @ts-check` en `server/constants.js` y
-      `public/constants.js` (ambos limpios). net.js/save*.js diferidos
-      (requieren @typedef de World/Player)
+- [x] B Adopción incremental: `// @ts-check` en **todos los módulos
+      server/** (36 archivos: constants, net, save×4, actions, combat,
+      mobs, mob-species, mob-spawn, players, commands, timers,
+      projectiles, world, crafting, inventory, fishing, mining, tnt,
+      sculk, anticheat, chests, chunk-fill, items, state, log,
+      ratelimit, server, world-session, types) + `public/constants.js`
+      (módulos sin @ts-check anotados con `@type {any}`)
 - [x] C `server/types.js` con `@typedef` para `Stack`, `ClientMessage`,
-      `ServerMessage`, `BlockId`, `ItemId`
+      `ServerMessage`, `BlockId`, `ItemId`, `Armor`, `RespawnPoint`,
+      `Player`, `World`
 - [x] D `typecheck` informativo, no bloqueante — decisión documentada
 - [x] E Prueba de valor: bug `birchLogs` detectado por `tsc` antes de
       ejecutar (documentado en spec §10 bloque E)
@@ -1336,12 +1340,11 @@
 > **EN CURSO** (abierta 2026-08-23 en PARALELO con 22.1/22.2 — decisión del
 > usuario; prerrequisito duro F21.6 cerrada ✅, F22 cerrada ✅).
 
-- [ ] L1 Linterna fiel a MC: luz nivel 15 (hoy hereda el pipe de antorcha,
-      nivel 14) + receta con 8 nuggets de hierro; recalibrar `unit-sync` y
-      tests de luz
-- [ ] B1 Cabezas de mobs/jugadores con caras por todos los lados:
-      diagnóstico CDP del modelo (`MOB_PARTS`), fix UVs/caras duplicadas +
-      test determinista de geometría; cerrar en `Notas del usuario.md`
+- [x] L1 Linterna fiel a MC: luz nivel 15 (`LANTERN_LIGHT_RADIUS` 8),
+      receta 8 nuggets + antorcha, `IRON_NUGGET` 282 sync server/cliente;
+      `unit-fase22.3.js` 15/15 checks
+- [x] B1 Cabezas de mobs/jugadores: `headSide` en mobtextures/skins/skintextures;
+      fix UVs caras duplicadas, test determinista
 - [ ] V1 Perfilado en vivo: `/locate` ms bloqueados, `arrows_update` B/s con
       varios pescando, granja de hornos `--prof`, profiler navegador;
       informe archivado en la spec
@@ -1349,9 +1352,9 @@
       charge/bundle/blast furnace), ciclo interno de `projectiles.js`,
       `fishing.js`, campos nuevos de `save-players.js`, IA interna
       Creaking/Bogged — sin huecos "no revisados"
-- [ ] R1 Residuos heredados (PERSISTE): CL-2 pausa de render/audio en blur,
-      reset local en reconexión (`doorStates`, paneles abiertos), opacidad
-      compartida de materiales de partículas — cada uno con su test/regresión
+- [x] R1 Residuos heredados: CL-2 pausa (`document.hidden || !hasFocus()`),
+      CL-1 reset reconexión (`doorStates.clear()`), partículas material
+      propio (cada mesh pool tiene su material)
 
 ---
 

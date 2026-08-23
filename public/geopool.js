@@ -178,7 +178,13 @@ export class Float32Buffer {
 //     el tamaño coincide (el buffer GPU se reutiliza); solo copia
 //     cuando el tamaño difiere (resize).
 // ============================================================
-export function setFromBuffer(geo, name, buf, itemSize, Float32BufferAttributeCtor) {
+export function setFromBuffer(
+	geo,
+	name,
+	buf,
+	itemSize,
+	Float32BufferAttributeCtor
+) {
 	const data = buf.toTypedArray();
 	const existing = geo.getAttribute(name);
 	if (existing?.array && existing.array.length === data.length) {

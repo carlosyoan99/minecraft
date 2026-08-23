@@ -9,7 +9,9 @@ import * as THREE from "three";
 import { isValidSkin, paintTile } from "./skins.js";
 
 const TILE = 16;
-const PARTS = ["head", "body", "arm", "leg"];
+// Fase 22.3 (B1): "headSide" = lateral de la cabeza sin cara (la
+// frontal sigue siendo "head"); buildPartGroup reparte las 6 caras.
+const PARTS = ["head", "headSide", "body", "arm", "leg"];
 
 // Devuelve { texture, rects } para el humanoide del jugador. Si el
 // skin no es válido cae a "steve" (defensivo: el servidor ya lo

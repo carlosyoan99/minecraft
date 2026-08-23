@@ -53,16 +53,24 @@ class Float32Buffer {
 		this.arr = new Float32Array(initialCapacity * itemSize);
 	}
 	write(a, b, c, d) {
-		if (this.pos + (d !== undefined ? 4 : c !== undefined ? 3 : b !== undefined ? 2 : 1) > this.arr.length)
+		if (
+			this.pos +
+				(d !== undefined ? 4 : c !== undefined ? 3 : b !== undefined ? 2 : 1) >
+			this.arr.length
+		)
 			this._grow();
 		this.arr[this.pos++] = a;
 		this.arr[this.pos++] = b;
 		if (c !== undefined) this.arr[this.pos++] = c;
 		if (d !== undefined) this.arr[this.pos++] = d;
 	}
-	get length() { return this.pos; }
+	get length() {
+		return this.pos;
+	}
 	toTypedArray() {
-		return this.pos === this.arr.length ? this.arr : this.arr.subarray(0, this.pos);
+		return this.pos === this.arr.length
+			? this.arr
+			: this.arr.subarray(0, this.pos);
 	}
 	_grow() {
 		const next = new Float32Array(this.arr.length * 2);
@@ -698,18 +706,18 @@ export function buildChunkGeometryData({
 				c: v
 			});
 		}
-	for (const [i, j, k] of [
-		[0, 1, 2],
-		[0, 2, 3]
-	]) {
-		for (const idx of [i, j, k]) {
-			const p = verts[idx];
-			buf.pos.write(p.x, p.y, p.z);
-			buf.norm.write(face.dir[0], face.dir[1], face.dir[2]);
-			buf.uv.write(p.u, p.v);
-			buf.col.write(p.c, p.c, p.c);
+		for (const [i, j, k] of [
+			[0, 1, 2],
+			[0, 2, 3]
+		]) {
+			for (const idx of [i, j, k]) {
+				const p = verts[idx];
+				buf.pos.write(p.x, p.y, p.z);
+				buf.norm.write(face.dir[0], face.dir[1], face.dir[2]);
+				buf.uv.write(p.u, p.v);
+				buf.col.write(p.c, p.c, p.c);
+			}
 		}
-	}
 	};
 	for (let fi = 0; fi < FACES.length; fi++) {
 		const face = FACES[fi];

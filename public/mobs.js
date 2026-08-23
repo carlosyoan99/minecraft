@@ -74,20 +74,23 @@ function buildPartGroup(parts, material, rects = null) {
 		const [w, h, d] = part.size;
 		const geo = new THREE.BoxGeometry(w, h, d);
 		if (rects) {
-			// BoxGeometry es indexada con 6 grupos (+X, -X, +Y, -Y, +Z, -Z):
-			// se remapean TODOS sus vértices a la tesela de la parte (una
-			// tesela cubre las 6 caras de la caja — opción mínima del spec).
+			// BoxGeometry es indexada con 6 grupos en orden fijo: +X, -X, +Y,
+			// -Y, +Z, -Z. Se remapean los UV de cada cara a la tesela de la
+			// parte. Fase 22.3 (B1): en las CABEZAS con tesela "headSide" en el
+			// atlas, solo la cara FRONTAL (+Z — los mobs no rotan y su frente
+			// local es +Z; los jugadores remotos miran hacia -Z pero su cabeza
+			// comparte este esquema visual) lleva la textura con ojos/hocico;
+			// las otras 5 caras llevan el lateral plano. Antes una única tesela
+			// cubría las 6 caras y la cara se veía repetida por todos lados.
 			const rect = rects[part.tile || part.name];
+			const sideRect = part.name === "head" ? rects.headSide || null : null;
 			if (rect) {
-				const [u0, v0, u1, v1] = rect;
 				const uv = geo.attributes.uv;
 				const index = geo.index;
-				const seen = new Set();
-				geo.groups.forEach((g) => {
+				geo.groups.forEach((g, gi) => {
+					const [u0, v0, u1, v1] = sideRect && gi !== 4 ? sideRect : rect;
 					for (let k = 0; k < g.count; k++) {
 						const v = index.getX(g.start + k);
-						if (seen.has(v)) continue;
-						seen.add(v);
 						const ox = uv.getX(v),
 							oy = uv.getY(v);
 						uv.setXY(v, u0 + (u1 - u0) * ox, v0 + (v1 - v0) * oy);

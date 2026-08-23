@@ -1,13 +1,15 @@
 # Fase 22.3 — Correcciones, paridad de luz y verificación diferida (Borrador) (Spec)
 
-> **Estado:** `[PROSPECTIVA]` — **BORRADOR** creado 2026-08-22 desde la
-> [auditoría 2026-08-22](../audits/auditoria-2026-08-22.md) y la entrevista
-> del planificador del mismo día. Agrupa TODO lo diferido expresamente de la
+> **Estado:** `[EN CURSO]` (abierta 2026-08-23 **en paralelo con las
+> subfases de tooling 22.1/22.2** — decisión del usuario; su prerrequisito
+> duro, F21.6 cerrada, ya se cumplía y la F22 cerró el 2026-08-22).
+> Agrupa TODO lo diferido expresamente de la
 > [Fase 21.6](fase21.6-spec.md) más los residuos heredados (PERSISTE) y un
 > bug abierto de `Notas del usuario.md`.
 >
-> **Posición en el grafo:** su numeración (22.3) la sitúa tras las subfases de tooling 22.1/22.2; se
-> abrirá cuando el usuario lo decida (prerrequisito duro: F21.6 cerrada).
+> **Posición en el grafo (actualizada 2026-08-23):** se abre **en paralelo**
+> con 22.1/22.2 por decisión del usuario; prerrequisito duro: F21.6
+> cerrada ✅ (F22 cerrada era la recomendación, ya cumplida).
 > No renumera la serie 22→23→24→25.
 
 ## 0. Origen

@@ -38,8 +38,8 @@ graph LR
     F21_6[Fase 21.6 · Correcciones auditoría + paridad MC (pre-F22)] --> F21_5
     F22[Fase 22 · Profundidad 1.17-1.21] --> F21_6
     F22_1[Fase 22.1 · Tooling: CI, Dependabot, madge/knip, stats.js] --> F22
-    F22_2[Fase 22.2 · JSDoc + tsc --noEmit (sin build step)] --> F22_1
-    F22_3[Fase 22.3 · Correcciones y paridad diferidas (borrador)] --> F22_2
+    F22_2[Fase 22.2 · JSDoc + tsc --noEmit (sin build step)] --> F22
+    F22_3[Fase 22.3 · Correcciones y paridad diferidas] --> F21_6
     F23[Fase 23 · Diferidos F22] --> F22
     F24[Fase 24 · Nether Update] --> F23
     F25[Fase 25 · End Update] --> F24
@@ -53,9 +53,10 @@ graph LR
     classDef done fill:#2d6a4f,stroke:#1b4332,color:#fff;
     classDef active fill:#e9c46a,stroke:#b98a00,color:#222;
     classDef planned fill:#6a6a6a,stroke:#444,color:#fff;
-    class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5,F19_6,F20,F21,F21_5,F21_6 done;
-    class F22 active;
-    class F22_1,F23,F24,F25,F26,F26_5,F27,F27_5,F28,F29 planned;
+    class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5,F19_6,F20,F21,F21_5,F21_6,F22 done;
+    class F22_1,F22_3 active;
+    class F22_2 done;
+    class F23,F24,F25,F26,F26_5,F27,F27_5,F28,F29 planned;
 ```
 
 ## Tabla de prerrequisitos
@@ -89,10 +90,10 @@ graph LR
 | 21 | [`fase21-spec.md`](docs/spec/fase21-spec.md) | F20 cerrada | ✅ **Cerrada y auditada (v21.2)** |
 | 21.5 | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada | ✅ **Cerrada y auditada (2026-08-20)** — la auditoría 2026-08-22 deriva sus fixes a la F21.6 |
 | 21.6 | [`fase21.6-spec.md`](docs/spec/fase21.6-spec.md) | F21.5 cerrada | ✅ **Cerrada (2026-08-22)** — fixes de la auditoría + paridad MC; la verificación en navegador queda cubierta por `unit-fase21.6.js` + CDP `audit-fase7` |
-| 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | **F21.6 cerrada** | 🟠 **En curso (retomada 2026-08-22; Bloque A sobre el avance de `8d58a09`)** |
-| 22.1 | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | F22 cerrada | 📝 Prospectiva — tooling: CI bloqueante, Dependabot, `madge`/`knip`, `stats.js` tras toggle |
-| 22.2 | [`fase22.2-spec.md`](docs/spec/fase22.2-spec.md) | 22.1 cerrada | 📝 Prospectiva — JSDoc + `tsc --noEmit` incremental, **sin build step** |
-| 22.3 | [`fase22.3-spec.md`](docs/spec/fase22.3-spec.md) | 22.2 cerrada (era la antigua 22.1; renumerada al integrar el tooling) | 📝 Borrador prospectivo |
+| 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | **F21.6 cerrada** | ✅ **Cerrada (2026-08-22)** — suite 64/64, E2E 7/7, `--audit` 8/8; A1 mantiene 128 (A6 no aplica) |
+| 22.1 | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | F22 cerrada | 🟠 **En curso** — tooling: CI bloqueante, Dependabot, `madge`/`knip`, `stats.js` tras toggle |
+| 22.2 | [`fase22.2-spec.md`](docs/spec/fase22.2-spec.md) | F22 cerrada (**en paralelo con 22.1**, decisión del usuario 2026-08-23; antes exigía 22.1) | ✅ **Cerrada (2026-08-23)** — `// @ts-check` en **todos los 36 módulos server/** + public/constants, `@typedef` Player/World/Armor/RespawnPoint, lib es2022 |
+| 22.3 | [`fase22.3-spec.md`](docs/spec/fase22.3-spec.md) | F21.6 cerrada (**en paralelo con 22.1/22.2**, decisión del usuario 2026-08-23; el grafo anterior exigía 22.2) | 🟠 **En curso** — linterna luz 15, bug cabezas, perfilado, pase servidor, residuos CL-* |
 | 23 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada | 📝 Prospectiva |
 | 24 | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada | 📝 Prospectiva |
 | 25 | [`fase25-spec.md`](docs/spec/fase25-spec.md) | F24 cerrada | 📝 Prospectiva |
@@ -119,7 +120,14 @@ graph LR
   bloque de paridad MC aparte (escudo total, pesca 5-30 s…); **F22 pasa a
   exigir F21.6**. Sus diferidos (linterna/luz, bug cabezas de mobs,
   perfilado, pase servidor interno, residuos CL-*) viven en el borrador
-  **F22.3**, que se abriría tras la F22.
+  **F22.3**.
+- **Las 22.x se ejecutan EN PARALELO** (decisión del usuario 2026-08-23):
+  22.1 exige F22 cerrada; **22.2 pasa a exigir solo F22 cerrada** (su spec
+  ya decía no depender del cierre de otras subfases); **22.3 pasa a exigir
+  F21.6 cerrada** (su prerrequisito duro original) con F22 cerrada como
+  recomendación — sus bloques tocan ficheros que la F22 ya cerró
+  (`generation.js`/`projectiles.js`), así que el riesgo de conflicto está
+  resuelto al estar la F22 cerrada. La numeración 22.x NO implica orden.
 - **F24/F25 desbloquean** el Won't "dimensiones" (Nether/End) al abrirse.
 - **F20** (rolling release) solo exige la **F18 cerrada** (depende de 16/17,
   pero no de la 19 en curso).

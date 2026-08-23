@@ -77,7 +77,8 @@ const UNIT = [
 	"unit-fase21.js", // Fase 21 (A1): biomas más grandes — coherencia de rachas (BIOME_FREQ 0.003) + determinismo de etiquetas
 	"unit-fase21.5.js", // Fase 21.5 (A1/A8): pesca — caña, bobber picando en agua, loot y cañas rotas en cofres
 	"unit-fase21.6.js", // Fase 21.6 (A1/A2): /locate bioma incremental con presupuesto+caché y allowlist de Origin sin bypass de puerto
-	"unit-fase22.js" // Fase 22 (A3-A5/B1-B2): deepslate, raw ores, cobre, amatista, catalejo
+	"unit-fase22.js", // Fase 22 (A3-A5/B1-B2): deepslate, raw ores, cobre, amatista, catalejo
+	"unit-fase22.3.js" // Fase 22.3 (L1): linterna fiel — radio por fuente + receta nuggets
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de
@@ -101,7 +102,8 @@ const AUDIT = [
 	"audit-fase7.js",
 	"audit-altura.js", // Fase 15 (D5): mundo de 128 bloques (−64..+63) — 72 checks
 	"audit-fase20.js", // Fase 20 (rolling release): ratelimit 2-ventanas, MAX_STACK, savePlayersAsync, P4/P7
-	"audit-fase21.js" // Fase 21: pirámide end-to-end (B2), ríos D1, enderman radianes (C2), IA C3
+	"audit-fase21.js", // Fase 21: pirámide end-to-end (B2), ríos D1, enderman radianes (C2), IA C3
+	"audit-fase22.3.js" // Fase 22.3: CL-2 pausa sin foco, partículas material propio, cabezas B1 (CDP)
 ];
 const args = process.argv.slice(2);
 

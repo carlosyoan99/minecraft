@@ -916,67 +916,120 @@ function drawRabbitEar(ctx, _rng) {
 // ============================================================
 // MAPA DE TEXELAS POR TIPO: parte única → función de dibujo.
 // El ORDEN define la columna en el atlas (0 = primera tesela).
+//
+// Fase 22.3 (B1): `headSide` — lateral PLANO de la cabeza (sin ojos ni
+// hocico). buildPartGroup (public/mobs.js) remapea la cara frontal (+Z)
+// a la tesela "head" y las otras 5 caras a "headSide"; así la cara del
+// mob solo se ve DE FRENTE y no repetida por los seis lados (bug visual
+// abierto en Notas del usuario). Las especies sin cabeza (slime) no lo
+// definen y conservan el comportamiento anterior.
 // ============================================================
+function plainFill(color) {
+	return (ctx) => fill(ctx, color);
+}
 const MOB_TEXTURES = {
 	zombie: {
 		head: drawZombieHead,
+		headSide: plainFill(Z.skin),
 		body: drawZombieBody,
 		arm: drawZombieArm,
 		leg: drawZombieLeg
 	},
 	creeper: {
 		head: drawCreeperHead,
+		headSide: plainFill(C.body),
 		body: drawCreeperBody,
 		leg: drawCreeperLeg
 	},
 	skeleton: {
 		head: drawSkeletonHead,
+		headSide: plainFill(S.bone),
 		body: drawSkeletonBody,
 		arm: drawSkeletonArm,
 		leg: drawSkeletonLeg
 	},
 	enderman: {
 		head: drawEndermanHead,
+		headSide: plainFill(E.body),
 		body: drawEndermanBody,
 		arm: drawEndermanArm,
 		leg: drawEndermanLeg
 	},
-	spider: { body: drawSpiderBody, head: drawSpiderHead },
-	wolf: { body: drawWolfBody, head: drawWolfHead, leg: drawWolfLeg },
-	cow: { body: drawCowBody, head: drawCowHead, leg: drawCowLeg },
-	pig: { body: drawPigBody, head: drawPigHead, leg: drawPigLeg },
+	spider: {
+		body: drawSpiderBody,
+		head: drawSpiderHead,
+		headSide: plainFill(SP.body)
+	},
+	wolf: {
+		body: drawWolfBody,
+		head: drawWolfHead,
+		headSide: plainFill(W.fur),
+		leg: drawWolfLeg
+	},
+	cow: {
+		body: drawCowBody,
+		head: drawCowHead,
+		headSide: plainFill(CO.body),
+		leg: drawCowLeg
+	},
+	pig: {
+		body: drawPigBody,
+		head: drawPigHead,
+		headSide: plainFill(P.body),
+		leg: drawPigLeg
+	},
 	chicken: {
 		body: drawChickenBody,
 		head: drawChickenHead,
+		headSide: plainFill(CH.body),
 		leg: drawChickenLeg
 	},
-	sheep: { body: drawSheepBody, head: drawSheepHead, leg: drawSheepLeg },
-	rabbit: { body: drawRabbitBody, head: drawRabbitHead, ear: drawRabbitEar },
+	sheep: {
+		body: drawSheepBody,
+		head: drawSheepHead,
+		headSide: plainFill(SH.face),
+		leg: drawSheepLeg
+	},
+	rabbit: {
+		body: drawRabbitBody,
+		head: drawRabbitHead,
+		headSide: plainFill(R.body),
+		ear: drawRabbitEar
+	},
 	// Fase 22 (D1): rana — cuerpo/vientre, cabeza con ojos y patas.
-	frog: { body: drawFrogBody, head: drawFrogHead, leg: drawFrogLeg },
+	frog: {
+		body: drawFrogBody,
+		head: drawFrogHead,
+		headSide: plainFill(FH.body),
+		leg: drawFrogLeg
+	},
 	// Fase 12 (Bloque A): mobs por bioma — slime (un cuerpo), ocelote y gato
 	// (felinos con cola), ahogado (humanoide acuático).
 	slime: { body: drawSlimeBody },
 	ocelot: {
 		body: drawOcelotBody,
 		head: drawOcelotHead,
+		headSide: plainFill(OC.fur),
 		tail: drawOcelotTail,
 		leg: drawOcelotLeg
 	},
 	cat: {
 		body: drawCatBody,
 		head: drawCatHead,
+		headSide: plainFill(CT.fur),
 		tail: drawCatTail,
 		leg: drawCatLeg
 	},
 	drowned: {
 		head: drawDrownedHead,
+		headSide: plainFill(D.skin),
 		body: drawDrownedBody,
 		arm: drawDrownedArm,
 		leg: drawDrownedLeg
 	},
 	creaking: {
 		head: drawCreakingHead,
+		headSide: plainFill(CK.wood),
 		body: drawCreakingBody,
 		arm: drawCreakingArm,
 		leg: drawCreakingLeg
@@ -984,6 +1037,7 @@ const MOB_TEXTURES = {
 	// Fase 21.5 (D2): Bogged — esqueleto de pantano musgoso.
 	bogged: {
 		head: drawBoggedHead,
+		headSide: plainFill(BG.bone),
 		body: drawBoggedBody,
 		arm: drawBoggedArm,
 		leg: drawBoggedLeg

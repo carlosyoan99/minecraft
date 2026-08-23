@@ -51,25 +51,18 @@ function rect(put, x, y, w, h, c) {
 // estilo; body: camiseta con botones/hombros/cinturón; arm: mano
 // + manga (corta o larga); leg: pantalón + zapatos.
 // ============================================================
-function drawHead(put, P, style) {
+// Fase 22.3 (B1): base común de la cabeza (piel + sombreado lateral +
+// peinado). La CARA (ojos/nariz/boca/pómulos) va aparte para que el
+// lateral de la cabeza (`headSide`) pueda reutilizar la base sin cara:
+// antes la única tesela de cabeza pintaba los ojos en las 6 caras del
+// cubo (bug visual de cabezas en mobs/jugadores).
+function drawHeadBase(put, P, style) {
 	fill(put, P.skin);
 	// orejas/sombra lateral (da volumen a la cabeza)
 	for (let y = 2; y < 12; y++) {
 		put(0, y, P.shade);
 		put(15, y, P.shade);
 	}
-	// ojos 2x1
-	rect(put, 3, 5, 2, 1, P.eye);
-	rect(put, 11, 5, 2, 1, P.eye);
-	// nariz
-	put(7, 6, P.skinDark);
-	put(8, 6, P.skinDark);
-	// boca
-	rect(put, 5, 9, 6, 1, P.mouth);
-	// pómulos
-	put(2, 7, P.skinDark);
-	put(13, 7, P.skinDark);
-
 	if (style === "short") {
 		// Steve/Noor/Makena: pelo corto con patillas
 		rect(put, 0, 0, 16, 2, P.hair);
@@ -120,6 +113,28 @@ function drawHead(put, P, style) {
 		rect(put, 15, 3, 1, 2, P.hair);
 		rect(put, 7, 1, 2, 1, P.trim);
 	}
+}
+
+// Cara completa (frontal): base + ojos/nariz/boca/pómulos.
+function drawHead(put, P, style) {
+	drawHeadBase(put, P, style);
+	// ojos 2x1
+	rect(put, 3, 5, 2, 1, P.eye);
+	rect(put, 11, 5, 2, 1, P.eye);
+	// nariz
+	put(7, 6, P.skinDark);
+	put(8, 6, P.skinDark);
+	// boca
+	rect(put, 5, 9, 6, 1, P.mouth);
+	// pómulos
+	put(2, 7, P.skinDark);
+	put(13, 7, P.skinDark);
+}
+
+// Lateral de la cabeza (Fase 22.3 B1): SOLO la base (piel + pelo), sin
+// rasgos. La usan las 5 caras no frontales del cubo de cabeza.
+function drawHeadSide(put, P, style) {
+	drawHeadBase(put, P, style);
 }
 
 // o.sleeveless → hombros de piel (camiseta sin mangas); o.collar →
@@ -199,6 +214,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "short"),
+			headSide: (put, P) => drawHeadSide(put, P, "short"),
 			body: (put, P) => drawBody(put, P),
 			arm: (put, P) => drawArm(put, P),
 			leg: drawLeg
@@ -223,6 +239,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "fringe"),
+			headSide: (put, P) => drawHeadSide(put, P, "fringe"),
 			body: (put, P) => drawBody(put, P, { sleeveless: true }),
 			arm: (put, P) => drawArm(put, P, { short: true }),
 			leg: drawLeg
@@ -247,6 +264,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "short"),
+			headSide: (put, P) => drawHeadSide(put, P, "short"),
 			body: (put, P) => drawBody(put, P, { stripe: 12 }),
 			arm: (put, P) => drawArm(put, P),
 			leg: drawLeg
@@ -271,6 +289,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "bun"),
+			headSide: (put, P) => drawHeadSide(put, P, "bun"),
 			body: (put, P) => drawBody(put, P, { collar: true }),
 			arm: (put, P) => drawArm(put, P),
 			leg: drawLeg
@@ -295,6 +314,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "cap"),
+			headSide: (put, P) => drawHeadSide(put, P, "cap"),
 			body: (put, P) => drawBody(put, P, { stripe: 7 }),
 			arm: (put, P) => drawArm(put, P),
 			leg: drawLeg
@@ -319,6 +339,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "curls"),
+			headSide: (put, P) => drawHeadSide(put, P, "curls"),
 			body: (put, P) => drawBody(put, P, { stripe: 12 }),
 			arm: (put, P) => drawArm(put, P),
 			leg: drawLeg
@@ -343,6 +364,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "short"),
+			headSide: (put, P) => drawHeadSide(put, P, "short"),
 			body: (put, P) => drawBody(put, P, { stripe: 7 }),
 			arm: (put, P) => drawArm(put, P),
 			leg: drawLeg
@@ -367,6 +389,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "topknot"),
+			headSide: (put, P) => drawHeadSide(put, P, "topknot"),
 			body: (put, P) => drawBody(put, P, { stripe: 6 }),
 			arm: (put, P) => drawArm(put, P),
 			leg: drawLeg
@@ -391,6 +414,7 @@ const SKIN_DEFS = {
 		},
 		draw: {
 			head: (put, P) => drawHead(put, P, "streak"),
+			headSide: (put, P) => drawHeadSide(put, P, "streak"),
 			body: (put, P) => drawBody(put, P, { sleeveless: true, stripe: 12 }),
 			arm: (put, P) => drawArm(put, P, { short: true }),
 			leg: drawLeg

@@ -449,14 +449,24 @@
 		}
 	},
 	"lantern": {
-		"shape": [" I ", "ITI", " I "],
+		"shape": ["NNN", "NTN", "NNN"],
 		"ingredients": {
-			"I": 102,
+			"N": 282,
 			"T": 23
 		},
 		"result": {
 			"id": 79,
 			"count": 1
+		}
+	},
+	"iron_nugget": {
+		"shape": ["I"],
+		"ingredients": {
+			"I": 102
+		},
+		"result": {
+			"id": 282,
+			"count": 9
 		}
 	},
 	"bamboo_planks": {

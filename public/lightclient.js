@@ -7,7 +7,7 @@
 
 import { getChunkData, getClientBlock, getTorchesNear } from "./chunkstore.js";
 import { CHUNK_SIZE, WORLD_HEIGHT, WORLD_MIN_Y } from "./constants.js";
-import { computeChunkLight, LIGHT_RADIUS } from "./lighting.js";
+import { computeChunkLight, MAX_LIGHT_RADIUS } from "./lighting.js";
 
 // lightStore: luz horneada por chunk ("cx,cz" -> Float32Array o null si no
 // hay antorchas relevantes cerca). Se hornea al construir la geometría y se
@@ -25,20 +25,21 @@ export function bakeChunkLight(cx, cz) {
 	const x0 = cx * CHUNK_SIZE,
 		z0 = cz * CHUNK_SIZE;
 	// Fase 20 B4 (P7): antorchas del vecindario 3×3 de chunks (cubre el radio
-	// de luz 7 < chunk 16) vía el índice espacial — antes se escaneaba el
+	// de luz 8 < chunk 16) vía el índice espacial — antes se escaneaba el
 	// torchSet COMPLETO por bake (O(todas las antorchas)). El filtro de caja
-	// se conserva para dejar fuera las antorchas del vecindario más lejanas
-	// que el radio (comportamiento idéntico al previo).
+	// se conserva para dejar fuera las fuentes del vecindario más lejanas que
+	// el radio (comportamiento idéntico al previo).
+	// Fase 22.3 (L1): margen con MAX_LIGHT_RADIUS (linterna 8 > antorcha 7).
 	const relevant = getTorchesNear(
 		x0 + CHUNK_SIZE / 2,
 		0,
 		z0 + CHUNK_SIZE / 2
 	).filter(
 		(t) =>
-			t[0] >= x0 - LIGHT_RADIUS &&
-			t[0] <= x0 + CHUNK_SIZE - 1 + LIGHT_RADIUS &&
-			t[2] >= z0 - LIGHT_RADIUS &&
-			t[2] <= z0 + CHUNK_SIZE - 1 + LIGHT_RADIUS
+			t[0] >= x0 - MAX_LIGHT_RADIUS &&
+			t[0] <= x0 + CHUNK_SIZE - 1 + MAX_LIGHT_RADIUS &&
+			t[2] >= z0 - MAX_LIGHT_RADIUS &&
+			t[2] <= z0 + CHUNK_SIZE - 1 + MAX_LIGHT_RADIUS
 	);
 	if (relevant.length === 0) {
 		lightStore.set(key, null);
@@ -71,7 +72,8 @@ export function getChunkLight(key) {
 // de vecinos; sin antorchas cerca, rebuildAffectedChunks basta. La BFS de
 // lighting.js se difracta arriba/abajo, así que se usa la distancia 3D.
 export function hasTorchNear(wx, wy, wz) {
-	const r = LIGHT_RADIUS;
+	// Fase 22.3 (L1): margen conservador con el radio máximo (linterna 8).
+	const r = MAX_LIGHT_RADIUS;
 	const x0 = wx - r,
 		x1 = wx + r,
 		z0 = wz - r,

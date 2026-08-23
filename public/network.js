@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 // RED: MANEJO DE MENSAJES DEL SERVIDOR
 // ============================================================
@@ -51,6 +52,7 @@ import {
 	applyHealth,
 	applyInventory,
 	applyXp,
+	closePanels,
 	flashMessage,
 	onSeedRejected,
 	onWorldDeleted,
@@ -82,6 +84,18 @@ let playerName = "";
 // (solidAt en player.js) para la colisión por forma: puerta abierta se
 // atraviesa, cerrada bloquea. No se persiste (efímero, como el servidor).
 const doorStates = new Map();
+
+// Fase 22.3 (R1, CL-1 parcial): reset local al CAER la conexión (antes solo
+// el `init` de la reconexión repoblaba estado). Sin esto, al volver a
+// conectar quedaban abiertos paneles/mochila cuyo servidor ya no conoce y
+// puertas con su estado local stale (la física las seguía tratando como
+// abiertas hasta un door_state nuevo). closePanels cierra inventario/picker/
+// horno/cofre/bundle/libro; el send() que hace toggleBundleUI(false) es
+// no-op con el socket cerrado (send() filtra por readyState).
+socket.addEventListener("close", () => {
+	doorStates.clear();
+	closePanels();
+});
 // Se registra en el init el estado inicial (door_state se manda al colocar).
 export function isDoorOpen(x, y, z) {
 	return !!doorStates.get(`${x},${y},${z}`);
@@ -107,7 +121,7 @@ export function getPlayerName() {
 	return playerName;
 }
 
-socket.addEventListener("message", (e) => {
+socket.addEventListener("message", (/** @type {MessageEvent} */ e) => {
 	// CL-3 (C6): robustez del cliente — ni un mensaje no-JSON ni un JSON válido
 	// pero mal formado (null, 42, "texto", sin `event`) debe tumbar el listener
 	// del socket. El despacho completo va dentro del try (antes solo el
@@ -186,8 +200,9 @@ socket.addEventListener("message", (e) => {
 				renderRecipeBook(data);
 				break;
 			case "block_update": {
-				// Una antorcha colocada/rota cambia la luz de un radio 7: el radio cruza
-				// las fronteras de chunk, así que hay que re-hornear el vecindario 3x3
+				// Una antorcha colocada/rota cambia la luz de su radio (antorcha
+				// 7, linterna 8 — F22.3 L1): el radio cruza las fronteras de chunk,
+				// así que hay que re-hornear el vecindario 3x3
 				// (rebuildAround) y no solo el chunk + los vecinos pegados al borde
 				// (rebuildAffectedChunks). Sin esto la luz se cortaría en los bordes.
 				// Fase 14 (M4): un bloque NO-antorcha sólido también altera la luz si
@@ -346,6 +361,10 @@ socket.addEventListener("message", (e) => {
 					);
 					// Fase 10 (B2): pantalla de muerte con la causa (mob/fall/lava/...).
 					showDeathScreen(data.cause);
+					// S1 (Fase 22.3): morir cierra paneles abiertos (mochila/cofre/
+					// horno/picker) — el servidor los resetea; sin esto quedaba UI
+					// zombie tras el respawn.
+					closePanels();
 				}
 				break;
 			case "inventory_update":

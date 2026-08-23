@@ -17,7 +17,8 @@ import {
 const chunkStore = new Map(); // "cx,cz" -> Uint8Array
 
 // torchSet: posiciones de fuentes de luz puntual conocidas (antorchas y,
-// Fase 21.5 B2, linternas: "wx,wy,wz" -> [wx,wy,wz]).
+// Fase 21.5 B2, linternas: "wx,wy,wz" -> [wx,wy,wz,idBloque] — el id llegó
+// con la F22.3 (L1) para el radio por fuente).
 // Lo alimenta setClientBlock y el swap de chunks_add; lo consumen la luz
 // horneada (lightclient.js) y la limpieza de chunks_unload.
 const torchSet = new Map();
@@ -122,7 +123,9 @@ export function setClientBlock(wx, wy, wz, block) {
 		removeTorch(wx, wy, wz); // Fase 20 B4 (P7): índice espacial
 	}
 	if (block === TORCH || block === LANTERN) {
-		torchSet.set(torchKey, [wx, wy, wz]);
+		// Fase 22.3 (L1): la entrada lleva el id del bloque (4º elemento) para
+		// que lighting.js aplique su radio por fuente (antorcha 7, linterna 8).
+		torchSet.set(torchKey, [wx, wy, wz, block]);
 		addTorch(wx, wy, wz);
 	}
 	return prev;
@@ -153,7 +156,8 @@ export function storeChunkData(key, arr) {
 			const wy = ly + WORLD_MIN_Y;
 			const wx = cx * CHUNK_SIZE + lx,
 				wz = cz * CHUNK_SIZE + lz;
-			torchSet.set(`${wx},${wy},${wz}`, [wx, wy, wz]);
+			// Fase 22.3 (L1): entrada con id de bloque (radio por fuente).
+			torchSet.set(`${wx},${wy},${wz}`, [wx, wy, wz, data[i]]);
 			addTorch(wx, wy, wz); // Fase 20 B4 (P7): índice espacial
 		}
 	}
