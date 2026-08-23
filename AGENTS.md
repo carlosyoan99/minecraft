@@ -214,7 +214,18 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   `--audit` 8/8; **D2/D3 (océanos/montañas) diferidos a la 21.5**; la
   **Fase 21.5 está cerrada y auditada (2026-08-20, spec
   `fase21.5-spec.md`)**: suite 62/62, E2E 7/7, --audit 8/8, biome 0;
-  la 22 exige la 21.5; la 23 exige la 22; la 24 exige la 23;
+  la **Fase 21.6 está cerrada (2026-08-22, spec `fase21.6-spec.md`)**:
+  fixes de la auditoría consolidada (/locate incremental con
+  presupuesto+caché, allowlist Origin sin bypass de puerto, escudo/maza —
+  proyectil bloqueable, reválida de mano, desgastes—, mochila close/split
+  ≤MAX_STACK sin pérdida, jukebox/note validación + stopDisc +
+  persistencia aditiva de discos en world.json, /summon cuota MOB_TOTAL+
+  clamp, powerPreference) y **bloque P aparte — manda MC real** (escudo
+  total factor 0, pesca 5-30 s, loot fiel, miel 2,4, bambú 2→2, maza
+  consume caída, blast furnace data-driven); suite 63/63
+  (`unit-fase21.6.js`, 115 checks), E2E 7/7, --audit 8/8; diferidos
+  (linterna, cabezas de mobs, perfilado) → borrador F22.1;
+  la 22 exige la 21.6; la 23 exige la 22; la 24 exige la 23;
   la 25 exige la 24. La
   19.5 adelantó a la 19.6 el motor 3D y a la F21 el audio por bioma; la F22
   aporta los bloques de amatista que la geoda de la F21 reusa y confirma

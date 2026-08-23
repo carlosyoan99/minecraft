@@ -25,6 +25,24 @@
 | Accesibilidad (teclado en paneles, contraste, reduceMotion) | [`accesibilidad.md`](./accesibilidad.md) | `a11y-nav.js`, `hud.js`, `player.js` |
 | UI y HUD (paneles, drag & drop, libro, calidad) | [`ui-hud.md`](./ui-hud.md) | `ui.js`, `hud.js`, `menus.js`, `panels.js`, `recipebook.js`, `dragdrop.js`, `draglogic.js`, `quality.js`, `settings.js` |
 
+## Cambios de la Fase 21.6 (2026-08-22)
+
+- **Mochila** (`panels.js`): `toggleBundleUI` captura el estado ANTES de
+  asignar y envía `bundle_action close` exactamente una vez al cerrarse —
+  Escape (`closePanels`) y clic exterior incluidos (C1); 
+  `applyInventory`/`repaintIcons` refrescan la columna de inventario del
+  bundle abierto vía `updateBundleInventoryUI()` (C2).
+- **Escudo** (`game-input.js`/`hud.js`): soltar el clic derecho fuera del
+  canvas (listener de `mouseup` a nivel `document`) y cambiar de slot
+  sueltan la pose-viñeta y avisan al servidor (evento local
+  `mc-slot-change`; el servidor además limpia `blocking`); nueva causa
+  «proyectil» en la pantalla de muerte (B2/B1).
+- **Discos** (`menus.js`/`network.js`): `stopDisc()` al volver al menú,
+  en el init/reconexión y en la muerte local — se elimina la música
+  fantasma del `setInterval` huérfano (D2).
+- **Renderer** (`scene.js`): creación con
+  `powerPreference: "high-performance"` (F1).
+
 ## El bucle de render
 
 `player.js`/`world.js` arrancan un `requestAnimationFrame` que cada frame:

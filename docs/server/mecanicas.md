@@ -24,8 +24,39 @@
 | Comandos y reloj del mundo (día/noche MC, luna) | [`comandos-reloj.md`](./comandos-reloj.md) | `commands.js` |
 | Persistencia (guardado asíncrono, migraciones) | [`persistencia.md`](./persistencia.md) | `save.js`, `save-chunks.js`, `save-meta.js`, `save-players.js` |
 | Seguridad y robustez (validación, rate-limit, anti-DoS) | [`seguridad.md`](./seguridad.md) | `net.js`, `actions.js`, `anticheat.js`, `ratelimit.js` |
-| Pesca (**planificada** — F21.5 A1/A8) | [`pesca.md`](./pesca.md) | `fishing.js` (nuevo), `projectiles.js`, `chests.js`, `recetas.json` |
+| Pesca (F21.5 A1/A8; revisada F21.6 P2/P3) | [`pesca.md`](./pesca.md) | `fishing.js`, `projectiles.js`, `chests.js`, `recetas.json` |
 | Dimensiones / Nether (**planificada** — F24 A-E, End en F25) | [`dimensiones.md`](./dimensiones.md) | `world-session.js`, `save-*.js`, `nether-gen.js` (nuevo), `mob-species.js` |
+
+## Cambios de la Fase 21.6 (2026-08-22)
+
+Correcciones de la auditoría consolidada + paridad MC pre-F22 (spec
+[`../spec/fase21.6-spec.md`](../spec/fase21.6-spec.md); tests en
+`unit-fase21.6.js`, 115 checks):
+
+- **Escudo total estilo MC** (`combat.js`): `SHIELD_BLOCK_FACTOR = 0`
+  (revoca el 0,4 de la F21.5 C2 — decisión rectora: manda Minecraft real);
+  el desgaste es de 1 por impacto bloqueado calculado ANTES de armadura;
+  el servidor reválida la mano activa en cada golpe y limpia `p.blocking`
+  al cambiar de slot (`net.js`). El daño de proyectil viaja como
+  `source: "projectile"` (`projectiles.js`): las flechas PvP ya se
+  bloquean (rama muerta corregida).
+- **Maza** (`actions.js`/`combat.js`): desgaste al golpear (250 usos, B3)
+  y el bonus de caída se consume al impactar (`fallFromY → null`, P6).
+- **Pesca paridad** (`fishing.js`): picada entre 5 y 30 s (P2) y tabla de
+  loot fiel ≈85/5/10 sin `COOKED_COD` crudo ni `FLINT` en tesoro (P3).
+- **Mochila/Bundle** (`actions.js`): put/take con fusión parcial hasta
+  `MAX_STACK` — split sin pérdida de ítems, jamás counts >64 (C3).
+- **Jukebox/note block**: validación completa de coords finitas,
+  distancia NaN-safe y tipo de bloque objetivo (D1); los discos insertados
+  se persisten en `world.json` (campo aditivo patrón cofres/hornos,
+  `SCHEMA_VERSION` intacto — D3).
+- **Comandos**: `/locate <bioma>` incremental con presupuesto por tramo y
+  caché TTL 30 s invalidada al cambiar de mundo (A1 — antes congelaba el
+  event loop hasta ~66k llamadas); `/summon` respeta la cuota global
+  `MOB_TOTAL` (30, compartida con spawn natural y cría) y clampea coords a
+  los bordes del mundo (E1).
+- **Paridad menor**: miel restaura 6 hambre / 2,4 saturación (P4), tablones
+  de bambú 2→2 (P5), blast furnace data-driven hierro/oro/cobre (P7).
 
 ## El bucle principal (20 ticks/s)
 
@@ -41,8 +72,8 @@ El juego no usa un game loop cliente: corre a **20 ticks/s**
 
 ## Verificación
 
-- Suite unitaria: `node tests/run.js --unit` (61 tests).
-- Auditorías por fase: `node tests/run.js --audit` (7).
+- Suite unitaria: `node tests/run.js --unit` (63 tests).
+- Auditorías por fase: `node tests/run.js --audit` (8).
 - E2E con servidor vivo: `SEED=miSemilla2026 PORT=3998 node server.js` +
   `WS_URL=ws://localhost:3998 node tests/run.js --e2e`.
 - Cada mecánica enumera sus tests en la sección "Cambios a realizar y

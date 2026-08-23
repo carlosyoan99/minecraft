@@ -11,13 +11,20 @@
 > Estado: `[COMPLETADA]` (**cerrada 2026-08-22**) — prerrequisito: **Fase 21.5
 > cerrada** ✅. La **F22 exige esta fase** (grafo actualizado).
 >
-> **✅ CERRADA (2026-08-22):** Bloque P (paridad) implementado: P1 escudo
-> total, P2 pesca 5-30s, P3 loot fiel, P4 miel 2.4, P5 bambú 2→2,
-> P6 maza consume caída, P7 blast furnace data-driven. Bloques A-G
-> pendientes (seguridad, escudo/maza servidor+cliente, mochila, jukebox,
-> `/summon`, powerPreference, higiene docs) → diferidos a **Fase 22.1**
-> (borrador creado). Suite **63/63** unitarios en verde; `SCHEMA_VERSION` 6
-> intacto; sin B/I nuevos.
+> **✅ CERRADA (2026-08-22):** implementación completa por bloques en el
+> orden acordado: A seguridad (`/locate` incremental con presupuesto+caché,
+> allowlist Origin sin bypass), B escudo/maza (`source: "projectile"`,
+> reválida de mano, desgaste de maza y de escudo por impacto), C mochila
+> (close exacto, repintado, fusión parcial ≤MAX_STACK sin pérdida),
+> D jukebox/note block (validación completa, `stopDisc()` en menú/muerte/
+> reconexión, persistencia aditiva de discos en `world.json`),
+> E `/summon` con cuota `MOB_TOTAL`+clamp, F powerPreference, **bloque P
+> completo** (escudo total, pesca 5-30 s, loot fiel, miel 2,4, bambú 2→2,
+> maza consume caída, blast furnace data-driven) y G higiene docs.
+> Suite **63/63** unitarios en verde (`unit-fase21.6.js`, 115 checks);
+> E2E 7/7; `--audit` 8/8; biome 0 errores; `SCHEMA_VERSION` 6 intacto;
+> sin B/I nuevos de esta fase. Los diferidos originales siguen en el
+> borrador de la **Fase 22.1**.
 
 ## 0. Origen (de dónde sale cada tarea)
 

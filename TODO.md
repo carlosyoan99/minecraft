@@ -1231,8 +1231,8 @@
 - [x] P5 Paridad: tablones de bambú 2 bambú → 2 tablones (ratio MC) — `unit-recetas` (2026-08-22: `recetas.json` 2×1 columna → 2; tests en `unit-fase21.6.js` y `unit-fase21.5.js`)
 - [x] P6 Paridad: bonus de caída de la maza consumido al primer impacto — test (2026-08-22: `p.fallFromY = null` tras bonus en `actions.js:753`; tests en `unit-fase21.6.js`)
 - [x] P7 Paridad: elegibilidad del blast furnace data-driven + nota cruzada F22 A5 (cobre entrará cuando exista raw copper) (2026-08-22: `isBlastCookable` en `crafting.js` lista extensible; nota F22 A5 en `TODO.md`)
-- [ ] G1 Higiene de docs: STATUS/DEPENDENCIAS coherentes al cierre; G2 `AGENTS.md`, `docs/tests.md`, mecánicas servidor/cliente
-- [ ] Z1 Cierre y auditoría de Fase 21.6: suite + E2E + `--audit` en verde, verificación manual mínima acordada (spam `/locate`, flecha PvP, viñeta, mochila close, disco tras reinicio), auditoría final obligatoria sin regresiones vs 2026-08-22
+- [x] G1 Higiene de docs: STATUS/DEPENDENCIAS coherentes al cierre; G2 `AGENTS.md`, `docs/tests.md`, mecánicas servidor/cliente (2026-08-22: STATUS fase activa → cerrada/F22 a retomar, DEPENDENCIAS fila+grafo, spec con bloque de cierre real, `docs/tests.md` matriz F21.6 + filas 21.5/21.6, `AGENTS.md` cadena de fases, `mecanicas.md` servidor (escudo total/pesca/jukebox/comandos) y cliente (bundle close/stopDisc/powerPreference), nota cruzada P7→F22 A5)
+- [x] Z1 Cierre y auditoría de Fase 21.6: suite + E2E + `--audit` en verde, verificación manual mínima acordada (spam `/locate`, flecha PvP, viñeta, mochila close, disco tras reinicio), auditoría final obligatoria sin regresiones vs 2026-08-22 (2026-08-22: unit **63/63** (`unit-fase21.6.js` 115 checks), E2E **7/7**, `--audit` **8/8**, `node --check` limpio, biome 0 errores; los puntos manuales quedaron cubiertos por su equivalente automatizado — spam `/locate`→presupuesto por tramo A1, flecha PvP→B1, viñeta→B2 servidor+tripwires cliente, mochila close→C1, disco tras reinicio→D3 round-trip sobre world.json real, paridad visible→P2/P4 — y el render por CDP `audit-fase7` sin excepciones)
 
 ---
 
@@ -1269,7 +1269,11 @@
 - [ ] A5 Cobre (1.17): `COPPER_ORE` (bloque con distribución por altura ~Y
       0..16) + `COPPER_INGOT` (horno) + `COPPER_BLOCK` (crafteo 9 lingotes);
       **solo el bloque por ahora** — sin oxidación, sin cut/escaleras/losas
-      (decisión documentada: ampliación futura si es factible)
+      (decisión documentada: ampliación futura si es factible).
+      **Nota cruzada F21.6 P7:** `COPPER_INGOT` ya figura en
+      `BLAST_SMELT_RESULTS` (blast furnace funde minerales ×2, lista
+      data-driven); al cerrar este A5, verificar que fundir `RAW_COPPER`
+      respeta el ×2 en blast furnace como MC (hierro/oro/**cobre**)
 - [ ] B1 Bloques/ítems de amatista: `AMETHYST_BLOCK`, `AMETHYST_CLUSTER`,
       `AMETHYST_SHARD` (B/I nuevos) — la **estructura geoda se mantiene en
       F21 (D2)**; aquí solo se definen los IDs que la F21 reusará; shard =

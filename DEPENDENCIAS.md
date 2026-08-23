@@ -51,9 +51,9 @@ graph LR
     classDef done fill:#2d6a4f,stroke:#1b4332,color:#fff;
     classDef active fill:#e9c46a,stroke:#b98a00,color:#222;
     classDef planned fill:#6a6a6a,stroke:#444,color:#fff;
-    class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5,F19_6,F20,F21,F21_5 done;
-    class F21_6 active;
-    class F22,F22_1,F23,F24,F25,F26,F26_5,F27,F27_5,F28,F29 planned;
+    class F0,F1,F2,F3,F4,F5,F6,F7,F8,F9,F9_5,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F19_5,F19_6,F20,F21,F21_5,F21_6 done;
+    class F22 active;
+    class F22_1,F23,F24,F25,F26,F26_5,F27,F27_5,F28,F29 planned;
 ```
 
 ## Tabla de prerrequisitos
@@ -86,8 +86,8 @@ graph LR
 | 20 | [`fase20-spec.md`](docs/spec/fase20-spec.md) | F18 cerrada | ✅ **Cerrada (v20.2, etiqueta `v20.2`)** |
 | 21 | [`fase21-spec.md`](docs/spec/fase21-spec.md) | F20 cerrada | ✅ **Cerrada y auditada (v21.2)** |
 | 21.5 | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada | ✅ **Cerrada y auditada (2026-08-20)** — la auditoría 2026-08-22 deriva sus fixes a la F21.6 |
-| 21.6 | [`fase21.6-spec.md`](docs/spec/fase21.6-spec.md) | F21.5 cerrada | 🟠 **En curso (abierta 2026-08-22)** |
-| 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | **F21.6 cerrada** | 📝 Prospectiva |
+| 21.6 | [`fase21.6-spec.md`](docs/spec/fase21.6-spec.md) | F21.5 cerrada | ✅ **Cerrada (2026-08-22)** — fixes de la auditoría + paridad MC; la verificación en navegador queda cubierta por `unit-fase21.6.js` + CDP `audit-fase7` |
+| 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | **F21.6 cerrada** | ⏸️ Pausada (Bloque A iniciado; se retoma ahora) |
 | 22.1 | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | F21.6 cerrada (se abre tras la F22) | 📝 Borrador prospectivo |
 | 23 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada | 📝 Prospectiva |
 | 24 | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada | 📝 Prospectiva |
