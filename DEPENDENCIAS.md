@@ -87,7 +87,7 @@ graph LR
 | 21 | [`fase21-spec.md`](docs/spec/fase21-spec.md) | F20 cerrada | ✅ **Cerrada y auditada (v21.2)** |
 | 21.5 | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada | ✅ **Cerrada y auditada (2026-08-20)** — la auditoría 2026-08-22 deriva sus fixes a la F21.6 |
 | 21.6 | [`fase21.6-spec.md`](docs/spec/fase21.6-spec.md) | F21.5 cerrada | ✅ **Cerrada (2026-08-22)** — fixes de la auditoría + paridad MC; la verificación en navegador queda cubierta por `unit-fase21.6.js` + CDP `audit-fase7` |
-| 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | **F21.6 cerrada** | ⏸️ Pausada (Bloque A iniciado; se retoma ahora) |
+| 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | **F21.6 cerrada** | 🟠 **En curso (retomada 2026-08-22; Bloque A sobre el avance de `8d58a09`)** |
 | 22.1 | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | F21.6 cerrada (se abre tras la F22) | 📝 Borrador prospectivo |
 | 23 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada | 📝 Prospectiva |
 | 24 | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada | 📝 Prospectiva |

@@ -1239,8 +1239,8 @@
 ## Fase 22 — Profundidad, minerales y fauna 1.17–1.21 (Spec)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase22-spec.md`](docs/spec/fase22-spec.md)
-> **PAUSADA** — se abrió el 2026-08-22 pero los fixes pre-22 (**Fase 21.6**)
-> van primero; su Bloque A se retoma al cerrar la 21.6.
+> **EN CURSO** (retomada 2026-08-22 al cerrarse la **F21.6**; el avance
+> previo del Bloque A quedó en `8d58a09` — falta test propio y auditoría).
 > **Prerrequisito actualizado: F21.6 cerrada** (antes F21.5).
 > Creada desde el plan del usuario "Actualizaciones Minecraft 1.17 → 1.21"
 > (2026-08-15, nueva sección en `Notas del usuario.md`): **minerales en

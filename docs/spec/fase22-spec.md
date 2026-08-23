@@ -1,6 +1,7 @@
 # Fase 22 — Profundidad, minerales y fauna 1.17–1.21 (Spec)
 
-> **Estado:** `[EN CURSO]` (abierta 2026-08-22 — Fase 21.5 cerrada)
+> **Estado:** `[EN CURSO]` (abierta 2026-08-22; **retomada** ese mismo día
+> tras cerrarse la **F21.6**, su prerrequisito definitivo)
 >
 > **A1 — Veredicto (2026-08-22):** se mantiene **128 bloques** (Y −64..+63,
 > `SCHEMA_VERSION` 6 intacto). Benchmark con 25 chunks (5×5, semilla

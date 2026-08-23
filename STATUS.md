@@ -14,12 +14,18 @@
 
 | | |
 | --- | --- |
-| **Fase** | Ninguna abierta — **F21.6 cerrada (2026-08-22)**; la siguiente es la **F22** (pausada, se retoma con su Bloque A) |
-| **Cerrada** | **21.6 — Correcciones de la auditoría y paridad MC (pre-F22)** [`[COMPLETADA]`](docs/spec/fase21.6-spec.md) — fixes 1-7 de la [auditoría consolidada](docs/audits/auditoria-2026-08-22.md) + bloque P de paridad aparte (decisión rectora: manda MC real) + higiene docs |
-| **Verificación** | Suite **63/63** unitarios (`unit-fase21.6.js` 115 checks), **E2E 7/7**, `--audit` **8/8**, `node --check` limpio, biome 0 errores, `SCHEMA_VERSION` 6 intacto, sin B/I nuevos de esta fase |
-| **Diferidos** | Linterna/luz nivel 15, bug cabezas de mobs, perfilado en vivo, pase interno de servidor y residuos CL-* → **borrador [Fase 22.1](docs/spec/fase22.1-spec.md)** |
+| **Fase** | **22 — Profundidad, minerales y fauna 1.17–1.21** [`[EN CURSO]`](docs/spec/fase22-spec.md) (**retomada 2026-08-22** tras cerrarse la F21.6) |
+| **Prerrequisito** | **F21.6 cerrada ✅** (fixes de auditoría + paridad MC; suite 63/63, E2E 7/7, `--audit` 8/8, biome 0) |
+| **Trabajo en curso** | Bloque A retomado sobre el avance ya commiteado (`8d58a09`): A1 veredicto altura (**se mantienen 128 bloques**), A2 terreno/cuevas/montañas y A3 deepslate / A4 raw ores / A5 cobre avanzados en código — pendiente su test propio (`unit-fase22`) y recalibraciones |
+| **Diferidos F21.6 → 22.1** | Linterna/luz nivel 15, bug cabezas de mobs, perfilado en vivo, pase interno de servidor y residuos CL-* → **borrador [Fase 22.1](docs/spec/fase22.1-spec.md)** |
 | **Bloqueantes** | Ninguno |
-| **Próximo paso** | Retomar la **F22** (Bloque A: altura 256/terreno/deepslate/raw ores/cobre — parte ya avanzada en el WIP) |
+| **Próximo paso** | Tests del Bloque A + recalibraciones (mundo/minerales/paridad/E2E de minería) y auditoría; después Bloques B+ según TODO |
+
+> **Fase 21.6 cerrada (2026-08-22)** — correcciones de la auditoría
+> consolidada 2026-08-22 + bloque P de paridad MC (escudo total, pesca
+> 5-30 s, loot fiel, miel 2,4, bambú 2→2, maza consume caída, blast furnace
+> data-driven); suite **63/63** (`unit-fase21.6.js`, 115 checks), E2E 7/7,
+> `--audit` 8/8. Detalle: [`fase21.6-spec.md`](docs/spec/fase21.6-spec.md).
 
 > **Fase 21.5 cerrada y auditada** (2026-08-20): suite **62/62** unitarios,
 > **E2E 7/7**, `--audit` **8/8**, biome 0 errores, `SCHEMA_VERSION` 6
@@ -70,8 +76,10 @@ suite **63/63 unitarios**, **E2E 7/7**, `--audit` 8/8 verdes, biome
 
 ## En revisión
 
-- Nada en revisión: la F21.6 cerró con toda la suite en verde.
-- **F22 PAUSADA** — su Bloque A se retoma como siguiente paso.
+- **F22 retomada 2026-08-22** — Bloque A en curso sobre el avance de
+  `8d58a09` (deepslate/cobre/raw ores/cuevas/montañas); falta test propio,
+  recalibraciones y auditoría del bloque.
+- Nada más en revisión: la F21.6 cerró con toda la suite en verde.
 
 ## Prospectiva (planificadas, sin implementar)
 
