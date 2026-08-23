@@ -12,6 +12,7 @@
 // ============================================================
 import * as THREE from "three";
 import Stats from "three/addons/stats.module.js";
+import { GPUStatsPanel } from "three/addons/GPUStatsPanel.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
@@ -32,7 +33,20 @@ stats.dom.style.position = "absolute";
 stats.dom.style.top = "0px";
 stats.dom.style.left = "0px";
 stats.dom.style.zIndex = "100";
-let statsVisible = false;
+// Fase 22.1+GPUStats: panel de GPU (ms reales de render) usando
+// EXT_disjoint_timer_query. Solo se crea cuando el toggle stats está
+// activo (requiere el contexto GL, que ya existe al abrir F3).
+let gpuPanel = null;
+let gpuVisible = false;
+
+// Instrumentar renderer.render para medir GPU time.
+// Se hace UNA vez; el hook solo mide cuando gpuPanel está activo.
+const _origRender = renderer.render.bind(renderer);
+renderer.render = (scene, camera) => {
+	if (gpuPanel) gpuPanel.startQuery();
+	_origRender(scene, camera);
+	if (gpuPanel) gpuPanel.endQuery();
+};
 
 // ============================================================
 // GRID DE BORDES DE CHUNK (sobre el terreno)
@@ -166,6 +180,8 @@ function updateHud() {
 		`Caras: ${fmt(totalFaces())} · Triángulos render: ${fmt(tris)}`,
 		`Pool geo: ${pool ? `${fmt(pool.reused)} reutilizadas · ${fmt(pool.created)} creadas · ${fmt(pool.disposed)} liberadas` : "--"}`,
 		`Tick servidor: ${Number.isFinite(srvTick) ? srvTick.toFixed(2) : "--"} ms · Gen chunk: ${Number.isFinite(srvGen) ? srvGen.toFixed(2) : "--"} ms`,
+	// Fase 22.1+GPUStats: GPU render time (panel overlay + línea en HUD)
+	gpuPanel ? `GPU: ${gpuVisible ? "activo (overlay)" : "inactivo"} · Draw calls: ${renderer.info.render.calls}` : `GPU: no disponible`,
 		`Daño: ${lastDmg ? `${lastDmg.source} ${lastDmg.amount}→${lastDmg.realAmount} @ ${lastDmg.x.toFixed(0)},${lastDmg.y.toFixed(0)},${lastDmg.z.toFixed(0)}` : "--"}`,
 		`Fallos cliente: ${lastErr ? `${window.__mcClientErrors.length} (${new Date(lastErr.t).toLocaleTimeString()} ${lastErr.text.slice(0, 60)})` : "ninguno"}`
 	].join("<br>");
@@ -178,15 +194,29 @@ export function toggleDebug() {
 	enabled = !enabled;
 	hudEl.classList.toggle("hidden", !enabled);
 	borderGroup.visible = enabled;
-	// Fase 22.1 (E): mostrar/ocultar stats.js según el ajuste.
+	// Fase 22.1 (E): mostrar/ocultar stats.js + GPUStatsPanel según el ajuste.
 	if (enabled && getSetting("stats")) {
 		if (!statsVisible) {
 			document.body.appendChild(stats.dom);
 			statsVisible = true;
 		}
-	} else if (statsVisible) {
-		stats.dom.remove();
-		statsVisible = false;
+		if (!gpuPanel) {
+			gpuPanel = new GPUStatsPanel(renderer.getContext());
+			stats.addPanel(gpuPanel);
+		}
+		if (!gpuVisible) {
+			gpuPanel.dom.style.display = "";
+			gpuVisible = true;
+		}
+	} else {
+		if (statsVisible) {
+			stats.dom.remove();
+			statsVisible = false;
+		}
+		if (gpuVisible && gpuPanel) {
+			gpuPanel.dom.style.display = "none";
+			gpuVisible = false;
+		}
 	}
 	if (enabled) {
 		rebuildBorders();
@@ -198,6 +228,8 @@ setInterval(() => {
 	if (!enabled) return;
 	rebuildBorders(); // barato: chunks nuevos/descargas y ediciones de bloques
 	updateHud();
-	// Fase 22.1 (E): actualizar stats.js si está visible.
+	// Fase 22.1 (E): actualizar stats.js + GPUStatsPanel si están visibles.
 	if (statsVisible) stats.update();
+	// GPUStatsPanel se actualiza automáticamente vía startQuery/endQuery;
+	// no necesita update() manual.
 }, 1000);
