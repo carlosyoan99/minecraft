@@ -104,3 +104,88 @@ export function setOrReuseAttribute(
 	geo.setAttribute(name, new Float32BufferAttributeCtor(data, itemSize));
 	return geo.getAttribute(name);
 }
+
+// ============================================================
+// Fase 22.1+BufferGeometryUtils: buffer pre-asignado para escritura
+// directa (sin push a Array regular + Float32Array.from).
+//
+// El greedy meshing produce cantidades variables de vértices, pero la
+// mayoría de los chunks cae en un rango predecible. Float32Buffer
+// reserva capacidad inicial y Expande el array por duplicado solo cuando
+// se agota — el coste amortizado es O(n) con ~2× reallocs en vez de
+// O(n²) del push a Array regular.
+//
+// Uso:
+//   const buf = new Float32Buffer(expectedVerts, 3); // 3 floats/vértice
+//   buf.push(x, y, z);  // o buf.write(x, y, z) con posición explícita
+//   buf.toTypedArray();  // Float32Array final (tamaño exacto)
+// ============================================================
+export class Float32Buffer {
+	constructor(initialCapacity, itemSize) {
+		this.itemSize = itemSize;
+		this.pos = 0; // posición de escritura (en floats)
+		this.arr = new Float32Array(initialCapacity * itemSize);
+	}
+
+	// Escribe itemSize floats en la posición actual y avanza.
+	write(...values) {
+		if (this.pos + values.length > this.arr.length) this._grow();
+		for (let i = 0; i < values.length; i++) this.arr[this.pos++] = values[i];
+	}
+
+	// Push de conveniencia: acepta un array o argumentos sueltos.
+	// Sigue la interfaz de Array.prototype.push para migración gradual.
+	push(...values) {
+		for (let i = 0; i < values.length; i++) {
+			if (this.pos >= this.arr.length) this._grow();
+			this.arr[this.pos++] = values[i];
+		}
+	}
+
+	// Número de floats escritos.
+	get length() {
+		return this.pos;
+	}
+
+	// Devuelve un Float32Array del tamaño exacto (sin waste).
+	toTypedArray() {
+		return this.pos === this.arr.length
+			? this.arr
+			: this.arr.subarray(0, this.pos);
+	}
+
+	// Crea un Float32Array NUEVO del tamaño exacto (copia).
+	// Útil cuando el buffer va a ser reusado (el subarray comparte
+	// el mismo underlying ArrayBuffer).
+	toNewTypedArray() {
+		return new Float32Array(this.arr.buffer, 0, this.pos);
+	}
+
+	_grow() {
+		const next = new Float32Array(this.arr.length * 2);
+		next.set(this.arr);
+		this.arr = next;
+	}
+}
+
+// ============================================================
+// setFromBuffer: carga datos de un Float32Buffer en un atributo de
+// BufferGeometry, reutilizando el buffer GPU cuando la longitud coincide.
+//
+// Diferencia con setOrReuseAttribute:
+//   - setOrReuseAttribute(data: Float32Array) — copia los datos
+//   - setFromBuffer(buf: Float32Buffer) — subarray SIN copia cuando
+//     el tamaño coincide (el buffer GPU se reutiliza); solo copia
+//     cuando el tamaño difiere (resize).
+// ============================================================
+export function setFromBuffer(geo, name, buf, itemSize, Float32BufferAttributeCtor) {
+	const data = buf.toTypedArray();
+	const existing = geo.getAttribute(name);
+	if (existing?.array && existing.array.length === data.length) {
+		existing.array.set(data);
+		existing.needsUpdate = true;
+		return existing;
+	}
+	geo.setAttribute(name, new Float32BufferAttributeCtor(data, itemSize));
+	return geo.getAttribute(name);
+}

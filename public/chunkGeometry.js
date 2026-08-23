@@ -40,6 +40,37 @@ import {
 } from "./constants.js";
 import { tileForFace, tileRect } from "./texturemap.js";
 
+// ============================================================
+// Float32Buffer — buffer pre-asignado para escritura directa.
+// Reemplaza Array.push + Float32Array.from con escritura secuencial
+// en un Float32Array pre-asignado. El array crece por duplicado solo
+// cuando se agota (~2× reallocs en vez de O(n²) del push).
+// ============================================================
+class Float32Buffer {
+	constructor(initialCapacity, itemSize) {
+		this.itemSize = itemSize;
+		this.pos = 0;
+		this.arr = new Float32Array(initialCapacity * itemSize);
+	}
+	write(a, b, c, d) {
+		if (this.pos + (d !== undefined ? 4 : c !== undefined ? 3 : b !== undefined ? 2 : 1) > this.arr.length)
+			this._grow();
+		this.arr[this.pos++] = a;
+		this.arr[this.pos++] = b;
+		if (c !== undefined) this.arr[this.pos++] = c;
+		if (d !== undefined) this.arr[this.pos++] = d;
+	}
+	get length() { return this.pos; }
+	toTypedArray() {
+		return this.pos === this.arr.length ? this.arr : this.arr.subarray(0, this.pos);
+	}
+	_grow() {
+		const next = new Float32Array(this.arr.length * 2);
+		next.set(this.arr);
+		this.arr = next;
+	}
+}
+
 const TORCH_LIGHT_GAIN = 1.4; // misma ganancia que world.js (luz de antorcha)
 
 // Fase 19.6 (C2): fase del vaivén de viento por celda — hash determinista
@@ -277,11 +308,35 @@ export function buildChunkGeometryData({
 		return diag ? 0.85 : 1.0;
 	};
 
-	// Buffers de salida (arrays planos; se convierten a Float32Array al final).
-	const terrain = { pos: [], norm: [], uv: [], col: [] };
-	const water = { pos: [], norm: [], uv: [], col: [] };
-	const lava = { pos: [], norm: [], uv: [], col: [] };
-	const torch = { pos: [], norm: [], uv: [], col: [] };
+	// Buffers de salida — Fase 22.1+BufferGeometryUtils: pre-asignados con
+	// Float32Buffer (escritura directa sin push a Array + Float32Array.from).
+	// Capacidad inicial estimada: terreno ~60K vértices (16³×6 caras × greedy),
+	// el resto mucho menor. El greedy meshing fusiona 3-5×, así que 60K es un
+	// tope conservador para un chunk de 16×128×16.
+	const terrain = {
+		pos: new Float32Buffer(60000, 3),
+		norm: new Float32Buffer(60000, 3),
+		uv: new Float32Buffer(60000, 2),
+		col: new Float32Buffer(60000, 3)
+	};
+	const water = {
+		pos: new Float32Buffer(4000, 3),
+		norm: new Float32Buffer(4000, 3),
+		uv: new Float32Buffer(4000, 2),
+		col: new Float32Buffer(4000, 3)
+	};
+	const lava = {
+		pos: new Float32Buffer(2000, 3),
+		norm: new Float32Buffer(2000, 3),
+		uv: new Float32Buffer(2000, 2),
+		col: new Float32Buffer(2000, 3)
+	};
+	const torch = {
+		pos: new Float32Buffer(2000, 3),
+		norm: new Float32Buffer(2000, 3),
+		uv: new Float32Buffer(2000, 2),
+		col: new Float32Buffer(2000, 3)
+	};
 	// Fase 19.6 (C2): buffer DEDICADO de plantas — los cross-quads de hierba/
 	// flores/trigo se separan de las antorchas para poder aplicarles el vertex
 	// shader de viento (displacement sutil en x/z) sin que las antorchas (que
@@ -289,7 +344,13 @@ export function buildChunkGeometryData({
 	// vec2: [fase (hash de la celda, para que no bailen todas a la vez),
 	// altura normalizada 0..1 (0 abajo, 1 arriba → el vaivén crece con la
 	// altura)]. Es un atributo SOLO de plantas: antorchas no lo llevan.
-	const plant = { pos: [], norm: [], uv: [], col: [], wind: [] };
+	const plant = {
+		pos: new Float32Buffer(2000, 3),
+		norm: new Float32Buffer(2000, 3),
+		uv: new Float32Buffer(2000, 2),
+		col: new Float32Buffer(2000, 3),
+		wind: new Float32Buffer(2000, 2)
+	};
 
 	// ----------------------------------------------------------
 	// CROSS-QUADS (antorcha Fase 6 / plantas Fase 9): dos planos cruzados
@@ -343,12 +404,13 @@ export function buildChunkGeometryData({
 			[0, 2, 3]
 		]) {
 			for (const idx of [i, j, k]) {
-				buf.pos.push(...verts[idx]);
-				buf.norm.push(nx, ny, nz);
+				const v = verts[idx];
+				buf.pos.write(v[0], v[1], v[2]);
+				buf.norm.write(nx, ny, nz);
 				const [uu, vv] = QUAD_UVS[idx];
-				buf.uv.push(e0 + uu * (e1 - e0), f0 + vv * (f1 - f0));
-				buf.col.push(torchLight, torchLight, torchLight);
-				if (wind) buf.wind.push(wind[idx * 2], wind[idx * 2 + 1]);
+				buf.uv.write(e0 + uu * (e1 - e0), f0 + vv * (f1 - f0));
+				buf.col.write(torchLight, torchLight, torchLight);
+				if (wind) buf.wind.write(wind[idx * 2], wind[idx * 2 + 1]);
 			}
 		}
 	};
@@ -636,18 +698,18 @@ export function buildChunkGeometryData({
 				c: v
 			});
 		}
-		for (const [i, j, k] of [
-			[0, 1, 2],
-			[0, 2, 3]
-		]) {
-			for (const idx of [i, j, k]) {
-				const p = verts[idx];
-				buf.pos.push(p.x, p.y, p.z);
-				buf.norm.push(...face.dir);
-				buf.uv.push(p.u, p.v);
-				buf.col.push(p.c, p.c, p.c);
-			}
+	for (const [i, j, k] of [
+		[0, 1, 2],
+		[0, 2, 3]
+	]) {
+		for (const idx of [i, j, k]) {
+			const p = verts[idx];
+			buf.pos.write(p.x, p.y, p.z);
+			buf.norm.write(face.dir[0], face.dir[1], face.dir[2]);
+			buf.uv.write(p.u, p.v);
+			buf.col.write(p.c, p.c, p.c);
 		}
+	}
 	};
 	for (let fi = 0; fi < FACES.length; fi++) {
 		const face = FACES[fi];
@@ -755,10 +817,10 @@ export function buildChunkGeometryData({
 	const finalize = (b) =>
 		b.pos.length
 			? {
-					pos: Float32Array.from(b.pos),
-					norm: Float32Array.from(b.norm),
-					uv: Float32Array.from(b.uv),
-					col: Float32Array.from(b.col)
+					pos: b.pos.toTypedArray(),
+					norm: b.norm.toTypedArray(),
+					uv: b.uv.toTypedArray(),
+					col: b.col.toTypedArray()
 				}
 			: null;
 	// Fase 19.6 (C2): las plantas llevan además el atributo `wind` (vec2:
@@ -766,11 +828,11 @@ export function buildChunkGeometryData({
 	const finalizePlant = (b) =>
 		b.pos.length
 			? {
-					pos: Float32Array.from(b.pos),
-					norm: Float32Array.from(b.norm),
-					uv: Float32Array.from(b.uv),
-					col: Float32Array.from(b.col),
-					wind: Float32Array.from(b.wind)
+					pos: b.pos.toTypedArray(),
+					norm: b.norm.toTypedArray(),
+					uv: b.uv.toTypedArray(),
+					col: b.col.toTypedArray(),
+					wind: b.wind.toTypedArray()
 				}
 			: null;
 	return {
