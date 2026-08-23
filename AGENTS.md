@@ -230,8 +230,11 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   A4 raw ores, A5 cobre, B1 amatista (block/cluster/shard), B2 catalejo,
   C1 Deep Dark/sculk, D1 rana, G1 rate limit por conexión; A6 no-aplicable
   (veredicto A1); suite 64/64 (`unit-fase22.js` 115 checks), E2E 7/7,
-  --audit 8/8; la 23 exige la 22; la 24 exige la 23;
-  la 25 exige la 24. La
+  --audit 8/8; la **Fase 22.1 está cerrada (2026-08-22, spec
+  `fase22.1-spec.md`)**: CI Actions bloqueante, Dependabot, madge/knip
+  informativos, stats.js+GPUStatsPanel, addons three vendorizados e
+  integrados (BufferGeometryUtils, tween, Line2); la 23 exige la 22;
+  la 24 exige la 23; la 25 exige la 24. La
   19.5 adelantó a la 19.6 el motor 3D y a la F21 el audio por bioma; la F22
   aporta los bloques de amatista que la geoda de la F21 reusa y confirma
   Won't propios (oxidación del cobre, renacuajos, Warden, redstone/Crafter);

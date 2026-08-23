@@ -1284,7 +1284,7 @@
 ## Fase 22.1 — Herramientas de calidad y automatización
 
 > Especificación: [`docs/spec/fase22.1-spec.md`](docs/spec/fase22.1-spec.md)
-> **EN CURSO** (abierta 2026-08-22, prerrequisito F22 cerrada ✅).
+> **COMPLETADA** (cerrada 2026-08-22, prerrequisito F22 cerrada ✅).
 > Tooling ALREDEDOR del juego: ninguna herramienta reemplaza sistemas
 > propios ni cambia el comportamiento para quien juega.
 

@@ -1,6 +1,6 @@
 # Fase 22.1 — Herramientas de calidad y automatización (Spec)
 
-> **Estado:** `[EN CURSO]` (abierta 2026-08-22 tras cerrar la F22).
+> **Estado:** `[COMPLETADA]` (cerrada 2026-08-22).
 > Tooling ALREDEDOR del juego — ninguna herramienta reemplaza sistemas
 > propios ni cambia el comportamiento para quien juega. Prerrequisito:
 > F22 cerrada ✅.
@@ -109,10 +109,41 @@ Verificado antes de escribir esta spec: hoy no existe ningún workflow en
 
 ---
 
-## 10. Cambios en esta spec
+## 10. Bloque de cierre (2026-08-22)
+
+1. **Bloque A — CI:** `.github/workflows/ci.yml` creado, workflow
+   bloqueante en cada push/PR (npm ci, node --check, lint, test:coverage,
+   audit). Node 18/20/22. Madge/knip como pasos informativos.
+2. **Bloque B — Dependabot:** `.github/dependabot.yml` creado, revisión
+   semanal npm (lunes), PRs pasan por CI.
+3. **Bloque C — madge:** `npm run graph`, detecta 3 dependencias
+   circulares pre-existentes en `public/` (informativo, no bloqueante).
+4. **Bloque D — knip:** `npm run deadcode` + `knip.json` con exclusiones
+   (public/, tests/, scripts/; exports dinámicos ignorados). Limpio.
+5. **Bloque E — stats.js:** `public/vendor/addons/stats.module.js`
+   vendorizado de three 0.160. Toggle "Stats de rendimiento (F3)" en
+   ajustes Video (OFF por defecto). Integrado en debug.js.
+6. **Bloque E extra — addons de three.js 0.160:** BufferGeometryUtils,
+   GPUStatsPanel, tween.module.js, Line2+LineMaterial+LineSegments2
+   vendorizados y parcialmente integrados:
+   - **BufferGeometryUtils:** Float32Buffer en chunkGeometry.js
+     (pre-asignación + escritura directa, reemplaza Array.push).
+   - **GPUStatsPanel:** integrado en F3 (EXT_disjoint_timer_query,
+     panel junto a stats.js, renderer.render instrumentado).
+   - **tween.module.js:** FOV del jugador con Quadratic.Out en vez
+     de lerp lineal (sprint/catalejo, 200ms).
+   - **Line2:** grid F3 con grosor real via LineMaterial (shader).
+7. **Bloque F — Docs:** CLAUDE.md (CI bloqueante, scripts graph/deadcode),
+   README.md (badge CI + fases 22). Suite 64/64, node --check limpio.
+
+---
+
+## 11. Cambios en esta spec
 
 **Cambios en esta spec (v1):**
 - 2026-08-22: creación del spec (borrador desde la conversación sobre
   tooling).
 - 2026-08-22: apertura — estado `[EN CURSO]`, todos los bloques A-F
-  implementados; spec pendiente de cierre formal.
+  implementados.
+- 2026-08-22: cierre — estado `[COMPLETADA]`, bloque de cierre
+  documentado (§10), addons de three integrados.
