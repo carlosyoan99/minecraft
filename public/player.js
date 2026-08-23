@@ -18,10 +18,12 @@ import {
 	NON_SOLID_PLANTS,
 	SAND,
 	SNOW,
+	SPYGLASS, // Fase 22 (B2): catalejo con zoom
 	TORCH,
 	WATER
 } from "./constants.js";
 import { setUnderwater, updateDayNight } from "./daynight.js";
+import { getHeldItem } from "./hud.js"; // Fase 22 (B2): catalejo
 import { isDoorOpen } from "./network.js"; // Fase 13 (L2): estado local de puertas
 import { tickFallingLeaves } from "./particles.js"; // F21.5 (E4)
 import { camera, controls, renderer, scene, sun } from "./scene.js";
@@ -45,6 +47,9 @@ const SWIM_SPEED = 2.6; // bloques/segundo (en agua)
 // de caminar; abre el FOV unos grados mientras se corre (ver animate()).
 const SPRINT_SPEED = 5.6; // bloques/segundo corriendo
 const SPRINT_FOV = 10; // grados extra de FOV al correr (MC abre ~10°)
+// Fase 22 (B2): catalejo — al sostenerlo el FOV se reduce ~70% (MC: FOV base
+// / 3.5 ≈ 20° con FOV 70). Se desactiva sprint y la velocidad se reduce.
+const SPYGLASS_FOV_FACTOR = 0.3; // FOV se reduce al 30% del valor base
 // Fase 10 (D5): agacharse (Shift) — 30% de la velocidad de caminar, como en
 // Minecraft, y con protección de bordes (no se cae del borde si el bloque de
 // debajo del siguiente paso no es sólido).
@@ -304,15 +309,21 @@ function animate() {
 		// Fase 10 (D3/D5): velocidad por estado — sprint (doble-tap W) solo en
 		// tierra y moviéndose hacia delante; agacharse (Shift) reduce a 30%.
 		// El agua impone su propia resistencia (SWIM_SPEED) por encima de todo.
-		const sprinting = move.sprint && move.forward && !inWater && !flying;
+		const heldItem = getHeldItem();
+		const usingSpyglass = heldItem && heldItem.id === SPYGLASS;
+		const sprinting =
+			move.sprint && move.forward && !inWater && !flying && !usingSpyglass;
 		const sneaking = move.sneak && !inWater && !flying;
+		// Fase 22 (B2): catalejo — velocidad reducida (mitad) al usarlo (MC)
 		const speed = inWater
 			? SWIM_SPEED
-			: sprinting
-				? SPRINT_SPEED
-				: sneaking
-					? SNEAK_SPEED
-					: PLAYER_SPEED;
+			: usingSpyglass
+				? PLAYER_SPEED * 0.5
+				: sprinting
+					? SPRINT_SPEED
+					: sneaking
+						? SNEAK_SPEED
+						: PLAYER_SPEED;
 		if (len > 0) {
 			dx = (dx / len) * speed * dt;
 			dz = (dz / len) * speed * dt;
@@ -335,7 +346,10 @@ function animate() {
 		// F19.5 (B4): con "reducir movimiento" el FOV del sprint desaparece
 		// (puede provocar mareo en personas sensibles al movimiento).
 		const motionFov = getSetting("reduceMotion") ? 0 : SPRINT_FOV;
-		const targetFov = getSetting("fov") + (sprinting ? motionFov : 0);
+		const baseFov = getSetting("fov");
+		const targetFov = usingSpyglass
+			? baseFov * SPYGLASS_FOV_FACTOR
+			: baseFov + (sprinting ? motionFov : 0);
 		if (Math.abs(camera.fov - targetFov) > 0.05) {
 			camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 10);
 			camera.updateProjectionMatrix();

@@ -518,6 +518,65 @@ function tickSlime(mob, _isNight, nearest, dist) {
 	}
 }
 
+// ============================================================
+// Rana (Fase 22, D1): pasivo de pantano que SALTA (parábola por-mob, patrón
+// tickSlime) y COME SLIMES PEQUEÑOS (slimeSize 0) a la vista — MC real.
+// Cría con bola de slime (BREED_FOOD.frog) vía applyFeed. Sin renacuajos
+// (Won't documentado en la spec). Spawn: solo pantano (BIOME_SPAWN).
+// ============================================================
+const FROG_HUNT_DIST = 8; // bloques: detecta slimes pequeños a esta distancia
+const FROG_EAT_DIST = 1.2; // bloques: distancia de "bocado"
+const FROG_HUNT_SPEED = 0.06; // bloques/tick hacia la presa
+const FROG_HOP_PERIOD_MS = 900; // ciclo del salto (más rápido que el slime)
+const FROG_HOP_HEIGHT = 0.4; // altura del bote sobre el suelo
+
+function tickFrog(mob, isNight) {
+	// 1) Presa: el slime PEQUEÑO vivo más cercano dentro del radio de caza.
+	let presa = null;
+	let mejorD = FROG_HUNT_DIST;
+	for (const m of state.mobs) {
+		if (!m.alive || m.type !== "slime" || m.slimeSize !== 0) continue;
+		const d = Math.hypot(m.x - mob.x, m.z - mob.z);
+		if (d < mejorD) {
+			mejorD = d;
+			presa = m;
+		}
+	}
+	// 2) Comportamiento social genérico (huida/rebaño/pausas/deambular):
+	//    tickPassive decide estado y movimiento base.
+	tickPassive(mob, isNight);
+	//    La caza manda salvo que la rana esté huyendo (mobHit activa flee).
+	if (presa && Date.now() >= (mob.fleeUntil || 0)) {
+		if (mejorD < FROG_EAT_DIST) {
+			// Bocado: el slime pequeño desaparece (el snapshot de mobs_update
+			// lo quita del cliente); la rana recupera 2 HP como "comida".
+			presa.alive = false;
+			presa.health = 0;
+			mob.state = "eat";
+			mob.frogEatAt = Date.now();
+			if (typeof mob.maxHealth === "number")
+				mob.health = Math.min(mob.maxHealth, mob.health + 2);
+		} else {
+			mob.state = "hunt";
+			const dx = presa.x - mob.x,
+				dz = presa.z - mob.z;
+			const len = Math.max(0.1, Math.hypot(dx, dz));
+			mob.x += (dx / len) * FROG_HUNT_SPEED;
+			mob.z += (dz / len) * FROG_HUNT_SPEED;
+		}
+	}
+	// 3) Salto: fase periódica POR-MOB determinista (contador + offset del id,
+	//    mismo criterio que slimeHopPhase — nada de Date.now()%periodo).
+	mob.frogHopAccum = ((mob.frogHopAccum || 0) + TICK_MS) % FROG_HOP_PERIOD_MS;
+	let off = 0;
+	for (let i = 0; i < String(mob.id).length; i++)
+		off = (off * 31 + String(mob.id).charCodeAt(i)) % FROG_HOP_PERIOD_MS;
+	const fase =
+		((mob.frogHopAccum + off) % FROG_HOP_PERIOD_MS) / FROG_HOP_PERIOD_MS;
+	const groundY = world.getHeight(Math.floor(mob.x), Math.floor(mob.z)) + 1;
+	mob.y = groundY + Math.sin(fase * Math.PI) * FROG_HOP_HEIGHT;
+}
+
 // Ahogado (A4): nada hacia el jugador en 3D (mantiene la profundidad del
 // agua, sube/baja según la posición del objetivo), ataca cuerpo a cuerpo a
 // ≤1.5 y lanza tridentes con cooldown (~3s) si el jugador está a 4-14
@@ -1056,6 +1115,17 @@ function createSpecies(Mob) {
 		}
 	}
 
+	// Fase 22 (D1): rana de pantano — salta, come slimes pequeños, cría con
+	// bola de slime. Spawn exclusivo del pantano (BIOME_SPAWN.swamp.day).
+	class Frog extends Mob {
+		constructor(x, y, z) {
+			super("frog", x, y, z);
+		}
+		tickSpecies(isNight) {
+			tickFrog(this, isNight);
+		}
+	}
+
 	class Bee extends Mob {
 		constructor(x, y, z) {
 			super("bee", x, y, z);
@@ -1102,6 +1172,7 @@ function createSpecies(Mob) {
 		chicken: Chicken,
 		sheep: Sheep,
 		rabbit: Rabbit,
+		frog: Frog, // Fase 22 (D1)
 		bee: Bee,
 		ocelot: Ocelot,
 		creaking: Creaking,
@@ -1133,6 +1204,7 @@ function createSpecies(Mob) {
 		Chicken,
 		Sheep,
 		Rabbit,
+		Frog, // Fase 22 (D1)
 		Bee,
 		Ocelot,
 		MOB_CLASSES,

@@ -37,7 +37,9 @@ graph LR
     F21_5[Fase 21.5 · Contenido y paridad ampliados: pesca, bloques 1.8-1.15, combate, Trial Chambers] --> F21
     F21_6[Fase 21.6 · Correcciones auditoría + paridad MC (pre-F22)] --> F21_5
     F22[Fase 22 · Profundidad 1.17-1.21] --> F21_6
-    F22_1[Fase 22.1 · Correcciones y paridad diferidas (borrador)] --> F22
+    F22_1[Fase 22.1 · Tooling: CI, Dependabot, madge/knip, stats.js] --> F22
+    F22_2[Fase 22.2 · JSDoc + tsc --noEmit (sin build step)] --> F22_1
+    F22_3[Fase 22.3 · Correcciones y paridad diferidas (borrador)] --> F22_2
     F23[Fase 23 · Diferidos F22] --> F22
     F24[Fase 24 · Nether Update] --> F23
     F25[Fase 25 · End Update] --> F24
@@ -88,7 +90,9 @@ graph LR
 | 21.5 | [`fase21.5-spec.md`](docs/spec/fase21.5-spec.md) | F21 cerrada | ✅ **Cerrada y auditada (2026-08-20)** — la auditoría 2026-08-22 deriva sus fixes a la F21.6 |
 | 21.6 | [`fase21.6-spec.md`](docs/spec/fase21.6-spec.md) | F21.5 cerrada | ✅ **Cerrada (2026-08-22)** — fixes de la auditoría + paridad MC; la verificación en navegador queda cubierta por `unit-fase21.6.js` + CDP `audit-fase7` |
 | 22 | [`fase22-spec.md`](docs/spec/fase22-spec.md) | **F21.6 cerrada** | 🟠 **En curso (retomada 2026-08-22; Bloque A sobre el avance de `8d58a09`)** |
-| 22.1 | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | F21.6 cerrada (se abre tras la F22) | 📝 Borrador prospectivo |
+| 22.1 | [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md) | F22 cerrada | 📝 Prospectiva — tooling: CI bloqueante, Dependabot, `madge`/`knip`, `stats.js` tras toggle |
+| 22.2 | [`fase22.2-spec.md`](docs/spec/fase22.2-spec.md) | 22.1 cerrada | 📝 Prospectiva — JSDoc + `tsc --noEmit` incremental, **sin build step** |
+| 22.3 | [`fase22.3-spec.md`](docs/spec/fase22.3-spec.md) | 22.2 cerrada (era la antigua 22.1; renumerada al integrar el tooling) | 📝 Borrador prospectivo |
 | 23 | [`fase23-spec.md`](docs/spec/fase23-spec.md) | F22 cerrada | 📝 Prospectiva |
 | 24 | [`fase24-spec.md`](docs/spec/fase24-spec.md) | F23 cerrada | 📝 Prospectiva |
 | 25 | [`fase25-spec.md`](docs/spec/fase25-spec.md) | F24 cerrada | 📝 Prospectiva |
@@ -115,7 +119,7 @@ graph LR
   bloque de paridad MC aparte (escudo total, pesca 5-30 s…); **F22 pasa a
   exigir F21.6**. Sus diferidos (linterna/luz, bug cabezas de mobs,
   perfilado, pase servidor interno, residuos CL-*) viven en el borrador
-  **F22.1**, que se abriría tras la F22.
+  **F22.3**, que se abriría tras la F22.
 - **F24/F25 desbloquean** el Won't "dimensiones" (Nether/End) al abrirse.
 - **F20** (rolling release) solo exige la **F18 cerrada** (depende de 16/17,
   pero no de la 19 en curso).

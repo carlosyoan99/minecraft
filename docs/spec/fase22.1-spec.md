@@ -1,53 +1,112 @@
-# Fase 22.1 — Correcciones, paridad de luz y verificación diferida (Borrador) (Spec)
+# Fase 22.1 — Herramientas de calidad y automatización (Spec)
 
-> **Estado:** `[PROSPECTIVA]` — **BORRADOR** creado 2026-08-22 desde la
-> [auditoría 2026-08-22](../audits/auditoria-2026-08-22.md) y la entrevista
-> del planificador del mismo día. Agrupa TODO lo diferido expresamente de la
-> [Fase 21.6](fase21.6-spec.md) más los residuos heredados (PERSISTE) y un
-> bug abierto de `Notas del usuario.md`.
->
-> **Posición en el grafo:** su numeración la sitúa tras la **Fase 22**; se
-> abrirá cuando el usuario lo decida (prerrequisito duro: F21.6 cerrada).
-> No renumera la serie 22→23→24→25.
+> **BORRADOR** — se inserta antes de la Fase 22.2, después del trabajo ya
+> en curso de Fase 22 (bloques A3-A5 ya hechos según el commit
+> `f11e279`). Es una subfase de herramientas puntuales, no una
+> reescritura de nada — surge de la conversación sobre qué tooling
+> ayudaría al proyecto, y de descartar explícitamente la idea de
+> reescribir el juego con dependencias nuevas de Three.js: la conclusión
+> fue quedarnos con herramientas acotadas de calidad/automatización, no
+> con un cambio de arquitectura. Estado: prospectiva.
 
 ## 0. Origen
 
-| # | Fuente | Ítem | Notas |
-|---|---|---|---|
-| L1 | Auditoría §5 paridad fila 11 + entrevista 2026-08-22 | **Linterna fiel a MC**: luz nivel 15 (hoy hereda el pipe de antorcha, nivel 14) y receta con 8 nuggets de hierro (hoy 4 lingotes). Requiere tocar el sistema de luz (`lighting.js`/`lightclient`) → fase propia | Decisión: «el sistema de luz muévelo a otra fase» |
-| B1 | `Notas del usuario.md` §Bugs abiertos | **Cabezas de mobs y jugadores muestran caras por todos sus lados** (bug visual de UVs/modelo multibloque) | Pendiente de diagnóstico propio (render, solo visible en navegador) |
-| V1 | Auditoría §4 Rendimiento «Recomendado perfilar en vivo» | Medición real: `/locate` (ms bloqueados), `arrows_update` bytes/s con varios pescando, granja de hornos con `--prof`, profiler navegador hojas/note blocks | La F21.6 arregla `/locate`; aquí se mide que quedó dentro de presupuesto |
-| S1 | Auditoría §2 servidor «No revisado por límite de pasos» | **Completar el pase interno de servidor**: handlers WS nuevos por dentro (wind charge/bundle/blast furnace), ciclo interno de `projectiles.js`, `fishing.js` completo, campos nuevos de `save-players.js`, IA interna Creaking/Bogged | La F21.6 auditó `combat.js` línea a línea; esto cubre el resto |
-| R1 | Auditoría §3 cliente #5/#6/#7 (PERSISTE) | Residuos heredados: **CL-2** pausa de render/audio en blur (flag `paused = document.hidden || !hasFocus()` en `player.js`), reset local en reconexión (limpiar `doorStates`, paneles/bundle abiertos — CL-1 parcial), opacidad compartida de materiales de partículas (materiales por color mutados por partícula) | Backlog desde 2026-08-15 |
+| # | Fuente | Contenido | Decisión |
+|---|--------|-----------|----------|
+| A | Conversación sobre tooling | Reescribir el juego con dependencias nuevas de Three.js | **Descartada** — alto riesgo, sin problema real que lo justifique hoy (ver razonamiento en la conversación: 0 vulnerabilidades, suite en verde, 21+ fases auditadas) |
+| B | Conversación sobre tooling | CI en GitHub Actions | Aceptada — Bloque A de esta spec |
+| C | Conversación sobre tooling | Dependabot | Aceptada — Bloque B |
+| D | Conversación sobre tooling | `madge` (dependencias circulares) | Aceptada — Bloque C |
+| E | Conversación sobre tooling | `knip` (código muerto) | Aceptada — Bloque D |
+| F | Conversación sobre tooling | `stats.js` de Three.js para HUD de rendimiento en desarrollo | Aceptada — Bloque E |
+| G | Conversación sobre tooling | `rot-js` para pathfinding | **No incluida aquí** — queda ligada al bloque de persecución de `fase27.5-spec.md`, se evalúa cuando se llegue a esa fase, no como tooling general |
 
-## 1. Alcance previsto (a afinar al abrir la fase)
+## 1. Contexto y principio rector
 
-1. **L1 Linterna:** nivel de luz propio 15 + receta nuggets; recalibrar
-   `unit-sync`/tests de luz.
-2. **B1 Cabezas:** diagnóstico CDP del modelo (`MOB_PARTS`/jugadores
-   remotos), fix de caras duplicadas + test de geometría determinista.
-3. **V1 Perfilado:** informe con métricas antes/después de la F21.6.
-4. **S1 Pase servidor completo:** auditoría orquestada de las áreas listadas,
-   sin huecos.
-5. **R1 Residuos:** los tres fixes con su test/regresión.
+Ninguna herramienta de esta fase reemplaza un sistema propio del juego
+(física, audio, render, persistencia siguen siendo 100% del proyecto).
+Todo lo de aquí es **verificación y automatización alrededor de** lo que
+ya existe — mismo espíritu que ya tienen con `biome`/`c8`. Nada de esto
+cambia el comportamiento del juego para quien lo juega.
 
-## 2. Prerrequisitos y orden
+Verificado antes de escribir esta spec: hoy no existe ningún workflow en
+`.github/`, ni configuración de Dependabot, ni `madge`/`knip` en
+`devDependencies` — se parte de cero en los cinco bloques.
 
-- Duro: **F21.6 cerrada y auditada**.
-- Recomendado: abrirse tras cerrar la **F22** (su superficie minera toca los
-  mismos ficheros de generación/proyectiles); si no, decisión del usuario.
+## 2. Bloque A — CI en GitHub Actions
 
-## 3. Criterios de aceptación (borrador)
+- [ ] Workflow que corre en cada push y cada PR (a `main` y a cualquier
+      rama, incluidas las que ya se recomendaron para Nether/End):
+      `npm ci`, `node --check` sobre `server/*.js` y `public/*.js`,
+      `npm run lint`, `npm run test:coverage`.
+- [ ] **Bloqueante desde el día uno** — a diferencia del chequeo de tipos
+      de la Fase 22.2, estos comandos ya son maduros y llevan fases
+      pasando en verde; no hay razón para introducirlos como
+      "informativos".
+- [ ] Badge de estado del workflow en `README.md`.
 
-1. Sin regresiones en suite/E2E/`--audit`; cada bloque con su test.
-2. Informe de perfilado V1 archivado en esta spec.
-3. Pase S1 sin áreas «no revisadas».
-4. Bug B1 verificado en navegador (CDP) y cerrado en `Notas del usuario.md`.
+## 3. Bloque B — Dependabot
 
----
+- [ ] `.github/dependabot.yml`: revisión semanal de dependencias npm,
+      alertas de seguridad automáticas sobre `express`, `ws`, `uuid`,
+      `simplex-noise`.
+- [ ] Los PRs que abra Dependabot pasan por el mismo CI del Bloque A
+      antes de poder fusionarse — no se mergean a ciegas.
 
-## Cambios en esta spec
+## 4. Bloque C — `madge` (dependencias circulares)
 
-- 2026-08-22: creación del borrador (diferidos de la entrevista del
-  planificador 2026-08-22: linterna/luz, bug de cabezas, perfilado, pase
-  servidor restante, residuos CL-*).
+- [ ] Añadir `madge` como `devDependency`.
+- [ ] Script `npm run graph` (o similar) que verifica ausencia de
+      dependencias circulares entre módulos de `server/` y `public/`
+      por separado.
+- [ ] Decidir si reemplaza o solo verifica `DEPENDENCIAS.md` (mantenido
+      a mano hoy) — sugerido: generar el grafo con `madge` y usarlo para
+      confirmar que el documento a mano sigue siendo preciso, no
+      necesariamente reemplazarlo de inmediato.
+- [ ] Integrar en el CI del Bloque A como paso informativo al principio.
+
+## 5. Bloque D — `knip` (código muerto)
+
+- [ ] Añadir `knip` como `devDependency`.
+- [ ] Script `npm run deadcode`.
+- [ ] **Informativo, no bloqueante, al principio** — es normal que la
+      primera pasada tenga falsos positivos que requieren configurar
+      exclusiones; no forzar cero hallazgos desde el primer día.
+
+## 6. Bloque E — `stats.js` (HUD de rendimiento en desarrollo)
+
+- [ ] Vendorizar `addons/libs/stats.module.js` de la misma versión de
+      Three.js ya vendorizada (`0.160.0`) en `public/vendor/` — no es una
+      dependencia nueva, es un archivo más del mismo paquete que ya
+      tienen.
+- [ ] Integrarlo en el HUD de debug (F3) ya existente, **detrás de un
+      toggle en ajustes**, apagado por defecto — no debe verse en una
+      partida normal, solo cuando se activa explícitamente para
+      desarrollo/perfilado.
+
+## 7. Bloque F — Documentación
+
+- [ ] Actualizar `CLAUDE.md`: CI ahora es bloqueante para fusionar a
+      `main`, cómo correr `madge`/`knip` en local, qué esperar del
+      badge del README.
+- [ ] No se agregan tests de producto en esta fase — es tooling.
+
+## 8. Fuera de alcance de esta fase
+
+- Cualquier reescritura de sistemas existentes (física, audio, render,
+  persistencia) — descartado explícitamente en la conversación de
+  origen, ver tabla §0 fila A.
+- `rot-js` o cualquier librería de pathfinding — ver tabla §0 fila G,
+  queda ligado a `fase27.5-spec.md`.
+- Migración a TypeScript — ver `fase22.2-spec.md`, que sigue a esta.
+
+## 9. Criterios de aceptación
+
+- CI corriendo y **bloqueante** en cada push/PR.
+- Dependabot configurado y probado con al menos un PR real generado por
+  él.
+- `madge` y `knip` integrados como scripts, con su nivel
+  bloqueante/informativo decidido explícitamente (no implícito).
+- `stats.js` visible solo tras activar el toggle correspondiente.
+- Documentación (`CLAUDE.md`, `README.md`) actualizada.
+- Auditoría de Fase 22.1 obligatoria antes de cerrar.

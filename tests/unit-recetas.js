@@ -419,7 +419,9 @@ check(
 		I.MUSIC_DISC_13,
 		I.PAINTING,
 		// Fase 22 (A4): cobre crudo — ORE_DROP al minar la mena de cobre.
-		I.RAW_COPPER
+		I.RAW_COPPER,
+		// Fase 22 (B1): fragmento de amatista — ORE_DROP al romper cluster.
+		I.AMETHYST_SHARD
 	]);
 	const huérfanos = Object.values(I)
 		.filter((id) => typeof id === "number")

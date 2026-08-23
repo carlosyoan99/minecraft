@@ -14,6 +14,8 @@
 const { I, BOW_DAMAGE, isSolidBlock } = require("./constants.js");
 const state = require("./state.js");
 const world = require("./world.js");
+// Fase 22 (C1): propagación de sculk al morir un mob por proyectil
+const sculk = require("./sculk.js");
 // players.js no importa mobs.js/projectiles.js, así que es seguro requerirlo
 // aquí (mismos imports que tenía el bloque en mobs.js).
 const {
@@ -432,6 +434,8 @@ function tickArrows(dtMs) {
 						// El slime se divide antes de morir (como en attack_mob).
 						m.onDeath(); // C2: el slime se divide (hook por especie)
 						m.alive = false;
+						// Fase 22 (C1): muerte sobre sculk → propagación Deep Dark
+						sculk.onMobDeath(m);
 						// Si el lanzador es un jugador que está conectado, recibe los
 						// drops y la XP del mob (que es quien aprieta mejor que con la
 						// mano: misma regla de recompensa de attack_mob en net.js).

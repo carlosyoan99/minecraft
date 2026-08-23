@@ -76,7 +76,8 @@ const UNIT = [
 	"unit-fase20.js", // Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — showMenuBg solo en el menú principal
 	"unit-fase21.js", // Fase 21 (A1): biomas más grandes — coherencia de rachas (BIOME_FREQ 0.003) + determinismo de etiquetas
 	"unit-fase21.5.js", // Fase 21.5 (A1/A8): pesca — caña, bobber picando en agua, loot y cañas rotas en cofres
-	"unit-fase21.6.js" // Fase 21.6 (A1/A2): /locate bioma incremental con presupuesto+caché y allowlist de Origin sin bypass de puerto
+	"unit-fase21.6.js", // Fase 21.6 (A1/A2): /locate bioma incremental con presupuesto+caché y allowlist de Origin sin bypass de puerto
+	"unit-fase22.js" // Fase 22 (A3-A5/B1-B2): deepslate, raw ores, cobre, amatista, catalejo
 ];
 const E2E = [
 	// e2e-mascotas va PRIMERO: necesita spawn fresco (el servidor deja de

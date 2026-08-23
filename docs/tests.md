@@ -161,6 +161,7 @@ Three/DOM para forzarlos.
 | `unit-fase20.js` | Fase 20 (v20.1): regresión del bug «#menu-bg no se oculta al iniciar partida» — `showMenuBg()` visible solo en el menú principal, oculto al entrar al mundo y en la pausa |
 | `unit-fase21.js` | Fase 21 (A1+A2+B1): biomas más grandes — coherencia de rachas (`BIOME_FREQ` 0.003, media ≥ 11, mediana ≥ 5) + determinismo/presencia de los 8 biomas base; sub-biomas — bandas coherentes (0 violaciones), abedul 100 % en `birch_forest` (vs ~1/3 en `forest`), abeto 2×2 en `giant_taiga`, nieve en las cumbres emergidas de `snowy_peaks`; pozo del desierto — solo en desierto firme (nunca agua), determinista y con el layout MC (piso arena, brocal 2 capas, fuente central). Ampliado 2026-08-17 (+282 lín.): **B2 pirámide** (determinismo de `pyramidCenterAt`, footprint/`pyramidAt`, trampa posicional `pyramidTrapAt`, 4 cofres en las esquinas de la bandeja, TNT bajo la celda central, pozo de aire, loot en `state.chests`), **C1** vaca ordeñable (`handleMilkCow` consume cubo → MILK) y gallina ponedora (`tickChicken` → EGG al jugador cercano), **C2** enderman neutral (`isPlayerLookingAt` en radianes, `isEndermanWatched`, aggro de 20 s, neutral sin mirada) |
 | `unit-fase21.6.js` | Fase 21.6: `/locate` bioma incremental (presupuesto por tramo + caché TTL/invalidación), allowlist de Origin sin bypass de puerto (IPv6 incluido), escudo (bloqueo total P1, proyectil B1, reválida mano B2, desgaste por impacto B4), maza (desgaste B3, consume caída P6), mochila split ≤MAX_STACK sin pérdida (C3), jukebox/note block (validación D1, persistencia D3), `/summon` cuota+clamp (E1) y paridad pesca/loot/miel/bambú/blast (P2-P5/P7); tripwires de fuente para cliente ESM/DOM (C1/C2/D2/F1) |
+| `unit-fase22.js` | Fase 22 (A1-A5/B1-B2/C1/D1/G1): A1 altura 128 intacta, A3 deepslate bajo Y=0, A4 ORE_DROP raw+horno, A5 cobre sync/blast furnace, B1 amatista block/cluster/shard, B2 catalejo receta+IDs, C1 sculk IDs+teselas+iconos+bandas deterministas+generación Y<−40+propagación radio 2+onMobDeath, D1 Frog (clase/cría/XP/spawn/IA hunt/eat/flee/hop), G1 rate limit aislamiento por conexión (115 checks) |
 
 ## Fase 21 (CERRADA 2026-08-17) — matriz completada
 
@@ -216,6 +217,24 @@ Three/DOM para forzarlos.
 | **E1** `/summon` | ✅ `unit-fase21.6.js` | cuota global `MOB_TOTAL` + clamp de coords SV-6; solo-OP intacto |
 | **F1** powerPreference | ✅ tripwire `scene.js` | arranque + CDP `audit-fase7` en verde |
 | **P1-P7** Paridad MC | ✅ `unit-fase21.6.js` | escudo total (factor 0), pesca 5-30 s, loot fiel ≈85/5/10 sin COOKED_COD/FLINT, miel 6/2,4, bambú 2→2, maza consume caída, blast furnace data-driven |
+
+## Fase 22 (CERRADA 2026-08-22) — matriz
+
+> Profundidad, minerales y fauna 1.17–1.21
+> ([`fase22-spec.md`](spec/fase22-spec.md)). Suite completa en
+> `unit-fase22.js` (115 checks). `SCHEMA_VERSION` 6 intacto.
+
+| Bloque F22 | Tests | Notas |
+| --- | --- | --- |
+| **A1** Veredicto altura 256 | ✅ `unit-fase22.js` | `WORLD_HEIGHT === 128`, `SCHEMA_VERSION === 6` — +100 % memoria/chunk sin beneficio → no sube |
+| **A3** Deepslate | ✅ `unit-fase22.js` | deepslate presente bajo Y=0, ausente en Y≥0 |
+| **A4** Raw ores | ✅ `unit-fase22.js` + `unit-recetas.js` | `ORE_DROP` hierro/oro/cobre → crudo; horno funde raw→lingote |
+| **A5** Cobre | ✅ `unit-fase22.js` + `unit-sync.js` | IDs sync, blast furnace ×2 data-driven, bloque decorativo |
+| **B1** Amatista | ✅ `unit-fase22.js` | AMETHYST_BLOCK/CLUSTER/SHARD IDs, NON_SOLID_PLANTS, hardness, drop, teselas |
+| **B2** Catalejo | ✅ `unit-fase22.js` + `unit-recetas.js` | SPYGLASS ID, receta (cobre+ametista), IDs cliente, icono |
+| **C1** Deep Dark/sculk | ✅ `unit-fase22.js` | IDs+teselas+iconos, sculkBand determinista, generación Y<−40, propagación radio 2, onMobDeath |
+| **D1** Rana | ✅ `unit-fase22.js` | Frog en MOB_CLASSES, cría SLIME_BALL, XP=1, spawn pantano, IA hunt/eat/flee/hop |
+| **G1** Rate limit por conexión | ✅ `unit-fase22.js` | aislamiento entre usuarios (createRateLimit uno por socket) |
 
 ## Auditorías standalone
 

@@ -1203,11 +1203,9 @@
 ## Fase 21.6 — Correcciones de la auditoría 2026-08-22 y paridad MC (pre-F22)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase21.6-spec.md`](docs/spec/fase21.6-spec.md)
-> **EN CURSO** (abierta 2026-08-22; creada ese día desde la auditoría
-> consolidada y la entrevista del planificador). Prerrequisito: F21.5
-> cerrada ✅.
-> **La F22 pasa a exigir esta fase.** Diferidos → borrador
-> [`fase22.1-spec.md`](docs/spec/fase22.1-spec.md). Sin B/I nuevos,
+> **COMPLETADA** (cerrada 2026-08-22). Prerrequisito: F21.5 cerrada ✅.
+> **La F22 exigía esta fase (ya cerrada).** Diferidos → borrador
+> [`fase22.3-spec.md`](docs/spec/fase22.3-spec.md). Sin B/I nuevos,
 > `SCHEMA_VERSION` 6 intacto.
 
 - [x] A1 `/locate <bioma>` sin bloqueo del event loop (2026-08-22: radio 1024→256, stepper puro `createBiomeScan` con presupuesto 256 evaluaciones/tramo repartidas por setTimeout(0), caché TTL 30 s por jugador+bioma invalidada en world-session al cambiar de mundo; `unit-fase21.6.js` en verde)
@@ -1239,81 +1237,109 @@
 ## Fase 22 — Profundidad, minerales y fauna 1.17–1.21 (Spec)
 
 > Especificación (la verdad de la fase): [`docs/spec/fase22-spec.md`](docs/spec/fase22-spec.md)
-> **EN CURSO** (retomada 2026-08-22 al cerrarse la **F21.6**; el avance
-> previo del Bloque A quedó en `8d58a09` — falta test propio y auditoría).
-> **Prerrequisito actualizado: F21.6 cerrada** (antes F21.5).
-> Creada desde el plan del usuario "Actualizaciones Minecraft 1.17 → 1.21"
-> (2026-08-15, nueva sección en `Notas del usuario.md`): **minerales en
-> bruto (se funden todos), deepslate bajo Y=0, cobre (solo el bloque),
-> catalejo con zoom real, Deep Dark (Sculk) en Y < −40 con propagación,
-> rana, terreno 1.18 y subida a 256 SOLO si los tests lo confirman**.
-> La geoda de amatista se mantiene en la F21 (D2); los biomas
-> manglar/cerezo/bambú quedan como candidatos de la F21.
+> **COMPLETADA** (cerrada 2026-08-22).
+> Prerrequisito: **F21.6 cerrada** ✅. Suite 64/64, E2E 7/7, `--audit` 8/8,
+> `node --check` limpio. Veredicto A1: se mantienen **128 bloques**
+> (`SCHEMA_VERSION` 6 intacto); **A6 (altura configurable) no aplica**
+> por este veredicto.
+> Won't: oxidación cobre, brotes amatista, renacuajos, acuíferos,
+> Sniffer/Camello, mobs Nether, Redstone/Crafter, Trial Chambers,
+> Arqueología, Aldeanos, Warden, encantamientos, clima, dimensiones.
+> Diferidos → F23 (Lush Caves, Breeze, Armor Trims, Tuff/Caliza).
 
-- [ ] A1 Evaluación de factibilidad de altura 256 (Y −64..191): test de
-      rendimiento/carga con el mundo actual (greedy+worker+LOD); veredicto
-      documentado en la spec — **solo se sube si los tests lo confirman**;
-      si sube: `SCHEMA_VERSION` 7 + migración v6→v7 + recalibración de
-      minerales/auditorías; si no, se mantiene 128 y se documenta
-- [ ] A2 Terreno estilo 1.18 dentro del rango vigente: montañas más altas
+- [x] A1 Evaluación de factibilidad de altura 256 (Y −64..191): test de
+      rendimiento/carga con el mundo actual; veredicto documentado: **+100 %
+      memoria/chunk sin beneficio alcanzable → se mantiene 128**
+- [x] A2 Terreno estilo 1.18 dentro del rango vigente: montañas más altas
       (hasta ~Y=60) y valles profundos, cuevas más grandes y conectadas
       (recalibrar `caveStrength` multioctava), sin romper determinismo
-      (`unit-mundo`/`unit-biomas`/`audit-fase4` en verde)
-- [ ] A3 `DEEPSLATE` (bloque B nuevo): piedra por debajo de Y=0 sustituida;
-      menas siguen con su distribución por profundidad ya calibrada (se
-      generan también en el deepslate); B/I sincronizados + icono
-- [ ] A4 Minerales en bruto: `RAW_IRON`, `RAW_GOLD`, `RAW_COPPER` (ítems I
-      nuevos); minar hierro/oro/cobre suelta el **raw en todos los casos**
-      (se quita el lingote directo de `ORE_DROP`); horno funde raw → lingote
-      (recetas_horno); reajustar `unit-paridad` (drops) y E2E de minería
-- [ ] A5 Cobre (1.17): `COPPER_ORE` (bloque con distribución por altura ~Y
-      0..16) + `COPPER_INGOT` (horno) + `COPPER_BLOCK` (crafteo 9 lingotes);
-      **solo el bloque por ahora** — sin oxidación, sin cut/escaleras/losas
-      (decisión documentada: ampliación futura si es factible).
-      **Nota cruzada F21.6 P7:** `COPPER_INGOT` ya figura en
-      `BLAST_SMELT_RESULTS` (blast furnace funde minerales ×2, lista
-      data-driven); al cerrar este A5, verificar que fundir `RAW_COPPER`
-      respeta el ×2 en blast furnace como MC (hierro/oro/**cobre**)
-- [ ] B1 Bloques/ítems de amatista: `AMETHYST_BLOCK`, `AMETHYST_CLUSTER`,
-      `AMETHYST_SHARD` (B/I nuevos) — la **estructura geoda se mantiene en
-      F21 (D2)**; aquí solo se definen los IDs que la F21 reusará; shard =
-      drop del cluster
-- [ ] B2 Catalejo (`SPYGLASS`): ítem nuevo + receta (shard + lingote de
-      cobre); **funcionamiento real de zoom** (reducir FOV al sostenerlo
-      con el botón de usar, `pointer lock` intacto — patrón `SPRINT_FOV` de
-      `player.js`); sin HUD extra
-- [ ] C1 Deep Dark (1.19) en Y < −40: `SCULK` y `SCULK_VEIN` (bloques B
-      nuevos) colocados en las capas profundas; propagación básica: al morir
-      un mob sobre sculk, convierte bloques circundantes (tierra/piedra) en
-      radio 2 — test determinista; **sin** Warden/shriekers/ciudad
-      antigua/crecimiento propio (limitaciones documentadas)
-- [ ] D1 Rana (1.19): mob pasivo nuevo (MOB_PARTS + textura + clase con
-      `tickSpecies`/`onDeath` + cría con `SLIME_BALL` + spawn por bioma:
-      pantano, y manglar cuando la F21 lo añada); salta y come slimes
-      pequeños; sin renacuajos por ahora (documentado)
-- [ ] A6 Altura configurable del mundo: permitir al jugador elegir entre
-      mundos de 128 bloques (Y −64..+63, defecto) y 255 bloques (Y −64..+191)
-      al crear el mundo; selector en la pantalla de creación; el servidor
-      valida y aplica la altura elegida; `SCHEMA_VERSION` 7 si coexisten
-      mundos de ambas alturas (migración v6→v7 retrocompatible);
-      `audit-altura` recalibrado para ambos rangos; documentado en
-      `Notas del usuario.md` §Mejoras
-- [ ] G1 Rate limit por usuario (WebSocket): revisar que el tope de
-      solicitudes (`MAX_ACTION_RATE`, `MAX_MSG_RATE`) se maneja por
-      **usuario individual** y no por el conjunto de usuarios; evaluar si
-      el límite actual (20 acciones/s, 30 mensajes/s) necesita ajuste para
-      la carga inicial de chunks (el cliente pide muchos chunks de golpe al
-      entrar); documentado en `Notas del usuario.md` §Servidor WebSocket
-- [ ] E1 Tests específicos de la fase: `unit-fase22.js` cubriendo deepslate
-      bajo Y=0, raw ores (drop + horno), cobre (generación/receta/bloque),
-      amatista (IDs + shard), catalejo (receta + zoom), sculk (generación +
-      propagación), rana (salto/come slime/cría/spawn), altura configurable
-      A6 y veredicto de altura A1
-- [ ] F1 Cierre y auditoría de Fase 22: suite completa en verde + E2E + `--audit`
-      + unit-fase22 en verde + `node --check` + biome 0 + verificación
-      manual (minar deepslate, fundir raw, catalejo zoom, sculk, rana);
-      `SCHEMA_VERSION` 6 o 7 según veredicto A1; docs y tracker al día;
-      Won't de la fase documentado en la spec
+- [x] A3 `DEEPSLATE` (bloque B nuevo): piedra por debajo de Y=0 sustituida;
+      menas siguen su distribución por profundidad; B/I sincronizados
+- [x] A4 Minerales en bruto: `RAW_IRON`, `RAW_GOLD`, `RAW_COPPER` (ítems I
+      nuevos); minar suelta el raw; horno funde raw → lingote; blast furnace
+      ×2 data-driven incluye cobre
+- [x] A5 Cobre: `COPPER_ORE` + `COPPER_INGOT` + `COPPER_BLOCK`; solo el
+      bloque — sin oxidación (decisión documentada)
+- [x] B1 Bloques/ítems de amatista: `AMETHYST_BLOCK`, `AMETHYST_CLUSTER`,
+      `AMETHYST_SHARD` — la geoda se mantiene en F21; aquí solo se definen
+      los IDs y drop del cluster
+- [x] B2 Catalejo (`SPYGLASS`): ítem nuevo + receta + zoom FOV real
+      (toggle ajustes, sin HUD extra)
+- [x] C1 Deep Dark (1.19) en Y < −40: `SCULK`/`SCULK_VEIN`, bandas
+      deterministas, propagación radio 2 al morir mob, gancho `onMobDeath`;
+      sin Warden/shriekers/ciudad/crecimiento
+- [x] D1 Rana: subclase `Frog`, cría con `SLIME_BALL`, spawn pantano,
+      IA hunt/eat/prioridad flee, salto por-mob; sin renacuajos
+- [x] ~~A6 Altura configurable~~ **no-aplicable** — A1 no aprobó la subida
+      a 256; la profundidad se entrega dentro del rango −64..+63
+- [x] G1 Rate limit por usuario: verificado aislamiento por conexión
+      (`createRateLimit` uno por socket), test de aislamiento en
+      `unit-fase22.js`; documentado en `Notas del usuario.md`
+- [x] E1 Tests: `unit-fase22.js` — 115 checks (A1-A5, B1-B2, C1, D1, G1)
+- [x] F1 Cierre: suite 64/64, E2E 7/7, `--audit` 8/8, `node --check` limpio,
+      biome 0; `SCHEMA_VERSION` 6 intacto; docs y tracker al día
+
+---
+
+## Fase 22.1 — Herramientas de calidad y automatización
+
+> Especificación: [`docs/spec/fase22.1-spec.md`](docs/spec/fase22.1-spec.md)
+> **Prospectiva** — prerrequisito: F22 cerrada. Tooling ALREDEDOR del juego:
+> ninguna herramienta reemplaza sistemas propios ni cambia el comportamiento
+> para quien juega.
+
+- [ ] A CI en GitHub Actions **bloqueante** (cada push/PR): `npm ci`,
+      `node --check` sobre `server/*.js` y `public/*.js`, `npm run lint`,
+      `npm run test:coverage`; badge de estado en `README.md`
+- [ ] B Dependabot (`.github/depandabot.yml`, revisión semanal npm); los PR
+      que abra pasan por el CI del Bloque A antes de fusionarse
+- [ ] C `madge` (devDep) + script de grafo sin dependencias circulares
+      server/public; paso informativo al inicio del CI; valida que
+      `DEPENDENCIAS.md` (manual) sigue siendo preciso
+- [ ] D `knip` (devDep) + `npm run deadcode` — informativo, NO bloqueante
+      (primera pasada con exclusiones configuradas)
+- [ ] E `stats.js` vendorizado desde three 0.160 (`public/vendor/addons/`),
+      integrado en el HUD F3 tras toggle de ajustes, OFF por defecto
+- [ ] F Docs (`CLAUDE.md`: CI bloqueante, uso local de madge/knip, badge) +
+      auditoría final obligatoria
+
+---
+
+## Fase 22.2 — Chequeo de tipos con JSDoc + TypeScript, sin build step
+
+> Especificación: [`docs/spec/fase22.2-spec.md`](docs/spec/fase22.2-spec.md)
+> **Prospectiva** — prerrequisito: 22.1 cerrada. NO es una migración: ningún
+> `.ts`, ningún build step; TypeScript solo como devDependency de
+> verificación (`tsc --noEmit`).
+
+- [ ] A `typescript` devDep + `tsconfig.json` raíz (`allowJs`,
+      `checkJs:false` global, `noEmit`, `strict:false`) + script
+      `npm run typecheck`
+- [ ] B Adopción incremental por archivo con `// @ts-check`: 1º constants
+      (ambos lados), 2º protocolo red (`net.js`/`network.js`), 3º guardado
+      (`save*.js`), resto a criterio — sin exigir cobertura total
+- [ ] C Tipos compartidos con `@typedef` (stack `{id,count}`, mensaje WS
+      `{event,data}`, constantes B/I) en lugar neutral referenciable desde
+      ambos lados
+- [ ] D `typecheck` informativo mientras la cobertura sea baja; cuando
+      constants+red+guardado estén limpios, decidir explícitamente si pasa a
+      bloqueante junto al criterio de biome
+- [ ] E Prueba de valor tangible: reproducir un error clase `birchLogs`
+      (variable sin declarar) en archivo cubierto y documentar que `tsc`
+      lo detecta antes de ejecutar
+- [ ] F `CLAUDE.md` con la convención nueva; auditoría final obligatoria
+
+---
+
+## Fase 22.3 — Correcciones y paridad diferidas (borrador; antigua 22.1)
+
+> Renumerada al integrar las subfases de tooling 22.1/22.2 (2026-08-22).
+> Especificación: [`docs/spec/fase22.3-spec.md`](docs/spec/fase22.3-spec.md).
+> Prerrequisito: 22.2 cerrada.
+
+- [ ] (Tareas por definir al abrir: linterna fiel a MC, bug de cabezas de
+      mobs, perfilado en vivo, pase interno de servidor restante, residuos
+      CL-* — ver el borrador)
 
 ---
 

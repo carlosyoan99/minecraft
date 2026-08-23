@@ -132,6 +132,7 @@ y **gallina (ponedora)** (F21 v21.1). Pendientes:
 | Tope de tamaño del JSON por mensaje | ✅ cerrado (2026-08-17) | `MAX_MSG_BYTES` (64 KiB) en `server/constants.js` + guard en `net.js` (descarta sin mutar estado; test en `unit-red.js`) |
 | Anti-spam de construcción | ✅ cubierto | `MAX_ACTION_RATE` (20/s) por acción: `block_action` place/break, chest, horno, chat — ventanas consecutivas (F20 D2) |
 | Resiliencia a ráfagas de `move` | ✅ cubierto | `MAX_MSG_RATE` (30/s) global + rate-limit por ventanas consecutivas; el coste acumulado se mide en `unit-perf-server.js` |
+| Rate limit por usuario individual (F22 G1) | ✅ verificado (2026-08-22) | Los contadores viven en el cierre de `handleConnection` (`msgRate`/`actionRate`, UNO POR SOCKET): el flood de un usuario no agota la ventana de otro — aislamiento fijado por `unit-fase22.js`. La carga inicial de chunks NO consume mensajes del cliente (el relleno es server-push vía `fillForPlayers`) y una ráfaga legítima nunca cierra sola (regla de ventanas consecutivas, F20 v20.2); límites 30 msg/s y 20 acciones/s se mantienen sin ajuste |
 | Timeout de generación de chunk | ✅ acotado | Generación ~1-5 ms/chunk con topes de llenado y cola asíncrona; el perfilado en vivo (auditoría 2026-08-15 §perfilado) decide si hace falta un timeout real |
 | Modo debug de condiciones extremas (N jugadores, chunks corruptos) | ⚪ **abierto** | No existe; `LOG_LEVEL=debug` + `OPS` + CDP (`audit-fase7`) cubren diagnósticos puntuales, no la simulación de carga — pendiente de planificar (F20 v20.3 o backlog) |
 

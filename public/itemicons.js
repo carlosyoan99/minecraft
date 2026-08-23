@@ -1567,6 +1567,10 @@ for (const id of [189, 190, 191])
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Fase 22 (A3/A5): deepslate y mena de cobre (192-193) — cubo con su tesela.
 for (const id of [192, 193]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 22 (B1): bloque de amatista y cluster (194-195) — cubo con su tesela.
+for (const id of [194, 195]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
+// Fase 22 (C1): sculk y vena de sculk — cubo con su tesela del atlas.
+for (const id of [196, 197]) ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
 // Fase 21.5 (E3): bloques decorativos (92-98)
 for (const id of [92, 93, 94, 95, 96, 97, 98])
 	ICONS[id] = (g, rng) => drawBlockIcon(id, g, rng);
@@ -1582,6 +1586,21 @@ ICONS[259] = (g) => drawRaw(g, "#e0c23a", "#9c7c14", "#f7e58a");
 ICONS[278] = (g) => drawRaw(g, "#b87333", "#8b5a2b", "#d4956a");
 // Fase 22 (A5): lingote de cobre — brillo metálico cobrizo.
 ICONS[279] = (g) => drawIngot(g, "#b87333", "#d4956a", "#8b5a2b");
+// Fase 22 (B1): fragmento de amatista — gema violeta.
+ICONS[280] = (g) => drawGem(g, "#8b5cf6", "#c4b5fd", "#6d28d9");
+// Fase 22 (B2): catalejo — tubo cobrizo con lente.
+ICONS[281] = (g) => {
+	// Tubo principal (cuerpo cobrizo)
+	rect(g, 3, 2, 10, 4, "#b87333");
+	// Mango vertical
+	rect(g, 6, 6, 4, 8, "#b87333");
+	// Brillo del tubo
+	rect(g, 4, 3, 8, 2, "#d4956a");
+	// Lente (azul claro)
+	rect(g, 3, 2, 3, 2, "#a0e8ff");
+	// Reflejo de la lente
+	set(g, 4, 2, "#c0f0ff");
+};
 ICONS[104] = (g) => drawGem(g, C.diamond.m, C.diamond.light, C.diamond.dark);
 ICONS[105] = drawRedstone;
 ICONS[106] = (g) => drawGem(g, "#2ed06a", "#8ff0b0", "#1a9a4a");

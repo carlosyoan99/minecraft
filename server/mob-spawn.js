@@ -129,7 +129,9 @@ function animalVariantFor(type, biome) {
 }
 const BIOME_SPAWN = {
 	taiga: { day: [], night: ["wolf"] },
-	swamp: { day: [], night: ["slime", "bogged"] }, // F21.5 D2: bogged hostil de noche (como MC)
+	// Fase 22 (D1): la rana es el pasivo diurno del pantano (MC real); la
+	// noche mantiene slimes + bogged. Manglar → cuando F21 lo añada.
+	swamp: { day: ["frog"], night: ["slime", "bogged"] }, // F21.5 D2: bogged hostil de noche (como MC)
 	jungle: { day: ["ocelot"], night: [] }, // el ocelote es pasivo y solo de DÍA
 	pale_garden: { day: [], night: ["creaking"] } // Fase 21.5 (F2): creaking solo de noche
 };

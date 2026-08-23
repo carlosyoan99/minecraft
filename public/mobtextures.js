@@ -237,6 +237,18 @@ export const MOB_PARTS = {
 			{ name: "leg", size: [0.06, 0.3, 0.06], pos: [0.1, 0.15, 0] }
 		]
 	},
+	// Fase 22 (D1): rana — cuerpo ancho y bajo, cabeza al frente con ojos
+	// saltones y 4 patas cortas (saltadora). Sin renacuajos (Won't).
+	frog: {
+		parts: [
+			{ name: "body", size: [0.6, 0.35, 0.7], pos: [0, 0.25, -0.05] },
+			{ name: "head", size: [0.45, 0.3, 0.35], pos: [0, 0.35, 0.45] },
+			{ name: "leg", size: [0.12, 0.2, 0.3], pos: [-0.24, 0.1, 0.22] },
+			{ name: "leg", size: [0.12, 0.2, 0.3], pos: [0.24, 0.1, 0.22] },
+			{ name: "leg", size: [0.12, 0.2, 0.35], pos: [-0.22, 0.1, -0.28] },
+			{ name: "leg", size: [0.12, 0.2, 0.35], pos: [0.22, 0.1, -0.28] }
+		]
+	},
 	// Fase 12 (Bloque A): mobs por bioma —
 	// Slime: un solo cuerpo cúbico gelatinoso (sin patas); la escala la
 	// decide el cliente según slimeSize (2/1/0 → 2.0/1.0/0.5) en MOB_SCALE.
@@ -616,6 +628,35 @@ const CH = {
 	beak: "#e88a2a",
 	eye: "#141414"
 };
+
+// --- FROG (Fase 22, D1): verde pantano con vientre claro y ojos saltones ---
+const FH = {
+	body: "#5a8f3c",
+	bodyDark: "#46702e",
+	belly: "#cfe0a8",
+	eye: "#141414",
+	eyeWhite: "#e8d44a"
+};
+function drawFrogBody(ctx, rng) {
+	fill(ctx, FH.body);
+	speckle(ctx, rng, FH.bodyDark, 0.15);
+	rect(ctx, 1, 9, 14, 6, FH.belly); // vientre claro
+	rect(ctx, 3, 4, 4, 2, FH.bodyDark); // manchas dorsales
+	rect(ctx, 10, 5, 3, 2, FH.bodyDark);
+}
+function drawFrogHead(ctx, rng) {
+	fill(ctx, FH.body);
+	speckle(ctx, rng, FH.bodyDark, 0.1);
+	rect(ctx, 2, 2, 4, 4, FH.eyeWhite); // ojo saltones
+	rect(ctx, 10, 2, 4, 4, FH.eyeWhite);
+	rect(ctx, 3, 3, 2, 2, FH.eye);
+	rect(ctx, 11, 3, 2, 2, FH.eye);
+	rect(ctx, 5, 10, 6, 2, FH.bodyDark); // boca ancha
+}
+function drawFrogLeg(ctx, rng) {
+	fill(ctx, FH.bodyDark);
+	speckle(ctx, rng, FH.body, 0.2);
+}
 function drawChickenBody(ctx, rng) {
 	fill(ctx, CH.body);
 	speckle(ctx, rng, CH.bodyDark, 0.12);
@@ -911,6 +952,8 @@ const MOB_TEXTURES = {
 	},
 	sheep: { body: drawSheepBody, head: drawSheepHead, leg: drawSheepLeg },
 	rabbit: { body: drawRabbitBody, head: drawRabbitHead, ear: drawRabbitEar },
+	// Fase 22 (D1): rana — cuerpo/vientre, cabeza con ojos y patas.
+	frog: { body: drawFrogBody, head: drawFrogHead, leg: drawFrogLeg },
 	// Fase 12 (Bloque A): mobs por bioma — slime (un cuerpo), ocelote y gato
 	// (felinos con cola), ahogado (humanoide acuático).
 	slime: { body: drawSlimeBody },

@@ -6,7 +6,7 @@
 > **paridad en un bloque aparte**, resolviendo las contradicciones **hacia
 > Minecraft real** («la paridad es importante»). Linterna/luz, bug de cabezas
 > de mobs y diferidos de perfilado/pase-servidor salen al **borrador de la
-> [Fase 22.1](fase22.1-spec.md)**.
+> [Fase 22.3](fase22.3-spec.md)**.
 > Fecha: 2026-08-22 · Proyecto: clon de Minecraft.
 > Estado: `[COMPLETADA]` (**cerrada 2026-08-22**) — prerrequisito: **Fase 21.5
 > cerrada** ✅. La **F22 exige esta fase** (grafo actualizado).
@@ -24,7 +24,7 @@
 > Suite **63/63** unitarios en verde (`unit-fase21.6.js`, 115 checks);
 > E2E 7/7; `--audit` 8/8; biome 0 errores; `SCHEMA_VERSION` 6 intacto;
 > sin B/I nuevos de esta fase. Los diferidos originales siguen en el
-> borrador de la **Fase 22.1**.
+> borrador de la **Fase 22.3**.
 
 ## 0. Origen (de dónde sale cada tarea)
 
@@ -47,7 +47,7 @@
 | P1-P7 | Auditoría §5 Paridad (filas 1/3/5/8/10/13 + preguntas abiertas servidor) | Ver bloque P: contradicciones resueltas **hacia MC real** por decisión del usuario (2026-08-22) | — | — |
 | G1 | Recomendación 10 (higiene) | `STATUS.md` desincronizado (aún F21.5 EN CURSO) | — | ⚪ |
 
-**Diferidos a la Fase 22.1 (borrador creado):** linterna (luz nivel 15 /
+**Diferidos a la Fase 22.3 (borrador creado):** linterna (luz nivel 15 /
 receta nuggets — sistema de luz), bug *cabezas de mobs con caras por todos
 sus lados* (Notas del usuario, abierto), perfilado en vivo (`/locate`
 medición real, `arrows_update` bytes/s, granja de hornos, profiler hojas/
@@ -318,7 +318,7 @@ materiales de partículas).
 ## 9. Bloque G — Higiene de docs
 
 - **G1:** sincronizar `STATUS.md` (fase activa, tabla implementado,
-  prospectivas con F21.6/F22.1 y prerrequisito de F22) — parte ya hecha en
+  prospectivas con F21.6/F22.3 y prerrequisito de F22) — parte ya hecha en
   la creación de la fase; verificar al cierre que sigue coherente.
 - **G2:** al cierre: `AGENTS.md` (estado), `docs/tests.md` (matriz con
   `unit-fase21.6.js`), `docs/server/mecanicas.md` (escudo total, pesca,
@@ -356,11 +356,11 @@ materiales de partículas).
 |---|------|----------|
 | 1 | Contradicciones paridad-vs-decisión | **Manda MC real** (usuario 2026-08-22): escudo total, pesca 5-30 s |
 | 2 | Alcance | Fixes 1-7 + higiene (10) + paridad en bloque aparte |
-| 3 | Linterna/luz nivel 15 | Fuera → borrador Fase 22.1 |
-| 4 | Bug cabezas de mobs | Fuera → Fase 22.1 |
+| 3 | Linterna/luz nivel 15 | Fuera → borrador Fase 22.3 |
+| 4 | Bug cabezas de mobs | Fuera → Fase 22.3 |
 | 5 | powerPreference | Entra ahora (trivial) |
 | 6 | Jukebox | Persistencia aditiva en `world.json`, `SCHEMA_VERSION` intacto |
-| 7 | Diferidos (perfilado, pase servidor interno, residuos CL-*) | → Fase 22.1 |
+| 7 | Diferidos (perfilado, pase servidor interno, residuos CL-*) | → Fase 22.3 |
 | 8 | Cobre en blast furnace | Supeditado a F22 A5 (lista data-driven + nota cruzada) |
 | 9 | Numeración | F21.6 entre F21.5 y F22 (precedente 19.5/19.6); F22 pasa a exigirla |
 
@@ -389,7 +389,7 @@ materiales de partículas).
    fiel, miel 2,4, bambú 2→2, maza consume caída).
 3. Persistencia de jukeboxes redondea reinicio sin subir `SCHEMA_VERSION`.
 4. Verificación manual mínima (§12.2) completada.
-5. Docs/tracker sincronizados; diferidos documentados en el borrador F22.1.
+5. Docs/tracker sincronizados; diferidos documentados en el borrador F22.3.
 
 ---
 
@@ -398,5 +398,5 @@ materiales de partículas).
 **Cambios en esta spec (v1):**
 - 2026-08-22: creación desde la auditoría consolidada 2026-08-22 y la
   entrevista del mismo día (alcance fixes 1-7 + 10, paridad aparte hacia MC,
-  linterna/cabezas/diferidos → borrador F22.1, jukebox persistente,
+  linterna/cabezas/diferidos → borrador F22.3, jukebox persistente,
   powerPreference sí, orden por riesgo, criterios acordados).

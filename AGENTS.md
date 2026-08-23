@@ -224,8 +224,13 @@ Verificado por tests, pero hay que actualizarlas en el mismo cambio:
   total factor 0, pesca 5-30 s, loot fiel, miel 2,4, bambú 2→2, maza
   consume caída, blast furnace data-driven); suite 63/63
   (`unit-fase21.6.js`, 115 checks), E2E 7/7, --audit 8/8; diferidos
-  (linterna, cabezas de mobs, perfilado) → borrador F22.1;
-  la 22 exige la 21.6; la 23 exige la 22; la 24 exige la 23;
+  (linterna, cabezas de mobs, perfilado) → borrador F22.3;
+  la **Fase 22 está cerrada (2026-08-22, spec `fase22-spec.md`)**:
+  A1 altura 128 (SCHEMA_VERSION 6 intacto), A2 terreno 1.18, A3 deepslate,
+  A4 raw ores, A5 cobre, B1 amatista (block/cluster/shard), B2 catalejo,
+  C1 Deep Dark/sculk, D1 rana, G1 rate limit por conexión; A6 no-aplicable
+  (veredicto A1); suite 64/64 (`unit-fase22.js` 115 checks), E2E 7/7,
+  --audit 8/8; la 23 exige la 22; la 24 exige la 23;
   la 25 exige la 24. La
   19.5 adelantó a la 19.6 el motor 3D y a la F21 el audio por bioma; la F22
   aporta los bloques de amatista que la geoda de la F21 reusa y confirma

@@ -58,6 +58,40 @@ Correcciones de la auditoría consolidada + paridad MC pre-F22 (spec
 - **Paridad menor**: miel restaura 6 hambre / 2,4 saturación (P4), tablones
   de bambú 2→2 (P5), blast furnace data-driven hierro/oro/cobre (P7).
 
+## Cambios de la Fase 22 (2026-08-22)
+
+Profundidad, minerales y fauna 1.17–1.21 (spec
+[`../spec/fase22-spec.md`](../spec/fase22-spec.md); tests en
+`unit-fase22.js`, 115 checks; suite 64/64, `SCHEMA_VERSION` 6 intacto):
+
+- **Veredicto A1:** el mundo se mantiene en **128 bloques** (Y −64..+63);
+  benchmark: +100 % memoria/chunk a 256 sin beneficio jugable. A6 (altura
+  configurable) no aplica.
+- **Terreno 1.18 (A2):** montañas más altas (hasta ~Y=60) y valles
+  profundos con ruido 3D multioctava; cuevas más grandes y conectadas
+  (`caveStrength` recalibrado) sin romper determinismo.
+- **Deepslate (A3):** `B.DEEPSLATE` (192) sustituye la piedra bajo Y=0;
+  menas siguen su distribución por profundidad, también en el deepslate.
+- **Raw ores (A4):** `I.RAW_IRON` (277), `I.RAW_GOLD` (259),
+  `I.RAW_COPPER` (278) — minar hierro/oro/cobre suelta el raw; horno
+  funde raw→lingote; blast furnace ×2 data-driven incluye cobre.
+- **Cobre (A5):** `B.COPPER_ORE` (193) + `I.COPPER_INGOT` (279) +
+  `B.COPPER_BLOCK` — solo el bloque (sin oxidación, decisión documentada).
+- **Amatista (B1):** `B.AMETHYST_BLOCK` (194), `B.AMETHYST_CLUSTER`
+  (195), `I.AMETHYST_SHARD` (280); cluster en `NON_SOLID_PLANTS`, drop
+  de shards al romper con pico; la geoda se mantiene en F21.
+- **Catalejo (B2):** `I.SPYGLASS` (281) + receta (1 cobre + 1 ametista);
+  zoom FOV real del cliente (toggle ajustes, patrón `SPRINT_FOV`).
+- **Deep Dark / Sculk (C1):** `B.SCULK` (196), `B.SCULK_VEIN` (197);
+  bandas deterministas (`sculkBand`), generación bajo Y=−40;
+  propagación radio 2 al morir mob (`onMobDeath`); sin Warden/shriekers.
+- **Rana (D1):** subclase `Frog` (`mob-species.js`), spawn pantano,
+  `BREED_FOOD.frog = SLIME_BALL`, `MOB_XP.frog = 1`; IA hunt/eat slimes
+  pequeños, prioridad flee, salto por-mob determinista.
+- **Rate limit por conexión (G1):** aislamiento verificado — cada `ws`
+  tiene sus propios contadores `msgRate`/`actionRate`; test de
+  aislamiento en `unit-fase22.js`; documentado en `Notas del usuario.md`.
+
 ## El bucle principal (20 ticks/s)
 
 El juego no usa un game loop cliente: corre a **20 ticks/s**
@@ -72,7 +106,7 @@ El juego no usa un game loop cliente: corre a **20 ticks/s**
 
 ## Verificación
 
-- Suite unitaria: `node tests/run.js --unit` (63 tests).
+- Suite unitaria: `node tests/run.js --unit` (64 tests).
 - Auditorías por fase: `node tests/run.js --audit` (8).
 - E2E con servidor vivo: `SEED=miSemilla2026 PORT=3998 node server.js` +
   `WS_URL=ws://localhost:3998 node tests/run.js --e2e`.

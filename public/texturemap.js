@@ -190,10 +190,17 @@ const BLOCK_TEX = {
 	189: { all: 186 }, // jukebox
 	190: { all: 187 }, // pintura (cross, en pared)
 	191: { all: 188 }, // note block
-	// Fase 22 (A3): deepslate — piedra profunda (misma tesela que piedra, tono más oscuro).
+	// Fase 22 (A3): deepslate — tesela propia (antes apuntaba a 189 sin
+	// pintor: el atlas terminaba en 188 y el bloque se veía fuera de rango).
 	192: { all: 189 },
-	// Fase 22 (A5): mena de cobre (tesela propia con vetas cobrizas).
-	193: { all: 190 }
+	// Fase 22 (A5): mena de cobre — tesela propia (mismo fix que deepslate).
+	193: { all: 190 },
+	// Fase 22 (B1): bloques de amatista (geoda reutilizada de F21).
+	194: { all: 193 }, // bloque de amatista
+	195: { all: 194 }, // cluster de amatista (cross)
+	// Fase 22 (C1): sculk y vena de sculk (Deep Dark, Y < −40).
+	196: { all: 191 },
+	197: { all: 192 }
 };
 
 // Devuelve el índice de tesela para un bloque y una cara.

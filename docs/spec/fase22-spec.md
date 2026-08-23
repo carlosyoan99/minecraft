@@ -1,7 +1,7 @@
 # Fase 22 — Profundidad, minerales y fauna 1.17–1.21 (Spec)
 
-> **Estado:** `[EN CURSO]` (abierta 2026-08-22; **retomada** ese mismo día
-> tras cerrarse la **F21.6**, su prerrequisito definitivo)
+> **Estado:** `[COMPLETADA]` (cerrada 2026-08-22; todas las subfases en
+> verde, `SCHEMA_VERSION` 6 intacto, suite 64/64, E2E 7/7, `--audit` 8/8)
 >
 > **A1 — Veredicto (2026-08-22):** se mantiene **128 bloques** (Y −64..+63,
 > `SCHEMA_VERSION` 6 intacto). Benchmark con 25 chunks (5×5, semilla
@@ -370,7 +370,46 @@ acuíferos, Sniffer/Camello, mobs del Nether**. **Diferidos a la Fase 23**
 
 ---
 
+## 11. Bloque de cierre (2026-08-22)
+
+1. **Suite unitaria:** `tests/unit-fase22.js` — 115 checks en verde (A1-A5,
+   B1-B2, C1, D1, G1); suite completa 64/64; `--audit` 8/8; E2E 7/7;
+   `node --check` limpio; `biome` 0 errores.
+2. **Veredicto de A1 (altura):** se mantienen **128 bloques** (Y −64..+63,
+   `SCHEMA_VERSION` 6 intacto). Benchmark: +100 % de memoria por chunk a
+   256 sin beneficio jugable alcanzable. **A6 (altura configurable) se cierra
+   como no-aplicable** por este veredicto — la F22 entrega la profundidad y
+   los minerales dentro del rango vigente.
+3. **Bloque B1 (ametista):** IDs `194/195` (bloques) y `280` (shard)
+   sincronizados, teselas atlas, iconos, `NON_SOLID_PLANTS` + drop del
+   cluster; la geoda se mantiene en la F21.
+4. **Bloque B2 (catalejo):** `SPYGLASS` ID `281`, receta 1 lingote cobre +
+   1 shard amatista, zoom FOV del cliente (toggle ajustes).
+5. **Bloque C1 (Deep Dark):** `SCULK`/`SCULK_VEIN` `196/197`, bandas
+   deterministas, generación bajo `Y=−40`, propagación radio 2 al morir mob,
+   gancho `onMobDeath`.
+6. **Bloque D1 (rana):** subclase `Frog` con `tickSpecies`/`onDeath`,
+   `MOB_CLASSES.frog`, `BREED_FOOD.frog = SLIME_BALL`, `MOB_XP.frog = 1`,
+   spawn pantano, IA hunt/eat/prioridad flee, salto por-mob.
+7. **Bloque G1 (rate limit):** verificación de aislamiento por conexión
+   (`createRateLimit` uno por socket), test de aislamiento en
+   `unit-fase22.js`; documentado en `Notas del usuario.md`.
+8. **Won't de la fase:** oxidación del cobre, brotes de amatista, renacuajos,
+   acuíferos, Sniffer/Camello, mobs del Nether, Redstone/Crafter, Trial
+   Chambers, Arqueología, Aldeanos/Comercio, Warden, encantamientos/pociones,
+   clima, dimensiones, autenticación/BD.
+9. **Diferidos (→ F23):** Lush Caves, Breeze, Armor Trims, Tuff/Caliza.
+10. **Docs al día:** `STATUS.md`, `TODO.md`, `AGENTS.md`,
+    `docs/README.md`, `docs/tests.md` (matriz F22),
+    `docs/server/mecanicas.md` (deepslate/raw/cobre/sculk/rana),
+    `docs/Notas del usuario.md` (rate limit por usuario).
+
+---
+
 ## Cambios en esta spec
 
 **Cambios en esta spec (v1):**
 - 2026-08-15: creación del spec (documento de planificación de la fase 22).
+- 2026-08-22: reapertura del Bloque A sobre base limpia post-F21.6.
+- 2026-08-22: cierre — estado `[COMPLETADA]`, A6 no-aplicable (A1 no
+  aprobó altura 256), suite 64/64, bloque de cierre documentado.

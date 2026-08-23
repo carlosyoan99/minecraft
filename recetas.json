@@ -1109,5 +1109,16 @@
 			"id": 178,
 			"count": 4
 		}
+	},
+	"spyglass": {
+		"shape": ["C", "C", "S"],
+		"ingredients": {
+			"C": 279,
+			"S": 280
+		},
+		"result": {
+			"id": 281,
+			"count": 1
+		}
 	}
 }

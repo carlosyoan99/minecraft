@@ -226,7 +226,11 @@ function finishMining(player, x, y, z, block, opts = {}) {
 		// Fase 14 (Bloque B): los minerales sueltan su gema/lingote/carbón
 		// directamente (no el bloque de mena, que no es un ítem utilizable).
 		if (ORE_DROP[block]) drop = ORE_DROP[block];
-		addToInventory(player, drop, 1);
+		// Fase 22 (B1): cluster de amatista suelta 1-4 shards (MC: 2-5 con
+		// Fortune I, simplificado a 1-4 sin Fortune, Won't implícito).
+		const shardCount =
+			block === B.AMETHYST_CLUSTER ? 1 + Math.floor(Math.random() * 4) : 1;
+		addToInventory(player, drop, shardCount);
 		// La hierba también suelta comida de cría (semillas → pollo, trigo →
 		// vaca/oveja, zanahoria → cerdo), como en el handler original.
 		if (block === B.GRASS) {

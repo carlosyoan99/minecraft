@@ -85,6 +85,29 @@ const CAVE_THRESHOLD = 0.84; // Fase 22 (A2): umbral bajado de 0.86 a 0.84
 // fino en ~73% de las celdas de piedra (26K muestras por chunk); el resultado
 // es bit-idéntico (solo se omite un cálculo que no podía cambiar la decisión).
 const CAVE_FINE_MAX_BASE = (CAVE_THRESHOLD - 0.4) / 0.6; // ≈ 0.733
+
+// ============================================================
+// Fase 22 (C1): DEEP DARK — bandas de sculk bajo Y=−40.
+// Predicado PURO y determinista (solo ruido + constantes): unit-fase22 lo
+// fija y la generación solo lo consume. Umbrales calibrados para parches
+// orgánicos (~8-10 % del subsuelo profundo): núcleo = bloque de sculk,
+// borde del parche = vena (transición natural tipo anillo).
+// Reutiliza noise2D_ore con un offset grande: misma función de ruido que
+// las vetas pero desacoplada de ellas (otra semilla efectiva por offset).
+// ============================================================
+const SCULK_MAX_Y = -40; // spec C1: estrictamente por debajo de −40
+const SCULK_SCALE = 0.07;
+const SCULK_CORE = 0.62; // ≥ → núcleo del parche (bloque SCULK)
+const SCULK_RIM = 0.52; // ≥ → borde del parche (SCULK_VEIN)
+function sculkBand(wx, wz) {
+	const n =
+		(noise.noise2D_ore(wx * SCULK_SCALE + 911.7, wz * SCULK_SCALE - 417.3) +
+			1) /
+		2;
+	if (n >= SCULK_CORE) return 2;
+	if (n >= SCULK_RIM) return 1;
+	return 0;
+}
 function caveStrength(wx, wy, wz) {
 	const base =
 		1 -
@@ -434,6 +457,20 @@ function generateChunk(cx, cz) {
 								else if (y > -42 && y < 42 && roll > 0.86) block = B.COAL_ORE;
 							}
 						}
+					}
+					// Fase 22 (C1): Deep Dark — parches de sculk bajo Y=−40. Va
+					// DESPUÉS de la cadena de minerales: solo sustituye piedra/
+					// deepslate remanentes, jamás menas ni piedra pulida (en MC el
+					// sculk es el "suelo" del abismo profundo).
+					if (
+						y < SCULK_MAX_Y &&
+						(block === B.STONE ||
+							block === B.DEEPSLATE ||
+							block === B.COBBLESTONE)
+					) {
+						const banda = sculkBand(wx, wz);
+						if (banda === 2) block = B.SCULK;
+						else if (banda === 1) block = B.SCULK_VEIN;
 					}
 				} else if (y === height - 1) {
 					// Superficie: bloque del bioma dominante (tundra nevada, cumbres
@@ -983,6 +1020,9 @@ module.exports = {
 	isSwampPoolAt,
 	isCaveBlock,
 	caveStrength,
+	// Fase 22 (C1): bandas del Deep Dark (puro, testeable)
+	sculkBand,
+	SCULK_MAX_Y,
 	setCore,
 	setChunkRng // Fase 20 B4 (P4): inyección de PRNG para los tests
 };

@@ -477,7 +477,22 @@ const B = {
 	// ============================================================
 	DEEPSLATE: 192,
 	// Fase 22 (A5): mena de cobre — distribución por altura ~Y 0..16.
-	COPPER_ORE: 193
+	COPPER_ORE: 193,
+	// ============================================================
+	// Fase 22 (B1): bloques de amatista — la geoda se mantiene en F21;
+	// aquí solo se definen los IDs que la F21 reusa.
+	// ============================================================
+	AMETHYST_BLOCK: 194,
+	// AMETHYST_CLUSTER: crece dentro de las geodas; rompible con pico → shards.
+	// No es sólida (se atraviesa, como una planta).
+	AMETHYST_CLUSTER: 195,
+	// ============================================================
+	// Fase 22 (C1): Deep Dark — sculk en las capas profundas (Y < −40).
+	// Propagación básica al morir un mob sobre sculk (server/sculk.js);
+	// SIN Warden/shrikers/ciudad antigua ni crecimiento propio (Won't).
+	// ============================================================
+	SCULK: 196,
+	SCULK_VEIN: 197
 };
 
 // Fase 21.5 (C4): 16 camas de colores + la cama base (24) comparten
@@ -737,7 +752,15 @@ const I = {
 	// ============================================================
 	RAW_COPPER: 278,
 	// Fase 22 (A5): lingote de cobre — resultado de fundir RAW_COPPER.
-	COPPER_INGOT: 279
+	COPPER_INGOT: 279,
+	// ============================================================
+	// Fase 22 (B1): shard de amatista — drop del cluster (romper con pico).
+	// ============================================================
+	AMETHYST_SHARD: 280,
+	// ============================================================
+	// Fase 22 (B2): catalejo — zoom al sostenerlo con clic derecho.
+	// ============================================================
+	SPYGLASS: 281
 };
 // ============================================================
 // TAMAÑO DE MUNDO (Fase 10, B1)
@@ -802,7 +825,10 @@ const NON_SOLID_PLANTS = new Set([
 	// Fase 21.5 (F1): alfombra de musgo pálido (cross, como la hierba alta).
 	B.PALE_MOSS,
 	// Fase 21.5 (D6): la pintura es un bloque decorativo en pared (se atraviesa).
-	B.PAINTING
+	B.PAINTING,
+	// Fase 22 (B1): el cluster de amatista es un cristal que crece dentro de
+	// las geodas — no es sólido (se atraviesa como una planta, MC).
+	B.AMETHYST_CLUSTER
 ]);
 // Sólido para física/validación: el agua no es sólida (se nada en ella), la
 // antorcha/cama tampoco (se atraviesan) y las plantas (Fase 9) tampoco.
@@ -1003,6 +1029,9 @@ const BLOCK_HARDNESS = {
 	[B.DEEPSLATE]: 3.0,
 	// Fase 22 (A5): mena de cobre — dureza 3.0 (como otras menas).
 	[B.COPPER_ORE]: 3.0,
+	// Fase 22 (C1): sculk — blando como MC (0.6 a mano); la vena aún menos.
+	[B.SCULK]: 0.6,
+	[B.SCULK_VEIN]: 0.2,
 	// Fase 13 (L2/L3): durezas estilo MC — puertas 3 (madera) / 5 (hierro),
 	// escaleras 2 (madera) / 2 (piedra), losas 2, vallas 2, portón 2.
 	[B.OAK_DOOR]: 3.0,
@@ -1088,6 +1117,10 @@ const BLOCK_HARDNESS = {
 	// Fase 21.5 (D1): el núcleo pesado es un tesoro de piedra densa (dureza
 	// alta, se mina con pico para dropear el ítem de la maza — D3).
 	[B.HEAVY_CORE]: 15.0,
+	// Fase 22 (B1): amatista — bloque sólido (dureza 1.5 como piedra suave;
+	// MC: deepslate 3.0, amatista 1.5). Cluster no tiene dureza (se rompe
+	// con la mano, como una planta).
+	[B.AMETHYST_BLOCK]: 1.5,
 	// El VAULT decorativo se rompe con la mano (dureza baja, como la
 	// piedra blanda — la cámara no se destruye con pico).
 	[B.VAULT]: 1.5
@@ -1215,7 +1248,13 @@ const BLOCK_CATEGORY = {
 	[B.PAINTING]: null,
 	[B.NOTE_BLOCK]: "wood",
 	// Fase 21.5 (D1): el núcleo pesado es piedra densa — pico (stone).
-	[B.HEAVY_CORE]: "stone"
+	[B.HEAVY_CORE]: "stone",
+	// Fase 22 (B1): amatista bloque → pico (stone); cluster → mano.
+	[B.AMETHYST_BLOCK]: "stone",
+	// Fase 22 (C1): sculk suena húmedo/esponjoso — material dirt (el más
+	// cercano del mapa actual); la vena igual.
+	[B.SCULK]: "dirt",
+	[B.SCULK_VEIN]: "dirt"
 };
 const toolCategoryOf = (id) =>
 	isPickaxe(id)
@@ -1592,7 +1631,9 @@ const MOB_XP = {
 	cat: 2,
 	drowned: 5,
 	// Fase 21.5 (D2): Bogged — 5 XP al morir, como el esqueleto.
-	bogged: 5
+	bogged: 5,
+	// Fase 22 (D1): rana — pasivo pequeño, 1 XP como el bee.
+	frog: 1
 };
 const ORE_XP = {
 	[B.COAL_ORE]: 1,
@@ -1615,7 +1656,10 @@ const ORE_DROP = {
 	[B.COPPER_ORE]: I.RAW_COPPER, // Fase 22 (A4/A5): cobre suelta el raw
 	[B.DIAMOND_ORE]: I.DIAMOND,
 	[B.REDSTONE_ORE]: I.REDSTONE,
-	[B.EMERALD_ORE]: I.EMERALD
+	[B.EMERALD_ORE]: I.EMERALD,
+	// Fase 22 (B1): cluster de amatista suelta 1-4 shards (se maneja
+	// con random en players.js usando CLUSTER_SHARD_RANGE).
+	[B.AMETHYST_CLUSTER]: I.AMETHYST_SHARD
 };
 // Fase 14 (Bloque B): nivel de pico mínimo necesario por mineral (paridad MC
 // simplificada): hierro/oro → pico de piedra, redstone/diamante/esmeralda →
@@ -1648,7 +1692,10 @@ const BREED_FOOD = {
 	sheep: I.WHEAT,
 	pig: I.CARROT,
 	chicken: I.SEEDS,
-	rabbit: I.CARROT
+	rabbit: I.CARROT,
+	// Fase 22 (D1): la rana se cría con bola de slime (MC real) — come
+	// slimes pequeños y el slimeball acelera la cría.
+	frog: I.SLIME_BALL
 };
 
 // ============================================================
@@ -1858,7 +1905,10 @@ const MOB_COLORS = {
 	creaking: 0x8a7a5a,
 	// Fase 21.5 (D2): Bogged — esqueleto de pantano, huesos gris-verdosos
 	// (fallback de color; la textura musgosa vive en mobtextures.js).
-	bogged: 0x8f9a6a
+	bogged: 0x8f9a6a,
+	// Fase 22 (D1): rana — verde oliva oscuro (MOB_TEXTURES cliente pinta su
+	// modelo procedural; MOB_COLORS es el fallback planar).
+	frog: 0x5a7a2a
 };
 const HOSTILE = new Set([
 	"zombie",

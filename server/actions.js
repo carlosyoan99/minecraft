@@ -38,6 +38,8 @@ const chests = require("./chests.js");
 const mobs = require("./mobs.js");
 const commands = require("./commands.js");
 const fishing = require("./fishing.js"); // Fase 21.5 (A1): pesca
+// Fase 22 (C1): propagación de sculk al morir un mob sobre él (Deep Dark)
+const sculk = require("./sculk.js");
 const { validCoords } = require("./anticheat.js");
 
 // Reloj del mundo ajustable (/time set): mismo que net.js (commands.worldTime
@@ -789,6 +791,8 @@ function handleAttackMob(p, ws, data) {
 		mob.onDeath();
 		mob.alive = false;
 		broadcast("mob_death", { id: mob.id });
+		// Fase 22 (C1): muerte sobre sculk → el Deep Dark se propaga (radio 2)
+		sculk.onMobDeath(mob);
 		// Drops de comida de animales al morir (directo al atacante)
 		const drops = mobs.mobDrops(mob);
 		if (drops)

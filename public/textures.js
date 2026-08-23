@@ -1205,6 +1205,79 @@ function drawNoteBlock(ctx, _rng) {
 	speckle(ctx, _rng, "#9c7c5c", 0.03);
 }
 
+// Fase 22 (A3): deepslate — piedra profunda, gris muy oscuro con vetas.
+function drawDeepslateTile(ctx, rng) {
+	fill(ctx, "#505050");
+	speckle(ctx, rng, "#464646", 0.25);
+	speckle(ctx, rng, "#5a5a5a", 0.12);
+	rect(ctx, 3, 2, 4, 1, "#3f3f3f");
+	rect(ctx, 9, 8, 5, 1, "#3f3f3f");
+	rect(ctx, 2, 12, 4, 1, "#444444");
+}
+
+// Fase 22 (A5): mena de cobre — base de piedra con vetas cobrizas.
+function drawCopperOreTile(ctx, rng) {
+	fill(ctx, "#7d7d7d");
+	speckle(ctx, rng, "#6d6d6d", 0.2);
+	// Vetas cobrizas (tono naranja-marrón MC).
+	rect(ctx, 2, 3, 3, 2, "#b87333");
+	rect(ctx, 10, 5, 3, 3, "#c98a4b");
+	rect(ctx, 5, 10, 3, 2, "#a05f28");
+	px(ctx, 12, 12, "#b87333");
+}
+
+// Fase 22 (C1): sculk — verde azulado muy oscuro con células claras.
+function drawSculkTile(ctx, rng) {
+	fill(ctx, "#0d2b2b");
+	speckle(ctx, rng, "#123a38", 0.3);
+	// Células brillantes dispersas (look MC: manchas turquesa oscuras).
+	rect(ctx, 3, 4, 2, 2, "#1f5c52");
+	rect(ctx, 10, 3, 2, 1, "#1a4f48");
+	rect(ctx, 6, 11, 3, 2, "#1f5c52");
+	px(ctx, 13, 9, "#2a6e60");
+}
+
+// Fase 22 (C1): vena de sculk — patrón fino sobre base profunda.
+function drawSculkVeinTile(ctx, rng) {
+	fill(ctx, "#143232");
+	speckle(ctx, rng, "#0d2b2b", 0.15);
+	// Venas finas cruzadas.
+	for (let i = 0; i < 16; i += 4) rect(ctx, i, (i / 2) % 16, 2, 1, "#1f5c52");
+	rect(ctx, 1, 6, 14, 1, "#17453f");
+	speckle(ctx, rng, "#2a6e60", 0.05);
+}
+
+// Fase 22 (B1): bloque de amatista — base violeta oscura con facetado.
+function drawAmethystBlockTile(ctx, rng) {
+	fill(ctx, "#8b5cf6");
+	speckle(ctx, rng, "#7c3aed", 0.25);
+	speckle(ctx, rng, "#a78bfa", 0.12);
+	// Facetas del cristal.
+	rect(ctx, 2, 2, 5, 5, "#9366f0");
+	rect(ctx, 9, 4, 5, 4, "#7e3ff0");
+	rect(ctx, 4, 9, 4, 5, "#a87ef5");
+	px(ctx, 12, 11, "#c4b5fd");
+}
+
+// Fase 22 (B1): cluster de amatista — cristales puntiagudos (cross).
+function drawAmethystClusterTile(ctx, rng) {
+	fill(ctx, "#00000000"); // transparente (cross)
+	// Cristal central.
+	rect(ctx, 6, 3, 4, 11, "#8b5cf6");
+	px(ctx, 7, 2, "#a78bfa");
+	px(ctx, 8, 2, "#a78bfa");
+	px(ctx, 7, 1, "#c4b5fd");
+	// Cristales laterales.
+	rect(ctx, 3, 6, 3, 7, "#7c3aed");
+	px(ctx, 4, 5, "#9366f0");
+	rect(ctx, 10, 5, 3, 8, "#7c3aed");
+	px(ctx, 11, 4, "#9366f0");
+	// Brillo en las puntas.
+	px(ctx, 7, 3, "#c4b5fd");
+	px(ctx, 4, 6, "#a78bfa");
+	px(ctx, 11, 5, "#a78bfa");
+}
+
 // Índices de tesela (el orden define su posición en el atlas)
 const TILES = [
 	drawDirt, // 0  tierra
@@ -1430,7 +1503,19 @@ const TILES = [
 	// Fase 21.5 (D6): jukebox, pintura, note block.
 	drawJukebox, // 186 jukebox
 	drawPainting, // 187 pintura
-	drawNoteBlock // 188 note block
+	drawNoteBlock, // 188 note block
+	// ============================================================
+	// Fase 22 (A3/A5/C1): deepslate, mena de cobre y familia sculk.
+	// (189/190 completan las teselas que texturemap ya referenciaba para
+	// deepslate/cobre del WIP de F22; 191/192 son los nuevos bloques sculk.)
+	// ============================================================
+	drawDeepslateTile, // 189 deepslate
+	drawCopperOreTile, // 190 mena de cobre
+	drawSculkTile, // 191 sculk
+	drawSculkVeinTile, // 192 vena de sculk
+	// Fase 22 (B1): amatista.
+	drawAmethystBlockTile, // 193 bloque de amatista
+	drawAmethystClusterTile // 194 cluster de amatista (cross)
 ];
 
 // El mapa de teselas por bloque/cara (BLOCK_TEX) y los rectángulos UV viven en

@@ -34,6 +34,8 @@ const {
 } = constants;
 const state = require("./state.js");
 const world = require("./world.js");
+// Fase 22 (C1): propagación de sculk en muertes ambientales (quemadura)
+const sculk = require("./sculk.js");
 const mobSpawn = require("./mob-spawn.js");
 // Fase 12 (Bloque A): damagePlayer (ataque del mob a mano/TNT) y addXp (XP
 // recogida de los orbes). players.js no importa mobs.js, así que es seguro.
@@ -82,6 +84,7 @@ let Zombie,
 	Chicken,
 	Sheep,
 	Rabbit,
+	Frog, // Fase 22 (D1): rana de pantano
 	Bee,
 	Ocelot,
 	Bogged, // Fase 21.5 (D2)
@@ -391,7 +394,11 @@ class Mob {
 		if (this.burnAccum >= 1000) {
 			this.burnAccum = 0;
 			this.health -= 1;
-			if (this.health <= 0) this.alive = false;
+			if (this.health <= 0) {
+				this.alive = false;
+				// Fase 22 (C1): muerte (quemadura solar) sobre sculk → propagación
+				sculk.onMobDeath(this);
+			}
 		}
 	}
 
@@ -625,6 +632,7 @@ class Mob {
 	Chicken,
 	Sheep,
 	Rabbit,
+	Frog, // Fase 22 (D1): rana de pantano
 	Bee,
 	Ocelot,
 	Bogged, // Fase 21.5 (D2)
@@ -802,6 +810,7 @@ module.exports = {
 	Chicken,
 	Sheep,
 	Rabbit,
+	Frog, // Fase 22 (D1): rana de pantano
 	Bee,
 	Ocelot,
 	Bogged, // Fase 21.5 (D2)

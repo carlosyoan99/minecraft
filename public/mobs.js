@@ -325,6 +325,7 @@ const MOB_SCALE = {
 	wolf: 1.05,
 	ocelot: 0.6,
 	cat: 0.6,
+	frog: 0.65, // Fase 22 (D1): pasivo pequeño del pantano
 	slime: 1.0
 };
 // Escala del slime según su tamaño (snapshot.slimeSize): grande 2, mediano

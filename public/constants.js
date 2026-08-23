@@ -210,7 +210,13 @@ export const BLOCK_COLORS = {
 	// Fase 22 (A3): deepslate — piedra profunda (gris oscuro).
 	192: 0x505050,
 	// Fase 22 (A5): mena de cobre (tono cobrizo sobre piedra).
-	193: 0xb87333
+	193: 0xb87333,
+	// Fase 22 (B1): amatista — bloque sólido (violeta suave) y cluster (violeta vivo).
+	194: 0x9a6db0,
+	195: 0xc77dff,
+	// Fase 22 (C1): sculk (verde azulado muy oscuro) y vena (más clara).
+	196: 0x0d2b2b,
+	197: 0x1a4a44
 };
 export const BLOCK_NAMES = {
 	1: "Tierra",
@@ -377,7 +383,13 @@ export const BLOCK_NAMES = {
 	// Fase 22 (A3): deepslate — piedra profunda.
 	192: "Deepslate",
 	// Fase 22 (A5): mena de cobre.
-	193: "Mena de cobre"
+	193: "Mena de cobre",
+	// Fase 22 (B1): bloques de amatista — la geoda se mantiene en F21.
+	194: "Bloque de amatista",
+	195: "Cluster de amatista",
+	// Fase 22 (C1): Deep Dark.
+	196: "Sculk",
+	197: "Vena de sculk"
 };
 export const WATER = 20;
 export const SAND = 6; // Fase 10: paridad con server/constants.js (contexto musical por bioma)
@@ -627,7 +639,11 @@ export const ITEM_NAMES = {
 	// Fase 22 (A4): minerales en bruto
 	278: "Cobre crudo",
 	// Fase 22 (A5): lingote de cobre
-	279: "Lingote de cobre"
+	279: "Lingote de cobre",
+	// Fase 22 (B1): shard de amatista — drop del cluster (romper con pico).
+	280: "Fragmento de amatista",
+	// Fase 22 (B2): catalejo — zoom al sostenerlo con clic derecho.
+	281: "Catalejo"
 };
 export function itemLabel(id) {
 	return BLOCK_NAMES[id] || ITEM_NAMES[id] || `#${id}`;
@@ -780,12 +796,22 @@ export const NOTE_BLOCK = 191;
 export const DEEPSLATE = 192;
 // Fase 22 (A5): mena de cobre — distribución por altura ~Y 0..16.
 export const COPPER_ORE = 193;
+// Fase 22 (B1): bloques de amatista — la geoda se mantiene en F21.
+export const AMETHYST_BLOCK = 194;
+export const AMETHYST_CLUSTER = 195;
+// Fase 22 (C1): Deep Dark — sculk y vena de sculk (Y < −40).
+export const SCULK = 196;
+export const SCULK_VEIN = 197;
 export const MUSIC_DISC_CAT = 275;
 export const MUSIC_DISC_13 = 276;
 // Fase 22 (A4): minerales en bruto — se funden en el horno.
 export const RAW_COPPER = 278;
 // Fase 22 (A5): lingote de cobre — resultado de fundir RAW_COPPER.
 export const COPPER_INGOT = 279;
+// Fase 22 (B1): shard de amatista — drop del cluster (romper con pico).
+export const AMETHYST_SHARD = 280;
+// Fase 22 (B2): catalejo — zoom al sostenerlo con clic derecho.
+export const SPYGLASS = 281;
 // Orden de los slots de armadura (indice del slot = (id - 220) % 4)
 export const ARMOR_SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"];
 // Ítems que se pueden comer con clic derecho (cruda 107-110 y cocinada 111-114)
@@ -801,4 +827,4 @@ export const FOOD_ITEMS = new Set([
 export const HOES = new Set([240, 241, 242, 243, 244]);
 // Ítems de cría de animales: clic derecho sobre un animal con estos en mano
 // (trigo → vaca/oveja, zanahoria → cerdo, semillas → pollo)
-export const BREED_FOOD = new Set([115, 116, 117]);
+export const BREED_FOOD = new Set([115, 116, 117, 246]); // Fase 22 (D1): + SLIME_BALL para rana
