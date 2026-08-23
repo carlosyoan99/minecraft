@@ -12,8 +12,11 @@
 // ============================================================
 import * as THREE from "three";
 import Stats from "three/addons/stats.module.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { CHUNK_SIZE, WATER, WORLD_MAX_Y, WORLD_MIN_Y } from "./constants.js";
-import { camera, scene } from "./scene.js";
+import { camera, renderer, scene } from "./scene.js";
 import { getSetting } from "./settings.js";
 import { getGamemode } from "./ui.js";
 import { chunkMeshes, getClientBlock, lodMeshes } from "./world.js";
@@ -38,10 +41,19 @@ const borderGroup = new THREE.Group();
 borderGroup.visible = false;
 borderGroup.frustumCulled = false; // el grid es debug: se envía siempre
 scene.add(borderGroup);
-// Material compartido del grid (como terrainMaterial/waterMaterial en world.js):
-// se crea UNA vez y se reutiliza en cada reconstrucción — si se creara uno por
-// rebuild (1/s con F3 activo), los programas GL se acumularían sin límite.
-const borderMaterial = new THREE.LineBasicMaterial({ vertexColors: true });
+// Fase 22.1+Line2: material con grosor real (gl.lineWidth es ignorado
+// en muchos drivers; LineMaterial usa un shader que funciona siempre).
+// Se crea UNA vez y se reutiliza en cada reconstrucción.
+const borderMaterial = new LineMaterial({
+	color: 0xff1e14,
+	linewidth: 1.5, // grosor en píxeles (resolution-aware)
+	vertexColors: true,
+	resolution: new THREE.Vector2(window.innerWidth, window.innerHeight)
+});
+// Actualizar resolution al redimensionar la ventana.
+window.addEventListener("resize", () => {
+	borderMaterial.resolution.set(window.innerWidth, window.innerHeight);
+});
 
 // Altura de la superficie en (wx, wz): primer bloque sólido desde arriba +1.
 // El aire y el agua no cuentan; un chunk desconocido (-1) se trata como
@@ -91,10 +103,13 @@ function rebuildBorders() {
 		}
 	}
 	if (positions.length === 0) return;
-	const geo = new THREE.BufferGeometry();
-	geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-	geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-	const lines = new THREE.LineSegments(geo, borderMaterial);
+	// Fase 22.1+Line2: LineSegmentsGeometry acepta arrays planos de
+	// position y color directamente (setPositions/setColors). El material
+	// LineMaterial calcula el grosor real vía shader.
+	const geo = new LineSegmentsGeometry();
+	geo.setPositions(new Float32Array(positions));
+	geo.setColors(new Float32Array(colors));
+	const lines = new LineSegments2(geo, borderMaterial);
 	lines.renderOrder = 2; // por encima del agua translúcida
 	borderGroup.add(lines);
 }
