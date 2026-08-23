@@ -29,6 +29,7 @@ import { tickFallingLeaves } from "./particles.js"; // F21.5 (E4)
 import { camera, controls, renderer, scene, sun } from "./scene.js";
 import { getSetting, updateCoords } from "./settings.js";
 import { updateTorchLights } from "./torchlights.js"; // Fase 19.6 (A2)
+import * as TWEEN from "three/addons/tween.module.js";
 import { shouldUnderwaterFog } from "./waterfog.js"; // Fase 16 (B1): niebla con inmersión real
 import {
 	applyFrustumCulling,
@@ -71,6 +72,9 @@ let kbX = 0,
 	kbY = 0,
 	kbT = 0;
 const KB_TOTAL = 0.5; // duración del impulso en segundos
+// Fase 22.1+tween: transición de FOV con easing (sprint/catalejo).
+let fovTween = null;
+let fovTweenTarget = -1;
 const KB_GAIN = 14; // factor de integración (≈ 0.55 bloques/tick × 20 Hz → m/s)
 export const move = {
 	forward: false,
@@ -250,9 +254,20 @@ function updatePerfMetrics(ambientMs, cullMs, frameMs) {
 	}
 }
 
+// Fase 22.3 (R1, CL-2): ¿ventana inactiva? Pestaña oculta o sin foco.
+// En ese estado se congela el render (el último frame permanece en el
+// canvas): los navegadores ya throttlean rAF en pestañas de fondo, pero
+// una ventana VISIBLE sin foco seguía quemando CPU/GPU por frame. El dt
+// ya viene acotado a 0.1 s, así que al volver no hay salto de física.
+// El audio gestiona su propia pausa con visibilitychange (audio.js).
+function windowInactive() {
+	return document.hidden || !document.hasFocus();
+}
+
 function animate() {
 	requestAnimationFrame(animate);
 	const dt = Math.min(clock.getDelta(), 0.1);
+	if (windowInactive()) return;
 
 	if (controls.isLocked) {
 		const forward = new THREE.Vector3();
@@ -350,10 +365,21 @@ function animate() {
 		const targetFov = usingSpyglass
 			? baseFov * SPYGLASS_FOV_FACTOR
 			: baseFov + (sprinting ? motionFov : 0);
-		if (Math.abs(camera.fov - targetFov) > 0.05) {
-			camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 10);
-			camera.updateProjectionMatrix();
+		// Fase 22.1+tween: transición suave con easing en vez de lerp lineal.
+		// El tween se crea solo cuando el target cambia (no cada frame).
+		if (targetFov !== fovTweenTarget) {
+			fovTweenTarget = targetFov;
+			if (fovTween) fovTween.stop();
+			fovTween = new TWEEN.Tween({ fov: camera.fov })
+				.to({ fov: targetFov }, 200)
+				.easing(TWEEN.Easing.Quadratic.Out)
+				.onUpdate((o) => {
+					camera.fov = o.fov;
+					camera.updateProjectionMatrix();
+				})
+				.start();
 		}
+		TWEEN.update();
 
 		// Vuelo creativo: movimiento 3D sin gravedad (espacio sube, Shift baja).
 		if (flying) {
