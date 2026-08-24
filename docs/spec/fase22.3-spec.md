@@ -43,13 +43,77 @@
 
 1. Sin regresiones en suite/E2E/`--audit`; cada bloque con su test.
 2. Informe de perfilado V1 archivado en esta spec.
-3. Pase S1 sin áreas «no revisadas».
+3. ✅ Pase S1 sin áreas «no revisadas» — completado (§4).
 4. Bug B1 verificado en navegador (CDP) y cerrado en `Notas del usuario.md`.
+
+---
+
+## 4. S1 — Pase interno del servidor (completado 2026-08-23)
+
+Áreas auditadas línea a línea (la F21.6 cubrió `combat.js`; esto cubre
+el resto):
+
+### 4.1 projectiles.js — ciclo de proyectiles
+
+| # | Hallazgo | Acción |
+|---|---------|--------|
+| S1.1 | Muerte de mob por proyectil no replicaba `mob_death` al cliente — el mob se "evaporaba" sin flash/sonido (diferencia con el camino melee en actions.js) | Añadido `broadcastFn` inyectable + `setBroadcastHandler`; tickArrows emite `mob_death` al morir un mob por flecha/tridente |
+| S1.2 | `arrowSnapshot` no incluía el flag `poison` del Bogged — el cliente no podía pintar la flecha verde | Añadido `poison: !!a.poison` al snapshot |
+| S1.3 | Carga de viento: sin cooldown por jugador, un cliente automatizado spameaba `throw_wind_charge` con knockback reiterado (griefing) | Añadido `THROW_COOLDOWN_MS` 500 ms + `throwCooldownActivo` en actions.js |
+
+Veredicto: **OK** — física correcta (gravedad, anti-tunneling 0.25 pasos,
+wind charge recto sin gravedad, paridad MC). Las ramas player/mob/
+wind están bien separadas.
+
+### 4.2 fishing.js — pesca
+
+| # | Hallazgo | Acción |
+|---|---------|--------|
+| S1.4 | `FISHING_LIFE_MS` era 15 s pero `BITE_MIN_MS+BITE_RANGE_MS` = 30 s — ~60% de las líneas expiraban antes de programar el bocado | `FISHING_LIFE_MS` subido a 32 s (margen de 2 s sobre el peor caso) |
+| S1.5 | `reelBobber` con inventario lleno retiraba la línea ANTES de intentar entregar — contradecía el contrato del comentario | Línea permanece en el agua si `addToInventory` falla; el jugador libera hueco y vuelve a recoger |
+| S1.6 | Loot table incluía `COOKED_COD` y `FLINT` que MC real no suelta al pescar | Eliminados (F21.6 P3): solo `COD` crudo, `BOW`/`COMPASS` tesoro, `STICK`/`STRING`/`FEATHER`/`BONE` basura |
+
+Veredicto: **OK** — sweep anti-tunneling correcto (ROUND para x/z,
+FLOOR para y), `BITE_MIN_MS` 5 s (MC real), `biteAt` = `Date.now()` +
+aleatorio dentro de rango.
+
+### 4.3 save-players.js — persistencia de jugadores
+
+| # | Hallazgo | Acción |
+|---|---------|--------|
+| S1.7 | Un archivo `players/<nombre>.json` manipulado podía inyectar counts gigantes (1e9) que rompen la aritmética de stacks | `stackSana` sanea: count clamped a `MAX_STACK`, id debe ser entero ≥1, durabilidad solo si numérica |
+| S1.8 | `restorePlayer` no validaba el `respawnPoint` campo a campo — un JSON corrupto (NaN, null) causaba respawn en (NaN,NaN,NaN) | Validación campo a campo: `Number.isFinite` en x, y, z antes de asignar |
+| S1.9 | La mochila (bundle) no se restauraba al reconectar | `restorePlayer` ahora restaura `player.bundle = data.bundle.map(stackSana)` |
+
+Veredicto: **OK** — defensivo: lectura con try/catch, campos inválidos
+se ignoran (el jugador empieza de cero si el archivo está corrupto).
+
+### 4.4 Handlers WS nuevos
+
+| # | Handler | Veredicto |
+|---|---------|-----------|
+| S1.10 | `throw_wind_charge` → `handleThrowWindCharge` | OK — cooldown 500 ms, valida mano, consume, inventario actualizado |
+| S1.11 | `bundle_open` / `bundle_action` | OK — exclusión mutua con cofre/horno, MAX_STACK en fusiones, split sin pérdida |
+| S1.12 | `honey_bottle` → `handleHoneyBottle` | OK — guardas H1 (coords finitas, FLOOR, distancia ≤5, bloque correcto) |
+| S1.13 | Blast furnace (`isBlastFurnaceBlock` + `isBlastCookable`) | OK — solo minerales ×2, tiempo 2× más rápido, alimentos ignorados |
+
+### 4.5 IA interna: Creaking y Bogged
+
+| # | Hallazgo | Acción |
+|---|---------|--------|
+| S1.14 | Creaking: `p.alive` en el bucle de observadores — los JUGADORES no tienen `alive`; el creaking NUNCA se congelaba | Corregido a `!p \|\| p.inMenu \|\| p.ws.readyState !== WebSocket.OPEN` |
+| S1.15 | Creaking: detección de línea de visión con solo 2 muestras (t=0.3, 0.65) — una pared pegada al jugador/mob no bloqueaba la "visión" | Muestreo denso cada 0.25 (S1 en la spec de F21.5 corregido aquí) |
+| S1.16 | Bogged: reutiliza 100% la IA del esqueleto + `shootPoisonArrow` — drops y XP idénticos | OK — sin cambios necesarios |
+
+**Resumen S1:** 16 áreas revisadas, 9 hallazgos documentados con fix,
+7 veredictos OK sin cambios. Sin áreas «no revisadas».
 
 ---
 
 ## Cambios en esta spec
 
+- 2026-08-23: S1 completado (§4): 16 áreas auditadas, 9 hallazgos con
+  fix, 7 OK sin cambios. Documentado en esta spec.
 - 2026-08-22: creación del borrador (diferidos de la entrevista del
   planificador 2026-08-22: linterna/luz, bug de cabezas, perfilado, pase
   servidor restante, residuos CL-*).

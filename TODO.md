@@ -1348,10 +1348,11 @@
 - [ ] V1 Perfilado en vivo: `/locate` ms bloqueados, `arrows_update` B/s con
       varios pescando, granja de hornos `--prof`, profiler navegador;
       informe archivado en la spec
-- [ ] S1 Pase interno de servidor restante: handlers WS nuevos (wind
-      charge/bundle/blast furnace), ciclo interno de `projectiles.js`,
-      `fishing.js`, campos nuevos de `save-players.js`, IA interna
-      Creaking/Bogged — sin huecos "no revisados"
+- [x] S1 Pase interno de servidor restante: 16 áreas auditadas,
+      9 hallazgos con fix (mob_death por proyectil, poison en snapshot,
+      wind charge cooldown, FISHING_LIFE_MS 32s, reelBobber inventario
+      lleno, stackSana, respawnPoint validado, bundle restaurado,
+      Creaking alive→inMenu+readyState), 7 OK — ver spec §4
 - [x] R1 Residuos heredados: CL-2 pausa (`document.hidden || !hasFocus()`),
       CL-1 reset reconexión (`doorStates.clear()`), partículas material
       propio (cada mesh pool tiene su material)
