@@ -37,7 +37,7 @@
 	"dependencies": {
 		"express": "^4.19.2",
 		"simplex-noise": "^4.0.1",
-		"uuid": "^14.0.1",
+		"uuid": "^14.0.3",
 		"ws": "^8.17.0"
 	},
 	"devDependencies": {
